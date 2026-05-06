@@ -1,0 +1,41 @@
+{
+  "task_id": "TASK_PNL_D8D97DBC",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
+  "prompt": "Welcome to the team. I have an upcoming audit engagement that requires your immediate attention. \n\nWe need to prepare a structured Excel profit and loss (P&L) report using the provided 'Tour_Data.xlsx' file. Please note that all initial financial figures provided in this dataset are in USD. Your primary objective is to calculate the Total Net Revenue, Total Expenses, and Net Income for the tour.\n\nTo ensure accurate international tax reporting, you must match the 'Country' column in the 'Tour_Data.xlsx' table with the 'Tax_Rates.csv' file to apply the correct tax withholding rates. Once you have applied these rates, calculate the net revenue and store it in a new column named 'Net_Revenue_After_Tax'.\n\nNext, we need to handle multi-currency conversions for our regional stakeholders. Please refer to the newly provided 'Currency_Rates_Base_RMB.xlsx' which contains RMB-based exchange rates (e.g., 1 RMB = X Foreign Currency). Your task is to: (1) Derive a USD-to-other-currencies conversion table. (2) Identify the local currency for each 'Country' (e.g., France -> EUR). (3) Convert the values in 'Net_Revenue_After_Tax' (currently in USD) to the local currency. Append these converted results to a new column named 'Local_Currency_Amount'. If a country's currency is not listed in the provided rates, use a 1:1 exchange rate.\n\nIn addition to the calculations, please draft a 'Task Completion Summary' as a separate PDF document. In this summary document, you must explicitly document any data anomalies, missing values, or accounting issues you encountered during your analysis and explain how you resolved them. This is critical for our audit trail.\n\nRequirements / Notes\n- The final deliverable MUST be an Excel file named 'Music_Tour_PnL_Result.xlsx'.\n- The final summary deliverable MUST be a PDF file named 'task_summary.pdf'.\n- The overall formatting, style, and layout of all deliverables MUST be clean, professional, and business-ready.\n- The derived USD conversion table MUST be included as a separate sheet named 'Derived_USD_Rates' within the final deliverable.",
+  "reference_files": [
+    "reference_files/Tax_Rates.csv",
+    "reference_files/Currency_Rates_Base_RMB.xlsx",
+    "reference_files/Tour_Data.xlsx"
+  ],
+  "deliverable_files": [
+    "deliverable_files/Music_Tour_PnL_Result.xlsx",
+    "deliverable_files/task_summary.pdf"
+  ],
+  "rubric": "- [+3分] Check if Total Net Revenue and Total Expenses are accurately aggregated from 'Tour_Data.xlsx'.\n- [+3分] Verify that a 'Task Completion Summary' is clearly included as a separate 'task_summary.pdf' file.\n- [+3分] Check if the PDF summary accurately identifies the embedded data anomalies (e.g., negative values, missing data) if they were present.\n- [+3分] Evaluate whether the overall formatting and style of the deliverables are highly professional and readable.\n- [+3分] Verify that tax rates were correctly mapped from 'Tax_Rates.csv' (e.g., UK should be calculated at 20%).\n- [+3分] Ensure that negative entries (e.g., refunds) in the 'Expenses' column of 'Tour_Data.xlsx' are handled correctly using absolute values and not double-deducted.\n- [+3分] Check if the model identified and handled the missing value in 'Gross_Revenue' of 'Tour_Data.xlsx'.\n- [+3分] Check if the model identified and handled the missing value in 'Expenses' of 'Tour_Data.xlsx'.\n- [+3分] Verify if Local_Currency_Amount correctly reflects USD to local currency conversion based on RMB rates.",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"Check if Total Net Revenue and Total Expenses are accurately aggregated from 'Tour_Data.xlsx'.\", \"required\": true, \"rubric_item_id\": \"R_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that a 'Task Completion Summary' is clearly included as a separate 'task_summary.pdf' file.\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Check if the PDF summary accurately identifies the embedded data anomalies (e.g., negative values, missing data) if they were present.\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Evaluate whether the overall formatting and style of the deliverables are highly professional and readable.\", \"required\": true, \"rubric_item_id\": \"R_004\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that tax rates were correctly mapped from 'Tax_Rates.csv' (e.g., UK should be calculated at 20%).\", \"required\": true, \"rubric_item_id\": \"R_005\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Ensure that negative entries (e.g., refunds) in the 'Expenses' column of 'Tour_Data.xlsx' are handled correctly using absolute values and not double-deducted.\", \"required\": true, \"rubric_item_id\": \"R_006\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Check if the model identified and handled the missing value in 'Gross_Revenue' of 'Tour_Data.xlsx'.\", \"required\": true, \"rubric_item_id\": \"R_007\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Check if the model identified and handled the missing value in 'Expenses' of 'Tour_Data.xlsx'.\", \"required\": true, \"rubric_item_id\": \"R_008\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify if Local_Currency_Amount correctly reflects USD to local currency conversion based on RMB rates.\", \"required\": true, \"rubric_item_id\": \"R_009\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}]",
+  "extra": {
+    "ground_truth": {
+      "Tax_Rates.csv": {
+        "trap_rows": {}
+      },
+      "Currency_Rates_Base_RMB.xlsx": {
+        "trap_rows": {}
+      },
+      "Tour_Data.xlsx": {
+        "trap_rows": {
+          "双重负数陷阱": [
+            10
+          ],
+          "通用缺失值陷阱_trap_missing_value_inst_1": [
+            11
+          ],
+          "通用缺失值陷阱_trap_missing_value_inst_2": [
+            2
+          ]
+        }
+      }
+    }
+  }
+}
