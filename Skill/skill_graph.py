@@ -2,32 +2,59 @@ from typing import List, Dict, Optional, Any, Tuple
 import collections
 
 
-
 class SkillNode:
-    """三位一体的考点超级基类"""
-    # === 类级别的元数据配置 ===
-    node_type: str = "base"
-    name: str = "未命名考点"
-    max_instances: int = 1
-    requires: List[str] = []
-    provides: List[str] = []
-    possible_successors: List[Dict] = []
-    prompt_intents: List[str] = []
-    deliverable_constraints: List[str] = []
-    hidden_rubrics: List[str] = []
-    expected_deliverables: List[str] = []
+    """
+    考点超级基类
+    SkillNode 是一个动态容器，它的“灵魂”由传入的 JSON config 决定。
+    """
 
-    def __init__(self, node_id: str):
+    def __init__(self, node_id: str, skill_config: dict = None):
         self.node_id = node_id
+
+        # 1. 物理连线状态 (运行时产生)
         self.input_bindings: Dict[str, dict] = {}
         self.output_names: Dict[str, Tuple[str, str]] = {}  # 存储 (表名, 列名)
+
+        # 2. 运行时渲染状态
         self.rendered_intents = []
         self.rendered_constraints = []
         self.rendered_rubrics = []
 
+        # ==========================================
+        # 以下属性全部从 JSON 配置文件动态注入
+        # ==========================================
+        self.skill_config = skill_config or {}
+
+        # 基础元数据
+        self.name = self.skill_config.get("skill_name", "未命名考点")
+        self.node_type = self.skill_config.get("node_type", "base")
+        self.max_instances = self.skill_config.get("max_instances", 1)
+        self.keywords = self.skill_config.get("keywords", [])
+
+
+        # 拓扑与连线端口
+        ports = self.skill_config.get("ports", {})
+        self.requires = ports.get("requires", [])
+        self.provides = ports.get("provides", [])
+        self.possible_successors = self.skill_config.get("possible_successors", [])
+
+        # 语义与文案
+        semantics = self.skill_config.get("semantics", {})
+        self.prompt_intents = semantics.get("intents", [])
+        self.deliverable_constraints = semantics.get("constraints", [])
+        self.hidden_rubrics = semantics.get("rubrics", [])
+        self.expected_deliverables = semantics.get("deliverables", [])
+        self.system_prompt = semantics.get("system_prompt", "You are a helpful task designer.")
+
+        # 核心：执行期参数（供底层的具体 Python 操作类读取使用）
+        # 例如：税率字典的文件名、需要相乘的常数、陷阱破坏的行数等
+        self.data_params = self.skill_config.get("data_params", {})
+        self.suggested_row_counts = self.data_params.get("suggested_row_counts", {})
+
     def resolve_input_port(self, in_port_name: str, graph) -> Tuple[str, str]:
+        """顺藤摸瓜：根据逻辑端口名，向图谱上游索要真实的(物理表名, 物理列名)"""
         if in_port_name not in self.input_bindings:
-            raise ValueError(f"节点 {self.node_id} 的输入端口 {in_port_name} 未连接！")
+            raise ValueError(f"节点 {self.node_id} ({self.name}) 的输入端口 {in_port_name} 未连接！")
 
         binding = self.input_bindings[in_port_name]
         source_node = graph.nodes[binding["source"]]
@@ -39,16 +66,22 @@ class SkillNode:
 
     def on_join_graph(self, graph):
         """
-        符号绑定与语义渲染。
-        子类重写此方法，用于：
-        1. 寻址并锁定上游的表名和列名。
-        2. 给自己即将生成的数据起名字。
-        3. 渲染 semantic_intents 模版。
+        【通用发车安检口】
+        在V2架构下，因为我们有了统一的 self.data_params 字典，
+        我们可以把渲染逻辑下沉到基类，这样未来的 Operator 子类甚至不用重写这个方法！
         """
-        pass
+        # 默认实现：如果有格式化字典，直接拿 data_params 里的物理名字去渲染
+        format_dict = self.data_params.copy()
+
+        # 如果子类在调用 super().on_join_graph() 前解析了 input_port，
+        # 可以把上游的物理表名/列名也加进 format_dict 里。
+
+        self.rendered_intents = [i.format(**format_dict) if '{' in i else i for i in self.prompt_intents]
+        self.rendered_constraints = [c.format(**format_dict) if '{' in c else c for c in self.deliverable_constraints]
+        self.rendered_rubrics = [r.format(**format_dict) if '{' in r else r for r in self.hidden_rubrics]
 
     def register_data_operations(self, vfs, graph):
-        """纯粹的数据生成。子类必须重写这个方法"""
+        """纯粹的数据生成。由继承本类的“算子(Operator)”具体实现"""
         pass
 
 
