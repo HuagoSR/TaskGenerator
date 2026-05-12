@@ -1,14 +1,15 @@
 import json
 import os
-from Skill import operators  # 导入我们刚刚写的算子文件
+import inspect
+from Skill import operators
+from Skill.skill_graph import SkillNode
 
-# 1. 注册基础算子
-OPERATOR_REGISTRY = {
-    "BaseDataGeneratorOperator": operators.BaseDataGeneratorOperator,
-    "ForeignKeyDictionaryOperator": operators.ForeignKeyDictionaryOperator,
-    "CellPerturbationOperator": operators.CellPerturbationOperator,
-    "GlobalRequirementOperator": operators.GlobalRequirementOperator
-}
+# 1. 自动扫描并注册所有的底层算子
+OPERATOR_REGISTRY = {}
+for name, obj in inspect.getmembers(operators):
+    # 如果它是一个类，且继承自 SkillNode，且不是 SkillNode 本身
+    if inspect.isclass(obj) and issubclass(obj, SkillNode) and obj is not SkillNode:
+        OPERATOR_REGISTRY[name] = obj
 
 # 2. 读取 JSON 题库
 json_path = os.path.join(os.path.dirname(__file__), "skills_config.json")
