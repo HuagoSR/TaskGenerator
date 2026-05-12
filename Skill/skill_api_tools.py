@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import List, Dict, Optional
 import inspect
 from Skill import operators
@@ -7,6 +8,8 @@ import time
 
 # 定义考点库的路径
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), "skills_config.json")
+# 定义端口字典的路径
+PORTS_DICT_PATH = os.path.join(os.path.dirname(__file__), "ports_dict.json")
 
 def _load_db() -> dict:
     """内部辅助函数：加载最新数据库"""
@@ -19,6 +22,23 @@ def _load_db() -> dict:
 def _save_db(db_data: dict) -> bool:
     """内部辅助函数：安全落盘"""
     with open(DATABASE_PATH, "w", encoding="utf-8") as f:
+        json.dump(db_data, f, indent=4, ensure_ascii=False)
+    return True
+
+def _load_ports_db() -> dict:
+    if not os.path.exists(PORTS_DICT_PATH):
+        # 如果文件不存在，初始化一个基础字典
+        initial_ports = {
+            "Financial:AnyAmount": "Generic financial amount.",
+            "Dimension:Generic": "Generic classification dimension."
+        }
+        _save_ports_db(initial_ports)
+        return initial_ports
+    with open(PORTS_DICT_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def _save_ports_db(db_data: dict) -> bool:
+    with open(PORTS_DICT_PATH, "w", encoding="utf-8") as f:
         json.dump(db_data, f, indent=4, ensure_ascii=False)
     return True
 
@@ -277,6 +297,50 @@ def request_new_operator(intent_description: str, proposed_data_params: dict, re
         json.dump(requests, f, indent=4, ensure_ascii=False)
 
     return "Success: 新算子开发请求已成功提交给人类架构师！此工单已记录。在人类完成开发并注册到系统前，请跳过此考点，继续处理其他可复用算子的任务。"
+
+
+def get_port_dictionary() -> str:
+    """
+    【工具功能】获取系统中所有已注册的语义端口（Ports）列表及其详细定义。
+    在进行推演连线（Port Inference）或创建新考点前，必须调用此工具对齐标准词汇！
+
+    返回:
+        str: 包含所有合法端口名和解释的文本。
+    """
+    ports_db = _load_ports_db()
+    results = []
+    for port_name, desc in ports_db.items():
+        results.append(f"- [{port_name}]: {desc}")
+
+    return "系统当前已注册的标准端口如下，请尽可能复用它们：\n" + "\n".join(results)
+
+
+def register_new_port(port_name: str, description: str) -> str:
+    """
+    【工具功能】当现有的端口字典中绝对没有合适的端口时，调用此工具注册一个全新的语义端口。
+
+    参数:
+        port_name (str): 端口名。必须严格遵循 "类别:细节" 的驼峰命名法（如 "Financial:CarbonTax" 或 "Dimension:ProductLine"）。
+        description (str): 对该端口代表的业务含义的英文详细解释。
+
+    返回:
+        str: 注册成功或失败的反馈。
+    """
+    # 1. 严格的命名规范防御 (必须是 Word:Word 格式)
+    if not re.match(r"^[A-Z][a-zA-Z0-9]*:[A-Z][a-zA-Z0-9]*$", port_name):
+        return f"Error: 端口命名不规范！'{port_name}' 不符合 'Category:Detail' 格式（例如 'Financial:PreTax'，首字母必须大写且不能有空格）。"
+
+    ports_db = _load_ports_db()
+
+    # 2. 防重检查
+    if port_name in ports_db:
+        return f"Notice: 端口 '{port_name}' 已经存在，无需重复注册，你可以直接使用它。"
+
+    # 3. 注册落盘
+    ports_db[port_name] = description
+    _save_ports_db(ports_db)
+
+    return f"Success: 新端口 '{port_name}' 已成功注册到全局数据字典！你现在可以在 create_skill 中使用它了。"
 
 # ==========================================
 # 供 人类 调用的工具 API

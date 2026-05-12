@@ -1,0 +1,43 @@
+{
+  "task_id": "TASK_PNL_FB6C8D29",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
+  "prompt": "**MEMORANDUM**\n\n**TO:** Junior AI Auditor  \n**FROM:** Senior Audit Partner  \n**DATE:** October 24, 2023  \n**SUBJECT:** Task Assignment: P&L Preparation, Tax Reconciliation, and FX Translation for Tour Operations  \n\nWelcome to the engagement team. I have a critical task for you regarding our client's recent tour operations. We need to prepare a comprehensive Profit & Loss (P&L) report, apply the appropriate jurisdictional taxes, and perform foreign exchange translations. \n\nAccuracy and strict adherence to our documentation standards are non-negotiable. Please execute the following audit program:\n\n**1. Baseline P&L Preparation**\n*   Access the primary client data file: **'Tour_Data.xlsx'**.\n*   Calculate the foundational financial metrics: **Net Revenue**, **Expenses**, and **Net Income**. Ensure these calculations are clearly scheduled out in your working papers.\n\n**2. Jurisdictional Tax Calculations**\n*   Cross-reference the **'Country'** column in **'Tour_Data.xlsx'** with the provided **'Tax_Rates.csv'** file to identify and apply the correct local tax rates.\n*   Calculate the net revenue after these local taxes and output the result into a new column titled exactly **'Net_Revenue_After_Tax'**.\n*   Next, evaluate the EU Digital Services Tax. Refer to **'EU_Tax.csv'** to determine the applicable deductions. Deduct this amount from your previous calculation and output the final figure into a column titled **'Net_After_EU_Tax'**.\n\n**3. Foreign Exchange (FX) Translation**\n*   Refer to the **'Currency_Rates.xlsx'** file for the period's exchange rates.\n*   Convert the **'Net_Revenue_After_Tax'** balances into the respective local currencies. Output these translated figures into a column titled **'Local_Currency_Amount'**.\n*   *Hard Constraint:* As part of your FX workpaper, you must create and include a specific spreadsheet tab named exactly **'Derived_USD_Rates'** to document the conversion logic. \n\n**4. Deliverables and Reporting**\n*   Once the calculations are complete, draft a 'Task Completion Summary' detailing your methodology, any anomalies found, and the final financial totals.\n*   *Hard Constraint:* This summary must be generated as a separate PDF document and MUST be named exactly **'task_summary.pdf'**. \n\nPlease review the provided files and begin your testing immediately. Let me know if you encounter any data integrity issues during your reconciliation. I expect the final workpapers and the PDF summary on my desk for review by end of day. \n\nRegards,\n\n**Senior Audit Partner**\n\n### Critical Auto-Appended Constraints:\n- The final summary MUST be named 'task_summary.pdf'.\n- Include a sheet named 'Derived_USD_Rates'.\n",
+  "reference_files": [
+    "reference_files/Tax_Rates.csv",
+    "reference_files/EU_Tax.csv",
+    "reference_files/Currency_Rates.xlsx",
+    "reference_files/Tour_Data.xlsx"
+  ],
+  "deliverable_files": [
+    "deliverable_files/Music_Tour_PnL_Result.xlsx",
+    "deliverable_files/task_summary.pdf",
+    "deliverable_files/Derived_USD_Rates_Sheet"
+  ],
+  "rubric": "- [+3分] Check if Total Net Revenue and Expenses are aggregated from 'Tour_Data.xlsx'.\n- [+3分] Verify that a 'task_summary.pdf' is clearly included.\n- [+3分] Verify tax rates mapped from 'Tax_Rates.csv' (e.g., UK at 20%).\n- [+3分] Ensure negative entries in 'Expenses' of 'Tour_Data.xlsx' use absolute values.\n- [+3分] Check if model handled missing value in 'Gross_Revenue' of 'Tour_Data.xlsx'.\n- [+3分] Check if the digital tax rate was correctly applied.\n- [+3分] Verify 'Local_Currency_Amount' reflects accurate conversion.",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"Check if Total Net Revenue and Expenses are aggregated from 'Tour_Data.xlsx'.\", \"required\": true, \"rubric_item_id\": \"R_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that a 'task_summary.pdf' is clearly included.\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify tax rates mapped from 'Tax_Rates.csv' (e.g., UK at 20%).\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Ensure negative entries in 'Expenses' of 'Tour_Data.xlsx' use absolute values.\", \"required\": true, \"rubric_item_id\": \"R_004\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Check if model handled missing value in 'Gross_Revenue' of 'Tour_Data.xlsx'.\", \"required\": true, \"rubric_item_id\": \"R_005\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Check if the digital tax rate was correctly applied.\", \"required\": true, \"rubric_item_id\": \"R_006\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify 'Local_Currency_Amount' reflects accurate conversion.\", \"required\": true, \"rubric_item_id\": \"R_007\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}]",
+  "extra": {
+    "ground_truth": {
+      "Tax_Rates.csv": {
+        "trap_rows": {}
+      },
+      "EU_Tax.csv": {
+        "trap_rows": {}
+      },
+      "Currency_Rates.xlsx": {
+        "trap_rows": {}
+      },
+      "Tour_Data.xlsx": {
+        "trap_rows": {
+          "trap_double_negative_inst_1": [
+            11
+          ],
+          "trap_missing_value_inst_1": [
+            8
+          ]
+        }
+      }
+    }
+  }
+}
