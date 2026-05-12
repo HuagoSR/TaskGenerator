@@ -29,20 +29,19 @@ def execute_tool_with_log(func_name: str, kwargs: dict) -> str:
         # 使用反射动态调用 skill_api_tools 中的函数
         func = getattr(skill_api_tools, func_name)
         result = func(**kwargs)
-        logging.info(f"✅ 执行结果: {result}")
+        logging.info(f"执行结果: {result}")
         print(f"  └─ 结果: {str(result)[:100]}...")  # 终端只打印前100个字符防刷屏
         return str(result)
     except Exception as e:
         error_msg = f"Error executing {func_name}: {str(e)}"
         logging.error(error_msg)
-        print(f"  └─ ❌ 报错: {error_msg}")
+        print(f"  └─ 报错: {error_msg}")
         return error_msg
 
 
 # ==========================================
 # 2. 定义提供给 LLM 的工具清单 (JSON Schema)
 # ==========================================
-# 这里将你 skill_api_tools 里的函数翻译成 OpenAI 认识的格式
 tools_schema = [
     {
         "type": "function",
@@ -60,10 +59,8 @@ tools_schema = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "operator_name": {"type": "string",
-                                      "description": "算子类名，必须以 Operator 结尾（如 FilterOperator）"},
-                    "source_code": {"type": "string",
-                                    "description": "完整的 Python 类源代码。必须继承 SkillNode 且包含 on_join_graph 或 register_data_operations 方法。"}
+                    "operator_name": {"type": "string"},
+                    "source_code": {"type": "string"}
                 },
                 "required": ["operator_name", "source_code"]
             }
@@ -73,36 +70,12 @@ tools_schema = [
         "type": "function",
         "function": {
             "name": "search_skills",
-            "description": "通过关键字或端口在题库中查重，检查是否已经有同类考点。",
+            "description": "通过关键字在题库中查重，检查图谱中是否已经有了同类考点。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "keyword": {"type": "string", "description": "业务关键字"}
+                    "keyword": {"type": "string"}
                 }
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_skill",
-            "description": "在系统中正式创建一个新的考点并写入 JSON 题库。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "skill_id": {"type": "string"},
-                    "skill_name": {"type": "string"},
-                    "node_type": {"type": "string", "enum": ["base", "mutator", "trap", "global"]},
-                    "operator_class": {"type": "string"},
-                    "requires": {"type": "array", "items": {"type": "string"}},
-                    "provides": {"type": "array", "items": {"type": "string"}},
-                    "keywords": {"type": "array", "items": {"type": "string"}},
-                    "intents": {"type": "array", "items": {"type": "string"}},
-                    "rubrics": {"type": "array", "items": {"type": "string"}},
-                    "data_params": {"type": "object"}
-                },
-                "required": ["skill_id", "skill_name", "node_type", "operator_class", "requires", "provides", "intents",
-                             "rubrics", "data_params"]
             }
         }
     }
@@ -128,18 +101,20 @@ SYSTEM_PROMPT = """
 """
 
 
-def run_agent_3_workflow(enriched_steps: list):
-    print(f"Agent 3 启动 | 引擎: {model_name}")
+def run_agent_3_workflow(enriched_steps: list) -> list:
+    print(f"Agent 3 启动 (节点架构师) | 引擎: {model_name}")
     print("-" * 50)
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user",
-         "content": f"请逐一处理以下带有端口的步骤并建库：\n{json.dumps(enriched_steps, ensure_ascii=False)}"}
+         "content": f"请处理以下步骤，查证算子后输出 JSON：\n{json.dumps(enriched_steps, ensure_ascii=False)}"}
     ]
 
     while True:
         try:
+            # 注意：如果中转站支持，可以在这里直接加 response_format={"type": "json_object"}
+            # 但部分 API 在有 tools 时不支持混合使用，所以通过 Prompt 强约束通常更稳。
             response = client.chat.completions.create(
                 model=model_name,
                 messages=messages,
@@ -151,16 +126,11 @@ def run_agent_3_workflow(enriched_steps: list):
             response_message = response.choices[0].message
             messages.append(response_message)
 
-            # 如果大模型想要调用工具
             if response_message.tool_calls:
                 for tool_call in response_message.tool_calls:
                     func_name = tool_call.function.name
                     func_args = json.loads(tool_call.function.arguments)
-
-                    # 拦截并执行本地函数
                     function_response = execute_tool_with_log(func_name, func_args)
-
-                    # 把本地函数的执行结果“喂”回给大模型
                     messages.append({
                         "tool_call_id": tool_call.id,
                         "role": "tool",
@@ -168,16 +138,27 @@ def run_agent_3_workflow(enriched_steps: list):
                         "content": function_response,
                     })
             else:
-                # 大模型没有调用工具，说明它认为任务完成了，输出了普通文本
-                print("\nAgent 3 报告任务完成：")
-                print(response_message.content)
-                break
+                # 结束了工具调用，这里应该是 JSON 输出了
+                print("\nAgent 3 节点提炼完成，输出待连线节点：")
+                final_content = response_message.content
+                print(final_content)
+
+                # 尝试解析 JSON 并返回给未来的 Agent 4
+                try:
+                    # 有时候模型可能还是会带上 ```json 的 markdown，做一下清理
+                    clean_content = final_content.strip()
+                    if clean_content.startswith("```json"):
+                        clean_content = clean_content[7:-3].strip()
+
+                    proposed_nodes = json.loads(clean_content).get("proposed_nodes", [])
+                    return proposed_nodes
+                except json.JSONDecodeError as e:
+                    print(f"解析最终 JSON 失败: {e}")
+                    return []
 
         except Exception as e:
             print(f"\nAPI 请求报错: {e}")
             break
-
-
 # ==========================================
 # 运行测试
 # ==========================================
