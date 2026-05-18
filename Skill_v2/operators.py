@@ -1,5 +1,5 @@
 import sys
-import pandas as pd
+
 sys.path.append("..")
 from Skill.skill_graph import SkillNode
 from FileGenerator.blueprint_core import ProceduralGenerator, ForeignKeyGenerator
@@ -48,15 +48,8 @@ class ForeignKeyDictionaryOperator(SkillNode):
 
 class CellPerturbationOperator(SkillNode):
     """通用陷阱算子：对单元格进行物理破坏"""
-
     def on_join_graph(self, graph):
-        # 解析输入端口
         self.target_table, self.target_col = self.resolve_input_port(self.requires[0], graph)
-
-        # 如果该 Trap 节点定义了输出端口，必须注册物理映射
-        if self.provides:
-            self.output_names[self.provides[0]] = (self.target_table, self.target_col)
-
         self.data_params.update({
             "in_target_table": self.target_table,
             "in_target_col": self.target_col
@@ -71,20 +64,11 @@ class CellPerturbationOperator(SkillNode):
     def apply_trap(self, df, victim_indices):
         mode = self.data_params["perturbation_mode"]
         for idx in victim_indices:
-            val = df.loc[idx, self.target_col]
-
-            # 如果这个单元格已经是空的了，就跳过它，不要再尝试做数学运算
-            if pd.isna(val) and mode != "to_null":
-                continue
-
-            try:
-                if mode == "to_negative":
-                    df.loc[idx, self.target_col] = -abs(float(val))
-                elif mode == "to_null":
-                    df.loc[idx, self.target_col] = None
-            except ValueError:
-                # 防御性编程：万一里面是个字符串（比如 "Unknown"），转 float 会失败，直接跳过
-                continue
+            if mode == "to_negative":
+                val = df.loc[idx, self.target_col]
+                df.loc[idx, self.target_col] = -abs(float(val))
+            elif mode == "to_null":
+                df.loc[idx, self.target_col] = None
 
 class GlobalRequirementOperator(SkillNode):
     """空降算子：纯文案，不碰数据"""
@@ -114,46 +98,20 @@ class TabularDataLoaderOperator(SkillNode):
             bp.add_column(col_info["name"], ProceduralGenerator(col_info["generator_type"], **col_info.get("kwargs", {})))
 
 
+class CategoricalFilterOperator(SkillNode):
+    def on_join_graph(self, graph):
+        self.target_table, _ = self.resolve_input_port(self.requires[0], graph) # 加入 graph 参数
+        super().on_join_graph(graph)
+
+    def register_data_operations(self, vfs, graph):
+        pass
+
 
 class ColumnMultiplierOperator(SkillNode):
     def on_join_graph(self, graph):
-        self.target_table, _ = self.resolve_input_port(self.requires[0], graph)
-
-        out_col = (
-                self.data_params.get("output_col") or
-                self.data_params.get("output_column") or
-                self.data_params.get("new_col")
-        )
-
-        if not out_col:
-            raise KeyError(f"节点 {self.node_id} 找不到输出列名！(尝试了 output_col, output_column, new_col 均失败)")
-
-        self.output_names[self.provides[0]] = (self.target_table, out_col)
+        self.target_table, _ = self.resolve_input_port(self.requires[0], graph) # 加入 graph 参数
+        self.output_names[self.provides[0]] = (self.target_table, self.data_params["output_col"])
         super().on_join_graph(graph)
 
     def register_data_operations(self, vfs, graph):
         pass
-
-
-class PhantomTaskOperator(SkillNode):
-    """
-    万能幽灵算子：专门处理所有 Mutator（变异）考点。
-    它在 VFS 层绝对不造数据、不碰数据。它只负责维护图谱上的列名映射（透传或派生），
-    供 Agent 5 生成考卷和判卷 Assert 使用。
-    """
-
-    def on_join_graph(self, graph):
-        # 记录一下新列名叫什么，告诉图谱下游“这列数据未来学生会算出来”
-        out_col = self.data_params.get("output_col") or self.data_params.get("new_col") or "Calculated_Result"
-
-        if self.provides:  # 如果有输出端口
-            self.target_table, _ = self.resolve_input_port(self.requires[0], graph)
-            self.output_names[self.provides[0]] = (self.target_table, out_col)
-
-        super().on_join_graph(graph)
-
-    def register_data_operations(self, vfs, graph):
-        # 绝对的幽灵，VFS 造表时什么都不做
-        pass
-
-

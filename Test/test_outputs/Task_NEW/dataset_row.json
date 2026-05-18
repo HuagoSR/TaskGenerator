@@ -1,0 +1,37 @@
+{
+  "task_id": "TASK_NEW_EBF26F63",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
+  "prompt": "```json\n{\n  \"Name\": \"US E-commerce Order Duty Processing and Summary\",\n  \"Description\": \"Process last month's e-commerce orders to calculate estimated duties for US customers, clean the order amount data, and generate a processed dataset along with a PDF task summary.\",\n  \"Key_Steps\": [\n    \"Load the initial dataset from 'ecommerce_orders_last_month.csv'.\",\n    \"Filter the records to include only those where the 'user_country' is equal to 'USA'.\",\n    \"Identify and handle any missing values in the 'order_amount' column.\",\n    \"Identify negative values in the 'order_amount' column and convert them to their absolute values.\",\n    \"Create a new column named 'estimated_duty' by multiplying the cleaned 'order_amount' by 0.08.\",\n    \"Export the final processed dataset to a file named 'Processed_US_Duty_Report.csv'.\",\n    \"Draft a 'Task Completion Summary' detailing the operations performed and save it as a separate PDF document strictly named 'task_summary.pdf'.\"\n  ],\n  \"Data_Requirements\": [\n    \"Input: 'ecommerce_orders_last_month.csv'\",\n    \"Output: 'Processed_US_Duty_Report.csv'\",\n    \"Output: 'task_summary.pdf'\"\n  ]\n}\n```\n\n### Critical Auto-Appended Constraints:\n- The final summary MUST be named 'task_summary.pdf'.\n",
+  "reference_files": [
+    "reference_files/ecommerce_orders_last_month.csv"
+  ],
+  "deliverable_files": [
+    "deliverable_files/task_summary.pdf"
+  ],
+  "rubric": "- [+3分] Verify that a 'task_summary.pdf' is clearly included.\n- [+3分] Verify that (df['user_country'] == 'USA').all() is True\n- [+3分] Verify that df['order_amount'].isnull().sum() == 0\n- [+3分] Verify that (df['order_amount'] >= 0).all() is True\n- [+3分] Verify that 'estimated_duty' in df.columns\n- [+3分] Verify that np.allclose(df['estimated_duty'], df['order_amount'] * 0.08)",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"Verify that a 'task_summary.pdf' is clearly included.\", \"required\": true, \"rubric_item_id\": \"R_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that (df['user_country'] == 'USA').all() is True\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that df['order_amount'].isnull().sum() == 0\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that (df['order_amount'] >= 0).all() is True\", \"required\": true, \"rubric_item_id\": \"R_004\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that 'estimated_duty' in df.columns\", \"required\": true, \"rubric_item_id\": \"R_005\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that np.allclose(df['estimated_duty'], df['order_amount'] * 0.08)\", \"required\": true, \"rubric_item_id\": \"R_006\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}]",
+  "extra": {
+    "ground_truth": {
+      "ecommerce_orders_last_month.csv": {
+        "trap_rows": {
+          "clean_missing_amounts_inst_1": [
+            3,
+            46,
+            67,
+            16,
+            15
+          ],
+          "normalize_negative_amounts_inst_1": [
+            70,
+            19,
+            87,
+            63,
+            22
+          ]
+        }
+      }
+    }
+  }
+}

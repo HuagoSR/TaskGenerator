@@ -187,13 +187,10 @@ class TaskGenerationPipeline:
 # ==========================================
 if __name__ == "__main__":
     custom_config = TaskConfig(
-        task_id_prefix="TASK_PNL",
-        task_output_dir="test_outputs/Task_01",
+        task_id_prefix="TASK_NEW",
+        task_output_dir="test_outputs/Task_NEW",
         base_skill_id="base_pnl_01",
         global_skill_ids=["global_req_01"],
-        deliverable_files=[
-            "Music_Tour_PnL_Result.xlsx"
-        ],
         rubric_default_score=3,
         sector="Financial Audit"
     )

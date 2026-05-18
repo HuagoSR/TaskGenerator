@@ -26,15 +26,19 @@ class ProceduralGenerator(DataGenerator):
         if self.method == "normal":
             return np.round(np.random.normal(self.kwargs.get('mean', 0), self.kwargs.get('std', 1), num_rows),
                             2).tolist()
+        elif self.method == "uniform":
+            _min = self.kwargs.get('min', 0.0)
+            _max = self.kwargs.get('max', 100.0)
+            return np.round(np.random.uniform(_min, _max, num_rows), 2).tolist()
         elif self.method == "categorical":
             return np.random.choice(self.kwargs.get('categories', []), num_rows).tolist()
         elif self.method == "constant":
             return [self.kwargs.get('value')] * num_rows
-        elif self.method == "constant_list":  # 新增：按顺序填充给定列表
+        elif self.method == "constant_list":
             vals = self.kwargs.get('values', [])
             return (vals * (num_rows // len(vals) + 1))[:num_rows]
         else:
-            return [None] * num_rows
+            raise ValueError(f"致命错误：VFS 引擎不支持数据生成器类型 '{self.method}'！请使用 uniform, normal, categorical 等标准类型。")
 
 
 class ForeignKeyGenerator(DataGenerator):

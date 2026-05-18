@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK_3_E55601AD",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
+  "prompt": "This task involves processing music festival transaction data to ensure tax compliance and financial accuracy for specific European regions. You will be required to perform data cleaning, filtering, tax calculations, and currency conversions.\n\n### **Task Title: Music Festival Financial Compliance & Tax Processing**\n\n#### **1. Data Ingestion & Initial Setup**\n*   **Primary Dataset:** Load `festival_transactions.csv`.\n*   **Reference Data 1:** Load `Tax_Rates.csv` (used for regional tax mapping).\n*   **Reference Data 2:** Load `Currency_Rates.xlsx` (used for local currency conversion).\n\n#### **2. Data Cleaning & Filtering**\n*   **Null Handling:** Identify all records where the `PreTax` field is null. You must decide on a processing strategy (e.g., imputation with 0 or removal) to ensure calculations can proceed.\n*   **Geographic Filtering:** Filter the dataset to include only records where the `host_country` is either **'France'** or **'Germany'**.\n\n#### **3. Compliance & Tax Calculations**\n*   **Compliance Adjustment:** Create a new column named `CompliantAmount` by multiplying the `PreTax` value by a factor of **1.05**.\n*   **Tax Mapping:** Perform a join/match between the `region_name` column in the transaction dataset and the `Tax_Rates.csv` file.\n*   **Net Revenue:** Calculate the `Net_Revenue_After_Tax` based on the matched tax rates and the `CompliantAmount`.\n\n#### **4. Currency Conversion**\n*   **Rate Application:** Use the exchange rates provided in `Currency_Rates.xlsx`.\n*   **Local Calculation:** Convert the `Net_Revenue_After_Tax` into the local currency of the host country. Store this value in a new column named `Local_Currency_Amount`.\n\n#### **5. Hard Constraints & Output Requirements**\n*   **Final Dataset:** Export the processed data to a CSV file named **`Festival_Compliance_Result.csv`**.\n*   **Internal Documentation:** During the conversion process, you must generate a data structure or secondary file that includes a sheet named **`Derived_USD_Rates`** to document the exchange logic used.\n*   **Reporting:** Draft a 'Task Completion Summary' detailing the number of records processed and any null values handled. This document MUST be exported as a PDF named **`task_summary.pdf`**.\n\n---\n\n### **Summary of Expected Files:**\n1.  **`Festival_Compliance_Result.csv`**: The final processed transaction list.\n2.  **`task_summary.pdf`**: The formal summary of the processing steps and data integrity.\n3.  **`Currency_Calculations.xlsx`** (or similar): Containing the mandatory **`Derived_USD_Rates`** sheet.\n\n### Critical Auto-Appended Constraints:\n- The final summary MUST be named 'task_summary.pdf'.\n- Include a sheet named 'Derived_USD_Rates'.\n",
+  "reference_files": [
+    "reference_files/Tax_Rates.csv",
+    "reference_files/Currency_Rates.xlsx",
+    "reference_files/festival_transactions.csv"
+  ],
+  "deliverable_files": [
+    "deliverable_files/Festival_Compliance_Result.csv",
+    "deliverable_files/task_summary.pdf",
+    "deliverable_files/Derived_USD_Rates_Sheet"
+  ],
+  "rubric": "- [+3分] Verify that the final output file 'Festival_Compliance_Result.csv' exists.\n- [+3分] Verify that a 'task_summary.pdf' is clearly included.\n- [+3分] Verify tax rates mapped from 'Tax_Rates.csv' (e.g., UK at 20%).\n- [+3分] Verify that exactly 5 records in the 'PreTax' column have been set to null.\n- [+3分] Verify that all remaining records in the 'Region' column are either 'France' or 'Germany'.\n- [+3分] Verify that the 'CompliantAmount' column is equal to the 'PreTax' column multiplied by 1.05.\n- [+3分] Verify 'Local_Currency_Amount' reflects accurate conversion.",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"Verify that the final output file 'Festival_Compliance_Result.csv' exists.\", \"required\": true, \"rubric_item_id\": \"R_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that a 'task_summary.pdf' is clearly included.\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify tax rates mapped from 'Tax_Rates.csv' (e.g., UK at 20%).\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that exactly 5 records in the 'PreTax' column have been set to null.\", \"required\": true, \"rubric_item_id\": \"R_004\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that all remaining records in the 'Region' column are either 'France' or 'Germany'.\", \"required\": true, \"rubric_item_id\": \"R_005\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify that the 'CompliantAmount' column is equal to the 'PreTax' column multiplied by 1.05.\", \"required\": true, \"rubric_item_id\": \"R_006\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Verify 'Local_Currency_Amount' reflects accurate conversion.\", \"required\": true, \"rubric_item_id\": \"R_007\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}]",
+  "extra": {
+    "ground_truth": {
+      "Tax_Rates.csv": {
+        "trap_rows": {}
+      },
+      "Currency_Rates.xlsx": {
+        "trap_rows": {}
+      },
+      "festival_transactions.csv": {
+        "trap_rows": {
+          "handle_null_revenue_records_inst_1": [
+            31,
+            35,
+            20,
+            43,
+            36
+          ]
+        }
+      }
+    }
+  }
+}
