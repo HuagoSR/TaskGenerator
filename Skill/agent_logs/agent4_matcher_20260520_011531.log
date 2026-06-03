@@ -1,0 +1,35 @@
+2026-05-20 01:15:45,890 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:15:59,297 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:16:39,646 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:17:03,596 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:17:30,209 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:17:34,482 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:18:04,355 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:18:23,638 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:20:01,644 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:21:14,188 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:21:20,370 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-20 01:21:20,371 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "load_population_data"}
+2026-05-20 01:21:20,373 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,374 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "data_quality_trap"}
+2026-05-20 01:21:20,376 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,376 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "calculate_qoq_variance"}
+2026-05-20 01:21:20,378 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,378 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "calculate_audit_sample_size"}
+2026-05-20 01:21:20,381 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,381 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_high_variance"}
+2026-05-20 01:21:20,383 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,383 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_specific_entities"}
+2026-05-20 01:21:20,385 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,385 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_metric_codes"}
+2026-05-20 01:21:20,387 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,388 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_zero_values"}
+2026-05-20 01:21:20,389 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,390 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_business_types"}
+2026-05-20 01:21:20,391 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,391 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_countries"}
+2026-05-20 01:21:20,393 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,393 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "ensure_divisional_coverage"}
+2026-05-20 01:21:20,394 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-20 01:21:20,394 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "flag_audit_samples"}
+2026-05-20 01:21:20,397 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。

@@ -17,28 +17,39 @@ model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 # 2. Agent 5 系统指令 (专注对齐与写 Rubric)
 # ==========================================
 SYSTEM_PROMPT = """
-You are the RL Reward Designer & Schema Validator. You will receive a JSON array of "proposed_nodes" that have already been assigned physical Python operators.
+You are a Senior Audit Manager designing the grading rubric for a complex financial data assessment task.
+Your task is to review the proposed workflow steps and generate natural language grading rubrics  that verify if the candidate has successfully completed the task.
+Your rubrics must be written in clear, professional, verifiable ENGLISH sentences, exactly like a grading sheet for a human auditor.
+Your rubrics must comply with industry standards. In particular, when “node_type” is set to “trap,” you must ensure that your rubric strictly adheres to actual industry standards. If you find it difficult to determine specific data processing methods based on the existing context, you may provide a more general, non-specific rubric; however, you must explicitly state in the generated rubric that it should follow “industry standards” or similar wording.
 
-Your ONLY MISSION is to finalize the semantics and generate Reinforcement Learning (RL) reward rules. You DO NOT execute code or save to databases.
+You must evaluate the FINAL deliverable artifact (e.g., the final CSV/Excel). Generate rubrics across these 4 categories:
 
-# Execution Workflow:
-1. **Alignment Check (Crucial)**: 
-   - Look at the keys in `"data_params"`. 
-   - Look at the placeholders in `"intents"` (e.g., `{multiplier}`).
-   - If they do not match perfectly, REWRITE the `"intents"` string so its placeholders exactly match the keys in `"data_params"`.
+1. **Formatting & Structure**:
+   - Verify the existence of required columns, specific sheet names, or correct output file names.
+   - Example: "The final deliverable contains a column named '{new_col}'."
 
-2. **RL Rubrics Generation (Reward Shaping)**:
-   - You must generate a `"rubrics"` array inside `"semantics"`.
-   - For `base` nodes: The rubric MUST BE EMPTY (`[]`). Loading data is a prerequisite, not a scorable skill.
-   - For `trap` and `mutator` nodes: Write highly objective, code-verifiable rubrics. Think like a Python `assert` statement. (e.g., "Verify df['output'] == df['input'] * 1.05").
+2. **Mathematical Accuracy & Formulas**:
+   - Describe the exact mathematical relationship expected in the final result.
+   - Example: "The variance rate in '{new_col}' is correctly computed as the difference between '{col_q3}' and '{col_q2}', divided by '{col_q2}'."
 
-3. **Format Validation**: Ensure the output strictly follows the required JSON schema, preserving `"operator_class"`, `"ports"`, etc.
+3. **Data Cleaning & Edge Cases**:
+   - Verify how dirty data was handled in the final output.
+   - Example: "All negative values in '{col_q2}' and '{col_q3}' have been converted to their absolute values."
+   - Example: "Rows where '{col_q2}' is zero are handled gracefully without producing #DIV/0! or infinite errors."
 
-# Output Rule:
-Reply ONLY with the finalized JSON object. No markdown, no conversational text.
-{
-  "proposed_nodes": [ ... ]
-}
+4. **Conditional Sampling (OR-Logic)**:
+   - For filtering/sampling tasks, use "at least one" or "if present" logic. Do NOT demand that the entire file only contains specific rows.
+   - Example: "If there are rows belonging to '{entity_1}', at least one such row is correctly flagged in the final sample."
+
+# OUTPUT FORMAT
+- You must return the original JSON array exactly as provided, preserving ALL fields (`skill_id`, `ports`, `data_params`, `operator_class`, etc.).
+- You will only ADD or MODIFY the `"rubrics"` array inside the `"semantics"` object of each node.
+- Each string inside the `"rubrics"` array must be a professional English sentence following the guidelines above. 
+- 🚫 **STRICT PARAMETERIZATION RULE**: You MUST NOT hardcode concrete business values (e.g., file names, specific column names, country names, multipliers) in the rubrics. You MUST use the exact `{placeholder}` keys found in the `data_params` (and `{deliverables}` for file names) to refer to these values.
+  - BAD: "The final deliverable is named 'Tour_Financial_Report.xlsx'."
+  - GOOD: "The final deliverable is named {deliverables}."
+  - BAD: "Verify that the 'CompliantAmount' column..."
+  - GOOD: "Verify that the '{new_col}' column..."
 """
 
 
@@ -72,7 +83,17 @@ def run_agent_5_validator(upgraded_nodes: list) -> list:
             clean_content = clean_content[3:-3].strip()
 
         json_data = json.loads(clean_content)
-        return json_data.get("proposed_nodes", [])
+
+        # ====== 防呆加固核心逻辑 ======
+        if isinstance(json_data, list):
+            # 如果大模型直接返回了纯数组，直接透传
+            return json_data
+        elif isinstance(json_data, dict):
+            # 如果大模型听话地返回了包裹对象，安全使用 .get()
+            return json_data.get("proposed_nodes", [])
+        else:
+            return []
+        # ==================================
 
     except Exception as e:
         print(f"\nAPI 请求或解析报错: {e}")

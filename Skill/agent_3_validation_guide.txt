@@ -1,0 +1,20 @@
+# THE ABSOLUTE RULEBOOK FOR JSON GENERATION
+You MUST strictly evaluate against (or follow) these rules. Any violation is a FATAL error.
+
+## Rule 1: Node Type & Port Dependency Constraints
+- "base": The starting point. It loads external raw data. `ports.requires` MUST be strictly `[]`.
+- "mutate" / "filter" / "trap": Intermediate processing. They MUST have BOTH `ports.requires` (consuming upstream data) and `ports.provides` (outputting new data).
+- "export": The ending point. It saves the final data. It MUST have `ports.requires`, but `ports.provides` CAN be empty or contain `Deliverable:...` ports.
+- CRITICAL: Never force a node to be "base" if its intent clearly relies on upstream processed data. Change it to "export" or "mutate".
+
+## Rule 2: The Deliverables Exclusivity Rule
+- ONLY nodes with `node_type: "base"` OR `node_type: "export"` are allowed to have the `deliverables` array inside the `semantics` object.
+- If a node is "mutate", "filter", or "trap", the `deliverables` key MUST NOT exist at all.
+
+## Rule 3: The Full Port Mapping Rule (For Base Nodes Only)
+- For "base" nodes, EVERY single physical column you hallucinated in `data_params.schemas` MUST have a 1-to-1 mapping in `data_params.port_to_column_mapping`.
+- The number of columns in the schema MUST exactly match the number of keys in the port mapping. If you lack logical ports in `provides` to map them to, you MUST invent new ports in `provides` (e.g., "Dimension:Country", "Metric:Amount") to ensure a 100% full mapping.
+
+## Rule 4: Schema Hallucination & Anti-Spoiler Rule
+- `schemas` MUST be an array of objects (e.g., [{"name": "Col1", "generator_type": "uniform"}]). NEVER use pure integers or nulls.
+- ANTI-SPOILER: For "base" nodes, the schema MUST ONLY contain raw, unprocessed columns (e.g., Entity, Date, RawAmount). DO NOT hallucinate columns that are supposed to be calculated or appended by downstream steps (e.g., Do NOT include "Variance", "Sample_Flag", or "Is_Processed" in the base schema).

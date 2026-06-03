@@ -1,8 +1,0 @@
-{
-    "Financial:PreTax": "Financial amount before tax deduction (e.g., Gross Revenue).",
-    "Financial:PostTax": "Financial amount after tax deduction (e.g., Net Income).",
-    "Financial:Expense": "Financial amount representing costs, out-flows, or refunds.",
-    "Financial:AnyAmount": "Generic financial amount, used when the calculation is agnostic to the specific type of money.",
-    "Financial:ConvertedAmount": "Financial amount after currency exchange.",
-    "Dimension:Region": "Categorical dimension representing country, continent, or specific geographic region."
-}

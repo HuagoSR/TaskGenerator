@@ -169,8 +169,7 @@ def create_skill(
         requires: List[str],
         provides: List[str],
         keywords: List[str],
-        intents: List[str],
-        rubrics: List[str],
+        semantics: dict,
         data_params: dict
 ) -> str:
     """
@@ -184,7 +183,7 @@ def create_skill(
         requires (List[str]): 依赖的输入语义端口列表，如 ["Financial:PreTax"]。
         provides (List[str]): 提供的输出语义端口列表。
         keywords (List[str]): 业务关键词，便于日后检索。
-        intents (List[str]): 业务指令话术模板（可使用大括号包裹 data_params 里的键作占位符）。
+        semantics
         rubrics (List[str]): 隐藏的评分标准模板。
         data_params (dict): 传递给底层算子的具体执行参数字典。
 
@@ -207,17 +206,14 @@ def create_skill(
             "requires": requires,
             "provides": provides
         },
-        "possible_successors": [],  # 新节点默认没有连线
-        "semantics": {
-            "intents": intents,
-            "rubrics": rubrics
-        },
+        "possible_successors": [],
+        "semantics": semantics,  # <--- 【修改】原样落盘，完美保留 deliverables 和 rubrics
         "data_params": data_params
     }
 
     db[skill_id] = new_skill
     _save_db(db)
-    return f"Success: 全新考点 '{skill_name}' ({skill_id}) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。"
+    return f"Success: 全新考点 '{skill_name}' ({skill_id}) 已成功注册到题库！"
 
 
 def connect_skills(source_skill_id: str, target_skill_id: str, port_mapping: Dict[str, str]) -> str:

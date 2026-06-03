@@ -1,9 +1,13 @@
 import os
 import json
+import logging
+from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# 1. 基础配置
+# ==========================================
+# 1. 基础配置与日志系统
+# ==========================================
 load_dotenv()
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -11,16 +15,60 @@ client = OpenAI(
 )
 model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 
-# 2. Agent 3 的严格系统指令
-SYSTEM_PROMPT = """
-You are an expert Data Pipeline Architect. Your sole responsibility is to translate and abstract concrete Chinese business requirements into a strict, parameterized ENGLISH JSON schema.
+# 配置辩论日志 (Debate Logs)
+LOG_DIR = os.path.join(os.path.dirname(__file__), "debate_logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+log_filename = os.path.join(LOG_DIR, f"agent3_debate_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
 
-#  VFS DOMAIN IRON RULES (CRITICAL) 
-1. **File Extensions**: ANY table name or file name MUST end with `.csv` or `.xlsx` (e.g., `festival_transactions.csv`). Never use a raw string without an extension.
-2. **Base Node Mandates**: If the `node_type` is `"base"`, you MUST include two specific fields in the JSON:
-   - `semantics.deliverables`: An array of the final output file names the user expects (e.g., `["Festival_Compliance_Result.csv"]`).
-   - `data_params.suggested_row_counts`: A dictionary specifying the number of rows to generate for the base table (e.g., `{"festival_transactions.csv": 50}`).
+# 设置日志格式
+logger = logging.getLogger("Agent3_Debate")
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(log_filename, encoding='utf-8')
+fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+logger.addHandler(fh)
+
+def load_validation_guide() -> str:
+    """读取同目录下的错题本文件/规则书"""
+    guide_path = os.path.join(os.path.dirname(__file__), "agent_3_validation_guide.txt")
+    if os.path.exists(guide_path):
+        with open(guide_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "No custom validation guide found."
+
+# 获取统一的规则文本
+GLOBAL_RULEBOOK = load_validation_guide()
+
+# ==========================================
+# 2. 系统指令配置
+# ==========================================
+# (保持你原来的 Generator Prompt 不变)
+SYSTEM_PROMPT = """
+You are an expert Data Pipeline Architect and Database Administrator. Your sole responsibility is to translate and abstract concrete business requirements into a strict, parameterized ENGLISH JSON schema.
+
+1. **File Extensions (NO CSV)**: ANY generated table, output dataset, or spreadsheet deliverable MUST end with `.xlsx` (e.g., `festival_transactions.xlsx`). NEVER use `.csv` or `.txt` for output files. Other non-spreadsheet formats like `.pdf` (for reports/summaries) are completely acceptable if required by the prompt.
+2. **Base Node Mandates (CRITICAL FOR REALISM)**: If the `node_type` is `"base"`, you MUST include these specific fields in `data_params`:
+   - `data_params.suggested_row_counts`: A dictionary mapping EXACT file names to an integer. Example: `{"tour_data.xlsx": 100}`
+
+   - `data_params.schemas`: MUST be a dictionary where keys are table names and values are ARRAYS OF OBJECTS. 
+      **FATAL ERROR TO AVOID:** NEVER output integers or lists of integers here. Every column must be a distinct JSON object.
+     You MUST hallucinate background columns (ID, Date, City, Currency) to make it realistic. CRITICAL: Only generate columns that would exist in the RAW, UNPROCESSED initial data. DO NOT generate columns here that will be calculated or appended by downstream mutate steps (e.g., Variance, Flags, Result Columns).
+     EXAMPLE FORMAT:
+     "schemas": {
+       "tour_data.xlsx": [
+         {"name": "Txn_ID", "generator_type": "id"},
+         {"name": "Country", "generator_type": "categorical", "kwargs": {"categories": ["UK", "France"]}},
+         {"name": "Revenue", "generator_type": "uniform", "kwargs": {"min": 1000, "max": 5000}}
+       ]
+     }
+
+   - `data_params.port_to_column_mapping`: MUST be a strict dictionary mapping the EXACT port name from the `provides` array to the physical table and column.
+     **FATAL ERROR TO AVOID:** Do NOT flatten this dictionary.
+     EXAMPLE FORMAT:
+     "port_to_column_mapping": {
+       "Finance:RawFinancialData": {"table": "tour_data.xlsx", "column": "Revenue"}
+     }
 3. **Intent Clarity**: The `intents` for a base node MUST include an instruction to export the final result to the file specified in `deliverables`.
+4. The intents you generate must comply with industry standards for real-world scenarios. In particular, when the `node_type` is set to “trap,” do not speculate on how to solve the problem; simply describe clearly what kind of problem needs to be addressed.
 
 # Core Directives
 1. **ALL ENGLISH ONLY**: Everything you output (skill_name, keywords, intents, parameter names, etc.) MUST be translated into professional English.
@@ -36,56 +84,157 @@ Your output must be a JSON object containing a "proposed_nodes" array. Every nod
 {
   "proposed_nodes": [
     {
-      "skill_id": "filter_host_country", // Use snake_case
-      "skill_name": "Filter Festival Host Country",
-      "node_type": "mutator", // Only use: "base", "mutator", "trap", "global"
-      "keywords": ["Filter", "Country", "Festival"],
+      "skill_id": "load_data", 
+      "skill_name": "Load Data",
+      "node_type": "base", 
+      "keywords": ["Load", "Data"],
       "ports": {
-        "requires": ["Dimension:Region"],
-        "provides": []
+        "requires": [],
+        "provides": ["Financial:PreTax", "Dimension:Region"]
       },
       "semantics": {
-        "intents": ["Filter the records where '{filter_col}' is either '{country_1}' or '{country_2}'."]
+        "intents": ["..."],
+        "deliverables": ["Tour_Result.xlsx"]
       },
       "data_params": {
-        "filter_col": "country",
-        "country_1": "France",
-        "country_2": "Germany"
+        "suggested_row_counts": {"raw_tour.xlsx": 50},
+        "schemas": {
+          "raw_tour.xlsx": [
+            {"name": "Tour_ID", "generator_type": "id"},
+            {"name": "Concert_Date", "generator_type": "categorical", "kwargs": {"categories": ["2024-10-01", "2024-10-15"]}},
+            {"name": "City", "generator_type": "categorical", "kwargs": {"categories": ["London", "Paris", "Berlin"]}},
+            {"name": "Revenue", "generator_type": "uniform", "kwargs": {"min": 1000, "max": 5000}}
+          ]
+        },
+        "port_to_column_mapping": {
+          "Financial:PreTax": {"table": "raw_tour.xlsx", "column": "Revenue"},
+          "Dimension:Region": {"table": "raw_tour.xlsx", "column": "City"}
+        }
       }
     }
   ]
 }
+
+
+# CRITICAL RULEBOOK
+{GLOBAL_RULEBOOK}
 """
 
 
-def run_agent_3_abstractor(enriched_steps: list) -> list:
-    print(f"Agent 3 启动 (纯语义抽象与参数化) | 引擎: {model_name}")
-    print("-" * 50)
+def load_validation_guide() -> str:
+    """读取同目录下的错题本文件"""
+    guide_path = os.path.join(os.path.dirname(__file__), "agent_3_validation_guide.txt")
+    if os.path.exists(guide_path):
+        with open(guide_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "No custom validation guide found. Just verify basic JSON format."
 
-    # 将输入转化为字符串
+
+# 裁判的 System Prompt
+JUDGE_SYSTEM_PROMPT = JUDGE_SYSTEM_PROMPT = f"""
+You are a strict JSON formatting and Logic Auditor (The Judge).
+Your job is to review a JSON payload generated by another AI and determine if it strictly adheres to the project rules.
+
+Here is your Validation Guide (The Rulebook):
+=============================================
+{GLOBAL_RULEBOOK}
+=============================================
+
+Your output MUST be a JSON object with this exact structure:
+{{
+    "pass": true or false,
+    "feedback": "If pass is false, provide a harsh, specific explanation of what rule was violated and how to fix it. If pass is true, output 'All rules met'."
+}}
+"""
+
+
+# ==========================================
+# 3. 核心辩论执行循环
+# ==========================================
+def run_agent_3_abstractor(enriched_steps: list, max_retries: int = 5) -> list:
+    print(f"Agent 3 启动 (Actor-Critic 裁判机制) | 引擎: {model_name}")
+    logger.info(f"=== 新的抽象任务开始 ===")
+
+    # 构造 Generator 的初始对话上下文
     user_content = f"Please abstract and parameterize the following steps into the required ENGLISH JSON format:\n{json.dumps(enriched_steps, ensure_ascii=False)}"
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_content}
+    ]
 
-    try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_content}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.1  # 必须保持极低温度以确保格式严格
-        )
+    for attempt in range(1, max_retries + 1):
+        print(f"\n--- 正在生成草稿 (第 {attempt}/{max_retries} 次尝试) ---")
+        logger.info(f"--- 尝试 {attempt}/{max_retries} ---")
 
-        content = response.choices[0].message.content
-        print("\nAgent 3 抽象完成！纯净英文 JSON 模板：\n")
-        print(content)
+        try:
+            # 1. 演员 (Generator) 产出草稿
+            gen_response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.3  # 稍微给一点发散能力去造 schema
+            )
+            draft_content = gen_response.choices[0].message.content
+            logger.info(f"【Generator 输出】:\n{draft_content}")
 
-        json_data = json.loads(content)
-        return json_data.get("proposed_nodes", [])
+            # 【第一道防线：Python 原生裁判】拦截截断报错
+            try:
+                parsed_draft = json.loads(draft_content)
+            except json.JSONDecodeError as e:
+                error_msg = f"FATAL ERROR: JSON parsing failed. It looks like your output was truncated or malformed. Error: {e}. Please rewrite the ENTIRE JSON structure properly."
+                print(f"Python 原生裁判拦截: JSON 解析失败 (可能是截断)。")
+                logger.error(f"【Python 原生裁判驳回】: {error_msg}")
 
-    except Exception as e:
-        print(f"\nAPI 请求或解析报错: {e}")
-        return []
+                messages.append({"role": "assistant", "content": draft_content})
+                messages.append({"role": "user", "content": error_msg})
+                continue  # 直接进入下一轮重试，不需要呼叫 LLM 裁判
+
+            # 2. 裁判员 (Judge) 登场校验
+            print("--- 裁判正在校验 JSON 格式及业务逻辑 ---")
+            judge_response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"Please review this JSON draft:\n{draft_content}"}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.0  # 裁判必须绝对严谨，0 幻觉
+            )
+
+            judge_result = json.loads(judge_response.choices[0].message.content)
+            is_pass = judge_result.get("pass", False)
+            feedback = judge_result.get("feedback", "No feedback provided.")
+
+            logger.info(f"【Judge 判决结果】: Pass={is_pass}\n【Judge 反馈】: {feedback}")
+
+            # 3. 判决执行
+            if is_pass:
+                print("裁判判定通过！")
+                logger.info("=== 任务成功结束 ===")
+
+                if isinstance(parsed_draft, list):
+                    return parsed_draft
+                elif isinstance(parsed_draft, dict):
+                    return parsed_draft.get("proposed_nodes", [])
+                return []
+            else:
+                print(f"裁判驳回！反馈意见: {feedback}")
+                # 将错误草稿和严厉反馈塞回 Generator 的历史记录，逼迫它在下一轮修正
+                messages.append({"role": "assistant", "content": draft_content})
+                messages.append({
+                    "role": "user",
+                    "content": f"CRITICAL FEEDBACK FROM AUDITOR:\nYour previous JSON violated the rules. Here is the feedback:\n{feedback}\n\nPlease reflect on this and output a fully corrected JSON object immediately."
+                })
+
+        except Exception as e:
+            print(f"发生网络或未知异常: {e}")
+            logger.error(f"发生异常: {e}")
+            # 如果是 API 本身断开，可以小睡一会或继续重试
+            continue
+
+    print("\n达到最大重试次数，无法产出合格的 JSON。请检查 debate_logs 寻找原因。")
+    logger.error("=== 任务失败，达到最大重试次数 ===")
+    return []
 
 
 # ==========================================
@@ -94,41 +243,146 @@ def run_agent_3_abstractor(enriched_steps: list) -> list:
 if __name__ == "__main__":
     # 使用 Agent 2 输出的那 4 个步骤进行测试
     agent_2_output = [
-        {
-            "action_type": "Base",
-            "description": "加载初始的音乐节流水数据集。",
-            "requires": [],
-            "provides": [
-                "Financial:PreTax",
-                "Dimension:Region"
-            ]
-        },
-        {
-            "action_type": "Trap",
-            "description": "处理原始数据中收入字段为空值的记录。",
-            "requires": [
-                "Financial:PreTax"
-            ],
-            "provides": []
-        },
-        {
-            "action_type": "Filter",
-            "description": "筛选出举办国家为法国或德国的场次记录。",
-            "requires": [
-                "Dimension:Region"
-            ],
-            "provides": []
-        },
-        {
-            "action_type": "Mutate",
-            "description": "将基础门票收入乘以1.05，生成名为‘合规后收入’的新列。",
-            "requires": [
-                "Financial:PreTax"
-            ],
-            "provides": [
-                "Financial:CompliantAmount"
-            ]
-        }
+  {
+    "action_type": "Base",
+    "description": "Load the 'Population' spreadsheet containing Anti-Financial Crime Risk Metrics for Q2 and Q3 2024.",
+    "requires": [],
+    "provides": [
+      "Data:PopulationMetrics"
     ]
+  },
+  {
+    "action_type": "Trap",
+    "description": "Identify missing financial metrics in columns H (Q2) and I (Q3).",
+    "requires": [
+      "Data:PopulationMetrics"
+    ],
+    "provides": [
+      "Data:MissingMetricsIdentified"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Replace all identified missing values in columns H and I with 0.",
+    "requires": [
+      "Data:MissingMetricsIdentified"
+    ],
+    "provides": [
+      "Data:ImputedMetrics"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate the quarter-on-quarter variance between Q2 and Q3 and record the results in column J.",
+    "requires": [
+      "Data:ImputedMetrics"
+    ],
+    "provides": [
+      "Data:MetricsWithVariance"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate the required audit sample size using a 90% confidence level and a 10% tolerable error rate.",
+    "requires": [
+      "Data:MetricsWithVariance"
+    ],
+    "provides": [
+      "Metric:SampleSize"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows where variance in column J is greater than 20%.",
+    "requires": [
+      "Data:MetricsWithVariance"
+    ],
+    "provides": [
+      "Data:VarianceFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows for entities: CB Cash Italy, CB Correspondent Banking Greece, IB Debt Markets Luxembourg, CB Trade Finance Brazil, and PB EMEA UAE.",
+    "requires": [
+      "Data:VarianceFiltered"
+    ],
+    "provides": [
+      "Data:EntityFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows for metrics A1 and C1.",
+    "requires": [
+      "Data:EntityFiltered"
+    ],
+    "provides": [
+      "Data:MetricFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows where values in both column H and column I are zero.",
+    "requires": [
+      "Data:MetricFiltered"
+    ],
+    "provides": [
+      "Data:ZeroValueFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows belonging to Trade Finance and Correspondent Banking businesses.",
+    "requires": [
+      "Data:ZeroValueFiltered"
+    ],
+    "provides": [
+      "Data:BusinessFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Filter rows for countries: Cayman Islands, Pakistan, and UAE.",
+    "requires": [
+      "Data:BusinessFiltered"
+    ],
+    "provides": [
+      "Data:CountryFiltered"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Select a subset of rows from the filtered criteria to ensure coverage across all Divisions and sub-Divisions.",
+    "requires": [
+      "Data:CountryFiltered",
+      "Metric:SampleSize"
+    ],
+    "provides": [
+      "Data:StratifiedSample"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Mark the final selected sample rows in column K with the value '1'.",
+    "requires": [
+      "Data:StratifiedSample"
+    ],
+    "provides": [
+      "Data:MarkedSample"
+    ]
+  },
+  {
+    "action_type": "Export",
+    "description": "Save the processed data into a new spreadsheet titled 'Sample', with Tab 1 containing the selected sample rows and Tab 2 containing the sample size calculation workings.",
+    "requires": [
+      "Data:MarkedSample",
+      "Metric:SampleSize"
+    ],
+    "provides": [
+      "Deliverable:SampleSpreadsheet"
+    ]
+  }
+]
 
     abstracted_nodes = run_agent_3_abstractor(agent_2_output)

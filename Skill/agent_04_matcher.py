@@ -35,8 +35,9 @@ def execute_tool_with_log(func_name: str, kwargs: dict) -> str:
         print(f"  └─ 报错: {error_msg}")
         return error_msg
 
+    # ==========================================
 
-# ==========================================
+
 # 2. Agent 4 专属工具箱 (查阅 + 提工单)
 # ==========================================
 tools_schema = [
@@ -86,37 +87,48 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
 model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 
-SYSTEM_PROMPT = """
-你是一位资深的“数据分析考题出题专家 (Exam Setter)”。
-你收到了一份已经拆解好的考点大纲（JSON 格式）。你的唯一任务是为每个考点分配底层的 Python 算子（operator_class）。
+SYSTEM_PROMPT = """   
+You are a Senior "Data Analysis Exam Setter".
+You receive an abstracted array of exam skill nodes. Your task is to assign a low-level Python operator (`operator_class`) to each node, while STRICTLY keeping all original fields intact.
 
-# 核心认知法则（你是出题人，不是考生！）
-在处理每一个节点时，你必须先在脑海中问自己一个问题：
-“为了考学生这个知识点，作为出题人的我，是否需要提前在数据库里【凭空捏造新数据】或者【故意破坏原始数据】？”
+# Core Concept: Distinguish "Engine Action" vs "Examinee Action"
+You must determine if a step requires the Engine to "create or sabotage data physically at T=0" OR if it requires the Examinee to "process, deal with, or clean data".
 
-# 决策与执行管线 (Decision Workflow)
+# Branch A: Pure Examinee Actions (No Engine Data Generation Needed)
+- Applies to: `node_type` of "mutator" or "global". ALSO applies to "trap" nodes whose Intents are about "Handling", "Replacing", "Filling", or "Cleaning" abnormal data (these are Exam questions to test the examinee, not engine sabotage).
+- Execution Actions:
+  1. [MANDATORY] DO NOT call `list_available_operators` for these nodes.
+  2. If it is a standard calculation/processing node ("mutator" / "global"), assign `"operator_class": "PhantomTaskOperator"`.
+  3. If it is a semantic trap node meant for the examinee to clean/handle (e.g., Handle missing costs/categories), assign `"operator_class": "PhantomTrapOperator"`.
+  4. CRITICAL: DO NOT change the existing `"node_type"`. Let a "trap" remain a "trap". You may keep any examinee-related reference parameters (like `replacement_value` or `default_category`) inside `data_params` undisturbed.
 
-当你遍历输入的所有节点时，请严格根据上述问题进行判断，并执行相应的分支：
+# Branch B: Engine Actions (Physical Data Creation or Physical Sabotage)
+- Applies to: Real "base" data generators OR real "trap" nodes that EXPLICITLY require the Engine to physically inject/sabotage/perturb data (e.g., "Inject missing values into the raw dataset").
+- Execution Actions:
+  1. You MUST call `list_available_operators` and `get_operator_source_code`.
+  2. Find the correct matching low-level class name and set it as `"operator_class"`.
+  3. CRITICAL LIMITATION: You must strictly align your `data_params` keys with the exact variables required by the operator's source code (e.g., `perturbation_mode` and `trap_count` for Perturbation operators). NEVER invent fake operational parameters here.
+  4. You are COMPLETELY FORBIDDEN to delete, modify, or abbreviate predefined complex fields like `schemas`, `port_to_column_mapping`, and `suggested_row_counts`. They MUST be passed through exactly as they are.
+  5. Only if absolutely no operator works, call `request_new_operator` to submit a ticket, and set `"operator_class": "PENDING_HUMAN_REVIEW"`.
 
-分支 A：【纯考生动作】(不需要出题人造数据)
-- 判定标准：该步骤是常规的数据处理逻辑（例如：条件筛选、分组聚合、按公式计算方差、列之间的加减乘除等）。这些都是【考生】应该写的代码。出题人不需要提前把“方差”或“筛选结果”算好放在数据表里。
-- 执行动作：
-  1. [强制禁止] 绝对禁止调用 `list_available_operators` 或 `request_new_operator`。
-  2. [直接分配] 直接将该节点的 `"operator_class"` 赋值为 `"PhantomTaskOperator"`。
-  3. 处理下一个节点。
-
-分支 B：【出题人动作】(必须出题人准备数据/挖坑)
-- 判定标准：该步骤要求必须有物理数据的变化才能进行考试。通常包括：
-  1. 需要拉取或生成一张基础的数据表 (通常是 base 节点)。
-  2. 需要为复杂的变异考点提供“外部数据字典”（例如：要求考生跨表匹配汇率，出题人就必须先造一张“汇率表”出来）。
-  3. 需要故意注入脏数据作为考试陷阱（例如：故意把 5 个正常数值变成空值或负数）。
-- 执行动作：
-  1. 你必须调用 `list_available_operators` 查找底层算子。
-  2. 调用 `get_operator_source_code` 对齐参数名，写入 `data_params`。
-  3. 只有当现有算子无法实现这个“造数据/破坏数据”的动作时，才能调用 `request_new_operator` 提交工单。
-
-# 最终输出要求：
-输出一个包含所有已处理节点的 JSON 数组。必须确保每一个节点的 `operator_class` 都已明确赋值（PhantomTaskOperator 或真实的 Python 类名）。
+# Mandatory Output Format (CRITICAL STRUCTURE RULES)
+1. The root MUST be a JSON object with a single key `"proposed_nodes"`.
+2. [FULL INHERITANCE]: Never delete any existing fields from the input JSON (skill_id, skill_name, ports, semantics, etc.). You only ADD `operator_class` or adjust the specific keys within `data_params`.
+3. Example Structure:
+{   
+  "proposed_nodes": [   
+    {   
+      "skill_id": "...",   
+      "skill_name": "...",   
+      "node_type": "trap",   
+      "operator_class": "PhantomTrapOperator",   
+      "keywords": [...],   
+      "ports": {...},   
+      "semantics": {...},   
+      "data_params": {...}   
+    }   
+  ]   
+}   
 """
 
 
@@ -137,7 +149,7 @@ def run_agent_4_matcher(abstracted_nodes: list) -> list:
                 messages=messages,
                 tools=tools_schema,
                 tool_choice="auto",
-                temperature=0.0  # 匹配与派单必须绝对严谨
+                temperature=0.0
             )
 
             response_message = response.choices[0].message
@@ -172,12 +184,11 @@ def run_agent_4_matcher(abstracted_nodes: list) -> list:
             print(f"\nAPI 请求报错: {e}")
             return abstracted_nodes
 
-
 # ==========================================
 # 运行测试
 # ==========================================
 if __name__ == "__main__":
-    # 模拟输入 Agent 3 的输出，其中包含一个目前没有算子支持的业务
+    # 模拟输入 Agent 3 的输出
     mock_agent_3_output = [
         {
             "skill_id": "load_population_data",

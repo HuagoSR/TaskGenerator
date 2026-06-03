@@ -1,0 +1,118 @@
+2026-05-18 17:32:01,945 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:32:55,602 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:33:15,578 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:34:30,870 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:36:07,325 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:41:37,656 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:42:24,644 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:44:15,545 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:45:37,163 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:46:41,405 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:46:42,013 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "load_population_dataset"}
+2026-05-18 17:46:42,014 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,014 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "identify_missing_values"}
+2026-05-18 17:46:42,015 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,015 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "impute_missing_values"}
+2026-05-18 17:46:42,016 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,016 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "identify_negative_values"}
+2026-05-18 17:46:42,016 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,016 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "convert_to_absolute_values"}
+2026-05-18 17:46:42,017 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,017 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "calculate_sample_size"}
+2026-05-18 17:46:42,018 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,018 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "calculate_qoq_variance"}
+2026-05-18 17:46:42,019 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,019 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_high_variance"}
+2026-05-18 17:46:42,020 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,020 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_specific_entities"}
+2026-05-18 17:46:42,021 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,021 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_specific_metrics"}
+2026-05-18 17:46:42,021 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,021 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_zero_values"}
+2026-05-18 17:46:42,022 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,022 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_specific_businesses"}
+2026-05-18 17:46:42,023 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,023 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_specific_locations"}
+2026-05-18 17:46:42,024 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,024 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "filter_all_divisions"}
+2026-05-18 17:46:42,025 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:46:42,025 - [Agent 4] - \u26a1 LLM 请求调用: search_skills | 参数: {"keyword": "select_final_sample"}
+2026-05-18 17:46:42,025 - [Agent 4] - 执行结果: 搜索完成。未找到匹配的考点。
+2026-05-18 17:47:16,486 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:47:16,487 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_business": "Business", "col_divisions": "Divisions", "col_entity": "Entity", "col_location": "Location", "col_metric": "Metric", "col_q2": "Q2 Value", "col_q3": "Q3 Value", "col_sub_divisions": "sub-Divisions", "dataset_name": "population.csv", "deliverable_file": "final_sampled_dataset.csv", "output_columns": [{"generator_type": "random_float", "kwargs": {"max": 10000, "min": 100}, "name": "Q2 Value"}, {"generator_type": "random_float", "kwargs": {"max": 10000, "min": 100}, "name": "Q3 Value"}, {"generator_type": "categorical", "kwargs": {"categories": ["CB Cash Italy", "CB Correspondent Banking Greece", "IB Debt Markets Luxembourg", "CB Trade Finance Brazil", "PB EMEA UAE", "Other Entity"]}, "name": "Entity"}, {"generator_type": "categorical", "kwargs": {"categories": ["A1", "C1", "B2", "D4"]}, "name": "Metric"}, {"generator_type": "categorical", "kwargs": {"categories": ["Trade Finance", "Correspondent Banking", "Investment Banking", "Private Banking"]}, "name": "Business"}, {"generator_type": "categorical", "kwargs": {"categories": ["Cayman Islands", "Pakistan", "UAE", "Italy", "Greece", "Brazil", "Luxembourg"]}, "name": "Location"}, {"generator_type": "categorical", "kwargs": {"categories": ["Division A", "Division B", "Division C"]}, "name": "Divisions"}, {"generator_type": "categorical", "kwargs": {"categories": ["Sub-Div 1", "Sub-Div 2", "Sub-Div 3"]}, "name": "sub-Divisions"}], "suggested_row_counts": {"population.csv": 1000}, "table_name": "population.csv"}, "intents": ["Load the initial '{dataset_name}' dataset containing columns such as '{col_q2}', '{col_q3}', '{col_entity}', '{col_metric}', '{col_business}', '{col_location}', '{col_divisions}', and '{col_sub_divisions}'.", "Export the final result to '{deliverable_file}'."], "keywords": ["Load", "Population", "Dataset"], "node_type": "base", "operator_class": "BaseDataGeneratorOperator", "provides": ["Data:PopulationRaw"], "requires": [], "rubrics": [], "skill_id": "load_population_dataset", "skill_name": "Load Population Dataset"}
+2026-05-18 17:47:16,490 - [Agent 4] - 执行结果: Success: 全新考点 'Load Population Dataset' (load_population_dataset) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,490 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value", "perturbation_mode": "to_null", "q2_col": "Q2 Value", "q3_col": "Q3 Value", "trap_count": 30}, "intents": ["Identify missing or blank values in the '{col_q2}' and '{col_q3}' columns."], "keywords": ["Missing", "Blank", "Identify"], "node_type": "trap", "operator_class": "MultiColumnPerturbationOperator", "provides": ["Data:MissingValueMap"], "requires": ["Data:PopulationRaw"], "rubrics": ["assert df['{col_q2}'].isnull().sum() > 0 or df['{col_q3}'].isnull().sum() > 0"], "skill_id": "identify_missing_values", "skill_name": "Identify Missing Values"}
+2026-05-18 17:47:16,492 - [Agent 4] - 执行结果: Success: 全新考点 'Identify Missing Values' (identify_missing_values) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,493 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value", "replacement_value": 0}, "intents": ["Replace the identified missing or blank values in the '{col_q2}' and '{col_q3}' columns with '{replacement_value}'."], "keywords": ["Impute", "Replace", "Missing"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:PopulationImputed"], "requires": ["Data:PopulationRaw", "Data:MissingValueMap"], "rubrics": ["assert df['{col_q2}'].isnull().sum() == 0", "assert df['{col_q3}'].isnull().sum() == 0"], "skill_id": "impute_missing_values", "skill_name": "Impute Missing Values"}
+2026-05-18 17:47:16,495 - [Agent 4] - 执行结果: Success: 全新考点 'Impute Missing Values' (impute_missing_values) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,495 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value", "perturbation_mode": "to_negative", "q2_col": "Q2 Value", "q3_col": "Q3 Value", "trap_count": 30}, "intents": ["Identify negative values in the '{col_q2}' and '{col_q3}' columns."], "keywords": ["Negative", "Identify", "Values"], "node_type": "trap", "operator_class": "MultiColumnPerturbationOperator", "provides": ["Data:NegativeValueMap"], "requires": ["Data:PopulationImputed"], "rubrics": ["assert (df['{col_q2}'] < 0).sum() > 0 or (df['{col_q3}'] < 0).sum() > 0"], "skill_id": "identify_negative_values", "skill_name": "Identify Negative Values"}
+2026-05-18 17:47:16,498 - [Agent 4] - 执行结果: Success: 全新考点 'Identify Negative Values' (identify_negative_values) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,498 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value"}, "intents": ["Convert the identified negative values in the '{col_q2}' and '{col_q3}' columns to absolute values."], "keywords": ["Absolute", "Convert", "Negative"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:PopulationCleaned"], "requires": ["Data:PopulationImputed", "Data:NegativeValueMap"], "rubrics": ["assert (df['{col_q2}'] < 0).sum() == 0", "assert (df['{col_q3}'] < 0).sum() == 0"], "skill_id": "convert_to_absolute_values", "skill_name": "Convert to Absolute Values"}
+2026-05-18 17:47:16,500 - [Agent 4] - 执行结果: Success: 全新考点 'Convert to Absolute Values' (convert_to_absolute_values) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,501 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"confidence_level": "90%", "tolerable_error_rate": "10%"}, "intents": ["Calculate the required sample size based on the dataset using a '{confidence_level}' confidence level and a '{tolerable_error_rate}' tolerable error rate."], "keywords": ["Calculate", "Sample Size", "Confidence Level"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Dimension:SampleSize"], "requires": ["Data:PopulationCleaned"], "rubrics": ["assert output is not None"], "skill_id": "calculate_sample_size", "skill_name": "Calculate Sample Size"}
+2026-05-18 17:47:16,504 - [Agent 4] - 执行结果: Success: 全新考点 'Calculate Sample Size' (calculate_sample_size) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,504 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value"}, "intents": ["Calculate the quarter-on-quarter variance rate for each row using the cleaned '{col_q2}' and '{col_q3}' values."], "keywords": ["Calculate", "Variance", "Quarter-on-Quarter"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:PopulationWithVariance"], "requires": ["Data:PopulationCleaned"], "rubrics": ["assert df.shape[1] > 8"], "skill_id": "calculate_qoq_variance", "skill_name": "Calculate Quarter-on-Quarter Variance"}
+2026-05-18 17:47:16,507 - [Agent 4] - 执行结果: Success: 全新考点 'Calculate Quarter-on-Quarter Variance' (calculate_qoq_variance) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,507 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"variance_threshold": "20%"}, "intents": ["Filter rows from the dataset where the quarter-on-quarter variance rate is greater than '{variance_threshold}'."], "keywords": ["Filter", "Variance", "High"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetHighVariance"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert len(df) >= 0"], "skill_id": "filter_high_variance", "skill_name": "Filter High Variance"}
+2026-05-18 17:47:16,510 - [Agent 4] - 执行结果: Success: 全新考点 'Filter High Variance' (filter_high_variance) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,510 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_entity": "Entity", "entity_1": "CB Cash Italy", "entity_2": "CB Correspondent Banking Greece", "entity_3": "IB Debt Markets Luxembourg", "entity_4": "CB Trade Finance Brazil", "entity_5": "PB EMEA UAE"}, "intents": ["Filter rows from the dataset where the '{col_entity}' is '{entity_1}', '{entity_2}', '{entity_3}', '{entity_4}', or '{entity_5}'."], "keywords": ["Filter", "Entity", "Specific"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetSpecificEntity"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert df['{col_entity}'].isin(['{entity_1}', '{entity_2}', '{entity_3}', '{entity_4}', '{entity_5}']).all()"], "skill_id": "filter_specific_entities", "skill_name": "Filter Specific Entities"}
+2026-05-18 17:47:16,513 - [Agent 4] - 执行结果: Success: 全新考点 'Filter Specific Entities' (filter_specific_entities) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,513 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_metric": "Metric", "metric_1": "A1", "metric_2": "C1"}, "intents": ["Filter rows from the dataset where the '{col_metric}' is '{metric_1}' or '{metric_2}'."], "keywords": ["Filter", "Metric", "Specific"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetSpecificMetric"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert df['{col_metric}'].isin(['{metric_1}', '{metric_2}']).all()"], "skill_id": "filter_specific_metrics", "skill_name": "Filter Specific Metrics"}
+2026-05-18 17:47:16,516 - [Agent 4] - 执行结果: Success: 全新考点 'Filter Specific Metrics' (filter_specific_metrics) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,516 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_q2": "Q2 Value", "col_q3": "Q3 Value", "target_value": 0}, "intents": ["Filter rows from the dataset where both the cleaned '{col_q2}' and '{col_q3}' values are '{target_value}'."], "keywords": ["Filter", "Zero", "Values"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetZeroValues"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert ((df['{col_q2}'] == {target_value}) & (df['{col_q3}'] == {target_value})).all()"], "skill_id": "filter_zero_values", "skill_name": "Filter Zero Values"}
+2026-05-18 17:47:16,519 - [Agent 4] - 执行结果: Success: 全新考点 'Filter Zero Values' (filter_zero_values) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,519 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"business_1": "Trade Finance", "business_2": "Correspondent Banking", "col_business": "Business"}, "intents": ["Filter rows from the dataset where the '{col_business}' is '{business_1}' or '{business_2}'."], "keywords": ["Filter", "Business", "Specific"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetSpecificBusiness"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert df['{col_business}'].isin(['{business_1}', '{business_2}']).all()"], "skill_id": "filter_specific_businesses", "skill_name": "Filter Specific Businesses"}
+2026-05-18 17:47:16,522 - [Agent 4] - 执行结果: Success: 全新考点 'Filter Specific Businesses' (filter_specific_businesses) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,522 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_location": "Location", "location_1": "Cayman Islands", "location_2": "Pakistan", "location_3": "UAE"}, "intents": ["Filter rows from the dataset where the '{col_location}' is '{location_1}', '{location_2}', or '{location_3}'."], "keywords": ["Filter", "Location", "Specific"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetSpecificLocation"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert df['{col_location}'].isin(['{location_1}', '{location_2}', '{location_3}']).all()"], "skill_id": "filter_specific_locations", "skill_name": "Filter Specific Locations"}
+2026-05-18 17:47:16,526 - [Agent 4] - 执行结果: Success: 全新考点 'Filter Specific Locations' (filter_specific_locations) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,526 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_divisions": "Divisions", "col_sub_divisions": "sub-Divisions"}, "intents": ["Filter rows from the dataset that cover all '{col_divisions}' and '{col_sub_divisions}'."], "keywords": ["Filter", "Divisions", "All"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:SubsetAllDivisions"], "requires": ["Data:PopulationWithVariance"], "rubrics": ["assert df['{col_divisions}'].nunique() > 0", "assert df['{col_sub_divisions}'].nunique() > 0"], "skill_id": "filter_all_divisions", "skill_name": "Filter All Divisions"}
+2026-05-18 17:47:16,529 - [Agent 4] - 执行结果: Success: 全新考点 'Filter All Divisions' (filter_all_divisions) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:47:16,529 - [Agent 4] - \u26a1 LLM 请求调用: create_skill | 参数: {"data_params": {"col_sample_indicator": "Sample Indicator", "indicator_value": 1}, "intents": ["Select the final sample from the filtered subsets based on the calculated sample size, ensuring each sample meets at least one condition and all conditions are met by at least one sample.", "Mark the selected rows with '{indicator_value}' in a new '{col_sample_indicator}' column."], "keywords": ["Select", "Sample", "Final"], "node_type": "mutator", "operator_class": "PhantomTaskOperator", "provides": ["Data:FinalSampledDataset"], "requires": ["Dimension:SampleSize", "Data:SubsetHighVariance", "Data:SubsetSpecificEntity", "Data:SubsetSpecificMetric", "Data:SubsetZeroValues", "Data:SubsetSpecificBusiness", "Data:SubsetSpecificLocation", "Data:SubsetAllDivisions"], "rubrics": ["assert '{col_sample_indicator}' in df.columns", "assert (df['{col_sample_indicator}'] == {indicator_value}).any()"], "skill_id": "select_final_sample", "skill_name": "Select Final Sample"}
+2026-05-18 17:47:16,532 - [Agent 4] - 执行结果: Success: 全新考点 'Select Final Sample' (select_final_sample) 已成功注册到题库！你可以继续调用 connect_skills 将它接入现有图谱。
+2026-05-18 17:50:11,324 - [Agent 4] - HTTP Request: POST https://api.tu-zi.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-05-18 17:50:11,330 - [Agent 4] - Success: 节点 'load_population_dataset' 已成功连接到 'identify_missing_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,333 - [Agent 4] - Success: 节点 'load_population_dataset' 已成功连接到 'impute_missing_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,334 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,338 - [Agent 4] - Success: 节点 'identify_missing_values' 已成功连接到 'impute_missing_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,339 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,339 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,342 - [Agent 4] - Success: 节点 'impute_missing_values' 已成功连接到 'identify_negative_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,346 - [Agent 4] - Success: 节点 'impute_missing_values' 已成功连接到 'convert_to_absolute_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,347 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,350 - [Agent 4] - Success: 节点 'identify_negative_values' 已成功连接到 'convert_to_absolute_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,351 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,352 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,355 - [Agent 4] - Success: 节点 'convert_to_absolute_values' 已成功连接到 'calculate_sample_size'！图谱拓扑已更新。
+2026-05-18 17:50:11,359 - [Agent 4] - Success: 节点 'convert_to_absolute_values' 已成功连接到 'calculate_qoq_variance'！图谱拓扑已更新。
+2026-05-18 17:50:11,360 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,363 - [Agent 4] - Success: 节点 'calculate_sample_size' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,364 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,367 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_high_variance'！图谱拓扑已更新。
+2026-05-18 17:50:11,371 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_specific_entities'！图谱拓扑已更新。
+2026-05-18 17:50:11,374 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_specific_metrics'！图谱拓扑已更新。
+2026-05-18 17:50:11,377 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_zero_values'！图谱拓扑已更新。
+2026-05-18 17:50:11,381 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_specific_businesses'！图谱拓扑已更新。
+2026-05-18 17:50:11,385 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_specific_locations'！图谱拓扑已更新。
+2026-05-18 17:50:11,388 - [Agent 4] - Success: 节点 'calculate_qoq_variance' 已成功连接到 'filter_all_divisions'！图谱拓扑已更新。
+2026-05-18 17:50:11,389 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,393 - [Agent 4] - Success: 节点 'filter_high_variance' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,394 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,396 - [Agent 4] - Success: 节点 'filter_specific_entities' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,397 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,402 - [Agent 4] - Success: 节点 'filter_specific_metrics' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,403 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,406 - [Agent 4] - Success: 节点 'filter_zero_values' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,407 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,411 - [Agent 4] - Success: 节点 'filter_specific_businesses' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,412 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,415 - [Agent 4] - Success: 节点 'filter_specific_locations' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,416 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,420 - [Agent 4] - Success: 节点 'filter_all_divisions' 已成功连接到 'select_final_sample'！图谱拓扑已更新。
+2026-05-18 17:50:11,421 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,422 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,423 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,423 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,424 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,425 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,426 - [Agent 4] - Notice: 连线已存在，无需重复添加。
+2026-05-18 17:50:11,427 - [Agent 4] - Notice: 连线已存在，无需重复添加。

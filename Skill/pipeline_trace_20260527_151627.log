@@ -1,0 +1,1768 @@
+
+==================== Agent 1 输出 ====================
+[
+  {
+    "action_type": "Base",
+    "description": "Load the raw income, costs, and tax withholding data from multiple sources (Tour Manager and production company systems)."
+  },
+  {
+    "action_type": "Trap",
+    "description": "Inject null or missing values into the 'Gross Revenue' field within the income dataset."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Identify and handle missing or null values in the 'Gross Revenue' field to ensure data completeness."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Map tax withholding rates to each tour stop based on country: UK (20%), France (15%), Spain (24%), and Germany (15.825%)."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate the tax withholding amount for each line item based on the mapped rates and gross revenue."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Net Revenue for each tour stop by subtracting the tax withholding amount from the Gross Revenue."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Convert all revenue figures into USD currency."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Categorize expense data into four groups: Band and Crew, Other Tour Costs, Hotel & Restaurants, and Other Travel Costs."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Aggregate income and expenses by source (Tour Manager vs. Production Company)."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Total Net Revenue and Total Expenses across all sources."
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Net Income by subtracting Total Expenses from Total Net Revenue."
+  },
+  {
+    "action_type": "Export",
+    "description": "Generate a formatted Excel profit and loss report with the header 'As of 12/31/2024', labeled columns, and USD currency alignment."
+  }
+]
+
+==================== Agent 2 输出 ====================
+[
+  {
+    "action_type": "Base",
+    "description": "Load the raw income, costs, and tax withholding data from multiple sources (Tour Manager and production company systems).",
+    "requires": [],
+    "provides": [
+      "Financial:RawIncome",
+      "Financial:RawExpenses",
+      "Financial:RawTaxInfo"
+    ]
+  },
+  {
+    "action_type": "Trap",
+    "description": "Inject null or missing values into the 'Gross Revenue' field within the income dataset.",
+    "requires": [
+      "Financial:RawIncome"
+    ],
+    "provides": [
+      "Financial:IncomeWithAnomalies"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Identify and handle missing or null values in the 'Gross Revenue' field to ensure data completeness.",
+    "requires": [
+      "Financial:IncomeWithAnomalies"
+    ],
+    "provides": [
+      "Financial:CleanedIncome"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Map tax withholding rates to each tour stop based on country: UK (20%), France (15%), Spain (24%), and Germany (15.825%).",
+    "requires": [
+      "Financial:CleanedIncome",
+      "Financial:RawTaxInfo"
+    ],
+    "provides": [
+      "Financial:IncomeWithTaxRates"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate the tax withholding amount for each line item based on the mapped rates and gross revenue.",
+    "requires": [
+      "Financial:IncomeWithTaxRates"
+    ],
+    "provides": [
+      "Financial:TaxWithholding"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Net Revenue for each tour stop by subtracting the tax withholding amount from the Gross Revenue.",
+    "requires": [
+      "Financial:TaxWithholding"
+    ],
+    "provides": [
+      "Financial:NetRevenueLocal"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Convert all revenue figures into USD currency.",
+    "requires": [
+      "Financial:NetRevenueLocal"
+    ],
+    "provides": [
+      "Financial:NetRevenueUSD"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Categorize expense data into four groups: Band and Crew, Other Tour Costs, Hotel & Restaurants, and Other Travel Costs.",
+    "requires": [
+      "Financial:RawExpenses"
+    ],
+    "provides": [
+      "Financial:CategorizedExpenses"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Aggregate income and expenses by source (Tour Manager vs. Production Company).",
+    "requires": [
+      "Financial:NetRevenueUSD",
+      "Financial:CategorizedExpenses"
+    ],
+    "provides": [
+      "Financial:AggregatedData"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Total Net Revenue and Total Expenses across all sources.",
+    "requires": [
+      "Financial:AggregatedData"
+    ],
+    "provides": [
+      "Financial:TotalFinancials"
+    ]
+  },
+  {
+    "action_type": "Mutate",
+    "description": "Calculate Net Income by subtracting Total Expenses from Total Net Revenue.",
+    "requires": [
+      "Financial:TotalFinancials"
+    ],
+    "provides": [
+      "Financial:NetIncome"
+    ]
+  },
+  {
+    "action_type": "Export",
+    "description": "Generate a formatted Excel profit and loss report with the header 'As of 12/31/2024', labeled columns, and USD currency alignment.",
+    "requires": [
+      "Financial:NetIncome"
+    ],
+    "provides": [
+      "Deliverable:ExcelPLReport"
+    ]
+  }
+]
+
+==================== Agent 3 输出 ====================
+[
+  {
+    "skill_id": "load_financial_data",
+    "skill_name": "Load Financial Data",
+    "node_type": "base",
+    "keywords": [
+      "Load",
+      "Income",
+      "Expenses",
+      "Tax"
+    ],
+    "ports": {
+      "requires": [],
+      "provides": [
+        "Financial:IncomeTxnID",
+        "Financial:IncomeSource",
+        "Financial:IncomeCountry",
+        "Financial:RawIncome",
+        "Financial:ExpID",
+        "Financial:ExpSource",
+        "Financial:ExpDesc",
+        "Financial:RawExpenses",
+        "Financial:TaxCountry",
+        "Financial:RawTaxInfo"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Load the raw income, costs, and tax withholding data from multiple sources ({sources}).",
+        "Export the loaded raw datasets to {deliverable_file}."
+      ],
+      "deliverables": [
+        "raw_financials.xlsx"
+      ]
+    },
+    "data_params": {
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ],
+      "deliverable_file": "raw_financials.xlsx",
+      "suggested_row_counts": {
+        "income.xlsx": 150,
+        "expenses.xlsx": 300,
+        "tax_info.xlsx": 4
+      },
+      "schemas": {
+        "income.xlsx": [
+          {
+            "name": "Txn_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Gross Revenue",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 5000,
+              "max": 100000
+            }
+          }
+        ],
+        "expenses.xlsx": [
+          {
+            "name": "Exp_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Expense_Desc",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Flights",
+                "Hotels",
+                "Crew Wages",
+                "Catering"
+              ]
+            }
+          },
+          {
+            "name": "Amount",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 500,
+              "max": 20000
+            }
+          }
+        ],
+        "tax_info.xlsx": [
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Tax_Rate",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 0.15,
+              "max": 0.25
+            }
+          }
+        ]
+      },
+      "port_to_column_mapping": {
+        "Financial:IncomeTxnID": {
+          "table": "income.xlsx",
+          "column": "Txn_ID"
+        },
+        "Financial:IncomeSource": {
+          "table": "income.xlsx",
+          "column": "Source"
+        },
+        "Financial:IncomeCountry": {
+          "table": "income.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawIncome": {
+          "table": "income.xlsx",
+          "column": "Gross Revenue"
+        },
+        "Financial:ExpID": {
+          "table": "expenses.xlsx",
+          "column": "Exp_ID"
+        },
+        "Financial:ExpSource": {
+          "table": "expenses.xlsx",
+          "column": "Source"
+        },
+        "Financial:ExpDesc": {
+          "table": "expenses.xlsx",
+          "column": "Expense_Desc"
+        },
+        "Financial:RawExpenses": {
+          "table": "expenses.xlsx",
+          "column": "Amount"
+        },
+        "Financial:TaxCountry": {
+          "table": "tax_info.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawTaxInfo": {
+          "table": "tax_info.xlsx",
+          "column": "Tax_Rate"
+        }
+      }
+    }
+  },
+  {
+    "skill_id": "inject_missing_revenue",
+    "skill_name": "Inject Missing Revenue",
+    "node_type": "trap",
+    "keywords": [
+      "Inject",
+      "Null",
+      "Missing",
+      "Anomalies"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawIncome"
+      ],
+      "provides": [
+        "Financial:IncomeWithAnomalies"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Inject null or missing values into the {target_column} field within the income dataset to simulate incomplete data."
+      ]
+    },
+    "data_params": {
+      "target_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "handle_missing_revenue",
+    "skill_name": "Handle Missing Revenue",
+    "node_type": "mutate",
+    "keywords": [
+      "Identify",
+      "Handle",
+      "Missing",
+      "Completeness"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithAnomalies"
+      ],
+      "provides": [
+        "Financial:CleanedIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Identify and handle missing or null values in the {target_column} field to ensure data completeness."
+      ]
+    },
+    "data_params": {
+      "target_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "map_tax_rates",
+    "skill_name": "Map Tax Rates",
+    "node_type": "mutate",
+    "keywords": [
+      "Map",
+      "Tax Rates",
+      "Country"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:CleanedIncome",
+        "Financial:RawTaxInfo"
+      ],
+      "provides": [
+        "Financial:IncomeWithTaxRates"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Map tax withholding rates to each tour stop based on {country_column} using the following rates: {tax_rates}."
+      ]
+    },
+    "data_params": {
+      "country_column": "Country",
+      "tax_rates": {
+        "UK": "20%",
+        "France": "15%",
+        "Spain": "24%",
+        "Germany": "15.825%"
+      }
+    }
+  },
+  {
+    "skill_id": "calculate_tax_withholding",
+    "skill_name": "Calculate Tax Withholding",
+    "node_type": "mutate",
+    "keywords": [
+      "Calculate",
+      "Tax Withholding",
+      "Amount"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithTaxRates"
+      ],
+      "provides": [
+        "Financial:TaxWithholding"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate the tax withholding amount for each line item based on the mapped rates and {revenue_column}."
+      ]
+    },
+    "data_params": {
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "calculate_net_revenue_local",
+    "skill_name": "Calculate Net Revenue Local",
+    "node_type": "mutate",
+    "keywords": [
+      "Calculate",
+      "Net Revenue",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TaxWithholding"
+      ],
+      "provides": [
+        "Financial:NetRevenueLocal"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} for each tour stop by subtracting the tax withholding amount from the {revenue_column}."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Revenue",
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "convert_revenue_usd",
+    "skill_name": "Convert Revenue to USD",
+    "node_type": "mutate",
+    "keywords": [
+      "Convert",
+      "Currency",
+      "USD"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueLocal"
+      ],
+      "provides": [
+        "Financial:NetRevenueUSD"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Convert all revenue figures into {target_currency} currency."
+      ]
+    },
+    "data_params": {
+      "target_currency": "USD"
+    }
+  },
+  {
+    "skill_id": "categorize_expenses",
+    "skill_name": "Categorize Expenses",
+    "node_type": "mutate",
+    "keywords": [
+      "Categorize",
+      "Expense",
+      "Groups"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawExpenses"
+      ],
+      "provides": [
+        "Financial:CategorizedExpenses"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Categorize expense data into the following groups: {expense_categories}."
+      ]
+    },
+    "data_params": {
+      "expense_categories": [
+        "Band and Crew",
+        "Other Tour Costs",
+        "Hotel & Restaurants",
+        "Other Travel Costs"
+      ]
+    }
+  },
+  {
+    "skill_id": "aggregate_by_source",
+    "skill_name": "Aggregate by Source",
+    "node_type": "mutate",
+    "keywords": [
+      "Aggregate",
+      "Income",
+      "Expenses",
+      "Source"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueUSD",
+        "Financial:CategorizedExpenses"
+      ],
+      "provides": [
+        "Financial:AggregatedData"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Aggregate income and expenses by {grouping_column} ({sources})."
+      ]
+    },
+    "data_params": {
+      "grouping_column": "Source",
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ]
+    }
+  },
+  {
+    "skill_id": "calculate_total_financials",
+    "skill_name": "Calculate Total Financials",
+    "node_type": "mutate",
+    "keywords": [
+      "Calculate",
+      "Total Net Revenue",
+      "Total Expenses"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:AggregatedData"
+      ],
+      "provides": [
+        "Financial:TotalFinancials"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {metric_1} and {metric_2} across all sources."
+      ]
+    },
+    "data_params": {
+      "metric_1": "Total Net Revenue",
+      "metric_2": "Total Expenses"
+    }
+  },
+  {
+    "skill_id": "calculate_net_income",
+    "skill_name": "Calculate Net Income",
+    "node_type": "mutate",
+    "keywords": [
+      "Calculate",
+      "Net Income",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TotalFinancials"
+      ],
+      "provides": [
+        "Financial:NetIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} by subtracting {deduction_metric} from {base_metric}."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Income",
+      "deduction_metric": "Total Expenses",
+      "base_metric": "Total Net Revenue"
+    }
+  },
+  {
+    "skill_id": "export_pl_report",
+    "skill_name": "Export P&L Report",
+    "node_type": "export",
+    "keywords": [
+      "Export",
+      "Excel",
+      "Profit and Loss",
+      "Report"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetIncome"
+      ],
+      "provides": [
+        "Deliverable:ExcelPLReport"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Generate a formatted Excel profit and loss report with the header '{report_header}', labeled columns, and {currency} currency alignment.",
+        "Save the final report as {output_file}."
+      ],
+      "deliverables": [
+        "profit_and_loss_report.xlsx"
+      ]
+    },
+    "data_params": {
+      "report_header": "As of 12/31/2024",
+      "currency": "USD",
+      "output_file": "profit_and_loss_report.xlsx"
+    }
+  }
+]
+
+==================== Agent 4 输出 ====================
+[
+  {
+    "skill_id": "load_financial_data",
+    "skill_name": "Load Financial Data",
+    "node_type": "base",
+    "operator_class": "MultiTableBaseOperator",
+    "keywords": [
+      "Load",
+      "Income",
+      "Expenses",
+      "Tax"
+    ],
+    "ports": {
+      "requires": [],
+      "provides": [
+        "Financial:IncomeTxnID",
+        "Financial:IncomeSource",
+        "Financial:IncomeCountry",
+        "Financial:RawIncome",
+        "Financial:ExpID",
+        "Financial:ExpSource",
+        "Financial:ExpDesc",
+        "Financial:RawExpenses",
+        "Financial:TaxCountry",
+        "Financial:RawTaxInfo"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Load the raw income, costs, and tax withholding data from multiple sources ({sources}).",
+        "Export the loaded raw datasets to {deliverable_file}."
+      ],
+      "deliverables": [
+        "raw_financials.xlsx"
+      ]
+    },
+    "data_params": {
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ],
+      "deliverable_file": "raw_financials.xlsx",
+      "suggested_row_counts": {
+        "income.xlsx": 150,
+        "expenses.xlsx": 300,
+        "tax_info.xlsx": 4
+      },
+      "schemas": {
+        "income.xlsx": [
+          {
+            "name": "Txn_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Gross Revenue",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 5000,
+              "max": 100000
+            }
+          }
+        ],
+        "expenses.xlsx": [
+          {
+            "name": "Exp_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Expense_Desc",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Flights",
+                "Hotels",
+                "Crew Wages",
+                "Catering"
+              ]
+            }
+          },
+          {
+            "name": "Amount",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 500,
+              "max": 20000
+            }
+          }
+        ],
+        "tax_info.xlsx": [
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Tax_Rate",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 0.15,
+              "max": 0.25
+            }
+          }
+        ]
+      },
+      "port_to_column_mapping": {
+        "Financial:IncomeTxnID": {
+          "table": "income.xlsx",
+          "column": "Txn_ID"
+        },
+        "Financial:IncomeSource": {
+          "table": "income.xlsx",
+          "column": "Source"
+        },
+        "Financial:IncomeCountry": {
+          "table": "income.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawIncome": {
+          "table": "income.xlsx",
+          "column": "Gross Revenue"
+        },
+        "Financial:ExpID": {
+          "table": "expenses.xlsx",
+          "column": "Exp_ID"
+        },
+        "Financial:ExpSource": {
+          "table": "expenses.xlsx",
+          "column": "Source"
+        },
+        "Financial:ExpDesc": {
+          "table": "expenses.xlsx",
+          "column": "Expense_Desc"
+        },
+        "Financial:RawExpenses": {
+          "table": "expenses.xlsx",
+          "column": "Amount"
+        },
+        "Financial:TaxCountry": {
+          "table": "tax_info.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawTaxInfo": {
+          "table": "tax_info.xlsx",
+          "column": "Tax_Rate"
+        }
+      }
+    }
+  },
+  {
+    "skill_id": "inject_missing_revenue",
+    "skill_name": "Inject Missing Revenue",
+    "node_type": "trap",
+    "operator_class": "CellPerturbationOperator",
+    "keywords": [
+      "Inject",
+      "Null",
+      "Missing",
+      "Anomalies"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawIncome"
+      ],
+      "provides": [
+        "Financial:IncomeWithAnomalies"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Inject null or missing values into the {target_column} field within the income dataset to simulate incomplete data."
+      ]
+    },
+    "data_params": {
+      "perturbation_mode": "to_null",
+      "trap_count": 5
+    }
+  },
+  {
+    "skill_id": "handle_missing_revenue",
+    "skill_name": "Handle Missing Revenue",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Identify",
+      "Handle",
+      "Missing",
+      "Completeness"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithAnomalies"
+      ],
+      "provides": [
+        "Financial:CleanedIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Identify and handle missing or null values in the {target_column} field to ensure data completeness."
+      ]
+    },
+    "data_params": {
+      "target_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "map_tax_rates",
+    "skill_name": "Map Tax Rates",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Map",
+      "Tax Rates",
+      "Country"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:CleanedIncome",
+        "Financial:RawTaxInfo"
+      ],
+      "provides": [
+        "Financial:IncomeWithTaxRates"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Map tax withholding rates to each tour stop based on {country_column} using the following rates: {tax_rates}."
+      ]
+    },
+    "data_params": {
+      "country_column": "Country",
+      "tax_rates": {
+        "UK": "20%",
+        "France": "15%",
+        "Spain": "24%",
+        "Germany": "15.825%"
+      }
+    }
+  },
+  {
+    "skill_id": "calculate_tax_withholding",
+    "skill_name": "Calculate Tax Withholding",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Tax Withholding",
+      "Amount"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithTaxRates"
+      ],
+      "provides": [
+        "Financial:TaxWithholding"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate the tax withholding amount for each line item based on the mapped rates and {revenue_column}."
+      ]
+    },
+    "data_params": {
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "calculate_net_revenue_local",
+    "skill_name": "Calculate Net Revenue Local",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Net Revenue",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TaxWithholding"
+      ],
+      "provides": [
+        "Financial:NetRevenueLocal"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} for each tour stop by subtracting the tax withholding amount from the {revenue_column}."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Revenue",
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "convert_revenue_usd",
+    "skill_name": "Convert Revenue to USD",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Convert",
+      "Currency",
+      "USD"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueLocal"
+      ],
+      "provides": [
+        "Financial:NetRevenueUSD"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Convert all revenue figures into {target_currency} currency."
+      ]
+    },
+    "data_params": {
+      "target_currency": "USD"
+    }
+  },
+  {
+    "skill_id": "categorize_expenses",
+    "skill_name": "Categorize Expenses",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Categorize",
+      "Expense",
+      "Groups"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawExpenses"
+      ],
+      "provides": [
+        "Financial:CategorizedExpenses"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Categorize expense data into the following groups: {expense_categories}."
+      ]
+    },
+    "data_params": {
+      "expense_categories": [
+        "Band and Crew",
+        "Other Tour Costs",
+        "Hotel & Restaurants",
+        "Other Travel Costs"
+      ]
+    }
+  },
+  {
+    "skill_id": "aggregate_by_source",
+    "skill_name": "Aggregate by Source",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Aggregate",
+      "Income",
+      "Expenses",
+      "Source"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueUSD",
+        "Financial:CategorizedExpenses"
+      ],
+      "provides": [
+        "Financial:AggregatedData"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Aggregate income and expenses by {grouping_column} ({sources})."
+      ]
+    },
+    "data_params": {
+      "grouping_column": "Source",
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ]
+    }
+  },
+  {
+    "skill_id": "calculate_total_financials",
+    "skill_name": "Calculate Total Financials",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Total Net Revenue",
+      "Total Expenses"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:AggregatedData"
+      ],
+      "provides": [
+        "Financial:TotalFinancials"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {metric_1} and {metric_2} across all sources."
+      ]
+    },
+    "data_params": {
+      "metric_1": "Total Net Revenue",
+      "metric_2": "Total Expenses"
+    }
+  },
+  {
+    "skill_id": "calculate_net_income",
+    "skill_name": "Calculate Net Income",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Net Income",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TotalFinancials"
+      ],
+      "provides": [
+        "Financial:NetIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} by subtracting {deduction_metric} from {base_metric}."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Income",
+      "deduction_metric": "Total Expenses",
+      "base_metric": "Total Net Revenue"
+    }
+  },
+  {
+    "skill_id": "export_pl_report",
+    "skill_name": "Export P&L Report",
+    "node_type": "export",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Export",
+      "Excel",
+      "Profit and Loss",
+      "Report"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetIncome"
+      ],
+      "provides": [
+        "Deliverable:ExcelPLReport"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Generate a formatted Excel profit and loss report with the header '{report_header}', labeled columns, and {currency} currency alignment.",
+        "Save the final report as {output_file}."
+      ],
+      "deliverables": [
+        "profit_and_loss_report.xlsx"
+      ]
+    },
+    "data_params": {
+      "report_header": "As of 12/31/2024",
+      "currency": "USD",
+      "output_file": "profit_and_loss_report.xlsx"
+    }
+  }
+]
+
+==================== Agent 5 输出 ====================
+[
+  {
+    "skill_id": "load_financial_data",
+    "skill_name": "Load Financial Data",
+    "node_type": "base",
+    "operator_class": "MultiTableBaseOperator",
+    "keywords": [
+      "Load",
+      "Income",
+      "Expenses",
+      "Tax"
+    ],
+    "ports": {
+      "requires": [],
+      "provides": [
+        "Financial:IncomeTxnID",
+        "Financial:IncomeSource",
+        "Financial:IncomeCountry",
+        "Financial:RawIncome",
+        "Financial:ExpID",
+        "Financial:ExpSource",
+        "Financial:ExpDesc",
+        "Financial:RawExpenses",
+        "Financial:TaxCountry",
+        "Financial:RawTaxInfo"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Load the raw income, costs, and tax withholding data from multiple sources ({sources}).",
+        "Export the loaded raw datasets to {deliverable_file}."
+      ],
+      "deliverables": [
+        "raw_financials.xlsx"
+      ],
+      "rubrics": [
+        "The final deliverable is successfully generated and named '{deliverable_file}'.",
+        "Verify that the final deliverable contains consolidated financial data originating from all specified {sources}."
+      ]
+    },
+    "data_params": {
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ],
+      "deliverable_file": "raw_financials.xlsx",
+      "suggested_row_counts": {
+        "income.xlsx": 150,
+        "expenses.xlsx": 300,
+        "tax_info.xlsx": 4
+      },
+      "schemas": {
+        "income.xlsx": [
+          {
+            "name": "Txn_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Gross Revenue",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 5000,
+              "max": 100000
+            }
+          }
+        ],
+        "expenses.xlsx": [
+          {
+            "name": "Exp_ID",
+            "generator_type": "id"
+          },
+          {
+            "name": "Source",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Tour Manager",
+                "Production Company"
+              ]
+            }
+          },
+          {
+            "name": "Expense_Desc",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "Flights",
+                "Hotels",
+                "Crew Wages",
+                "Catering"
+              ]
+            }
+          },
+          {
+            "name": "Amount",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 500,
+              "max": 20000
+            }
+          }
+        ],
+        "tax_info.xlsx": [
+          {
+            "name": "Country",
+            "generator_type": "categorical",
+            "kwargs": {
+              "categories": [
+                "UK",
+                "France",
+                "Spain",
+                "Germany"
+              ]
+            }
+          },
+          {
+            "name": "Tax_Rate",
+            "generator_type": "uniform",
+            "kwargs": {
+              "min": 0.15,
+              "max": 0.25
+            }
+          }
+        ]
+      },
+      "port_to_column_mapping": {
+        "Financial:IncomeTxnID": {
+          "table": "income.xlsx",
+          "column": "Txn_ID"
+        },
+        "Financial:IncomeSource": {
+          "table": "income.xlsx",
+          "column": "Source"
+        },
+        "Financial:IncomeCountry": {
+          "table": "income.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawIncome": {
+          "table": "income.xlsx",
+          "column": "Gross Revenue"
+        },
+        "Financial:ExpID": {
+          "table": "expenses.xlsx",
+          "column": "Exp_ID"
+        },
+        "Financial:ExpSource": {
+          "table": "expenses.xlsx",
+          "column": "Source"
+        },
+        "Financial:ExpDesc": {
+          "table": "expenses.xlsx",
+          "column": "Expense_Desc"
+        },
+        "Financial:RawExpenses": {
+          "table": "expenses.xlsx",
+          "column": "Amount"
+        },
+        "Financial:TaxCountry": {
+          "table": "tax_info.xlsx",
+          "column": "Country"
+        },
+        "Financial:RawTaxInfo": {
+          "table": "tax_info.xlsx",
+          "column": "Tax_Rate"
+        }
+      }
+    }
+  },
+  {
+    "skill_id": "inject_missing_revenue",
+    "skill_name": "Inject Missing Revenue",
+    "node_type": "trap",
+    "operator_class": "CellPerturbationOperator",
+    "keywords": [
+      "Inject",
+      "Null",
+      "Missing",
+      "Anomalies"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawIncome"
+      ],
+      "provides": [
+        "Financial:IncomeWithAnomalies"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Inject null or missing values into the {target_column} field within the income dataset to simulate incomplete data."
+      ],
+      "rubrics": [
+        "In accordance with industry standards for financial reporting, verify that the final deliverable gracefully handles the {trap_count} missing or null values introduced during processing, ensuring they are either imputed, flagged, or excluded without causing downstream calculation errors."
+      ]
+    },
+    "data_params": {
+      "perturbation_mode": "to_null",
+      "trap_count": 5
+    }
+  },
+  {
+    "skill_id": "handle_missing_revenue",
+    "skill_name": "Handle Missing Revenue",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Identify",
+      "Handle",
+      "Missing",
+      "Completeness"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithAnomalies"
+      ],
+      "provides": [
+        "Financial:CleanedIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Identify and handle missing or null values in the {target_column} field to ensure data completeness."
+      ],
+      "rubrics": [
+        "Verify that the final deliverable contains no unhandled null or missing values in the '{target_column}' field.",
+        "Any rows originally containing missing data in '{target_column}' are handled gracefully, ensuring that aggregate totals do not result in #DIV/0!, #VALUE!, or infinite errors."
+      ]
+    },
+    "data_params": {
+      "target_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "map_tax_rates",
+    "skill_name": "Map Tax Rates",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Map",
+      "Tax Rates",
+      "Country"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:CleanedIncome",
+        "Financial:RawTaxInfo"
+      ],
+      "provides": [
+        "Financial:IncomeWithTaxRates"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Map tax withholding rates to each tour stop based on {country_column} using the following rates: {tax_rates}."
+      ],
+      "rubrics": [
+        "The final deliverable includes a mapping or calculation that correctly associates the '{country_column}' with its respective tax rate.",
+        "If tax rates are explicitly listed in the final deliverable, they accurately reflect the provided {tax_rates} mapping for each corresponding '{country_column}'."
+      ]
+    },
+    "data_params": {
+      "country_column": "Country",
+      "tax_rates": {
+        "UK": "20%",
+        "France": "15%",
+        "Spain": "24%",
+        "Germany": "15.825%"
+      }
+    }
+  },
+  {
+    "skill_id": "calculate_tax_withholding",
+    "skill_name": "Calculate Tax Withholding",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Tax Withholding",
+      "Amount"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:IncomeWithTaxRates"
+      ],
+      "provides": [
+        "Financial:TaxWithholding"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate the tax withholding amount for each line item based on the mapped rates and {revenue_column}."
+      ],
+      "rubrics": [
+        "The tax withholding amount in the final deliverable is mathematically accurate, computed as the product of the mapped tax rate and the '{revenue_column}'."
+      ]
+    },
+    "data_params": {
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "calculate_net_revenue_local",
+    "skill_name": "Calculate Net Revenue Local",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Net Revenue",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TaxWithholding"
+      ],
+      "provides": [
+        "Financial:NetRevenueLocal"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} for each tour stop by subtracting the tax withholding amount from the {revenue_column}."
+      ],
+      "rubrics": [
+        "The final deliverable contains a metric or column representing '{target_metric}'.",
+        "The '{target_metric}' is correctly computed as the '{revenue_column}' minus the calculated tax withholding amount."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Revenue",
+      "revenue_column": "Gross Revenue"
+    }
+  },
+  {
+    "skill_id": "convert_revenue_usd",
+    "skill_name": "Convert Revenue to USD",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Convert",
+      "Currency",
+      "USD"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueLocal"
+      ],
+      "provides": [
+        "Financial:NetRevenueUSD"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Convert all revenue figures into {target_currency} currency."
+      ],
+      "rubrics": [
+        "All revenue figures in the final deliverable are standardized and presented in the '{target_currency}' currency."
+      ]
+    },
+    "data_params": {
+      "target_currency": "USD"
+    }
+  },
+  {
+    "skill_id": "categorize_expenses",
+    "skill_name": "Categorize Expenses",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Categorize",
+      "Expense",
+      "Groups"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:RawExpenses"
+      ],
+      "provides": [
+        "Financial:CategorizedExpenses"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Categorize expense data into the following groups: {expense_categories}."
+      ],
+      "rubrics": [
+        "Expenses in the final deliverable are grouped into the specified {expense_categories}.",
+        "If expense records exist, at least one record is correctly mapped to a category within {expense_categories}."
+      ]
+    },
+    "data_params": {
+      "expense_categories": [
+        "Band and Crew",
+        "Other Tour Costs",
+        "Hotel & Restaurants",
+        "Other Travel Costs"
+      ]
+    }
+  },
+  {
+    "skill_id": "aggregate_by_source",
+    "skill_name": "Aggregate by Source",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Aggregate",
+      "Income",
+      "Expenses",
+      "Source"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetRevenueUSD",
+        "Financial:CategorizedExpenses"
+      ],
+      "provides": [
+        "Financial:AggregatedData"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Aggregate income and expenses by {grouping_column} ({sources})."
+      ],
+      "rubrics": [
+        "The final deliverable presents income and expenses aggregated by the '{grouping_column}'.",
+        "If data from {sources} is present, the aggregated totals correctly group the financial metrics under each respective source."
+      ]
+    },
+    "data_params": {
+      "grouping_column": "Source",
+      "sources": [
+        "Tour Manager",
+        "Production Company"
+      ]
+    }
+  },
+  {
+    "skill_id": "calculate_total_financials",
+    "skill_name": "Calculate Total Financials",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Total Net Revenue",
+      "Total Expenses"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:AggregatedData"
+      ],
+      "provides": [
+        "Financial:TotalFinancials"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {metric_1} and {metric_2} across all sources."
+      ],
+      "rubrics": [
+        "The final deliverable includes summary fields or rows for '{metric_1}' and '{metric_2}'.",
+        "The '{metric_1}' and '{metric_2}' values are accurately calculated as the sum of their respective underlying aggregated data across all sources."
+      ]
+    },
+    "data_params": {
+      "metric_1": "Total Net Revenue",
+      "metric_2": "Total Expenses"
+    }
+  },
+  {
+    "skill_id": "calculate_net_income",
+    "skill_name": "Calculate Net Income",
+    "node_type": "mutate",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Calculate",
+      "Net Income",
+      "Subtract"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:TotalFinancials"
+      ],
+      "provides": [
+        "Financial:NetIncome"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Calculate {target_metric} by subtracting {deduction_metric} from {base_metric}."
+      ],
+      "rubrics": [
+        "The final deliverable clearly displays the '{target_metric}'.",
+        "The '{target_metric}' is correctly computed by subtracting '{deduction_metric}' from '{base_metric}'."
+      ]
+    },
+    "data_params": {
+      "target_metric": "Net Income",
+      "deduction_metric": "Total Expenses",
+      "base_metric": "Total Net Revenue"
+    }
+  },
+  {
+    "skill_id": "export_pl_report",
+    "skill_name": "Export P&L Report",
+    "node_type": "export",
+    "operator_class": "PhantomTaskOperator",
+    "keywords": [
+      "Export",
+      "Excel",
+      "Profit and Loss",
+      "Report"
+    ],
+    "ports": {
+      "requires": [
+        "Financial:NetIncome"
+      ],
+      "provides": [
+        "Deliverable:ExcelPLReport"
+      ]
+    },
+    "semantics": {
+      "intents": [
+        "Generate a formatted Excel profit and loss report with the header '{report_header}', labeled columns, and {currency} currency alignment.",
+        "Save the final report as {output_file}."
+      ],
+      "deliverables": [
+        "profit_and_loss_report.xlsx"
+      ],
+      "rubrics": [
+        "The final deliverable is named '{output_file}'.",
+        "The final deliverable contains the header '{report_header}'.",
+        "All monetary values in the final deliverable are properly aligned and formatted to reflect the '{currency}' currency."
+      ]
+    },
+    "data_params": {
+      "report_header": "As of 12/31/2024",
+      "currency": "USD",
+      "output_file": "profit_and_loss_report.xlsx"
+    }
+  }
+]

@@ -1,31 +1,4 @@
 {
-    "trap_double_negative": {
-        "skill_name": "Double Negative Trap",
-        "node_type": "trap",
-        "max_instances": 99,
-        "operator_class": "CellPerturbationOperator",
-        "keywords": [
-            "Negative Trap",
-            "Dirty Data",
-            "Absolute Value",
-            "Exception Handling"
-        ],
-        "ports": {
-            "requires": [
-                "Financial:AnyAmount"
-            ]
-        },
-        "semantics": {
-            "rubrics": [
-                "Ensure negative entries in '{in_target_col}' of '{in_target_table}' use absolute values."
-            ]
-        },
-        "data_params": {
-            "perturbation_mode": "to_negative",
-            "trap_count": 1
-        },
-        "possible_successors": []
-    },
     "trap_missing_value": {
         "skill_name": "Universal Missing Value Trap",
         "node_type": "trap",
@@ -79,820 +52,654 @@
         },
         "possible_successors": []
     },
-    "load_ecommerce_orders": {
-        "skill_name": "Load E-commerce Order Dataset",
+    "load_financial_data": {
+        "skill_name": "Load Financial Data",
         "node_type": "base",
-        "operator_class": "TabularDataLoaderOperator",
+        "operator_class": "MultiTableBaseOperator",
         "keywords": [
             "Load",
-            "E-commerce",
-            "Orders"
+            "Income",
+            "Expenses",
+            "Tax"
         ],
         "ports": {
             "requires": [],
             "provides": [
-                "Data:Generic"
+                "Financial:IncomeTxnID",
+                "Financial:IncomeSource",
+                "Financial:IncomeCountry",
+                "Financial:RawIncome",
+                "Financial:ExpID",
+                "Financial:ExpSource",
+                "Financial:ExpDesc",
+                "Financial:RawExpenses",
+                "Financial:TaxCountry",
+                "Financial:RawTaxInfo"
             ]
         },
         "possible_successors": [
             {
-                "skill_id": "filter_us_orders",
+                "skill_id": "inject_missing_revenue",
                 "port_map": {
-                    "Data:Generic": "Data:Generic"
+                    "Financial:RawIncome": "Financial:RawIncome"
                 }
             },
             {
-                "skill_id": "detect_missing_values",
+                "skill_id": "map_tax_rates",
                 "port_map": {
-                    "Data:Generic": "Data:Generic"
+                    "Financial:RawTaxInfo": "Financial:RawTaxInfo"
                 }
             },
             {
-                "skill_id": "impute_null_values",
+                "skill_id": "categorize_expenses",
                 "port_map": {
-                    "Data:Generic": "Data:Generic"
+                    "Financial:RawExpenses": "Financial:RawExpenses"
                 }
             }
         ],
         "semantics": {
             "intents": [
-                "Load the initial dataset '{source_file}'. Finally, export the result to '{output_file}'."
+                "Load the raw income, costs, and tax withholding data from multiple sources ({sources}).",
+                "Export the loaded raw datasets to {deliverable_file}."
             ],
-            "rubrics": []
-        },
-        "data_params": {
-            "output_columns": [
-                {
-                    "generator_type": "categorical",
-                    "name": "user_country",
-                    "kwargs": {
-                        "categories": [
-                            "USA",
-                            "UK",
-                            "France",
-                            "Germany"
-                        ]
-                    }
-                },
-                {
-                    "generator_type": "uniform",
-                    "kwargs": {
-                        "max": 1000,
-                        "min": 10
-                    },
-                    "name": "order_amount"
-                }
-            ],
-            "output_file": "Processed_US_Duty_Report.csv",
-            "source_file": "ecommerce_orders_last_month.csv",
-            "suggested_row_counts": {
-                "ecommerce_orders_last_month.csv": 100
-            }
-        }
-    },
-    "filter_us_orders": {
-        "skill_name": "Filter US Order Records",
-        "node_type": "mutator",
-        "operator_class": "CategoricalFilterOperator",
-        "keywords": [
-            "Filter",
-            "USA",
-            "Country"
-        ],
-        "ports": {
-            "requires": [
-                "Data:Generic"
-            ],
-            "provides": [
-                "Order:USRecords"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "clean_missing_amounts",
-                "port_map": {
-                    "Order:USRecords": "Order:USRecords"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Filter the records where '{filter_column}' is equal to '{filter_value}'."
+            "deliverables": [
+                "raw_financials.xlsx"
             ],
             "rubrics": [
-                "Verify that (df['{filter_column}'] == '{filter_value}').all() is True"
+                "The final deliverable is successfully generated and named '{deliverable_file}'.",
+                "Verify that the final deliverable contains consolidated financial data originating from all specified {sources}."
             ]
         },
         "data_params": {
-            "filter_column": "user_country",
-            "filter_value": "USA"
+            "sources": [
+                "Tour Manager",
+                "Production Company"
+            ],
+            "deliverable_file": "raw_financials.xlsx",
+            "suggested_row_counts": {
+                "income.xlsx": 150,
+                "expenses.xlsx": 300,
+                "tax_info.xlsx": 4
+            },
+            "schemas": {
+                "income.xlsx": [
+                    {
+                        "name": "Txn_ID",
+                        "generator_type": "id"
+                    },
+                    {
+                        "name": "Source",
+                        "generator_type": "categorical",
+                        "kwargs": {
+                            "categories": [
+                                "Tour Manager",
+                                "Production Company"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Country",
+                        "generator_type": "categorical",
+                        "kwargs": {
+                            "categories": [
+                                "UK",
+                                "France",
+                                "Spain",
+                                "Germany"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Gross Revenue",
+                        "generator_type": "uniform",
+                        "kwargs": {
+                            "min": 5000,
+                            "max": 100000
+                        }
+                    }
+                ],
+                "expenses.xlsx": [
+                    {
+                        "name": "Exp_ID",
+                        "generator_type": "id"
+                    },
+                    {
+                        "name": "Source",
+                        "generator_type": "categorical",
+                        "kwargs": {
+                            "categories": [
+                                "Tour Manager",
+                                "Production Company"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Expense_Desc",
+                        "generator_type": "categorical",
+                        "kwargs": {
+                            "categories": [
+                                "Flights",
+                                "Hotels",
+                                "Crew Wages",
+                                "Catering"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Amount",
+                        "generator_type": "uniform",
+                        "kwargs": {
+                            "min": 500,
+                            "max": 20000
+                        }
+                    }
+                ],
+                "tax_info.xlsx": [
+                    {
+                        "name": "Country",
+                        "generator_type": "categorical",
+                        "kwargs": {
+                            "categories": [
+                                "UK",
+                                "France",
+                                "Spain",
+                                "Germany"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Tax_Rate",
+                        "generator_type": "uniform",
+                        "kwargs": {
+                            "min": 0.15,
+                            "max": 0.25
+                        }
+                    }
+                ]
+            },
+            "port_to_column_mapping": {
+                "Financial:IncomeTxnID": {
+                    "table": "income.xlsx",
+                    "column": "Txn_ID"
+                },
+                "Financial:IncomeSource": {
+                    "table": "income.xlsx",
+                    "column": "Source"
+                },
+                "Financial:IncomeCountry": {
+                    "table": "income.xlsx",
+                    "column": "Country"
+                },
+                "Financial:RawIncome": {
+                    "table": "income.xlsx",
+                    "column": "Gross Revenue"
+                },
+                "Financial:ExpID": {
+                    "table": "expenses.xlsx",
+                    "column": "Exp_ID"
+                },
+                "Financial:ExpSource": {
+                    "table": "expenses.xlsx",
+                    "column": "Source"
+                },
+                "Financial:ExpDesc": {
+                    "table": "expenses.xlsx",
+                    "column": "Expense_Desc"
+                },
+                "Financial:RawExpenses": {
+                    "table": "expenses.xlsx",
+                    "column": "Amount"
+                },
+                "Financial:TaxCountry": {
+                    "table": "tax_info.xlsx",
+                    "column": "Country"
+                },
+                "Financial:RawTaxInfo": {
+                    "table": "tax_info.xlsx",
+                    "column": "Tax_Rate"
+                }
+            }
         }
     },
-    "clean_missing_amounts": {
-        "skill_name": "Clean Missing Order Amounts",
+    "inject_missing_revenue": {
+        "skill_name": "Inject Missing Revenue",
         "node_type": "trap",
         "operator_class": "CellPerturbationOperator",
         "keywords": [
-            "Clean",
-            "Missing Values",
-            "Amount"
+            "Inject",
+            "Null",
+            "Missing",
+            "Anomalies"
         ],
         "ports": {
             "requires": [
-                "Order:USRecords"
+                "Financial:RawIncome"
             ],
             "provides": [
-                "Order:NonNullRecords"
+                "Financial:IncomeWithAnomalies"
             ]
         },
         "possible_successors": [
             {
-                "skill_id": "normalize_negative_amounts",
+                "skill_id": "handle_missing_revenue",
                 "port_map": {
-                    "Order:NonNullRecords": "Order:NonNullRecords"
+                    "Financial:IncomeWithAnomalies": "Financial:IncomeWithAnomalies"
                 }
             }
         ],
         "semantics": {
             "intents": [
-                "Identify and handle missing values in the '{target_column}' column."
+                "Inject null or missing values into the {target_column} field within the income dataset to simulate incomplete data."
             ],
             "rubrics": [
-                "Verify that df['{target_column}'].isnull().sum() == 0"
+                "In accordance with industry standards for financial reporting, verify that the final deliverable gracefully handles the {trap_count} missing or null values introduced during processing, ensuring they are either imputed, flagged, or excluded without causing downstream calculation errors."
             ]
         },
         "data_params": {
             "perturbation_mode": "to_null",
-            "target_column": "order_amount",
             "trap_count": 5
         }
     },
-    "normalize_negative_amounts": {
-        "skill_name": "Normalize Negative Order Amounts",
-        "node_type": "trap",
-        "operator_class": "CellPerturbationOperator",
+    "handle_missing_revenue": {
+        "skill_name": "Handle Missing Revenue",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
         "keywords": [
-            "Normalize",
-            "Absolute Value",
-            "Negative Values"
+            "Identify",
+            "Handle",
+            "Missing",
+            "Completeness"
         ],
         "ports": {
             "requires": [
-                "Order:NonNullRecords"
+                "Financial:IncomeWithAnomalies"
             ],
             "provides": [
-                "Order:NormalizedAmount"
+                "Financial:CleanedIncome"
             ]
         },
         "possible_successors": [
             {
-                "skill_id": "calculate_estimated_duty",
+                "skill_id": "map_tax_rates",
                 "port_map": {
-                    "Order:NormalizedAmount": "Order:NormalizedAmount"
+                    "Financial:CleanedIncome": "Financial:CleanedIncome"
                 }
             }
         ],
         "semantics": {
             "intents": [
-                "Identify negative values in the '{target_column}' column and convert them to their absolute values."
+                "Identify and handle missing or null values in the {target_column} field to ensure data completeness."
             ],
             "rubrics": [
-                "Verify that (df['{target_column}'] >= 0).all() is True"
+                "Verify that the final deliverable contains no unhandled null or missing values in the '{target_column}' field.",
+                "Any rows originally containing missing data in '{target_column}' are handled gracefully, ensuring that aggregate totals do not result in #DIV/0!, #VALUE!, or infinite errors."
             ]
         },
         "data_params": {
-            "perturbation_mode": "to_negative",
-            "target_column": "order_amount",
-            "trap_count": 5
+            "target_column": "Gross Revenue"
         }
     },
-    "calculate_estimated_duty": {
-        "skill_name": "Calculate Estimated Import Duty",
-        "node_type": "mutator",
-        "operator_class": "ColumnMultiplierOperator",
+    "map_tax_rates": {
+        "skill_name": "Map Tax Rates",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Map",
+            "Tax Rates",
+            "Country"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:CleanedIncome",
+                "Financial:RawTaxInfo"
+            ],
+            "provides": [
+                "Financial:IncomeWithTaxRates"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "calculate_tax_withholding",
+                "port_map": {
+                    "Financial:IncomeWithTaxRates": "Financial:IncomeWithTaxRates"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Map tax withholding rates to each tour stop based on {country_column} using the following rates: {tax_rates}."
+            ],
+            "rubrics": [
+                "The final deliverable includes a mapping or calculation that correctly associates the '{country_column}' with its respective tax rate.",
+                "If tax rates are explicitly listed in the final deliverable, they accurately reflect the provided {tax_rates} mapping for each corresponding '{country_column}'."
+            ]
+        },
+        "data_params": {
+            "country_column": "Country",
+            "tax_rates": {
+                "UK": "20%",
+                "France": "15%",
+                "Spain": "24%",
+                "Germany": "15.825%"
+            }
+        }
+    },
+    "calculate_tax_withholding": {
+        "skill_name": "Calculate Tax Withholding",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
         "keywords": [
             "Calculate",
-            "Duty",
-            "Tax"
+            "Tax Withholding",
+            "Amount"
         ],
         "ports": {
             "requires": [
-                "Order:NormalizedAmount"
+                "Financial:IncomeWithTaxRates"
             ],
             "provides": [
-                "Finance:EstimatedDuty"
+                "Financial:TaxWithholding"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "calculate_net_revenue_local",
+                "port_map": {
+                    "Financial:TaxWithholding": "Financial:TaxWithholding"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Calculate the tax withholding amount for each line item based on the mapped rates and {revenue_column}."
+            ],
+            "rubrics": [
+                "The tax withholding amount in the final deliverable is mathematically accurate, computed as the product of the mapped tax rate and the '{revenue_column}'."
+            ]
+        },
+        "data_params": {
+            "revenue_column": "Gross Revenue"
+        }
+    },
+    "calculate_net_revenue_local": {
+        "skill_name": "Calculate Net Revenue Local",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Calculate",
+            "Net Revenue",
+            "Subtract"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:TaxWithholding"
+            ],
+            "provides": [
+                "Financial:NetRevenueLocal"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "convert_revenue_usd",
+                "port_map": {
+                    "Financial:NetRevenueLocal": "Financial:NetRevenueLocal"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Calculate {target_metric} for each tour stop by subtracting the tax withholding amount from the {revenue_column}."
+            ],
+            "rubrics": [
+                "The final deliverable contains a metric or column representing '{target_metric}'.",
+                "The '{target_metric}' is correctly computed as the '{revenue_column}' minus the calculated tax withholding amount."
+            ]
+        },
+        "data_params": {
+            "target_metric": "Net Revenue",
+            "revenue_column": "Gross Revenue"
+        }
+    },
+    "convert_revenue_usd": {
+        "skill_name": "Convert Revenue to USD",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Convert",
+            "Currency",
+            "USD"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:NetRevenueLocal"
+            ],
+            "provides": [
+                "Financial:NetRevenueUSD"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "aggregate_by_source",
+                "port_map": {
+                    "Financial:NetRevenueUSD": "Financial:NetRevenueUSD"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Convert all revenue figures into {target_currency} currency."
+            ],
+            "rubrics": [
+                "All revenue figures in the final deliverable are standardized and presented in the '{target_currency}' currency."
+            ]
+        },
+        "data_params": {
+            "target_currency": "USD"
+        }
+    },
+    "categorize_expenses": {
+        "skill_name": "Categorize Expenses",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Categorize",
+            "Expense",
+            "Groups"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:RawExpenses"
+            ],
+            "provides": [
+                "Financial:CategorizedExpenses"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "aggregate_by_source",
+                "port_map": {
+                    "Financial:CategorizedExpenses": "Financial:CategorizedExpenses"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Categorize expense data into the following groups: {expense_categories}."
+            ],
+            "rubrics": [
+                "Expenses in the final deliverable are grouped into the specified {expense_categories}.",
+                "If expense records exist, at least one record is correctly mapped to a category within {expense_categories}."
+            ]
+        },
+        "data_params": {
+            "expense_categories": [
+                "Band and Crew",
+                "Other Tour Costs",
+                "Hotel & Restaurants",
+                "Other Travel Costs"
+            ]
+        }
+    },
+    "aggregate_by_source": {
+        "skill_name": "Aggregate by Source",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Aggregate",
+            "Income",
+            "Expenses",
+            "Source"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:NetRevenueUSD",
+                "Financial:CategorizedExpenses"
+            ],
+            "provides": [
+                "Financial:AggregatedData"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "calculate_total_financials",
+                "port_map": {
+                    "Financial:AggregatedData": "Financial:AggregatedData"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Aggregate income and expenses by {grouping_column} ({sources})."
+            ],
+            "rubrics": [
+                "The final deliverable presents income and expenses aggregated by the '{grouping_column}'.",
+                "If data from {sources} is present, the aggregated totals correctly group the financial metrics under each respective source."
+            ]
+        },
+        "data_params": {
+            "grouping_column": "Source",
+            "sources": [
+                "Tour Manager",
+                "Production Company"
+            ]
+        }
+    },
+    "calculate_total_financials": {
+        "skill_name": "Calculate Total Financials",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Calculate",
+            "Total Net Revenue",
+            "Total Expenses"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:AggregatedData"
+            ],
+            "provides": [
+                "Financial:TotalFinancials"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "calculate_net_income",
+                "port_map": {
+                    "Financial:TotalFinancials": "Financial:TotalFinancials"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Calculate {metric_1} and {metric_2} across all sources."
+            ],
+            "rubrics": [
+                "The final deliverable includes summary fields or rows for '{metric_1}' and '{metric_2}'.",
+                "The '{metric_1}' and '{metric_2}' values are accurately calculated as the sum of their respective underlying aggregated data across all sources."
+            ]
+        },
+        "data_params": {
+            "metric_1": "Total Net Revenue",
+            "metric_2": "Total Expenses"
+        }
+    },
+    "calculate_net_income": {
+        "skill_name": "Calculate Net Income",
+        "node_type": "mutate",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Calculate",
+            "Net Income",
+            "Subtract"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:TotalFinancials"
+            ],
+            "provides": [
+                "Financial:NetIncome"
+            ]
+        },
+        "possible_successors": [
+            {
+                "skill_id": "export_pl_report",
+                "port_map": {
+                    "Financial:NetIncome": "Financial:NetIncome"
+                }
+            }
+        ],
+        "semantics": {
+            "intents": [
+                "Calculate {target_metric} by subtracting {deduction_metric} from {base_metric}."
+            ],
+            "rubrics": [
+                "The final deliverable clearly displays the '{target_metric}'.",
+                "The '{target_metric}' is correctly computed by subtracting '{deduction_metric}' from '{base_metric}'."
+            ]
+        },
+        "data_params": {
+            "target_metric": "Net Income",
+            "deduction_metric": "Total Expenses",
+            "base_metric": "Total Net Revenue"
+        }
+    },
+    "export_pl_report": {
+        "skill_name": "Export P&L Report",
+        "node_type": "export",
+        "operator_class": "PhantomTaskOperator",
+        "keywords": [
+            "Export",
+            "Excel",
+            "Profit and Loss",
+            "Report"
+        ],
+        "ports": {
+            "requires": [
+                "Financial:NetIncome"
+            ],
+            "provides": [
+                "Deliverable:ExcelPLReport"
             ]
         },
         "possible_successors": [],
         "semantics": {
             "intents": [
-                "Create a new column named '{output_column}' by multiplying '{source_column}' by '{multiplier}'."
+                "Generate a formatted Excel profit and loss report with the header '{report_header}', labeled columns, and {currency} currency alignment.",
+                "Save the final report as {output_file}."
+            ],
+            "deliverables": [
+                "profit_and_loss_report.xlsx"
             ],
             "rubrics": [
-                "Verify that '{output_column}' in df.columns",
-                "Verify that np.allclose(df['{output_column}'], df['{source_column}'] * {multiplier})"
+                "The final deliverable is named '{output_file}'.",
+                "The final deliverable contains the header '{report_header}'.",
+                "All monetary values in the final deliverable are properly aligned and formatted to reflect the '{currency}' currency."
             ]
         },
         "data_params": {
-            "multiplier": 0.08,
-            "output_column": "estimated_duty",
-            "source_column": "order_amount"
-        }
-    },
-    "load_population_dataset": {
-        "skill_name": "Load Population Dataset",
-        "node_type": "base",
-        "operator_class": "BaseDataGeneratorOperator",
-        "keywords": [
-            "Load",
-            "Population",
-            "Dataset"
-        ],
-        "ports": {
-            "requires": [],
-            "provides": [
-                "Data:Generic"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "filter_us_orders",
-                "port_map": {
-                    "Data:Generic": "Data:Generic"
-                }
-            },
-            {
-                "skill_id": "detect_missing_values",
-                "port_map": {
-                    "Data:Generic": "Data:Generic"
-                }
-            },
-            {
-                "skill_id": "impute_null_values",
-                "port_map": {
-                    "Data:Generic": "Data:Generic"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Load the initial population dataset from '{input_file}' containing fields such as Division, Entity, Business, Country, Metric, and values, then eventually export the final result to '{output_file}'."
-            ],
-            "rubrics": []
-        },
-        "data_params": {
-            "input_file": "population_data.csv",
-            "output_file": "Final_Sampled_Population.csv",
-            "suggested_row_counts": {
-                "population_data.csv": 1000
-            }
-        }
-    },
-    "detect_missing_values": {
-        "skill_name": "Detect Missing Values",
-        "node_type": "trap",
-        "operator_class": "CellPerturbationOperator",
-        "keywords": [
-            "Missing",
-            "Null",
-            "Detection"
-        ],
-        "ports": {
-            "requires": [
-                "Data:Generic"
-            ],
-            "provides": []
-        },
-        "possible_successors": [],
-        "semantics": {
-            "intents": [
-                "Identify missing or null values within the columns '{col_1}' and '{col_2}'."
-            ],
-            "rubrics": [
-                "assert df[params['col_1']].isna().sum() >= 0",
-                "assert df[params['col_2']].isna().sum() >= 0"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value"
-        }
-    },
-    "impute_null_values": {
-        "skill_name": "Impute Null Values",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Impute",
-            "Fill",
-            "Zero"
-        ],
-        "ports": {
-            "requires": [
-                "Data:Generic"
-            ],
-            "provides": [
-                "Data:PopulationNoNulls"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "detect_negative_outliers",
-                "port_map": {
-                    "Data:PopulationNoNulls": "Data:PopulationNoNulls"
-                }
-            },
-            {
-                "skill_id": "correct_negative_values",
-                "port_map": {
-                    "Data:PopulationNoNulls": "Data:PopulationNoNulls"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Replace any missing or null values in '{col_1}' and '{col_2}' with '{fill_value}'."
-            ],
-            "rubrics": [
-                "assert df[params['col_1']].isna().sum() == 0",
-                "assert df[params['col_2']].isna().sum() == 0"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value",
-            "fill_value": 0
-        }
-    },
-    "detect_negative_outliers": {
-        "skill_name": "Detect Negative Outliers",
-        "node_type": "trap",
-        "operator_class": "CellPerturbationOperator",
-        "keywords": [
-            "Negative",
-            "Outlier",
-            "Detection"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationNoNulls"
-            ],
-            "provides": []
-        },
-        "possible_successors": [],
-        "semantics": {
-            "intents": [
-                "Identify negative numerical outliers in the columns '{col_1}' and '{col_2}'."
-            ],
-            "rubrics": [
-                "assert (df[params['col_1']] < 0).sum() >= 0",
-                "assert (df[params['col_2']] < 0).sum() >= 0"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value"
-        }
-    },
-    "correct_negative_values": {
-        "skill_name": "Correct Negative Values",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Absolute",
-            "Correction",
-            "Math"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationNoNulls"
-            ],
-            "provides": [
-                "Data:PopulationCleaned"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "calculate_target_sample_size",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "calculate_variance_rate",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "flag_target_entities",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "flag_target_metrics",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "flag_zero_values",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "flag_target_businesses",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            },
-            {
-                "skill_id": "flag_target_countries",
-                "port_map": {
-                    "Data:PopulationCleaned": "Data:PopulationCleaned"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Convert negative values in '{col_1}' and '{col_2}' to their absolute values."
-            ],
-            "rubrics": [
-                "assert (df[params['col_1']] < 0).sum() == 0",
-                "assert (df[params['col_2']] < 0).sum() == 0"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value"
-        }
-    },
-    "calculate_target_sample_size": {
-        "skill_name": "Calculate Target Sample Size",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Sample Size",
-            "Confidence",
-            "Statistics"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Metric:TargetSampleSize"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Metric:TargetSampleSize": "Metric:TargetSampleSize"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Calculate the target sample size based on the total row count using a '{confidence}' confidence level and a '{error_rate}' tolerable error rate."
-            ],
-            "rubrics": [
-                "assert any(isinstance(val, (int, float)) for val in locals().values())"
-            ]
-        },
-        "data_params": {
-            "confidence": "90%",
-            "error_rate": "10%"
-        }
-    },
-    "calculate_variance_rate": {
-        "skill_name": "Calculate Variance Rate",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Variance",
-            "Rate",
-            "Comparison"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Data:WithVarianceRate"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "flag_high_variance",
-                "port_map": {
-                    "Data:WithVarianceRate": "Data:WithVarianceRate"
-                }
-            },
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Data:WithVarianceRate": "Data:WithVarianceRate"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Calculate the period-over-period variance rate between '{col_1}' and '{col_2}' and store the result in '{output_col}'."
-            ],
-            "rubrics": [
-                "assert params['output_col'] in df.columns",
-                "assert df[params['output_col']].isna().sum() >= 0"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value",
-            "output_col": "Column J"
-        }
-    },
-    "flag_high_variance": {
-        "skill_name": "Flag High Variance",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Flag",
-            "Threshold",
-            "Variance"
-        ],
-        "ports": {
-            "requires": [
-                "Data:WithVarianceRate"
-            ],
-            "provides": [
-                "Flag:HighVariance"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:HighVariance": "Flag:HighVariance"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Mark rows where the variance rate in '{source_col}' is greater than '{threshold}'."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "source_col": "Column J",
-            "threshold": "20%"
-        }
-    },
-    "flag_target_entities": {
-        "skill_name": "Flag Target Entities",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Entity",
-            "Filter",
-            "Flag"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Flag:TargetEntity"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:TargetEntity": "Flag:TargetEntity"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Flag rows where the '{entity_col}' matches any of the following: {entity_list}."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "entity_col": "Entity",
-            "entity_list": [
-                "CB Cash Italy",
-                "CB Correspondent Banking Greece",
-                "IB Debt Markets Luxembourg",
-                "CB Trade Finance Brazil",
-                "PB EMEA UAE"
-            ]
-        }
-    },
-    "flag_target_metrics": {
-        "skill_name": "Flag Target Metrics",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Metric",
-            "Flag",
-            "Criteria"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Flag:TargetMetric"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:TargetMetric": "Flag:TargetMetric"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Flag rows where the '{metric_col}' is either '{metric_1}' or '{metric_2}'."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "metric_1": "A1",
-            "metric_2": "C1",
-            "metric_col": "Metric"
-        }
-    },
-    "flag_zero_values": {
-        "skill_name": "Flag Zero Values",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Zero",
-            "Flag",
-            "Empty"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Flag:ZeroValues"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:ZeroValues": "Flag:ZeroValues"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Flag rows where both '{col_1}' and '{col_2}' are equal to '{target_val}'."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "col_1": "Q2 value",
-            "col_2": "Q3 value",
-            "target_val": 0
-        }
-    },
-    "flag_target_businesses": {
-        "skill_name": "Flag Target Businesses",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Business",
-            "Flag",
-            "Segment"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Flag:TargetBusiness"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:TargetBusiness": "Flag:TargetBusiness"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Flag rows where the '{business_col}' is either '{biz_1}' or '{biz_2}'."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "biz_1": "Trade Finance",
-            "biz_2": "Correspondent Banking",
-            "business_col": "Business"
-        }
-    },
-    "flag_target_countries": {
-        "skill_name": "Flag Target Countries",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Country",
-            "Flag",
-            "Region"
-        ],
-        "ports": {
-            "requires": [
-                "Data:PopulationCleaned"
-            ],
-            "provides": [
-                "Flag:TargetCountry"
-            ]
-        },
-        "possible_successors": [
-            {
-                "skill_id": "perform_final_sampling",
-                "port_map": {
-                    "Flag:TargetCountry": "Flag:TargetCountry"
-                }
-            }
-        ],
-        "semantics": {
-            "intents": [
-                "Flag rows where the '{country_col}' is one of: {country_list}."
-            ],
-            "rubrics": [
-                "assert any(df[col].dtype == bool or set(df[col].dropna().unique()).issubset({0, 1}) for col in df.columns)"
-            ]
-        },
-        "data_params": {
-            "country_col": "Country",
-            "country_list": [
-                "Cayman Islands",
-                "Pakistan",
-                "UAE"
-            ]
-        }
-    },
-    "perform_final_sampling": {
-        "skill_name": "Perform Final Sampling",
-        "node_type": "mutator",
-        "operator_class": "PhantomTaskOperator",
-        "keywords": [
-            "Sampling",
-            "Selection",
-            "Coverage"
-        ],
-        "ports": {
-            "requires": [
-                "Data:WithVarianceRate",
-                "Metric:TargetSampleSize",
-                "Flag:HighVariance",
-                "Flag:TargetEntity",
-                "Flag:TargetMetric",
-                "Flag:ZeroValues",
-                "Flag:TargetBusiness",
-                "Flag:TargetCountry"
-            ],
-            "provides": [
-                "Data:FinalSampled"
-            ]
-        },
-        "possible_successors": [],
-        "semantics": {
-            "intents": [
-                "Determine the final sampled rows based on the target sample size, generated flags, and coverage requirements for '{strat_1}' and '{strat_2}', assigning '{val}' to '{output_col}' for selected rows."
-            ],
-            "rubrics": [
-                "assert params['output_col'] in df.columns",
-                "assert (df[params['output_col']] == params['val']).sum() > 0"
-            ]
-        },
-        "data_params": {
-            "output_col": "Column K",
-            "strat_1": "Division",
-            "strat_2": "sub-Division",
-            "val": 1
+            "report_header": "As of 12/31/2024",
+            "currency": "USD",
+            "output_file": "profit_and_loss_report.xlsx"
         }
     }
 }

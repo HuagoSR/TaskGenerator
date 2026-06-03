@@ -1,6 +1,13 @@
 from typing import List, Dict, Optional, Any, Tuple
 import collections
 
+class SafeDict(dict):
+    """
+    安全字典：用于防弹式字符串格式化。
+    如果找不到 key，不会报错，而是原样返回 '{key}'。
+    """
+    def __missing__(self, key):
+        return '{' + key + '}'
 
 class SkillNode:
     """
@@ -51,6 +58,13 @@ class SkillNode:
         self.data_params = self.skill_config.get("data_params", {})
         self.suggested_row_counts = self.data_params.get("suggested_row_counts", {})
 
+        # 如果大模型把 deliverables 字段弄丢了，我们尝试从 data_params 里打捞
+        if not self.expected_deliverables:
+            # 大模型常用的两个表示输出文件的参数名
+            possible_file = self.data_params.get("output_file") or self.data_params.get("deliverable_file")
+            if possible_file:
+                self.expected_deliverables = [possible_file]
+
     def resolve_input_port(self, in_port_name: str, graph) -> Tuple[str, str]:
         """顺藤摸瓜：根据逻辑端口名，向图谱上游索要真实的(物理表名, 物理列名)"""
         if in_port_name not in self.input_bindings:
@@ -73,12 +87,21 @@ class SkillNode:
         # 默认实现：如果有格式化字典，直接拿 data_params 里的物理名字去渲染
         format_dict = self.data_params.copy()
 
-        # 如果子类在调用 super().on_join_graph() 前解析了 input_port，
-        # 可以把上游的物理表名/列名也加进 format_dict 里。
+        # 把 deliverables 动态塞进渲染字典，方便占位符替换
+        if hasattr(self, 'expected_deliverables') and self.expected_deliverables:
+            # 如果有多个交付物，用 ' and ' 连接起来，比如 'Tour_Financial_Report.xlsx' and 'task_summary.pdf'
+            format_dict['deliverables'] = " and ".join([f"'{d}'" for d in self.expected_deliverables])
+        else:
+            format_dict['deliverables'] = "'the required output files'"  # 兜底文案
 
-        self.rendered_intents = [i.format(**format_dict) if '{' in i else i for i in self.prompt_intents]
-        self.rendered_constraints = [c.format(**format_dict) if '{' in c else c for c in self.deliverable_constraints]
-        self.rendered_rubrics = [r.format(**format_dict) if '{' in r else r for r in self.hidden_rubrics]
+        # 使用 SafeDict 包装字典，防止 KeyError 崩溃
+        safe_format_dict = SafeDict(**format_dict)
+
+        # 改用 format_map 进行安全渲染
+        self.rendered_intents = [i.format_map(safe_format_dict) if '{' in i else i for i in self.prompt_intents]
+        self.rendered_constraints = [c.format_map(safe_format_dict) if '{' in c else c for c in
+                                     self.deliverable_constraints]
+        self.rendered_rubrics = [r.format_map(safe_format_dict) if '{' in r else r for r in self.hidden_rubrics]
 
     def register_data_operations(self, vfs, graph):
         """纯粹的数据生成。由继承本类的“算子(Operator)”具体实现"""
@@ -128,9 +151,9 @@ class SkillGraph:
         for n in order:
             if n.node_type == "base":
                 res["System_Prompt"] = getattr(n, "system_prompt", "You are a helpful task designer.")
-
-            res["Intents"].extend(n.rendered_intents)
-            res["Constraints"].extend(n.rendered_constraints)
+            if n.node_type != "trap":
+                res["Intents"].extend(n.rendered_intents)
+                res["Constraints"].extend(n.rendered_constraints)
             res["Rubrics"].extend(getattr(n, "rendered_rubrics", []))
             if hasattr(n, 'suggested_row_counts'):
                 res["Suggested_Rows"].update(n.suggested_row_counts)

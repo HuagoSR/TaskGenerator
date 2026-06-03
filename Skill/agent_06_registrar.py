@@ -37,47 +37,22 @@ def execute_tool_with_log(func_name: str, kwargs: dict) -> str:
         print(f"  └─ 报错: {error_msg}")
         return error_msg
 
+    # ==========================================
 
-# ==========================================
-# 2. Agent 6 专属工具箱 (仅限查重与写入)
+
+# 2. Agent 6 专属工具箱 (已阉割写入权限，仅限查重)
 # ==========================================
 tools_schema = [
     {
         "type": "function",
         "function": {
             "name": "search_skills",
-            "description": "通过关键字在题库中查重，确保不会重复创建相同的考点。",
+            "description": "Search the database by keyword to check for duplicates to ensure the exact same logic does not exist.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "keyword": {"type": "string", "description": "考点的业务关键字"}
+                    "keyword": {"type": "string", "description": "The business keyword of the skill node to search for"}
                 }
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_skill",
-            "description": "在系统中正式创建一个新的考点并物理写入 JSON 题库。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "skill_id": {"type": "string"},
-                    "skill_name": {"type": "string"},
-                    "node_type": {"type": "string", "enum": ["base", "mutator", "trap", "global"]},
-                    "operator_class": {"type": "string"},
-                    "requires": {"type": "array", "items": {"type": "string"},
-                                 "description": "从节点的 ports.requires 中提取"},
-                    "provides": {"type": "array", "items": {"type": "string"},
-                                 "description": "从节点的 ports.provides 中提取"},
-                    "keywords": {"type": "array", "items": {"type": "string"}},
-                    "intents": {"type": "array", "items": {"type": "string"}},
-                    "rubrics": {"type": "array", "items": {"type": "string"}},
-                    "data_params": {"type": "object"}
-                },
-                "required": ["skill_id", "skill_name", "node_type", "operator_class", "requires", "provides",
-                             "keywords", "intents", "rubrics", "data_params"]
             }
         }
     }
@@ -90,68 +65,115 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
 model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 
+# 调整 Prompt，告知它现在收到的是完整的数据定义
+SYSTEM_PROMPT = """   
+You are the Database Duplication Checker (Agent 6).
+You will receive the FULL JSON definition of ONE candidate node at a time (including its schemas, ports, intents, and data_params).
 
-SYSTEM_PROMPT = """
-You are the Database Registrar (Agent 6). You will receive an array of fully validated, perfect JSON nodes.
-
-Your MISSION is to commit these nodes to the database safely.
+Your ONLY MISSION is to determine if this exact business logic already exists in the database.
 
 # Execution Workflow (STRICT RULES):
-1. **Deduplication First**: For EVERY node, you MUST first call `search_skills` to check if a node with this specific `skill_id` or business logic already exists.
-2. **Handling Duplicates (CRITICAL)**: If the search reveals that the skill ALREADY EXISTS, you MUST NOT call `create_skill`! Simply acknowledge its existence, retain its `skill_id` in your mind, and move on to the next node.
-3. **Creation**: ONLY if the search confirms the node does NOT exist, extract `"requires"` and `"provides"` as flat arrays, and call `create_skill`.
-
-Do NOT attempt to connect the nodes. 
-Once all nodes are processed (either successfully skipped or created), reply EXACTLY with "ALL NODES REGISTERED SUCCESSFULLY".
+1. You MUST use the `search_skills` tool to search the database using the candidate's keywords, intents, or skill_id.
+2. Carefully analyze the search results against the candidate's full configuration to determine if it is a true duplicate.
+3. You MUST respond with a STRICT JSON object in the following format, and output nothing else:
+{
+    "is_duplicate": true,  // or false 
+    "reason": "Brief explanation of your finding."
+}
 """
 
 
-
-def run_agent_6_registrar(finalized_nodes: list) -> list:
-    print(f"Agent 6 启动 (查重与注册员) | 引擎: {model_name}")
+def run_agent_6_registrar(finalized_nodes: list, enable_deduplication: bool = False) -> list:
+    mode_str = "启用 LLM 查重" if enable_deduplication else "跳过查重，直接强行入库"
+    print(f"Agent 6 启动 (注册员) | 模式: {mode_str} | 引擎: {model_name}")
     print("-" * 50)
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user",
-         "content": f"Please register the following finalized nodes into the database:\n{json.dumps(finalized_nodes, indent=2)}"}
-    ]
+    registered_nodes = []
 
-    while True:
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                tools=tools_schema,
-                tool_choice="auto",
-                temperature=0.1
-            )
+    for perfect_node in finalized_nodes:
+        skill_id = perfect_node.get("skill_id")
+        skill_name = perfect_node.get("skill_name")
 
-            response_message = response.choices[0].message
-            messages.append(response_message)
+        # ==========================================
+        # 核心分支：是否启用查重
+        # ==========================================
+        if not enable_deduplication:
+            print(f"\n> [速通模式] 准备写入考点: {skill_name} ({skill_id})")
+            decision = {"is_duplicate": False, "reason": "Deduplication disabled by default"}
+        else:
+            print(f"\n> [审查模式] 正在审查候选考点: {skill_name} ({skill_id})")
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",
+                 "content": f"Candidate Node Full Definition:\n{json.dumps(perfect_node, indent=2, ensure_ascii=False)}"}
+            ]
 
-            if response_message.tool_calls:
-                for tool_call in response_message.tool_calls:
-                    func_name = tool_call.function.name
-                    func_args = json.loads(tool_call.function.arguments)
-                    function_response = execute_tool_with_log(func_name, func_args)
-                    messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": func_name,
-                        "content": function_response,
-                    })
-            else:
-                print("\nAgent 6 注册完成！考点已全部落盘。")
-                print(response_message.content)
-                # 注册完成后，将原来的节点原封不动地返回，以便直接传给 Agent 7 去做连线
-                return finalized_nodes
+            while True:
+                try:
+                    response = client.chat.completions.create(
+                        model=model_name,
+                        messages=messages,
+                        tools=tools_schema,
+                        tool_choice="auto",
+                        temperature=0.1,
+                        response_format={"type": "json_object"}
+                    )
 
-        except Exception as e:
-            print(f"\nAPI 请求报错: {e}")
-            break
+                    response_message = response.choices[0].message
+                    messages.append(response_message)
 
+                    if response_message.tool_calls:
+                        for tool_call in response_message.tool_calls:
+                            func_name = tool_call.function.name
+                            func_args = json.loads(tool_call.function.arguments)
+                            function_response = execute_tool_with_log(func_name, func_args)
+                            messages.append({
+                                "tool_call_id": tool_call.id,
+                                "role": "tool",
+                                "name": func_name,
+                                "content": function_response,
+                            })
+                    else:
+                        final_decision_str = response_message.content
+                        break
 
+                except Exception as e:
+                    print(f"\nAPI 请求报错: {e}")
+                    final_decision_str = '{"is_duplicate": false, "reason": "API Exception Fallback"}'
+                    break
+
+                    # --- Python 本地解析裁判结果 ---
+            try:
+                decision = json.loads(final_decision_str)
+            except json.JSONDecodeError:
+                print(f"Agent 6 返回了非标准 JSON。原始内容: {final_decision_str}")
+                decision = {"is_duplicate": False, "reason": "Fallback to pass"}
+
+        # ==========================================
+        # 本地组装与入库逻辑 (公共路径)
+        # ==========================================
+        if decision.get("is_duplicate") is True:
+            print(f"查重驳回！拦截原因: {decision.get('reason')}")
+        else:
+            if enable_deduplication:
+                print(f"查重通过！准许放行。({decision.get('reason')})")
+
+            # --- 展平 Ports 并落盘 ---
+            safe_kwargs = perfect_node.copy()
+            if "ports" in safe_kwargs:
+                ports = safe_kwargs.pop("ports")
+                safe_kwargs["requires"] = ports.get("requires", [])
+                safe_kwargs["provides"] = ports.get("provides", [])
+
+            try:
+                execute_tool_with_log("create_skill", safe_kwargs)
+                registered_nodes.append(perfect_node)
+                print(f"[{skill_id}] 已成功存入数据库。Schema 完整无损。")
+            except Exception as e:
+                print(f"当执行本地注册时发生错误: {e}")
+
+    print("\n=== Agent 6 注册流程全部结束 ===")
+    return finalized_nodes
 # ==========================================
 # 运行测试
 # ==========================================

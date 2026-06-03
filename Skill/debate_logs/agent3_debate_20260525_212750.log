@@ -1,0 +1,1091 @@
+2026-05-25 21:27:50,500 - === 新的抽象任务开始 ===
+2026-05-25 21:27:50,500 - --- 尝试 1/3 ---
+2026-05-25 21:29:04,035 - 【Generator 输出】:
+{
+  "proposed_nodes": [
+    {
+      "skill_id": "load_population_data",
+      "skill_name": "Load Population Data",
+      "node_type": "base",
+      "keywords": [
+        "Load",
+        "Data",
+        "Population",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [],
+        "provides": [
+          "Data:PopulationMetrics"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Load the {file_name} spreadsheet containing {metric_type} for {periods}.",
+          "Export the loaded data to {output_file}."
+        ],
+        "deliverables": [
+          "population_metrics_loaded.xlsx"
+        ]
+      },
+      "data_params": {
+        "file_name": "population.xlsx",
+        "metric_type": "Anti-Financial Crime Risk Metrics",
+        "periods": "Q2 and Q3 2024",
+        "output_file": "population_metrics_loaded.xlsx",
+        "suggested_row_counts": {
+          "population.xlsx": 500
+        },
+        "schemas": {
+          "population.xlsx": [
+            {
+              "name": "Entity",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "CB Cash Italy",
+                  "CB Correspondent Banking Greece",
+                  "IB Debt Markets Luxembourg",
+                  "CB Trade Finance Brazil",
+                  "PB EMEA UAE"
+                ]
+              }
+            },
+            {
+              "name": "Metric_ID",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "A1",
+                  "C1"
+                ]
+              }
+            },
+            {
+              "name": "Business",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Trade Finance",
+                  "Correspondent Banking"
+                ]
+              }
+            },
+            {
+              "name": "Country",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Cayman Islands",
+                  "Pakistan",
+                  "UAE"
+                ]
+              }
+            },
+            {
+              "name": "Division",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Div_A",
+                  "Div_B"
+                ]
+              }
+            },
+            {
+              "name": "Sub_Division",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Sub_A1",
+                  "Sub_B1"
+                ]
+              }
+            },
+            {
+              "name": "Q2_Metric",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 1000
+              }
+            },
+            {
+              "name": "Q3_Metric",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 1000
+              }
+            },
+            {
+              "name": "Variance",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 50
+              }
+            },
+            {
+              "name": "Sample_Flag",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "0",
+                  "1"
+                ]
+              }
+            }
+          ]
+        },
+        "port_to_column_mapping": {
+          "Data:PopulationMetrics": {
+            "table": "population.xlsx",
+            "column": "Entity"
+          }
+        }
+      }
+    },
+    {
+      "skill_id": "identify_missing_metrics",
+      "skill_name": "Identify Missing Metrics",
+      "node_type": "trap",
+      "keywords": [
+        "Identify",
+        "Missing",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [
+          "Data:PopulationMetrics"
+        ],
+        "provides": [
+          "Data:MissingMetricsIdentified"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Identify missing financial metrics in columns {q2_col} and {q3_col}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric"
+      }
+    },
+    {
+      "skill_id": "impute_missing_metrics",
+      "skill_name": "Impute Missing Metrics",
+      "node_type": "mutate",
+      "keywords": [
+        "Replace",
+        "Impute",
+        "Missing",
+        "Values"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MissingMetricsIdentified"
+        ],
+        "provides": [
+          "Data:ImputedMetrics"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Replace all identified missing values in columns {q2_col} and {q3_col} with {impute_value}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "impute_value": 0
+      }
+    },
+    {
+      "skill_id": "calculate_variance",
+      "skill_name": "Calculate Variance",
+      "node_type": "mutate",
+      "keywords": [
+        "Calculate",
+        "Variance",
+        "Quarter-on-Quarter"
+      ],
+      "ports": {
+        "requires": [
+          "Data:ImputedMetrics"
+        ],
+        "provides": [
+          "Data:MetricsWithVariance"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Calculate the quarter-on-quarter variance between {q2_col} and {q3_col} and record the results in {variance_col}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "variance_col": "Variance"
+      }
+    },
+    {
+      "skill_id": "calculate_sample_size",
+      "skill_name": "Calculate Sample Size",
+      "node_type": "mutate",
+      "keywords": [
+        "Calculate",
+        "Sample",
+        "Size",
+        "Audit"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricsWithVariance"
+        ],
+        "provides": [
+          "Metric:SampleSize"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Calculate the required audit sample size using a {confidence_level} confidence level and a {tolerable_error} tolerable error rate."
+        ]
+      },
+      "data_params": {
+        "confidence_level": "90%",
+        "tolerable_error": "10%"
+      }
+    },
+    {
+      "skill_id": "filter_variance",
+      "skill_name": "Filter Variance",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Variance",
+        "Threshold"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricsWithVariance"
+        ],
+        "provides": [
+          "Data:VarianceFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows where variance in {variance_col} is greater than {variance_threshold}."
+        ]
+      },
+      "data_params": {
+        "variance_col": "Variance",
+        "variance_threshold": "20%"
+      }
+    },
+    {
+      "skill_id": "filter_entities",
+      "skill_name": "Filter Entities",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Entities"
+      ],
+      "ports": {
+        "requires": [
+          "Data:VarianceFiltered"
+        ],
+        "provides": [
+          "Data:EntityFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for entities: {target_entities}."
+        ]
+      },
+      "data_params": {
+        "target_entities": [
+          "CB Cash Italy",
+          "CB Correspondent Banking Greece",
+          "IB Debt Markets Luxembourg",
+          "CB Trade Finance Brazil",
+          "PB EMEA UAE"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_metrics",
+      "skill_name": "Filter Metrics",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [
+          "Data:EntityFiltered"
+        ],
+        "provides": [
+          "Data:MetricFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for metrics {target_metrics}."
+        ]
+      },
+      "data_params": {
+        "target_metrics": [
+          "A1",
+          "C1"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_zero_values",
+      "skill_name": "Filter Zero Values",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Zero",
+        "Values"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricFiltered"
+        ],
+        "provides": [
+          "Data:ZeroValueFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows where values in both {q2_col} and {q3_col} are {target_value}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "target_value": 0
+      }
+    },
+    {
+      "skill_id": "filter_businesses",
+      "skill_name": "Filter Businesses",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Businesses"
+      ],
+      "ports": {
+        "requires": [
+          "Data:ZeroValueFiltered"
+        ],
+        "provides": [
+          "Data:BusinessFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows belonging to {target_businesses} businesses."
+        ]
+      },
+      "data_params": {
+        "target_businesses": [
+          "Trade Finance",
+          "Correspondent Banking"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_countries",
+      "skill_name": "Filter Countries",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Countries"
+      ],
+      "ports": {
+        "requires": [
+          "Data:BusinessFiltered"
+        ],
+        "provides": [
+          "Data:CountryFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for countries: {target_countries}."
+        ]
+      },
+      "data_params": {
+        "target_countries": [
+          "Cayman Islands",
+          "Pakistan",
+          "UAE"
+        ]
+      }
+    },
+    {
+      "skill_id": "stratified_sampling",
+      "skill_name": "Stratified Sampling",
+      "node_type": "mutate",
+      "keywords": [
+        "Select",
+        "Subset",
+        "Coverage",
+        "Divisions"
+      ],
+      "ports": {
+        "requires": [
+          "Data:CountryFiltered",
+          "Metric:SampleSize"
+        ],
+        "provides": [
+          "Data:StratifiedSample"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Select a subset of rows from the filtered criteria to ensure coverage across all {division_col} and {sub_division_col}."
+        ]
+      },
+      "data_params": {
+        "division_col": "Division",
+        "sub_division_col": "Sub_Division"
+      }
+    },
+    {
+      "skill_id": "mark_sample",
+      "skill_name": "Mark Sample",
+      "node_type": "mutate",
+      "keywords": [
+        "Mark",
+        "Sample",
+        "Rows"
+      ],
+      "ports": {
+        "requires": [
+          "Data:StratifiedSample"
+        ],
+        "provides": [
+          "Data:MarkedSample"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Mark the final selected sample rows in {marker_col} with the value {marker_value}."
+        ]
+      },
+      "data_params": {
+        "marker_col": "Sample_Flag",
+        "marker_value": "1"
+      }
+    },
+    {
+      "skill_id": "export_sample",
+      "skill_name": "Export Sample",
+      "node_type": "export",
+      "keywords": [
+        "Save",
+        "Export",
+        "Spreadsheet"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MarkedSample",
+          "Metric:SampleSize"
+        ],
+        "provides": [
+          "Deliverable:SampleSpreadsheet"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Save the processed data into a new spreadsheet titled {output_file}, with {tab_1_name} containing the selected sample rows and {tab_2_name} containing the sample size calculation workings."
+        ],
+        "deliverables": [
+          "sample.xlsx"
+        ]
+      },
+      "data_params": {
+        "output_file": "sample.xlsx",
+        "tab_1_name": "Sample Rows",
+        "tab_2_name": "Calculations"
+      }
+    }
+  ]
+}
+2026-05-25 21:29:16,803 - 【Judge 判决结果】: Pass=False
+【Judge 反馈】: Rule 3 (Full Port Mapping Rule) violated in the 'load_population_data' base node. The 'schemas' object defines 10 columns (Entity, Metric_ID, Business, Country, Division, Sub_Division, Q2_Metric, Q3_Metric, Variance, Sample_Flag), but 'port_to_column_mapping' only maps 1 column ('Entity' to 'Data:PopulationMetrics'). You must expand the 'provides' array to include a logical port for EVERY column and map all 10 columns in 'port_to_column_mapping'.
+2026-05-25 21:29:16,803 - --- 尝试 2/3 ---
+2026-05-25 21:30:02,114 - 【Generator 输出】:
+{
+  "proposed_nodes": [
+    {
+      "skill_id": "load_population_data",
+      "skill_name": "Load Population Data",
+      "node_type": "base",
+      "keywords": [
+        "Load",
+        "Data",
+        "Population",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [],
+        "provides": [
+          "Data:PopulationMetrics",
+          "Data:MetricID",
+          "Data:Business",
+          "Data:Country",
+          "Data:Division",
+          "Data:SubDivision",
+          "Data:Q2Metric",
+          "Data:Q3Metric",
+          "Data:Variance",
+          "Data:SampleFlag"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Load the {file_name} spreadsheet containing {metric_type} for {periods}.",
+          "Export the loaded data to {output_file}."
+        ],
+        "deliverables": [
+          "population_metrics_loaded.xlsx"
+        ]
+      },
+      "data_params": {
+        "file_name": "population.xlsx",
+        "metric_type": "Anti-Financial Crime Risk Metrics",
+        "periods": "Q2 and Q3 2024",
+        "output_file": "population_metrics_loaded.xlsx",
+        "suggested_row_counts": {
+          "population.xlsx": 500
+        },
+        "schemas": {
+          "population.xlsx": [
+            {
+              "name": "Entity",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "CB Cash Italy",
+                  "CB Correspondent Banking Greece",
+                  "IB Debt Markets Luxembourg",
+                  "CB Trade Finance Brazil",
+                  "PB EMEA UAE"
+                ]
+              }
+            },
+            {
+              "name": "Metric_ID",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "A1",
+                  "C1"
+                ]
+              }
+            },
+            {
+              "name": "Business",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Trade Finance",
+                  "Correspondent Banking"
+                ]
+              }
+            },
+            {
+              "name": "Country",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Cayman Islands",
+                  "Pakistan",
+                  "UAE"
+                ]
+              }
+            },
+            {
+              "name": "Division",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Div_A",
+                  "Div_B"
+                ]
+              }
+            },
+            {
+              "name": "Sub_Division",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "Sub_A1",
+                  "Sub_B1"
+                ]
+              }
+            },
+            {
+              "name": "Q2_Metric",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 1000
+              }
+            },
+            {
+              "name": "Q3_Metric",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 1000
+              }
+            },
+            {
+              "name": "Variance",
+              "generator_type": "uniform",
+              "kwargs": {
+                "min": 0,
+                "max": 50
+              }
+            },
+            {
+              "name": "Sample_Flag",
+              "generator_type": "categorical",
+              "kwargs": {
+                "categories": [
+                  "0",
+                  "1"
+                ]
+              }
+            }
+          ]
+        },
+        "port_to_column_mapping": {
+          "Data:PopulationMetrics": {
+            "table": "population.xlsx",
+            "column": "Entity"
+          },
+          "Data:MetricID": {
+            "table": "population.xlsx",
+            "column": "Metric_ID"
+          },
+          "Data:Business": {
+            "table": "population.xlsx",
+            "column": "Business"
+          },
+          "Data:Country": {
+            "table": "population.xlsx",
+            "column": "Country"
+          },
+          "Data:Division": {
+            "table": "population.xlsx",
+            "column": "Division"
+          },
+          "Data:SubDivision": {
+            "table": "population.xlsx",
+            "column": "Sub_Division"
+          },
+          "Data:Q2Metric": {
+            "table": "population.xlsx",
+            "column": "Q2_Metric"
+          },
+          "Data:Q3Metric": {
+            "table": "population.xlsx",
+            "column": "Q3_Metric"
+          },
+          "Data:Variance": {
+            "table": "population.xlsx",
+            "column": "Variance"
+          },
+          "Data:SampleFlag": {
+            "table": "population.xlsx",
+            "column": "Sample_Flag"
+          }
+        }
+      }
+    },
+    {
+      "skill_id": "identify_missing_metrics",
+      "skill_name": "Identify Missing Metrics",
+      "node_type": "trap",
+      "keywords": [
+        "Identify",
+        "Missing",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [
+          "Data:PopulationMetrics"
+        ],
+        "provides": [
+          "Data:MissingMetricsIdentified"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Identify missing financial metrics in columns {q2_col} and {q3_col}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric"
+      }
+    },
+    {
+      "skill_id": "impute_missing_metrics",
+      "skill_name": "Impute Missing Metrics",
+      "node_type": "mutate",
+      "keywords": [
+        "Replace",
+        "Impute",
+        "Missing",
+        "Values"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MissingMetricsIdentified"
+        ],
+        "provides": [
+          "Data:ImputedMetrics"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Replace all identified missing values in columns {q2_col} and {q3_col} with {impute_value}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "impute_value": 0
+      }
+    },
+    {
+      "skill_id": "calculate_variance",
+      "skill_name": "Calculate Variance",
+      "node_type": "mutate",
+      "keywords": [
+        "Calculate",
+        "Variance",
+        "Quarter-on-Quarter"
+      ],
+      "ports": {
+        "requires": [
+          "Data:ImputedMetrics"
+        ],
+        "provides": [
+          "Data:MetricsWithVariance"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Calculate the quarter-on-quarter variance between {q2_col} and {q3_col} and record the results in {variance_col}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "variance_col": "Variance"
+      }
+    },
+    {
+      "skill_id": "calculate_sample_size",
+      "skill_name": "Calculate Sample Size",
+      "node_type": "mutate",
+      "keywords": [
+        "Calculate",
+        "Sample",
+        "Size",
+        "Audit"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricsWithVariance"
+        ],
+        "provides": [
+          "Metric:SampleSize"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Calculate the required audit sample size using a {confidence_level} confidence level and a {tolerable_error} tolerable error rate."
+        ]
+      },
+      "data_params": {
+        "confidence_level": "90%",
+        "tolerable_error": "10%"
+      }
+    },
+    {
+      "skill_id": "filter_variance",
+      "skill_name": "Filter Variance",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Variance",
+        "Threshold"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricsWithVariance"
+        ],
+        "provides": [
+          "Data:VarianceFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows where variance in {variance_col} is greater than {variance_threshold}."
+        ]
+      },
+      "data_params": {
+        "variance_col": "Variance",
+        "variance_threshold": "20%"
+      }
+    },
+    {
+      "skill_id": "filter_entities",
+      "skill_name": "Filter Entities",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Entities"
+      ],
+      "ports": {
+        "requires": [
+          "Data:VarianceFiltered"
+        ],
+        "provides": [
+          "Data:EntityFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for entities: {target_entities}."
+        ]
+      },
+      "data_params": {
+        "target_entities": [
+          "CB Cash Italy",
+          "CB Correspondent Banking Greece",
+          "IB Debt Markets Luxembourg",
+          "CB Trade Finance Brazil",
+          "PB EMEA UAE"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_metrics",
+      "skill_name": "Filter Metrics",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Metrics"
+      ],
+      "ports": {
+        "requires": [
+          "Data:EntityFiltered"
+        ],
+        "provides": [
+          "Data:MetricFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for metrics {target_metrics}."
+        ]
+      },
+      "data_params": {
+        "target_metrics": [
+          "A1",
+          "C1"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_zero_values",
+      "skill_name": "Filter Zero Values",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Zero",
+        "Values"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MetricFiltered"
+        ],
+        "provides": [
+          "Data:ZeroValueFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows where values in both {q2_col} and {q3_col} are {target_value}."
+        ]
+      },
+      "data_params": {
+        "q2_col": "Q2_Metric",
+        "q3_col": "Q3_Metric",
+        "target_value": 0
+      }
+    },
+    {
+      "skill_id": "filter_businesses",
+      "skill_name": "Filter Businesses",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Businesses"
+      ],
+      "ports": {
+        "requires": [
+          "Data:ZeroValueFiltered"
+        ],
+        "provides": [
+          "Data:BusinessFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows belonging to {target_businesses} businesses."
+        ]
+      },
+      "data_params": {
+        "target_businesses": [
+          "Trade Finance",
+          "Correspondent Banking"
+        ]
+      }
+    },
+    {
+      "skill_id": "filter_countries",
+      "skill_name": "Filter Countries",
+      "node_type": "mutate",
+      "keywords": [
+        "Filter",
+        "Countries"
+      ],
+      "ports": {
+        "requires": [
+          "Data:BusinessFiltered"
+        ],
+        "provides": [
+          "Data:CountryFiltered"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Filter rows for countries: {target_countries}."
+        ]
+      },
+      "data_params": {
+        "target_countries": [
+          "Cayman Islands",
+          "Pakistan",
+          "UAE"
+        ]
+      }
+    },
+    {
+      "skill_id": "stratified_sampling",
+      "skill_name": "Stratified Sampling",
+      "node_type": "mutate",
+      "keywords": [
+        "Select",
+        "Subset",
+        "Coverage",
+        "Divisions"
+      ],
+      "ports": {
+        "requires": [
+          "Data:CountryFiltered",
+          "Metric:SampleSize"
+        ],
+        "provides": [
+          "Data:StratifiedSample"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Select a subset of rows from the filtered criteria to ensure coverage across all {division_col} and {sub_division_col}."
+        ]
+      },
+      "data_params": {
+        "division_col": "Division",
+        "sub_division_col": "Sub_Division"
+      }
+    },
+    {
+      "skill_id": "mark_sample",
+      "skill_name": "Mark Sample",
+      "node_type": "mutate",
+      "keywords": [
+        "Mark",
+        "Sample",
+        "Rows"
+      ],
+      "ports": {
+        "requires": [
+          "Data:StratifiedSample"
+        ],
+        "provides": [
+          "Data:MarkedSample"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Mark the final selected sample rows in {marker_col} with the value {marker_value}."
+        ]
+      },
+      "data_params": {
+        "marker_col": "Sample_Flag",
+        "marker_value": "1"
+      }
+    },
+    {
+      "skill_id": "export_sample",
+      "skill_name": "Export Sample",
+      "node_type": "export",
+      "keywords": [
+        "Save",
+        "Export",
+        "Spreadsheet"
+      ],
+      "ports": {
+        "requires": [
+          "Data:MarkedSample",
+          "Metric:SampleSize"
+        ],
+        "provides": [
+          "Deliverable:SampleSpreadsheet"
+        ]
+      },
+      "semantics": {
+        "intents": [
+          "Save the processed data into a new spreadsheet titled {output_file}, with {tab_1_name} containing the selected sample rows and {tab_2_name} containing the sample size calculation workings."
+        ],
+        "deliverables": [
+          "sample.xlsx"
+        ]
+      },
+      "data_params": {
+        "output_file": "sample.xlsx",
+        "tab_1_name": "Sample Rows",
+        "tab_2_name": "Calculations"
+      }
+    }
+  ]
+}
+2026-05-25 21:30:24,289 - 【Judge 判决结果】: Pass=True
+【Judge 反馈】: All rules met
+2026-05-25 21:30:24,289 - === 任务成功结束 ===

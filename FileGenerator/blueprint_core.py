@@ -22,21 +22,50 @@ class ProceduralGenerator(DataGenerator):
         self.method = method
         self.kwargs = kwargs
 
-    def generate(self, num_rows: int, vfs: 'VirtualFileSystem' = None) -> list:
-        if self.method == "normal":
-            return np.round(np.random.normal(self.kwargs.get('mean', 0), self.kwargs.get('std', 1), num_rows),
-                            2).tolist()
-        elif self.method == "uniform":
-            _min = self.kwargs.get('min', 0.0)
-            _max = self.kwargs.get('max', 100.0)
-            return np.round(np.random.uniform(_min, _max, num_rows), 2).tolist()
-        elif self.method == "categorical":
-            return np.random.choice(self.kwargs.get('categories', []), num_rows).tolist()
-        elif self.method == "constant":
-            return [self.kwargs.get('value')] * num_rows
-        elif self.method == "constant_list":
-            vals = self.kwargs.get('values', [])
-            return (vals * (num_rows // len(vals) + 1))[:num_rows]
+    def generate(self, num_rows, vfs=None):
+        import numpy as np
+
+        # 将 LLM 可能生成的五花八门的名称统一转小写，方便做同义词匹配
+        method = self.method.lower()
+
+        # 1. 兼容随机浮点数 (uniform / random_float / float)
+        if method in ['uniform', 'random_float', 'float']:
+            min_val = self.kwargs.get('min', 0.0)
+            max_val = self.kwargs.get('max', 1000.0)
+            return np.random.uniform(min_val, max_val, num_rows)
+
+        # 2. 兼容分类变量
+        elif method in ['categorical', 'category', 'random_category', 'constant_list','choice', 'random_choice', 'list']:
+            categories = (
+                    self.kwargs.get('categories') or
+                    self.kwargs.get('choices') or
+                    self.kwargs.get('options') or
+                    self.kwargs.get('values') or
+                    self.kwargs.get('list') or
+                    ['Default']
+            )
+            # 确保哪怕拿到的是空列表，也有兜底
+            if not categories:
+                categories = ['Default']
+            return np.random.choice(categories, num_rows)
+
+        # 3. 兼容正态分布
+        elif method in ['normal', 'gaussian']:
+            mean = self.kwargs.get('mean', 0.0)
+            std = self.kwargs.get('std', 1.0)
+            return np.random.normal(mean, std, num_rows)
+
+        # 4. 兼容随机整数
+        elif method in ['integer', 'randint', 'random_int']:
+            min_val = self.kwargs.get('min', 0)
+            max_val = self.kwargs.get('max', 100)
+            return np.random.randint(min_val, max_val, num_rows)
+
+        # 5. 兼容 ID 生成器
+        elif method in ['id', 'uuid', 'index']:
+            return [f"ID_{i:05d}" for i in range(1, num_rows + 1)]
+
+        # 6. 如果真遇到了完全没见过的名字，再报错
         else:
             raise ValueError(f"致命错误：VFS 引擎不支持数据生成器类型 '{self.method}'！请使用 uniform, normal, categorical 等标准类型。")
 

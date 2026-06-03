@@ -188,8 +188,8 @@ class TaskGenerationPipeline:
 if __name__ == "__main__":
     custom_config = TaskConfig(
         task_id_prefix="TASK_NEW",
-        task_output_dir="test_outputs/Task_NEW",
-        base_skill_id="base_pnl_01",
+        task_output_dir="test_outputs/Task_NEW_5",
+        base_skill_id="load_financial_data",
         global_skill_ids=["global_req_01"],
         rubric_default_score=3,
         sector="Financial Audit"
