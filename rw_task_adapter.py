@@ -84,12 +84,101 @@ class RwTaskCaseExporter:
         golden_targets = grading_anchors.get("golden_targets") or {}
         intermediate_targets = grading_anchors.get("intermediate_targets") or {}
         summary = ((golden_targets.get("final_pnl_totals") or {}).get("expected_value") or {})
+        workbook_structure = golden_targets.get("workbook_structure") or {}
+        revenue_line_items = (golden_targets.get("revenue_line_items") or {}).get("expected_value") or []
+        withholding_by_country = (golden_targets.get("withholding_by_country") or {}).get("expected_value") or []
+        expense_category_totals = (golden_targets.get("expense_category_totals") or {}).get("expected_value") or []
 
         if not summary:
             return json.loads(dataset_shell.rubric_json)
 
         rubric_items: List[Dict[str, object]] = []
         row_id = 1
+
+        expected_files = (golden_targets.get("deliverable_presence") or {}).get("expected_files") or []
+        if expected_files:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    f"The final deliverable is provided as an Excel workbook whose basename is `{Path(expected_files[0]).stem}`.",
+                    ["compliance"],
+                )
+            )
+            row_id += 1
+
+        if workbook_structure:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    f"The workbook header clearly includes `{workbook_structure['expected_header_text']}`.",
+                    ["compliance", "structure"],
+                )
+            )
+            row_id += 1
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    "Revenue and expenses are shown with separate columns for `Tour Manager`, `Production Company`, and `Total`.",
+                    ["compliance", "structure"],
+                )
+            )
+            row_id += 1
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    "The workbook includes clearly labeled sections or rows for `Gross Revenue`, `Withholding Tax`, `Total Costs`, and `Net Income`.",
+                    ["compliance", "structure"],
+                )
+            )
+            row_id += 1
+
+        if revenue_line_items:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    "The revenue table lists `City` and `Country` for each tour stop with no duplicate show rows.",
+                    ["outcome", "structure"],
+                )
+            )
+            row_id += 1
+
+        for line_item in revenue_line_items:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    f"Revenue includes `{line_item['line_type']}`, `{line_item['city']}` ({line_item['country']}), with gross revenue equal to {self._fmt_money(line_item['gross_revenue_usd'])} USD.",
+                    ["outcome", "line_item"],
+                )
+            )
+            row_id += 1
+
+        for country_total in withholding_by_country:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    1,
+                    f"Total withholding attributed to `{country_total['country']}` equals {self._fmt_money(country_total['withholding_tax_usd'])} USD.",
+                    ["outcome", "line_item"],
+                )
+            )
+            row_id += 1
+
+        for expense_total in expense_category_totals:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    1,
+                    f"The expenses section includes the category `{expense_total['cost_category']}` with a total of {self._fmt_money(expense_total['amount_usd'])} USD.",
+                    ["outcome", "line_item"],
+                )
+            )
+            row_id += 1
 
         for source_row in summary.get("by_source", []):
             source_name = source_row["source_name"]
@@ -145,6 +234,16 @@ class RwTaskCaseExporter:
             )
             row_id += 4
 
+        rubric_items.append(
+            self._make_rubric_item(
+                row_id,
+                1,
+                "The workbook contains no visible spreadsheet calculation errors such as `#DIV/0!`, `#VALUE!`, or `#REF!`.",
+                ["compliance", "robustness"],
+            )
+        )
+        row_id += 1
+
         if "currency_resolution_mapping" in intermediate_targets.get("required_states", []):
             rubric_items.append(
                 self._make_rubric_item(
@@ -178,16 +277,6 @@ class RwTaskCaseExporter:
                 )
             )
             row_id += 1
-
-        rubric_items.append(
-            self._make_rubric_item(
-                row_id,
-                2,
-                "Required deliverables exist with the requested filenames and appear professionally structured for business review.",
-                ["compliance"],
-            )
-        )
-        row_id += 1
 
         for projected_check in annotation.rubric_projection.reasoning_checks:
             rubric_items.append(
@@ -237,6 +326,9 @@ class RwTaskCaseExporter:
         for item in rubric_items:
             lines.append(f"- [+{item['score']}] {item['criterion']}")
         return "\n".join(lines)
+
+    def _fmt_money(self, value: float) -> str:
+        return f"{float(value):,.2f}"
 
     def _infer_motif(self, annotation: TrainingAnnotation) -> str:
         primary = set(annotation.capability_profile.primary_capabilities)

@@ -101,7 +101,8 @@ Example:
 Current finance prototype direction:
 
 - template family: `financial_workbook_rollforward`
-- style: GDPVal-like workbook completion
+- style: GDPVal-like free deliverable generation from realistic evidence files
+- not output-template completion by default
 - not raw multi-ledger reconstruction from scratch
 
 Example:
@@ -294,14 +295,64 @@ The current prototype intentionally moved closer to GDPVal finance tasks:
 - one structured reference workbook for tour manager data and tax assumptions
 - one structured workbook for production-company costs
 - one final workbook deliverable
-- workbook-completion framing instead of free-form reporting plus PDF summary
+- free workbook generation framing instead of free-form reporting plus PDF summary
 
 This is preferable for training because:
 
 - the business task is easier to understand from the prompt
 - the file structure is more realistic and more reusable
-- the final deliverable is easier to validate
+- the final deliverable stays open-ended in the same way as GDPVal finance tasks
 - supervision can focus on workbook totals and key reasoning steps
+
+## GDPVal Findings
+
+We verified the current understanding against the original HuggingFace dataset `openai/gdpval`, not only local cached workspace files.
+
+Current evidence summary:
+
+- GDPVal has 220 rows in total
+- many tasks have `0` reference files, so GDPVal does not assume an input-file-first workflow
+- many tasks have exactly `1` deliverable file, but multi-deliverable tasks also exist
+- deliverables span multiple file types including `.xlsx`, `.pdf`, `.docx`, and `.pptx`
+- there are `0` rows where reference and deliverable filenames overlap exactly, which supports the interpretation that outputs are generally newly created artifacts rather than in-place completions
+
+For `Accountants and Auditors` samples specifically:
+
+- there are 5 tasks
+- deliverables are mostly `.xlsx`, with one case that also includes `.pdf`
+- at least two prompts explicitly say things like `Create a new Excel document` or `Create a new spreadsheet`
+- the finance-tour GDPVal sample (`7b08cd4d-df60-41ae-9102-8aaa49306ba2`) explicitly asks the model to create a new Excel document named `Fall Music Tour Output.xlsx`
+
+Implication for V2:
+
+- the core target is not "output template completion"
+- the core target is "given realistic evidence files and a realistic business request, generate a new professional deliverable file"
+- validation must therefore tolerate layout variation while still checking business-critical outcomes
+- GDPVal-style supervision is often highly structural and numeric at the same time: file type, worksheet presence, headers, key rows, exact totals, and absence of spreadsheet errors can all appear in the same rubric
+
+Local analysis artifact:
+
+- `Test/v2_outputs/gdpval_analysis/summary.json`
+- `Test/v2_outputs/gdpval_analysis/summary.md`
+
+## Current Progress
+
+The V2 finance prototype has already completed these steps:
+
+1. replaced old operator-heavy task design with semantic-skill-driven assembly
+2. implemented `TaskBlueprint`, `TrainingAnnotation`, and `GoldenRun` based generation flow
+3. built a finance/audit prototype centered on the Fall Music Tour scenario
+4. exported the prototype into rw-task-compatible case format
+5. added static quality scoring for generated finance tasks
+6. validated the crucial GDPVal-style assumption that deliverables can be newly generated files rather than template completions
+7. upgraded the finance prototype supervision from aggregate totals to GDPVal-style mixed checks over workbook structure, line items, grouped subtotals, overall totals, and spreadsheet-error absence
+
+Current prototype status:
+
+- input side: closer to GDPVal than before
+- output side: conceptually aligned with GDPVal free-generation behavior
+- supervision side: materially closer to GDPVal, though still missing executable cell-level verification
+- evaluation side: partly operational, with some model/provider instability still unresolved
 
 ## Generation Workflow
 
@@ -318,10 +369,21 @@ The V2 generation flow is:
 
 The next major improvements are:
 
-- add an explicit output-workbook skeleton so the task is even closer to GDPVal
 - make rubric generation line-item-aware rather than generic source-metric-aware
+- add checks for structural workbook properties such as sheet names, required headers, and spreadsheet-error absence
+- make free-generation deliverables easier to verify without assuming a fixed workbook layout
 - use stronger models for assembly and validation while keeping teacher artifacts deterministic
 - compare generated tasks with GDPVal samples using the rw-task evaluation stack
+
+## Near-Term Plan
+
+The next execution plan is:
+
+1. analyze more GDPVal finance/accounting prompts and rubrics to extract recurring supervision patterns
+2. push the current finance rubric from text-level fine-grained checks toward more executable verification logic where possible
+3. generate several finance-task variants under the same semantic family to test whether the architecture scales beyond one prototype
+4. run another round of rw-task evaluation on the improved cases using models that are actually stable in the current provider environment
+5. only after the above, decide whether stronger LLM involvement is needed in task assembly
 
 ## Summary
 

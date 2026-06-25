@@ -9,7 +9,7 @@ from v2_schema import GoldenRun, TaskBlueprint, TrainingAnnotation
 
 
 COUNTRY_CURRENCY = {
-    "United Kingdom": "GBP",
+    "UK": "GBP",
     "France": "EUR",
     "Germany": "EUR",
     "Spain": "EUR",
@@ -23,7 +23,7 @@ FX_TO_USD = {
 }
 
 DEFAULT_TAX_RATES = {
-    "United Kingdom": 0.20,
+    "UK": 0.20,
     "France": 0.15,
     "Germany": 0.15825,
     "Spain": 0.24,
@@ -51,11 +51,20 @@ class FinanceAuditGoldenRunExecutor:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        tour_df = pd.read_excel(reference_path / "tour_manager_data.xlsx", sheet_name="Transactions")
-        ledger_df = pd.read_excel(reference_path / "production_ledger.xlsx", sheet_name="Ledger")
-        tax_df = pd.read_excel(reference_path / "tax_rates.xlsx", sheet_name="Rates")
+        tour_df = pd.read_excel(
+            reference_path / "fall_music_tour_ref_file.xlsx",
+            sheet_name="Inc_Costs_Tracked_by_Tour_Mgr",
+        )
+        tax_df = pd.read_excel(
+            reference_path / "fall_music_tour_ref_file.xlsx",
+            sheet_name="Assump_Withholding_Tax",
+        )
+        prod_df = pd.read_excel(
+            reference_path / "production_company_costs.xlsx",
+            sheet_name="Costs_Tracked_by_Production_Co",
+        )
 
-        normalized_tour_df, currency_mapping = self._normalize_tour_transactions(tour_df)
+        normalized_tour_df, currency_mapping = self._normalize_tour_rows(tour_df)
         resolved_tax_df, tax_resolution = self._resolve_tax_rates(tax_df)
 
         tax_lookup = resolved_tax_df.set_index("Country")["Resolved_Withholding_Tax_Rate"].to_dict()
@@ -63,15 +72,16 @@ class FinanceAuditGoldenRunExecutor:
         normalized_tour_df["Withholding_Tax_USD"] = (
             normalized_tour_df["Gross_Revenue_USD"] * normalized_tour_df["Resolved_Tax_Rate"]
         ).round(2)
-        normalized_tour_df["Net_Income_USD"] = (
-            normalized_tour_df["Gross_Revenue_USD"]
-            - normalized_tour_df["Expense_Amount_USD"]
-            - normalized_tour_df["Withholding_Tax_USD"]
+        normalized_tour_df["Net_Revenue_USD"] = (
+            normalized_tour_df["Gross_Revenue_USD"] - normalized_tour_df["Withholding_Tax_USD"]
         ).round(2)
 
-        normalized_ledger_df = self._normalize_ledger(ledger_df)
-        source_summary = self._build_source_summary(normalized_tour_df, normalized_ledger_df)
-        expense_bucket_mapping = self._build_expense_bucket_mapping(normalized_ledger_df)
+        normalized_prod_df = self._normalize_production_costs(prod_df)
+        expense_bucket_mapping = self._build_expense_bucket_mapping(normalized_prod_df)
+        source_summary = self._build_source_summary(normalized_tour_df, normalized_prod_df)
+        revenue_line_items = self._build_revenue_line_items(normalized_tour_df)
+        withholding_by_country = self._build_withholding_by_country(normalized_tour_df)
+        expense_category_totals = self._build_expense_category_totals(normalized_prod_df)
 
         intermediate_values = {
             "currency_resolution_mapping": currency_mapping,
@@ -80,7 +90,7 @@ class FinanceAuditGoldenRunExecutor:
             "source_level_net_revenue": [
                 {
                     "source_name": row["source_name"],
-                    "net_revenue_usd": round(row["revenue_usd"] - row["tax_usd"], 2),
+                    "net_revenue_usd": row["net_revenue_usd"],
                 }
                 for row in source_summary["by_source"]
             ],
@@ -93,35 +103,39 @@ class FinanceAuditGoldenRunExecutor:
             ],
             "net_income_totals": source_summary["overall_totals"],
             "source_level_pnl_summary": source_summary,
-            "tour_manager_row_metrics_sample": normalized_tour_df.head(10).to_dict(orient="records"),
+            "revenue_line_items": revenue_line_items,
+            "withholding_by_country": withholding_by_country,
+            "expense_category_totals": expense_category_totals,
         }
         grading_anchors = self._build_grading_anchors(
             blueprint=blueprint,
             annotation=annotation,
             source_summary=source_summary,
             tax_resolution=tax_resolution,
+            revenue_line_items=revenue_line_items,
+            withholding_by_country=withholding_by_country,
+            expense_category_totals=expense_category_totals,
         )
         run_log = {
             "golden_run_id": golden_run.golden_run_id,
             "blueprint_id": blueprint.blueprint_id,
             "reference_files_read": [
-                "tour_manager_data.xlsx",
-                "production_ledger.xlsx",
-                "tax_rates.xlsx",
+                "fall_music_tour_ref_file.xlsx",
+                "production_company_costs.xlsx",
             ],
             "assumptions": [
-                "GBP rows are converted to USD using 1.27.",
-                "EUR rows are converted to USD using 1.09.",
-                "Missing country tax rates are restored from the canonical teacher reference table.",
+                "UK rows are converted to USD using 1.27.",
+                "France, Germany, Spain, and Netherlands rows are converted to USD using 1.09.",
+                "Missing withholding tax assumptions are restored from the canonical teacher tax table.",
             ],
             "trap_handling": [
                 {
                     "trap_type": "implicit_currency",
-                    "resolution": "Country-aware locale parsing and FX normalization applied before aggregation.",
+                    "resolution": "Jurisdiction-aware numeric parsing is applied before final workbook totals are computed.",
                 },
                 {
                     "trap_type": "reference_omission",
-                    "resolution": "Missing tax rates restored explicitly and logged in tax_rate_resolution.",
+                    "resolution": "Missing withholding tax assumptions are restored explicitly before tax-adjusted totals are produced.",
                 },
             ],
             "generated_teacher_artifacts": golden_run.expected_outputs.teacher_artifacts,
@@ -137,23 +151,16 @@ class FinanceAuditGoldenRunExecutor:
             run_log=run_log,
         )
 
-    def _normalize_tour_transactions(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
+    def _normalize_tour_rows(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
         normalized = df.copy()
         normalized["Gross_Revenue_Local"] = normalized.apply(
             lambda row: self._parse_localized_amount(row["Gross_Revenue"], row["Country"]),
-            axis=1,
-        )
-        normalized["Expense_Amount_Local"] = normalized.apply(
-            lambda row: self._parse_localized_amount(row["Expense_Amount"], row["Country"]),
             axis=1,
         )
         normalized["Currency_Code"] = normalized["Country"].map(COUNTRY_CURRENCY)
         normalized["FX_To_USD"] = normalized["Currency_Code"].map(FX_TO_USD)
         normalized["Gross_Revenue_USD"] = (
             normalized["Gross_Revenue_Local"] * normalized["FX_To_USD"]
-        ).round(2)
-        normalized["Expense_Amount_USD"] = (
-            normalized["Expense_Amount_Local"] * normalized["FX_To_USD"]
         ).round(2)
 
         mapping = (
@@ -166,18 +173,19 @@ class FinanceAuditGoldenRunExecutor:
 
     def _resolve_tax_rates(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
         resolved = df.copy()
-        resolution_notes: List[Dict[str, object]] = []
         resolved["Resolved_Withholding_Tax_Rate"] = resolved["Withholding_Tax_Rate"]
+        resolution_notes: List[Dict[str, object]] = []
 
         for idx, row in resolved.iterrows():
+            country = row["Country"]
+            if pd.isna(country) or str(country).strip() == "" or str(country).strip() == "Notes":
+                continue
             if pd.isna(row["Resolved_Withholding_Tax_Rate"]):
-                country = row["Country"]
-                restored = DEFAULT_TAX_RATES[country]
+                restored = DEFAULT_TAX_RATES[str(country)]
                 resolved.loc[idx, "Resolved_Withholding_Tax_Rate"] = restored
                 resolution_notes.append(
                     {
-                        "country": country,
-                        "city": row["City"],
+                        "country": str(country),
                         "original_rate": None,
                         "resolved_rate": restored,
                         "resolution_basis": "teacher_default_country_tax_table",
@@ -186,59 +194,96 @@ class FinanceAuditGoldenRunExecutor:
 
         return resolved, resolution_notes
 
-    def _normalize_ledger(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _normalize_production_costs(self, df: pd.DataFrame) -> pd.DataFrame:
         normalized = df.copy()
-        normalized["Debit_Amount"] = pd.to_numeric(normalized["Debit_Amount"], errors="coerce").fillna(0.0)
-        normalized["Credit_Amount"] = pd.to_numeric(normalized["Credit_Amount"], errors="coerce").fillna(0.0)
-        normalized["Expense_USD"] = normalized["Debit_Amount"].round(2)
-        normalized["Revenue_USD"] = normalized["Credit_Amount"].round(2)
-        normalized["Net_Income_USD"] = (
-            normalized["Revenue_USD"] - normalized["Expense_USD"]
-        ).round(2)
+        normalized["Amount_USD"] = pd.to_numeric(normalized["Amount_USD"], errors="coerce").fillna(0.0)
         return normalized
 
-    def _build_expense_bucket_mapping(self, ledger_df: pd.DataFrame) -> List[Dict[str, str]]:
-        bucket_by_account = {
-            "Band and Crew Expense": "personnel",
-            "Hotel and Restaurant Expense": "lodging_and_meals",
-            "Travel Expense": "travel",
-            "Production Services": "production_ops",
-            "Tour Revenue": "revenue",
-        }
+    def _build_expense_bucket_mapping(self, prod_df: pd.DataFrame) -> List[Dict[str, str]]:
         mappings = []
-        for account_name in sorted(ledger_df["Account_Name"].dropna().astype(str).unique().tolist()):
+        for category in sorted(prod_df["Cost_Category"].dropna().astype(str).unique().tolist()):
             mappings.append(
                 {
-                    "account_name": account_name,
-                    "mapped_bucket": bucket_by_account.get(account_name, "other"),
+                    "account_name": category,
+                    "mapped_bucket": category.lower().replace(" & ", "_").replace(" ", "_"),
                 }
             )
         return mappings
 
-    def _build_source_summary(self, tour_df: pd.DataFrame, ledger_df: pd.DataFrame) -> Dict[str, object]:
+    def _build_source_summary(self, tour_df: pd.DataFrame, prod_df: pd.DataFrame) -> Dict[str, object]:
+        production_cost_total = round(float(prod_df["Amount_USD"].sum()), 2)
+        gross_revenue_total = round(float(tour_df["Gross_Revenue_USD"].sum()), 2)
+        tax_total = round(float(tour_df["Withholding_Tax_USD"].sum()), 2)
+        net_revenue_total = round(float(tour_df["Net_Revenue_USD"].sum()), 2)
+
         summary_rows = [
             {
                 "source_name": "Tour Manager",
-                "revenue_usd": round(float(tour_df["Gross_Revenue_USD"].sum()), 2),
-                "expense_usd": round(float(tour_df["Expense_Amount_USD"].sum()), 2),
-                "tax_usd": round(float(tour_df["Withholding_Tax_USD"].sum()), 2),
-                "net_income_usd": round(float(tour_df["Net_Income_USD"].sum()), 2),
+                "revenue_usd": gross_revenue_total,
+                "expense_usd": 0.0,
+                "tax_usd": tax_total,
+                "net_revenue_usd": net_revenue_total,
+                "net_income_usd": net_revenue_total,
             },
             {
                 "source_name": "Production Company",
-                "revenue_usd": round(float(ledger_df["Revenue_USD"].sum()), 2),
-                "expense_usd": round(float(ledger_df["Expense_USD"].sum()), 2),
+                "revenue_usd": 0.0,
+                "expense_usd": production_cost_total,
                 "tax_usd": 0.0,
-                "net_income_usd": round(float(ledger_df["Net_Income_USD"].sum()), 2),
+                "net_revenue_usd": 0.0,
+                "net_income_usd": -production_cost_total,
             },
         ]
         overall = {
-            "revenue_usd": round(sum(row["revenue_usd"] for row in summary_rows), 2),
-            "expense_usd": round(sum(row["expense_usd"] for row in summary_rows), 2),
-            "tax_usd": round(sum(row["tax_usd"] for row in summary_rows), 2),
-            "net_income_usd": round(sum(row["net_income_usd"] for row in summary_rows), 2),
+            "revenue_usd": gross_revenue_total,
+            "expense_usd": production_cost_total,
+            "tax_usd": tax_total,
+            "net_income_usd": round(net_revenue_total - production_cost_total, 2),
         }
         return {"by_source": summary_rows, "overall_totals": overall}
+
+    def _build_revenue_line_items(self, tour_df: pd.DataFrame) -> List[Dict[str, object]]:
+        line_items = []
+        for _, row in tour_df.iterrows():
+            line_items.append(
+                {
+                    "line_type": str(row["Line_Type"]),
+                    "city": str(row["City"]),
+                    "country": str(row["Country"]),
+                    "gross_revenue_usd": round(float(row["Gross_Revenue_USD"]), 2),
+                    "withholding_tax_usd": round(float(row["Withholding_Tax_USD"]), 2),
+                    "net_revenue_usd": round(float(row["Net_Revenue_USD"]), 2),
+                }
+            )
+        return line_items
+
+    def _build_withholding_by_country(self, tour_df: pd.DataFrame) -> List[Dict[str, object]]:
+        grouped = (
+            tour_df.groupby("Country", as_index=False)["Withholding_Tax_USD"]
+            .sum()
+            .sort_values("Country")
+        )
+        return [
+            {
+                "country": str(row["Country"]),
+                "withholding_tax_usd": round(float(row["Withholding_Tax_USD"]), 2),
+            }
+            for _, row in grouped.iterrows()
+        ]
+
+    def _build_expense_category_totals(self, prod_df: pd.DataFrame) -> List[Dict[str, object]]:
+        grouped = (
+            prod_df.groupby("Cost_Category", as_index=False)["Amount_USD"]
+            .sum()
+            .sort_values("Cost_Category")
+        )
+        return [
+            {
+                "cost_category": str(row["Cost_Category"]),
+                "amount_usd": round(float(row["Amount_USD"]), 2),
+            }
+            for _, row in grouped.iterrows()
+        ]
 
     def _build_grading_anchors(
         self,
@@ -246,6 +291,9 @@ class FinanceAuditGoldenRunExecutor:
         annotation: TrainingAnnotation,
         source_summary: Dict[str, object],
         tax_resolution: List[Dict[str, object]],
+        revenue_line_items: List[Dict[str, object]],
+        withholding_by_country: List[Dict[str, object]],
+        expense_category_totals: List[Dict[str, object]],
     ) -> Dict[str, object]:
         return {
             "blueprint_id": blueprint.blueprint_id,
@@ -258,6 +306,29 @@ class FinanceAuditGoldenRunExecutor:
                 "deliverable_presence": {
                     "target_type": "binary_check",
                     "expected_files": [item.file_name for item in blueprint.deliverable_spec],
+                },
+                "workbook_structure": {
+                    "target_type": "structural_check",
+                    "expected_header_text": "As of 12/31/2024",
+                    "required_source_columns": ["Tour Manager", "Production Company", "Total"],
+                    "required_financial_concepts": [
+                        "Gross Revenue",
+                        "Withholding Tax",
+                        "Total Costs",
+                        "Net Income",
+                    ],
+                },
+                "revenue_line_items": {
+                    "target_type": "line_item_check",
+                    "expected_value": revenue_line_items,
+                },
+                "withholding_by_country": {
+                    "target_type": "group_total_check",
+                    "expected_value": withholding_by_country,
+                },
+                "expense_category_totals": {
+                    "target_type": "group_total_check",
+                    "expected_value": expense_category_totals,
                 },
             },
             "intermediate_targets": {
@@ -277,7 +348,7 @@ class FinanceAuditGoldenRunExecutor:
         if not text:
             return 0.0
 
-        if country == "United Kingdom":
+        if country == "UK":
             text = text.replace(",", "")
             return float(text)
 
