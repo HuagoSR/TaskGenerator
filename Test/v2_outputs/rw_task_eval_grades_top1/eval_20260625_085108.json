@@ -1,0 +1,125 @@
+{
+  "created_at": "2026-06-25T08:51:08.739583+00:00",
+  "model": "gemini-3-pro-preview",
+  "root_searched": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_eval_results_top1",
+  "openai_base_url": "https://api.tu-zi.com/v1",
+  "grading_strictness": "strict",
+  "grading_audit": {
+    "enabled": true,
+    "only_when_strict": true,
+    "apply_when_ratio_gte": 0.88,
+    "max_retries": 2,
+    "on_error": "keep_original"
+  },
+  "samples": [
+    {
+      "sample_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_eval_results_top1\\run_TASK_87D21D91",
+      "dataset_row_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_eval_results_top1\\run_TASK_87D21D91\\dataset_row.json",
+      "task_id": "TASK_87D21D91",
+      "success": true,
+      "expected_max_from_rubric": 45,
+      "grading": {
+        "total_score": 2,
+        "max_possible_score": 45,
+        "per_criterion": [
+          {
+            "criterion": "The submission reports `Tour Manager` revenue in USD consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_001"
+          },
+          {
+            "criterion": "The submission reports `Tour Manager` expenses in USD consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_002"
+          },
+          {
+            "criterion": "The submission reports `Tour Manager` net income consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_003"
+          },
+          {
+            "criterion": "The submission reports `Production Company` revenue in USD consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_004"
+          },
+          {
+            "criterion": "The submission reports `Production Company` expenses in USD consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_005"
+          },
+          {
+            "criterion": "The submission reports `Production Company` net income consistent with the golden run totals.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_006"
+          },
+          {
+            "criterion": "The overall revenue total matches the golden run within normal rounding tolerance.",
+            "max": 4,
+            "awarded": 0,
+            "rubric_item_id": "R_007"
+          },
+          {
+            "criterion": "The overall expense total matches the golden run within normal rounding tolerance.",
+            "max": 4,
+            "awarded": 0,
+            "rubric_item_id": "R_008"
+          },
+          {
+            "criterion": "The overall net income total matches the golden run within normal rounding tolerance.",
+            "max": 4,
+            "awarded": 0,
+            "rubric_item_id": "R_009"
+          },
+          {
+            "criterion": "Rows with implicit local formatting are normalized using jurisdiction-aware currency reasoning instead of being summed as raw strings.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_010"
+          },
+          {
+            "criterion": "Missing withholding-tax reference values are detected and resolved with an explicit, defensible assumption rather than silently ignored.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_011"
+          },
+          {
+            "criterion": "Operating expenses are mapped into a consistent reporting taxonomy before final aggregation.",
+            "max": 3,
+            "awarded": 0,
+            "rubric_item_id": "R_012"
+          },
+          {
+            "criterion": "Required deliverables exist with the requested filenames and appear professionally structured for business review.",
+            "max": 2,
+            "awarded": 2,
+            "rubric_item_id": "R_013"
+          },
+          {
+            "criterion": "The model correctly infers implicit currencies from business context.",
+            "max": 2,
+            "awarded": 0,
+            "rubric_item_id": "R_014"
+          },
+          {
+            "criterion": "The model uses a defensible tax-rate resolution path for incomplete reference data.",
+            "max": 2,
+            "awarded": 0,
+            "rubric_item_id": "R_015"
+          }
+        ],
+        "grading_notes": "The submission fails to infer implicit currencies (EUR, GBP) and assumes all amounts are already in USD. It also fails to parse European number formats (e.g., 9.961,68), resulting in blank values for those rows. The tax rates file is completely ignored rather than resolving the missing values. Operating expenses are not mapped into a consistent taxonomy. Consequently, all numerical totals are incorrect. The deliverables are correctly named and formatted, earning points for compliance.",
+        "audit_trigger_ratio": 0.044444444444444446,
+        "audit_threshold": 0.88,
+        "audit_applied": false,
+        "audit_skipped_reason": "score_ratio_below_threshold"
+      },
+      "error": null
+    }
+  ]
+}
