@@ -1,16 +1,26 @@
-You are supporting a Senior Auditor engagement.
+### Audit Assignment: 2024 Fall Music Tour Reconciliation
 
-Objective: Produce a consolidated cross-source profit and loss report for executive review.
+**Role:** Senior Auditor
 
-Context:
-- The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.
-- Reporting is being completed in January 2025 for an as-of date of December 31, 2024.
+**Engagement Context:**
+The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.
 
-Using the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.
+Management needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.
 
-Deliverables:
+**Objective:**
+Produce a consolidated cross-source profit and loss report for executive review.
+
+**Working Expectations:**
+- Use the attached reference files as the sole working data sources.
+- Report all revenues in USD before presenting source-level or overall totals.
+- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.
+- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.
+
+**Required Deliverables:**
 1. Create an Excel workbook named `profit_and_loss_report.xlsx`.
 2. Include a clear header stating `As of 12/31/2024`.
-3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.
+3. The workbook must present source-level totals and clearly show the resulting net income.
+4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.
 
-Work carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready.
+**Quality Bar:**
+The final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.

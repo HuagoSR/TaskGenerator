@@ -1,5 +1,8 @@
 {
   "task_id": "TASK_4CB3C039",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
   "prompt": "### Audit Assignment: 2024 Fall Music Tour Reconciliation\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nProduce a consolidated cross-source profit and loss report for executive review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.",
   "reference_files": [
     "reference_files/tour_manager_data.xlsx",
@@ -11,7 +14,7 @@
     "deliverable_files/task_summary.pdf"
   ],
   "rubric": "- [+3] Final source-level and overall P&L totals match the golden run.\n- [+3] The model correctly infers implicit currencies from business context.\n- [+3] The model uses a defensible tax-rate resolution path for incomplete reference data.\n- [+3] The missing tax-rate omission does not break downstream calculations.\n- [+2] Required deliverables exist and satisfy naming and format requirements.",
-  "rubric_json": "[{\"rubric_item_id\": \"F_001\", \"score\": 3, \"criterion\": \"Final source-level and overall P&L totals match the golden run.\", \"tags\": [\"outcome\"]}, {\"rubric_item_id\": \"R_002\", \"score\": 3, \"criterion\": \"The model correctly infers implicit currencies from business context.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"R_003\", \"score\": 3, \"criterion\": \"The model uses a defensible tax-rate resolution path for incomplete reference data.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"B_004\", \"score\": 3, \"criterion\": \"The missing tax-rate omission does not break downstream calculations.\", \"tags\": [\"robustness\"]}, {\"rubric_item_id\": \"C_005\", \"score\": 2, \"criterion\": \"Required deliverables exist and satisfy naming and format requirements.\", \"tags\": [\"compliance\"]}]",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"Final source-level and overall P&L totals match the golden run.\", \"required\": true, \"rubric_item_id\": \"F_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The model correctly infers implicit currencies from business context.\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"reasoning\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The model uses a defensible tax-rate resolution path for incomplete reference data.\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"reasoning\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The missing tax-rate omission does not break downstream calculations.\", \"required\": true, \"rubric_item_id\": \"B_004\", \"author_type\": \"model\", \"tags\": [\"robustness\"], \"read_only\": null, \"form_content\": null}, {\"score\": 2, \"criterion\": \"Required deliverables exist and satisfy naming and format requirements.\", \"required\": true, \"rubric_item_id\": \"C_005\", \"author_type\": \"model\", \"tags\": [\"compliance\"], \"read_only\": null, \"form_content\": null}]",
   "extra": {
     "blueprint_id": "bp_financial_audit_4cb3c039",
     "training_annotation_id": "ann_bp_financial_audit_4cb3c039",
@@ -844,6 +847,12 @@
           "golden_run_log.json"
         ]
       }
+    },
+    "rw_task_adapter": {
+      "source": "TaskGenerator V2",
+      "blueprint_id": "bp_financial_audit_4cb3c039",
+      "golden_run_id": "gold_bp_financial_audit_4cb3c039",
+      "training_annotation_id": "ann_bp_financial_audit_4cb3c039"
     }
   }
 }

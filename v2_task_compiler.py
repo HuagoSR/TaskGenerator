@@ -382,19 +382,28 @@ class FinanceAuditTaskCompiler:
         )
 
     def _build_prompt(self, blueprint: TaskBlueprint) -> str:
+        deliverable_names = [item.file_name for item in blueprint.deliverable_spec]
         return (
-            f"You are supporting a {blueprint.task_metadata.occupation} engagement.\n\n"
-            f"Objective: {blueprint.task_metadata.task_goal}\n\n"
-            f"Context:\n"
-            f"- {blueprint.scenario_spec.business_context}\n"
-            f"- {blueprint.scenario_spec.time_context}\n\n"
-            f"Using the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. "
-            f"The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.\n\n"
-            f"Deliverables:\n"
-            f"1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n"
+            f"### Audit Assignment: {blueprint.task_metadata.scenario_title}\n\n"
+            f"**Role:** {blueprint.task_metadata.occupation}\n\n"
+            f"**Engagement Context:**\n"
+            f"{blueprint.scenario_spec.business_context} {blueprint.scenario_spec.time_context}\n\n"
+            f"Management needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. "
+            f"Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n"
+            f"**Objective:**\n"
+            f"{blueprint.task_metadata.task_goal}\n\n"
+            f"**Working Expectations:**\n"
+            f"- Use the attached reference files as the sole working data sources.\n"
+            f"- Report all revenues in USD before presenting source-level or overall totals.\n"
+            f"- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n"
+            f"- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n"
+            f"**Required Deliverables:**\n"
+            f"1. Create an Excel workbook named `{deliverable_names[0]}`.\n"
             f"2. Include a clear header stating `As of 12/31/2024`.\n"
-            f"3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.\n\n"
-            f"Work carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready."
+            f"3. The workbook must present source-level totals and clearly show the resulting net income.\n"
+            f"4. Prepare a PDF summary named `{deliverable_names[1]}` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n"
+            f"**Quality Bar:**\n"
+            f"The final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready."
         )
 
     def _build_golden_run(self, blueprint: TaskBlueprint, candidate_prompt: str) -> GoldenRun:

@@ -1,6 +1,6 @@
 {
-  "annotation_id": "ann_bp_financial_audit_29592389",
-  "blueprint_id": "bp_financial_audit_29592389",
+  "annotation_id": "ann_bp_financial_audit_4cb3c039",
+  "blueprint_id": "bp_financial_audit_4cb3c039",
   "capability_profile": {
     "primary_capabilities": [
       "multi_source_ingestion",

@@ -6,11 +6,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from FileGenerator.v2_blueprint_generator import V2BlueprintFileGenerator
+from rw_task_adapter import RwTaskCaseExporter
 from v2_golden_run import FinanceAuditGoldenRunExecutor
 from v2_task_compiler import FinanceAuditTaskCompiler
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "v2_outputs" / "finance_prototype_01"
+RW_TASK_BATCH_DIR = Path(__file__).resolve().parent / "v2_outputs" / "rw_task_batch_finance_prototype"
 
 
 def main() -> None:
@@ -34,6 +36,7 @@ def main() -> None:
     prompt = compiled["prompt"]
     file_generator = V2BlueprintFileGenerator(seed=42)
     golden_executor = FinanceAuditGoldenRunExecutor()
+    rw_task_exporter = RwTaskCaseExporter()
 
     reference_dir = OUTPUT_DIR / "reference_files"
     ground_truth = file_generator.generate_reference_files(blueprint, reference_dir)
@@ -51,6 +54,14 @@ def main() -> None:
         "grading_anchors": golden_artifacts.grading_anchors,
         "run_log": golden_artifacts.run_log,
     }
+    rw_task_case_dir = rw_task_exporter.export_case(
+        dataset_shell=dataset_shell,
+        blueprint=blueprint,
+        annotation=annotation,
+        golden_run=golden_run,
+        reference_dir=reference_dir,
+        output_case_dir=RW_TASK_BATCH_DIR / dataset_shell.task_id,
+    )
 
     (OUTPUT_DIR / "task_blueprint.json").write_text(
         blueprint.model_dump_json(indent=2),
@@ -70,8 +81,10 @@ def main() -> None:
         golden_run.model_dump_json(indent=2),
         encoding="utf-8",
     )
+    (OUTPUT_DIR / "rw_task_case_path.txt").write_text(str(rw_task_case_dir), encoding="utf-8")
 
     print(f"Wrote V2 prototype artifacts to {OUTPUT_DIR}")
+    print(f"Exported rw-task case to {rw_task_case_dir}")
 
 
 if __name__ == "__main__":

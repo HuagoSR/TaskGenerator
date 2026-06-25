@@ -1,6 +1,6 @@
 {
-  "golden_run_id": "gold_bp_financial_audit_29592389",
-  "blueprint_id": "bp_financial_audit_29592389",
+  "golden_run_id": "gold_bp_financial_audit_4cb3c039",
+  "blueprint_id": "bp_financial_audit_4cb3c039",
   "reference_files_read": [
     "tour_manager_data.xlsx",
     "production_ledger.xlsx",

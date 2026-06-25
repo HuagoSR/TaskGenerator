@@ -1,5 +1,5 @@
 {
-  "blueprint_id": "bp_financial_audit_29592389",
+  "blueprint_id": "bp_financial_audit_4cb3c039",
   "golden_targets": {
     "final_pnl_totals": {
       "target_type": "exact_or_tolerance_check",
