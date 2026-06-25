@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from FileGenerator.v2_blueprint_generator import V2BlueprintFileGenerator
 from v2_task_compiler import FinanceAuditTaskCompiler
 
 
@@ -29,6 +30,11 @@ def main() -> None:
     annotation = compiled["training_annotation"]
     dataset_shell = compiled["dataset_shell"]
     prompt = compiled["prompt"]
+    file_generator = V2BlueprintFileGenerator(seed=42)
+
+    reference_dir = OUTPUT_DIR / "reference_files"
+    ground_truth = file_generator.generate_reference_files(blueprint, reference_dir)
+    dataset_shell.extra["ground_truth"] = ground_truth
 
     (OUTPUT_DIR / "task_blueprint.json").write_text(
         blueprint.model_dump_json(indent=2),

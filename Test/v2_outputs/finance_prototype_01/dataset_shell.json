@@ -1,5 +1,5 @@
 {
-  "task_id": "TASK_0FE3A232",
+  "task_id": "TASK_C58B323C",
   "prompt": "You are supporting a Senior Auditor engagement.\n\nObjective: Produce a consolidated cross-source profit and loss report for executive review.\n\nContext:\n- The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.\n- Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nUsing the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.\n\nDeliverables:\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.\n\nWork carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready.",
   "reference_files": [
     "reference_files/tour_manager_data.xlsx",
@@ -13,10 +13,10 @@
   "rubric": "- [+3] Final source-level and overall P&L totals match the golden run.\n- [+3] The model correctly infers implicit currencies from business context.\n- [+3] The model uses a defensible tax-rate resolution path for incomplete reference data.\n- [+3] The missing tax-rate omission does not break downstream calculations.\n- [+2] Required deliverables exist and satisfy naming and format requirements.",
   "rubric_json": "[{\"rubric_item_id\": \"F_001\", \"score\": 3, \"criterion\": \"Final source-level and overall P&L totals match the golden run.\", \"tags\": [\"outcome\"]}, {\"rubric_item_id\": \"R_002\", \"score\": 3, \"criterion\": \"The model correctly infers implicit currencies from business context.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"R_003\", \"score\": 3, \"criterion\": \"The model uses a defensible tax-rate resolution path for incomplete reference data.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"B_004\", \"score\": 3, \"criterion\": \"The missing tax-rate omission does not break downstream calculations.\", \"tags\": [\"robustness\"]}, {\"rubric_item_id\": \"C_005\", \"score\": 2, \"criterion\": \"Required deliverables exist and satisfy naming and format requirements.\", \"tags\": [\"compliance\"]}]",
   "extra": {
-    "blueprint_id": "bp_financial_audit_0fe3a232",
-    "training_annotation_id": "ann_bp_financial_audit_0fe3a232",
+    "blueprint_id": "bp_financial_audit_c58b323c",
+    "training_annotation_id": "ann_bp_financial_audit_c58b323c",
     "task_blueprint": {
-      "blueprint_id": "bp_financial_audit_0fe3a232",
+      "blueprint_id": "bp_financial_audit_c58b323c",
       "template_family": "cross_border_pnl",
       "task_metadata": {
         "sector": "Financial Audit",
@@ -258,8 +258,8 @@
       }
     },
     "training_annotation": {
-      "annotation_id": "ann_bp_financial_audit_0fe3a232",
-      "blueprint_id": "bp_financial_audit_0fe3a232",
+      "annotation_id": "ann_bp_financial_audit_c58b323c",
+      "blueprint_id": "bp_financial_audit_c58b323c",
       "capability_profile": {
         "primary_capabilities": [
           "multi_source_ingestion",
@@ -349,6 +349,45 @@
         "compliance_checks": [
           "Required deliverables exist and satisfy naming and format requirements."
         ]
+      }
+    },
+    "ground_truth": {
+      "tour_manager_data.xlsx": {
+        "trap_rows": {
+          "trap_implicit_currency_01": [
+            120,
+            56,
+            51,
+            117,
+            89,
+            78,
+            58,
+            57,
+            6,
+            49,
+            102,
+            84,
+            71,
+            17,
+            130,
+            137,
+            7,
+            29,
+            66,
+            45
+          ]
+        }
+      },
+      "production_ledger.xlsx": {
+        "trap_rows": {}
+      },
+      "tax_rates.xlsx": {
+        "trap_rows": {
+          "trap_missing_tax_rate_01": [
+            2,
+            11
+          ]
+        }
       }
     }
   }
