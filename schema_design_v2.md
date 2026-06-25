@@ -398,6 +398,112 @@ It can later be partially converted into evaluation-time rubric items, but it sh
 - You can derive final evaluation rubrics from this object later.
 - For training, this object also supports auxiliary losses or chain supervision if you ever want them.
 
+## Object 4: GoldenRun Package
+
+`GoldenRun` should be treated as a teacher-mode execution package used during task construction and dataset validation.
+
+It is related to evaluation, but it is not identical to ordinary candidate evaluation.
+
+Its role is to produce:
+
+1. a standard deliverable bundle
+2. intermediate ground-truth states
+3. grading anchors for result-based evaluation
+4. task-quality diagnostics
+
+### Core Principle
+
+The candidate-facing task and the golden task should share the same:
+
+- reference files
+- deliverable interface
+- sandbox execution style
+
+But they should differ in **information privileges**.
+
+### Candidate mode vs Golden mode
+
+`candidate_prompt`:
+
+- hides traps
+- hides intended intermediate reasoning path
+- only describes realistic business requirements
+
+`golden_prompt`:
+
+- explicitly reveals hidden traps
+- states task-construction assumptions
+- asks for intermediate derivations and teacher artifacts
+- is allowed to expose expected solution structure
+
+### Suggested GoldenRun package
+
+```json
+{
+  "golden_run_id": "gold_bp_financial_audit_0001",
+  "blueprint_id": "bp_financial_audit_0001",
+  "candidate_prompt": "...",
+  "golden_prompt": "...",
+  "teacher_hints": {
+    "revealed_traps": [
+      "Some rows intentionally omit explicit currency symbols.",
+      "The tax-rate reference file intentionally omits one jurisdiction."
+    ],
+    "expected_intermediate_artifacts": [
+      "currency_resolution_mapping",
+      "tax_rate_resolution_note",
+      "source_level_pnl_summary"
+    ],
+    "business_assumptions": [
+      "Revenue must be normalized to USD before source-level aggregation.",
+      "Missing tax rates must be resolved explicitly rather than silently skipped."
+    ]
+  },
+  "expected_outputs": {
+    "deliverables": [
+      "profit_and_loss_report.xlsx",
+      "task_summary.pdf"
+    ],
+    "teacher_artifacts": [
+      "golden_intermediate_values.json",
+      "golden_grading_anchors.json",
+      "golden_run_log.json"
+    ]
+  }
+}
+```
+
+### GoldenRun outputs
+
+The GoldenRun should persist at least:
+
+1. `golden_deliverables/`
+   The standard answer files in the same interface shape expected from a candidate.
+
+2. `golden_intermediate_values.json`
+   Exact or tolerance-checked target values and intermediate tables.
+
+3. `golden_grading_anchors.json`
+   Structured grading anchors derived from execution, not manually guessed.
+
+4. `golden_run_log.json`
+   Audit trail of assumptions, trap handling, and execution notes.
+
+### Why GoldenRun matters
+
+Without GoldenRun:
+
+- result-based rubrics are hard to define
+- task-quality analysis is mostly subjective
+- score gaps across models are harder to explain
+
+With GoldenRun:
+
+- `Fact` checks can be tied to exact final outputs
+- `Reasoning` checks can be tied to intermediate derived states
+- `Robustness` checks can be tied to explicit trap handling outcomes
+- `Compliance` checks can still use deliverable/file validation
+
 ## Recommended V2 Pipeline
 
 ### Line A: Semantic skill extraction
@@ -416,15 +522,16 @@ Do not output:
 
 ### Line B: Task assembly
 
-`selected semantic skills -> task blueprint compiler -> data/file generation -> prompt generation -> training annotation generation`
+`selected semantic skills -> task blueprint compiler -> data/file generation -> prompt generation -> golden-run packaging -> training annotation generation`
 
 Output:
 
 1. `TaskBlueprint`
 2. generated reference files
 3. visible task prompt
-4. `TrainingAnnotation`
-5. final dataset package
+4. `GoldenRun` package
+5. `TrainingAnnotation`
+6. final dataset package
 
 ## Suggested Final Dataset Package
 
@@ -450,10 +557,63 @@ Your final dataset item can remain compatible with the current `dataset_row.json
     "training_annotation_id": "ann_bp_financial_audit_0001",
     "ground_truth": {},
     "task_blueprint": {},
-    "training_annotation": {}
+    "training_annotation": {},
+    "golden_run": {}
   }
 }
 ```
+
+## GoldenRun and `rw-task`
+
+The existing `rw-task` framework should be reused as much as possible.
+
+Recommended relationship:
+
+- `rw-task` in normal mode = candidate execution
+- `rw-task` in teacher mode = GoldenRun execution
+
+This means the two modes should preferably share:
+
+- task directory structure
+- reference file mounting behavior
+- deliverable collection behavior
+- sandbox/runtime interface
+
+Only the prompt construction and teacher-only side-channel inputs should differ.
+
+### Recommended integration strategy
+
+Do not build a completely separate GoldenRun executor if avoidable.
+
+Instead:
+
+1. keep the existing candidate execution path
+2. add a teacher-mode prompt builder
+3. allow teacher-mode runs to emit extra intermediate artifacts
+4. use those artifacts to derive grading anchors and task diagnostics
+
+This keeps the teacher and candidate flows comparable while reducing implementation drift.
+
+## Task Quality Criteria
+
+The final goal is not only that tasks look realistic, but that they are useful for both training and model differentiation.
+
+A good task should be measured on at least three axes:
+
+1. `separation`
+   Stronger and weaker models should show a stable score gap.
+
+2. `stability`
+   The same model should not have wildly inconsistent scores across reruns.
+
+3. `diagnostic_value`
+   The score gap should be explainable in terms of concrete capability failures:
+   - numerical reasoning
+   - business reasoning
+   - trap robustness
+   - deliverable compliance
+
+GoldenRun is the key mechanism that turns these from intuitions into auditable evidence.
 
 ## Migration Strategy
 
@@ -464,6 +624,7 @@ First stabilize:
 - `SemanticSkill`
 - `TaskBlueprint`
 - `TrainingAnnotation`
+- `GoldenRun` package
 
 before rewriting the whole pipeline.
 
@@ -474,7 +635,7 @@ Do not break `dataset_row.json` immediately.
 Instead:
 
 - keep `prompt`, `reference_files`, `deliverable_files`, `rubric`, `rubric_json`
-- move the real V2 logic into `extra.task_blueprint` and `extra.training_annotation`
+- move the real V2 logic into `extra.task_blueprint`, `extra.training_annotation`, and `extra.golden_run`
 
 ### Phase 3: Replace old skill content gradually
 
@@ -495,6 +656,7 @@ Suggested mapping:
 - `agent_03_abstractor.py`: should output `SemanticSkill`
 - new compiler module: should assemble `TaskBlueprint`
 - file generator: should consume `TaskBlueprint.data_spec` and `trap_spec`
+- teacher-mode runner: should consume `GoldenRun` package and emit golden artifacts
 - validator/rubric generator: should consume `TrainingAnnotation` and golden-run outputs
 
 ## What Not To Do In V2
