@@ -49,6 +49,146 @@ ACCOUNT_OPTIONS = [
     "Other Costs",
 ]
 
+FINANCE_TOUR_PROFILES = [
+    {
+        "tour_rows": [
+            ("Show 1", "2024-10-07", "London", "United Kingdom", 230754.0),
+            ("Show 2", "2024-10-09", "Paris", "France", 175880.0),
+            ("Show 3", "2024-10-10", "Paris", "France", 168432.0),
+            ("Show 4", "2024-10-12", "Barcelona", "Spain", 125932.0),
+            ("Show 5", "2024-10-14", "Madrid", "Spain", 110823.0),
+            ("Show 6", "2024-10-16", "Munich", "Germany", 99117.0),
+            ("Show 7", "2024-10-18", "Berlin", "Germany", 132812.0),
+        ],
+        "expense_rows": [
+            ("Band & Crew", "10 members", 345000.0),
+            ("Hotel & Restaurants", "London", 34200.0),
+            ("Hotel & Restaurants", "Paris", 41800.0),
+            ("Hotel & Restaurants", "Barcelona", 22150.0),
+            ("Hotel & Restaurants", "Madrid", 23750.0),
+            ("Hotel & Restaurants", "Munich", 29640.0),
+            ("Hotel & Restaurants", "Berlin", 31860.0),
+            ("Venue & Production", "Equipment Rental", 82400.0),
+            ("Venue & Production", "Ground Transport", 38220.0),
+            ("Venue & Production", "Lighting Support", 90480.0),
+            ("Venue & Production", "Backline", 38400.0),
+            ("Other Costs", "Insurance", 29610.0),
+            ("Other Costs", "Freight", 48240.0),
+            ("Other Costs", "Petty Cash", 12000.0),
+        ],
+    },
+    {
+        "tour_rows": [
+            ("Show 1", "2024-08-03", "Manchester", "United Kingdom", 198640.0),
+            ("Show 2", "2024-08-05", "Lyon", "France", 149520.0),
+            ("Show 3", "2024-08-07", "Marseille", "France", 157330.0),
+            ("Show 4", "2024-08-10", "Valencia", "Spain", 118944.0),
+            ("Show 5", "2024-08-12", "Madrid", "Spain", 121875.0),
+            ("Show 6", "2024-08-15", "Hamburg", "Germany", 102410.0),
+            ("Show 7", "2024-08-17", "Berlin", "Germany", 128560.0),
+        ],
+        "expense_rows": [
+            ("Band & Crew", "11 members", 328000.0),
+            ("Hotel & Restaurants", "Manchester", 28110.0),
+            ("Hotel & Restaurants", "Lyon", 24680.0),
+            ("Hotel & Restaurants", "Marseille", 27120.0),
+            ("Hotel & Restaurants", "Valencia", 21490.0),
+            ("Hotel & Restaurants", "Madrid", 23340.0),
+            ("Hotel & Restaurants", "Hamburg", 26570.0),
+            ("Hotel & Restaurants", "Berlin", 28980.0),
+            ("Venue & Production", "Venue Rebills", 73400.0),
+            ("Venue & Production", "Lighting Support", 84500.0),
+            ("Venue & Production", "Backline", 36220.0),
+            ("Other Costs", "Ground Transport", 34100.0),
+            ("Other Costs", "Insurance", 25400.0),
+            ("Other Costs", "Freight", 43860.0),
+        ],
+    },
+    {
+        "tour_rows": [
+            ("Show 1", "2024-11-02", "Bristol", "United Kingdom", 186420.0),
+            ("Show 2", "2024-11-05", "Paris", "France", 172240.0),
+            ("Show 3", "2024-11-07", "Lyon", "France", 164980.0),
+            ("Show 4", "2024-11-10", "Barcelona", "Spain", 134760.0),
+            ("Show 5", "2024-11-12", "Valencia", "Spain", 119305.0),
+            ("Show 6", "2024-11-15", "Munich", "Germany", 108560.0),
+            ("Show 7", "2024-11-18", "Hamburg", "Germany", 125740.0),
+            ("Show 8", "2024-11-20", "Berlin", "Germany", 138490.0),
+        ],
+        "expense_rows": [
+            ("Band & Crew", "12 members", 392000.0),
+            ("Hotel & Restaurants", "Bristol", 24940.0),
+            ("Hotel & Restaurants", "Paris", 39210.0),
+            ("Hotel & Restaurants", "Lyon", 26880.0),
+            ("Hotel & Restaurants", "Barcelona", 24760.0),
+            ("Hotel & Restaurants", "Valencia", 21940.0),
+            ("Hotel & Restaurants", "Munich", 29840.0),
+            ("Hotel & Restaurants", "Hamburg", 27430.0),
+            ("Hotel & Restaurants", "Berlin", 31560.0),
+            ("Venue & Production", "PA and Staging", 96400.0),
+            ("Venue & Production", "Backline", 41800.0),
+            ("Other Costs", "Ground Transport", 38980.0),
+            ("Other Costs", "Insurance", 28320.0),
+            ("Other Costs", "Freight", 46120.0),
+        ],
+    },
+    {
+        "tour_rows": [
+            ("Show 1", "2024-09-04", "London", "United Kingdom", 221340.0),
+            ("Show 2", "2024-09-07", "Paris", "France", 181460.0),
+            ("Show 3", "2024-09-09", "Marseille", "France", 152740.0),
+            ("Show 4", "2024-09-12", "Madrid", "Spain", 127620.0),
+            ("Show 5", "2024-09-14", "Barcelona", "Spain", 129880.0),
+            ("Show 6", "2024-09-17", "Berlin", "Germany", 141530.0),
+            ("Show 7", "2024-09-19", "Munich", "Germany", 112840.0),
+        ],
+        "expense_rows": [
+            ("Band & Crew", "10 members", 336000.0),
+            ("Hotel & Restaurants", "London", 32650.0),
+            ("Hotel & Restaurants", "Paris", 40330.0),
+            ("Hotel & Restaurants", "Marseille", 23840.0),
+            ("Hotel & Restaurants", "Madrid", 24120.0),
+            ("Hotel & Restaurants", "Barcelona", 25220.0),
+            ("Hotel & Restaurants", "Berlin", 31710.0),
+            ("Hotel & Restaurants", "Munich", 28640.0),
+            ("Venue & Production", "Equipment Rental", 78100.0),
+            ("Venue & Production", "Lighting Support", 88750.0),
+            ("Venue & Production", "Venue Labor", 36420.0),
+            ("Other Costs", "Ground Transport", 35920.0),
+            ("Other Costs", "Insurance", 27280.0),
+            ("Other Costs", "Freight", 45210.0),
+        ],
+    },
+    {
+        "tour_rows": [
+            ("Show 1", "2024-07-05", "Manchester", "United Kingdom", 214980.0),
+            ("Show 2", "2024-07-08", "Paris", "France", 169240.0),
+            ("Show 3", "2024-07-10", "Lyon", "France", 158610.0),
+            ("Show 4", "2024-07-13", "Madrid", "Spain", 124330.0),
+            ("Show 5", "2024-07-15", "Valencia", "Spain", 117420.0),
+            ("Show 6", "2024-07-18", "Munich", "Germany", 104980.0),
+            ("Show 7", "2024-07-20", "Berlin", "Germany", 136250.0),
+            ("Show 8", "2024-07-22", "Hamburg", "Germany", 109430.0),
+        ],
+        "expense_rows": [
+            ("Band & Crew", "11 members", 358000.0),
+            ("Hotel & Restaurants", "Manchester", 29640.0),
+            ("Hotel & Restaurants", "Paris", 38120.0),
+            ("Hotel & Restaurants", "Lyon", 25780.0),
+            ("Hotel & Restaurants", "Madrid", 23240.0),
+            ("Hotel & Restaurants", "Valencia", 21480.0),
+            ("Hotel & Restaurants", "Munich", 28730.0),
+            ("Hotel & Restaurants", "Berlin", 30410.0),
+            ("Hotel & Restaurants", "Hamburg", 26390.0),
+            ("Venue & Production", "Stage and Rigging", 91800.0),
+            ("Venue & Production", "Backline", 40260.0),
+            ("Other Costs", "Ground Transport", 37240.0),
+            ("Other Costs", "Insurance", 26950.0),
+            ("Other Costs", "Freight", 43880.0),
+        ],
+    },
+]
+
 
 @dataclass
 class GeneratedWorkbook:
@@ -57,11 +197,13 @@ class GeneratedWorkbook:
 
 
 class V2BlueprintFileGenerator:
-    def __init__(self, seed: int = 42):
+    def __init__(self, seed: int = 42, profile_index: int | None = None):
         self.seed = seed
         self.rng = random.Random(seed)
         self.np_rng = np.random.default_rng(seed)
         self.ground_truth: Dict[str, Dict[str, List[int] | Dict[str, List[int]]]] = {}
+        chosen_index = seed % len(FINANCE_TOUR_PROFILES) if profile_index is None else profile_index % len(FINANCE_TOUR_PROFILES)
+        self.profile = FINANCE_TOUR_PROFILES[chosen_index]
 
     def generate_reference_files(self, blueprint: TaskBlueprint, output_dir: str | Path) -> Dict[str, Dict[str, List[int] | Dict[str, List[int]]]]:
         output_path = Path(output_dir)
@@ -124,25 +266,14 @@ class V2BlueprintFileGenerator:
 
     def _build_finance_template_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
         if sheet_spec.sheet_name == "Inc_Costs_Tracked_by_Tour_Mgr":
-            countries = [
-                "United Kingdom",
-                "France",
-                "France",
-                "Spain",
-                "Spain",
-                "Germany",
-                "Germany",
-            ]
-            cities = ["London", "Paris", "Paris", "Barcelona", "Madrid", "Munich", "Berlin"]
-            dates = ["2024-10-07", "2024-10-09", "2024-10-10", "2024-10-12", "2024-10-14", "2024-10-16", "2024-10-18"]
-            amounts = [230754.0, 175880.0, 168432.0, 125932.0, 110823.0, 99117.0, 132812.0]
+            rows = self.profile["tour_rows"]
             return pd.DataFrame(
                 {
-                    "Line_Type": [f"Show {idx + 1}" for idx in range(len(countries))],
-                    "Tour_Date": dates,
-                    "City": cities,
-                    "Country": [COMPACT_COUNTRY_LABEL[country] for country in countries],
-                    "Gross_Revenue": amounts,
+                    "Line_Type": [row[0] for row in rows],
+                    "Tour_Date": [row[1] for row in rows],
+                    "City": [row[2] for row in rows],
+                    "Country": [COMPACT_COUNTRY_LABEL[row[3]] for row in rows],
+                    "Gross_Revenue": [row[4] for row in rows],
                 }
             )
 
@@ -160,22 +291,7 @@ class V2BlueprintFileGenerator:
         return pd.DataFrame()
 
     def _build_production_cost_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
-        rows = [
-            ("Band & Crew", "10 members", 345000.0),
-            ("Hotel & Restaurants", "London", 34200.0),
-            ("Hotel & Restaurants", "Paris", 41800.0),
-            ("Hotel & Restaurants", "Barcelona", 22150.0),
-            ("Hotel & Restaurants", "Madrid", 23750.0),
-            ("Hotel & Restaurants", "Munich", 29640.0),
-            ("Hotel & Restaurants", "Berlin", 31860.0),
-            ("Venue & Production", "Equipment Rental", 82400.0),
-            ("Venue & Production", "Ground Transport", 38220.0),
-            ("Venue & Production", "Lighting Support", 90480.0),
-            ("Venue & Production", "Backline", 38400.0),
-            ("Other Costs", "Insurance", 29610.0),
-            ("Other Costs", "Freight", 48240.0),
-            ("Other Costs", "Petty Cash", 12000.0),
-        ]
+        rows = self.profile["expense_rows"]
         return pd.DataFrame(rows, columns=["Cost_Category", "Cost_Item", "Amount_USD"])
 
     def _apply_traps(self, workbook: GeneratedWorkbook, traps: List[TrapSpec]) -> None:

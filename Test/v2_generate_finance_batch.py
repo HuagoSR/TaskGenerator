@@ -31,18 +31,35 @@ SCENARIO_CONFIGS = [
         "scenario_title": "2024 Fall Music Tour Reconciliation",
         "task_goal": "Produce a consolidated cross-source profit and loss report for executive review.",
         "seed": 42,
+        "profile_index": 0,
     },
     {
         "slug": "festival_closeout",
         "scenario_title": "European Festival Closeout Review",
         "task_goal": "Prepare a post-event financial closeout package covering cross-border revenues, withholding taxes, and operating expenses.",
         "seed": 77,
+        "profile_index": 1,
     },
     {
         "slug": "artist_project_margin",
         "scenario_title": "International Artist Project Margin Review",
         "task_goal": "Reconcile multi-entity operating records into a source-level profitability view for management review.",
         "seed": 123,
+        "profile_index": 2,
+    },
+    {
+        "slug": "tour_settlement_audit",
+        "scenario_title": "International Tour Settlement Audit",
+        "task_goal": "Prepare an audit-ready workbook tying tour-stop revenues, withholding taxes, and production costs into a final margin view.",
+        "seed": 211,
+        "profile_index": 3,
+    },
+    {
+        "slug": "cross_border_show_profitability",
+        "scenario_title": "Cross-Border Show Profitability Review",
+        "task_goal": "Build a management-ready profitability workbook from cross-border show data and production-company support.",
+        "seed": 305,
+        "profile_index": 4,
     },
 ]
 
@@ -78,7 +95,10 @@ def main() -> None:
         reference_dir = case_dir / "reference_files"
         golden_dir = case_dir / "golden_run"
 
-        file_generator = V2BlueprintFileGenerator(seed=config["seed"])
+        file_generator = V2BlueprintFileGenerator(
+            seed=config["seed"],
+            profile_index=config["profile_index"],
+        )
         ground_truth = file_generator.generate_reference_files(blueprint, reference_dir)
         dataset_shell.extra["ground_truth"] = ground_truth
 
@@ -116,6 +136,7 @@ def main() -> None:
                 "task_id": dataset_shell.task_id,
                 "slug": config["slug"],
                 "seed": config["seed"],
+                "profile_index": config["profile_index"],
                 "scenario_title": config["scenario_title"],
                 "case_dir": str(case_dir),
                 "rw_task_case_dir": str(rw_task_case_dir),

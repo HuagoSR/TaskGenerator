@@ -346,12 +346,14 @@ The V2 finance prototype has already completed these steps:
 5. added static quality scoring for generated finance tasks
 6. validated the crucial GDPVal-style assumption that deliverables can be newly generated files rather than template completions
 7. upgraded the finance prototype supervision from aggregate totals to GDPVal-style mixed checks over workbook structure, line items, grouped subtotals, overall totals, and spreadsheet-error absence
+8. expanded the finance prototype into a 5-case variant batch with distinct underlying reference-file profiles, distinct golden outputs, and rubric sizes in the 35-36 item range
 
 Current prototype status:
 
 - input side: closer to GDPVal than before
 - output side: conceptually aligned with GDPVal free-generation behavior
 - supervision side: materially closer to GDPVal, though still missing executable cell-level verification
+- batch generation side: now supports multiple finance variants instead of a single canonical case
 - evaluation side: partly operational, with some model/provider instability still unresolved
 
 ## Generation Workflow
@@ -381,8 +383,8 @@ The next execution plan is:
 
 1. analyze more GDPVal finance/accounting prompts and rubrics to extract recurring supervision patterns
 2. push the current finance rubric from text-level fine-grained checks toward more executable verification logic where possible
-3. generate several finance-task variants under the same semantic family to test whether the architecture scales beyond one prototype
-4. run another round of rw-task evaluation on the improved cases using models that are actually stable in the current provider environment
+3. use the new 5-case finance batch to run another round of rw-task evaluation on the strongest and most balanced cases using models that are actually stable in the current provider environment
+4. filter or revise the weaker-margin variants before scaling batch size further
 5. only after the above, decide whether stronger LLM involvement is needed in task assembly
 
 ## Summary
