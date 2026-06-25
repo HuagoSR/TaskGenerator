@@ -1,0 +1,34 @@
+{
+  "golden_run_id": "gold_bp_financial_audit_e578547e",
+  "blueprint_id": "bp_financial_audit_e578547e",
+  "candidate_prompt": "### Audit Assignment: International Artist Project Margin Review\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nReconcile multi-entity operating records into a source-level profitability view for management review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.",
+  "golden_prompt": "### Audit Assignment: International Artist Project Margin Review\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nReconcile multi-entity operating records into a source-level profitability view for management review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.\n\nTeacher-mode instructions:\n1. You are producing the canonical solution package for dataset construction.\n2. Reveal and resolve every intentional trap before producing final totals.\n3. Emit the intermediate states required by the golden plan.\n4. Record all assumptions, especially any restored reference values, in the run log.\n5. Produce grading anchors that can later be consumed by evaluation code.",
+  "teacher_hints": {
+    "revealed_traps": [
+      "Some operational rows intentionally omit explicit currency symbols and rely on locale-specific number formatting.",
+      "The tax-rate reference workbook intentionally omits at least one jurisdictional value."
+    ],
+    "expected_intermediate_artifacts": [
+      "currency_resolution_mapping",
+      "tax_rate_resolution",
+      "expense_bucket_mapping",
+      "source_level_net_revenue",
+      "net_income_totals"
+    ],
+    "business_assumptions": [
+      "Revenue and expense amounts from operational files must be normalized to USD before cross-source comparison.",
+      "Missing reference values must be resolved explicitly and logged as teacher assumptions."
+    ]
+  },
+  "expected_outputs": {
+    "deliverables": [
+      "profit_and_loss_report.xlsx",
+      "task_summary.pdf"
+    ],
+    "teacher_artifacts": [
+      "golden_intermediate_values.json",
+      "golden_grading_anchors.json",
+      "golden_run_log.json"
+    ]
+  }
+}

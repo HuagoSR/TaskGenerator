@@ -1,0 +1,29 @@
+{
+  "golden_run_id": "gold_bp_financial_audit_b467a4a9",
+  "blueprint_id": "bp_financial_audit_b467a4a9",
+  "reference_files_read": [
+    "tour_manager_data.xlsx",
+    "production_ledger.xlsx",
+    "tax_rates.xlsx"
+  ],
+  "assumptions": [
+    "GBP rows are converted to USD using 1.27.",
+    "EUR rows are converted to USD using 1.09.",
+    "Missing country tax rates are restored from the canonical teacher reference table."
+  ],
+  "trap_handling": [
+    {
+      "trap_type": "implicit_currency",
+      "resolution": "Country-aware locale parsing and FX normalization applied before aggregation."
+    },
+    {
+      "trap_type": "reference_omission",
+      "resolution": "Missing tax rates restored explicitly and logged in tax_rate_resolution."
+    }
+  ],
+  "generated_teacher_artifacts": [
+    "golden_intermediate_values.json",
+    "golden_grading_anchors.json",
+    "golden_run_log.json"
+  ]
+}

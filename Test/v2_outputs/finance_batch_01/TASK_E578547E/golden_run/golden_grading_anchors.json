@@ -1,0 +1,87 @@
+{
+  "blueprint_id": "bp_financial_audit_e578547e",
+  "golden_targets": {
+    "final_pnl_totals": {
+      "target_type": "exact_or_tolerance_check",
+      "tolerance": 0.05,
+      "expected_value": {
+        "by_source": [
+          {
+            "source_name": "Tour Manager",
+            "revenue_usd": 1517968.27,
+            "expense_usd": 1427734.67,
+            "tax_usd": 244057.73,
+            "net_income_usd": -169194.75
+          },
+          {
+            "source_name": "Production Company",
+            "revenue_usd": 3395286.0,
+            "expense_usd": 3481187.64,
+            "tax_usd": 0.0,
+            "net_income_usd": -85901.64
+          }
+        ],
+        "overall_totals": {
+          "revenue_usd": 4913254.27,
+          "expense_usd": 4908922.31,
+          "tax_usd": 244057.73,
+          "net_income_usd": -255096.39
+        }
+      }
+    },
+    "deliverable_presence": {
+      "target_type": "binary_check",
+      "expected_files": [
+        "profit_and_loss_report.xlsx",
+        "task_summary.pdf"
+      ]
+    }
+  },
+  "intermediate_targets": {
+    "required_states": [
+      "currency_resolution_mapping",
+      "tax_rate_resolution",
+      "expense_bucket_mapping",
+      "source_level_net_revenue",
+      "net_income_totals"
+    ],
+    "tax_resolution_events": [
+      {
+        "country": "Netherlands",
+        "city": "Amsterdam",
+        "original_rate": null,
+        "resolved_rate": 0.19,
+        "resolution_basis": "teacher_default_country_tax_table"
+      },
+      {
+        "country": "Netherlands",
+        "city": "Amsterdam",
+        "original_rate": null,
+        "resolved_rate": 0.19,
+        "resolution_basis": "teacher_default_country_tax_table"
+      },
+      {
+        "country": "Netherlands",
+        "city": "Rotterdam",
+        "original_rate": null,
+        "resolved_rate": 0.19,
+        "resolution_basis": "teacher_default_country_tax_table"
+      }
+    ]
+  },
+  "rubric_projection": {
+    "fact_checks": [
+      "Final source-level and overall P&L totals match the golden run."
+    ],
+    "reasoning_checks": [
+      "The model correctly infers implicit currencies from business context.",
+      "The model uses a defensible tax-rate resolution path for incomplete reference data."
+    ],
+    "robustness_checks": [
+      "The missing tax-rate omission does not break downstream calculations."
+    ],
+    "compliance_checks": [
+      "Required deliverables exist and satisfy naming and format requirements."
+    ]
+  }
+}

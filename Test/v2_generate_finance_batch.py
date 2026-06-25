@@ -1,4 +1,5 @@
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -9,6 +10,7 @@ if str(ROOT) not in sys.path:
 from FileGenerator.v2_blueprint_generator import V2BlueprintFileGenerator
 from rw_task_adapter import RwTaskCaseExporter
 from v2_golden_run import FinanceAuditGoldenRunExecutor
+from v2_task_quality import FinanceTaskQualityScorer
 from v2_task_compiler import FinanceAuditTaskCompiler
 
 
@@ -46,12 +48,17 @@ SCENARIO_CONFIGS = [
 
 
 def main() -> None:
+    if BATCH_DIR.exists():
+        shutil.rmtree(BATCH_DIR)
+    if RW_TASK_BATCH_DIR.exists():
+        shutil.rmtree(RW_TASK_BATCH_DIR)
     BATCH_DIR.mkdir(parents=True, exist_ok=True)
     RW_TASK_BATCH_DIR.mkdir(parents=True, exist_ok=True)
 
     compiler = FinanceAuditTaskCompiler()
     golden_executor = FinanceAuditGoldenRunExecutor()
     rw_task_exporter = RwTaskCaseExporter()
+    quality_scorer = FinanceTaskQualityScorer()
 
     manifest = []
 
@@ -121,10 +128,18 @@ def main() -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    quality_results = quality_scorer.write_batch_reports(
+        batch_dir=BATCH_DIR,
+        rw_task_batch_dir=RW_TASK_BATCH_DIR,
+        output_json_path=BATCH_DIR / "quality_report.json",
+        output_md_path=BATCH_DIR / "quality_summary.md",
+    )
 
     print(f"Wrote finance batch to {BATCH_DIR}")
     print(f"Exported rw-task batch to {RW_TASK_BATCH_DIR}")
     print(f"Generated {len(manifest)} cases")
+    if quality_results:
+        print(f"Top static-quality case: {quality_results[0].task_id} ({quality_results[0].total_score})")
 
 
 if __name__ == "__main__":
