@@ -1,0 +1,355 @@
+{
+  "task_id": "TASK_0FE3A232",
+  "prompt": "You are supporting a Senior Auditor engagement.\n\nObjective: Produce a consolidated cross-source profit and loss report for executive review.\n\nContext:\n- The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.\n- Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nUsing the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.\n\nDeliverables:\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.\n\nWork carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready.",
+  "reference_files": [
+    "reference_files/tour_manager_data.xlsx",
+    "reference_files/production_ledger.xlsx",
+    "reference_files/tax_rates.xlsx"
+  ],
+  "deliverable_files": [
+    "deliverable_files/profit_and_loss_report.xlsx",
+    "deliverable_files/task_summary.pdf"
+  ],
+  "rubric": "- [+3] Final source-level and overall P&L totals match the golden run.\n- [+3] The model correctly infers implicit currencies from business context.\n- [+3] The model uses a defensible tax-rate resolution path for incomplete reference data.\n- [+3] The missing tax-rate omission does not break downstream calculations.\n- [+2] Required deliverables exist and satisfy naming and format requirements.",
+  "rubric_json": "[{\"rubric_item_id\": \"F_001\", \"score\": 3, \"criterion\": \"Final source-level and overall P&L totals match the golden run.\", \"tags\": [\"outcome\"]}, {\"rubric_item_id\": \"R_002\", \"score\": 3, \"criterion\": \"The model correctly infers implicit currencies from business context.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"R_003\", \"score\": 3, \"criterion\": \"The model uses a defensible tax-rate resolution path for incomplete reference data.\", \"tags\": [\"reasoning\"]}, {\"rubric_item_id\": \"B_004\", \"score\": 3, \"criterion\": \"The missing tax-rate omission does not break downstream calculations.\", \"tags\": [\"robustness\"]}, {\"rubric_item_id\": \"C_005\", \"score\": 2, \"criterion\": \"Required deliverables exist and satisfy naming and format requirements.\", \"tags\": [\"compliance\"]}]",
+  "extra": {
+    "blueprint_id": "bp_financial_audit_0fe3a232",
+    "training_annotation_id": "ann_bp_financial_audit_0fe3a232",
+    "task_blueprint": {
+      "blueprint_id": "bp_financial_audit_0fe3a232",
+      "template_family": "cross_border_pnl",
+      "task_metadata": {
+        "sector": "Financial Audit",
+        "occupation": "Senior Auditor",
+        "scenario_title": "2024 Fall Music Tour Reconciliation",
+        "task_goal": "Produce a consolidated cross-source profit and loss report for executive review.",
+        "difficulty_level": "medium-high"
+      },
+      "selected_skills": [
+        "load_multi_source_financials",
+        "infer_implicit_currency",
+        "handle_missing_tax_rate",
+        "categorize_operating_expense",
+        "aggregate_source_level_pnl"
+      ],
+      "scenario_spec": {
+        "role": "You are the finance lead supporting a post-period audit review.",
+        "business_context": "The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.",
+        "time_context": "Reporting is being completed in January 2025 for an as-of date of December 31, 2024.",
+        "tone": "professional, business-realistic, non-tutorial"
+      },
+      "data_spec": {
+        "reference_files": [
+          {
+            "file_name": "tour_manager_data.xlsx",
+            "file_role": "source_data",
+            "sheet_specs": [
+              {
+                "sheet_name": "Transactions",
+                "columns": [
+                  {
+                    "name": "Receipt_ID",
+                    "semantic_type": "identifier"
+                  },
+                  {
+                    "name": "Transaction_Date",
+                    "semantic_type": "date"
+                  },
+                  {
+                    "name": "City",
+                    "semantic_type": "location_city"
+                  },
+                  {
+                    "name": "Country",
+                    "semantic_type": "location_country"
+                  },
+                  {
+                    "name": "Description",
+                    "semantic_type": "free_text_description"
+                  },
+                  {
+                    "name": "Gross_Revenue",
+                    "semantic_type": "localized_amount"
+                  },
+                  {
+                    "name": "Expense_Amount",
+                    "semantic_type": "localized_amount"
+                  },
+                  {
+                    "name": "Source",
+                    "semantic_type": "source_system"
+                  }
+                ],
+                "row_count_target": 150
+              }
+            ]
+          },
+          {
+            "file_name": "production_ledger.xlsx",
+            "file_role": "source_data",
+            "sheet_specs": [
+              {
+                "sheet_name": "Ledger",
+                "columns": [
+                  {
+                    "name": "Ledger_Entry_ID",
+                    "semantic_type": "identifier"
+                  },
+                  {
+                    "name": "Posting_Date",
+                    "semantic_type": "date"
+                  },
+                  {
+                    "name": "Account_Name",
+                    "semantic_type": "account_name"
+                  },
+                  {
+                    "name": "Activity_Description",
+                    "semantic_type": "free_text_description"
+                  },
+                  {
+                    "name": "Debit_Amount",
+                    "semantic_type": "amount"
+                  },
+                  {
+                    "name": "Credit_Amount",
+                    "semantic_type": "amount"
+                  },
+                  {
+                    "name": "Source",
+                    "semantic_type": "source_system"
+                  }
+                ],
+                "row_count_target": 400
+              }
+            ]
+          },
+          {
+            "file_name": "tax_rates.xlsx",
+            "file_role": "reference_table",
+            "sheet_specs": [
+              {
+                "sheet_name": "Rates",
+                "columns": [
+                  {
+                    "name": "Country",
+                    "semantic_type": "location_country"
+                  },
+                  {
+                    "name": "City",
+                    "semantic_type": "location_city"
+                  },
+                  {
+                    "name": "Withholding_Tax_Rate",
+                    "semantic_type": "tax_rate"
+                  }
+                ],
+                "row_count_target": 12
+              }
+            ]
+          }
+        ],
+        "data_relationships": [
+          {
+            "relation_type": "lookup",
+            "left": "tour_manager_data.xlsx:Transactions.Country",
+            "right": "tax_rates.xlsx:Rates.Country"
+          }
+        ]
+      },
+      "trap_spec": [
+        {
+          "trap_id": "trap_implicit_currency_01",
+          "source_skill_id": "infer_implicit_currency",
+          "trap_type": "implicit_currency",
+          "injection_target": {
+            "file_name": "tour_manager_data.xlsx",
+            "sheet_name": "Transactions",
+            "columns": [
+              "Gross_Revenue",
+              "Expense_Amount"
+            ]
+          },
+          "injection_policy": {
+            "pattern": "mixed_local_currency_without_header_signal",
+            "severity": "medium",
+            "affected_row_count": 20,
+            "affected_entities": []
+          },
+          "expected_solver_behavior": "Infer currency from geographic context and avoid reporting mixed-currency totals."
+        },
+        {
+          "trap_id": "trap_missing_tax_rate_01",
+          "source_skill_id": "handle_missing_tax_rate",
+          "trap_type": "reference_omission",
+          "injection_target": {
+            "file_name": "tax_rates.xlsx",
+            "sheet_name": "Rates",
+            "columns": [
+              "Withholding_Tax_Rate"
+            ]
+          },
+          "injection_policy": {
+            "pattern": "omit_one_jurisdiction",
+            "severity": "medium",
+            "affected_row_count": null,
+            "affected_entities": [
+              "Amsterdam",
+              "Netherlands"
+            ]
+          },
+          "expected_solver_behavior": "Detect the missing reference and resolve it using business logic or defensible assumptions."
+        }
+      ],
+      "deliverable_spec": [
+        {
+          "file_name": "profit_and_loss_report.xlsx",
+          "file_role": "final_deliverable",
+          "requirements": [
+            "must include header 'As of 12/31/2024'",
+            "must present source-level totals",
+            "must normalize revenue to USD"
+          ]
+        },
+        {
+          "file_name": "task_summary.pdf",
+          "file_role": "final_deliverable",
+          "requirements": [
+            "must summarize reconciliation approach",
+            "must mention any assumptions or anomalies"
+          ]
+        }
+      ],
+      "prompt_spec": {
+        "visible_requirements": [
+          "prepare a structured P&L report",
+          "use the attached files",
+          "report all revenues in USD",
+          "provide an executive-ready workbook"
+        ],
+        "hidden_requirements": [
+          "The candidate should infer how the sources complement each other rather than being told the exact join procedure.",
+          "The candidate should discover the missing currency cues from geography, source conventions, or context rather than from explicit instructions.",
+          "The prompt should not directly announce the missing tax-rate hole; the candidate should detect it during execution.",
+          "The candidate should derive the grouping from business context and deliverable expectations rather than being shown a one-to-one recipe.",
+          "The candidate must preserve correct business logic across normalization, categorization, and aggregation."
+        ],
+        "style_constraints": [
+          "realistic business memo tone",
+          "no explicit data-cleaning tutorial",
+          "no trap disclosure"
+        ]
+      },
+      "golden_plan": {
+        "required_intermediate_states": [
+          "currency_resolution_mapping",
+          "tax_rate_resolution",
+          "expense_bucket_mapping",
+          "source_level_net_revenue",
+          "net_income_totals"
+        ],
+        "required_final_checks": [
+          "deliverable file existence",
+          "format compliance",
+          "net revenue totals",
+          "expense totals",
+          "net income totals"
+        ]
+      }
+    },
+    "training_annotation": {
+      "annotation_id": "ann_bp_financial_audit_0fe3a232",
+      "blueprint_id": "bp_financial_audit_0fe3a232",
+      "capability_profile": {
+        "primary_capabilities": [
+          "multi_source_ingestion",
+          "source_reconciliation_setup",
+          "currency_inference",
+          "cross_source_normalization",
+          "reference_gap_resolution",
+          "defensible_assumption_handling",
+          "expense_mapping",
+          "financial_classification",
+          "aggregation",
+          "source_level_reporting"
+        ],
+        "secondary_capabilities": [
+          "multi_file",
+          "heterogeneous_schema",
+          "implicit_business_rule",
+          "hidden_data_quality_issue",
+          "incomplete_reference_data",
+          "edge_case_reasoning",
+          "messy_labels",
+          "business_taxonomy_mapping",
+          "multi_source",
+          "final_business_deliverable"
+        ]
+      },
+      "supervision_targets": {
+        "final_outcomes": [
+          {
+            "target_id": "final_pnl_totals",
+            "target_type": "exact_or_tolerance_check",
+            "description": "Validate final source-level and total P&L figures against the golden run."
+          },
+          {
+            "target_id": "deliverable_presence",
+            "target_type": "binary_check",
+            "description": "Check that the required workbook and summary file are produced with correct names."
+          }
+        ],
+        "intermediate_outcomes": [
+          {
+            "target_id": "currency_resolution",
+            "target_type": "reasoning_check",
+            "description": "Verify that implicit local amounts are interpreted using the correct jurisdictional cues."
+          },
+          {
+            "target_id": "missing_tax_resolution",
+            "target_type": "reasoning_or_robustness_check",
+            "description": "Verify that the missing tax rate does not silently corrupt final calculations."
+          },
+          {
+            "target_id": "expense_taxonomy_mapping",
+            "target_type": "reasoning_check",
+            "description": "Verify that operating expenses are grouped into the intended reporting buckets before final aggregation."
+          }
+        ]
+      },
+      "failure_modes": [
+        {
+          "failure_id": "fm_mixed_currency_sum",
+          "description": "The model aggregates amounts before normalizing currencies."
+        },
+        {
+          "failure_id": "fm_null_tax_propagation",
+          "description": "A missing tax rate causes null propagation or skipped rows without acknowledgement."
+        },
+        {
+          "failure_id": "fm_format_only_success",
+          "description": "The report looks polished but contains wrong financial logic."
+        },
+        {
+          "failure_id": "fm_source_double_count",
+          "description": "The model merges multi-source figures in a way that double counts revenue or expenses."
+        }
+      ],
+      "rubric_projection": {
+        "fact_checks": [
+          "Final source-level and overall P&L totals match the golden run."
+        ],
+        "reasoning_checks": [
+          "The model correctly infers implicit currencies from business context.",
+          "The model uses a defensible tax-rate resolution path for incomplete reference data."
+        ],
+        "robustness_checks": [
+          "The missing tax-rate omission does not break downstream calculations."
+        ],
+        "compliance_checks": [
+          "Required deliverables exist and satisfy naming and format requirements."
+        ]
+      }
+    }
+  }
+}

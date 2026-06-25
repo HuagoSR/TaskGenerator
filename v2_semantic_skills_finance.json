@@ -1,0 +1,321 @@
+[
+  {
+    "skill_id": "load_multi_source_financials",
+    "skill_name": "Load Multi-Source Financials",
+    "skill_type": "compliance",
+    "version": "2.0",
+    "domain_tags": ["finance", "audit", "reporting"],
+    "capability_tags": ["multi_source_ingestion", "source_reconciliation_setup"],
+    "difficulty_tags": ["multi_file", "heterogeneous_schema"],
+    "input_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:LocalizedRevenue",
+        "Financial:LocalizedExpense",
+        "Dimension:SourceSystem",
+        "Dimension:Jurisdiction"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:LocalizedRevenue",
+        "Financial:LocalizedExpense",
+        "Dimension:SourceSystem",
+        "Dimension:Jurisdiction"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Establish the raw financial evidence base by loading source data captured by different teams and systems.",
+      "business_meaning": "Real financial tasks rarely start from one clean table and often require reconciliation across operational and accounting sources.",
+      "hidden_difficulty": "The candidate should infer how the sources complement each other rather than being told the exact join procedure."
+    },
+    "usage_priors": {
+      "common_scenarios": [
+        "tour accounting",
+        "regional sales close",
+        "project margin review"
+      ],
+      "common_deliverables": [
+        "reconciliation workbook",
+        "profit and loss report"
+      ],
+      "common_traps": [
+        "schema mismatch",
+        "source overlap",
+        "partial duplication"
+      ]
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [
+        "Financial Auditor",
+        "Finance Lead"
+      ],
+      "preferred_evidence": [
+        "expense app exports",
+        "general ledger extracts",
+        "venue settlement data"
+      ],
+      "suggested_intermediate_artifacts": [
+        "raw_financials_archive",
+        "source_mapping_table"
+      ]
+    }
+  },
+  {
+    "skill_id": "infer_implicit_currency",
+    "skill_name": "Infer Implicit Currency",
+    "skill_type": "reasoning",
+    "version": "2.0",
+    "domain_tags": ["finance", "audit", "reporting"],
+    "capability_tags": ["currency_inference", "cross_source_normalization"],
+    "difficulty_tags": ["implicit_business_rule", "hidden_data_quality_issue"],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:LocalizedRevenue",
+        "Dimension:Jurisdiction"
+      ],
+      "optional_semantics": [
+        "Reference:FXPolicy"
+      ],
+      "provides_semantics": [
+        "Financial:CurrencyResolvedRevenue"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CurrencyResolvedRevenue"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Infer the correct transaction currency from business context before normalization.",
+      "business_meaning": "Cross-border operational data may omit explicit currency labels and still needs to be reported consistently.",
+      "hidden_difficulty": "The candidate should discover the missing currency cues from geography, source conventions, or context rather than from explicit instructions."
+    },
+    "usage_priors": {
+      "common_scenarios": [
+        "international touring",
+        "regional commerce reporting",
+        "multi-country settlement analysis"
+      ],
+      "common_deliverables": [
+        "normalized revenue schedule",
+        "P&L workbook"
+      ],
+      "common_traps": [
+        "implicit currency",
+        "mixed formatting",
+        "ambiguous locale signal"
+      ]
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [
+        "Financial Auditor",
+        "Business Analyst"
+      ],
+      "preferred_evidence": [
+        "country field",
+        "city field",
+        "reference FX table"
+      ],
+      "suggested_intermediate_artifacts": [
+        "currency_assumption_mapping",
+        "currency_resolved_column"
+      ]
+    }
+  },
+  {
+    "skill_id": "handle_missing_tax_rate",
+    "skill_name": "Handle Missing Tax Rate",
+    "skill_type": "robustness",
+    "version": "2.0",
+    "domain_tags": ["finance", "audit", "tax"],
+    "capability_tags": ["reference_gap_resolution", "defensible_assumption_handling"],
+    "difficulty_tags": ["incomplete_reference_data", "edge_case_reasoning"],
+    "input_contract": {
+      "requires_semantics": [
+        "Reference:TaxRateTable",
+        "Dimension:Jurisdiction"
+      ],
+      "optional_semantics": [
+        "Reference:TaxPolicy"
+      ],
+      "provides_semantics": [
+        "Reference:ResolvedTaxRateTable"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Reference:ResolvedTaxRateTable"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Resolve missing or incomplete tax reference values without corrupting downstream calculations.",
+      "business_meaning": "Real-world reference tables are often incomplete, and analysts must either infer, research, or explicitly document defensible assumptions.",
+      "hidden_difficulty": "The prompt should not directly announce the missing tax-rate hole; the candidate should detect it during execution."
+    },
+    "usage_priors": {
+      "common_scenarios": [
+        "cross-border revenue reporting",
+        "withholding tax reconciliation",
+        "royalty accounting"
+      ],
+      "common_deliverables": [
+        "tax-adjusted revenue report",
+        "assumption memo"
+      ],
+      "common_traps": [
+        "omitted jurisdiction",
+        "blank reference cell",
+        "outdated rate table"
+      ]
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [
+        "Tax Auditor",
+        "Finance Lead"
+      ],
+      "preferred_evidence": [
+        "country-to-rate lookup table",
+        "jurisdiction column",
+        "narrative policy note"
+      ],
+      "suggested_intermediate_artifacts": [
+        "tax_rate_resolution_note",
+        "completed_tax_rate_mapping"
+      ]
+    }
+  },
+  {
+    "skill_id": "categorize_operating_expense",
+    "skill_name": "Categorize Operating Expense",
+    "skill_type": "fact",
+    "version": "2.0",
+    "domain_tags": ["finance", "audit", "reporting"],
+    "capability_tags": ["expense_mapping", "financial_classification"],
+    "difficulty_tags": ["messy_labels", "business_taxonomy_mapping"],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:LocalizedExpense"
+      ],
+      "optional_semantics": [
+        "Reference:ExpensePolicy"
+      ],
+      "provides_semantics": [
+        "Financial:CategorizedExpense"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CategorizedExpense"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Map raw operating costs into a standardized reporting taxonomy.",
+      "business_meaning": "Operational ledgers use noisy descriptions that need to be aligned to audit-ready categories before aggregation.",
+      "hidden_difficulty": "The candidate should derive the grouping from business context and deliverable expectations rather than being shown a one-to-one recipe."
+    },
+    "usage_priors": {
+      "common_scenarios": [
+        "P&L preparation",
+        "budget variance review",
+        "cost center reporting"
+      ],
+      "common_deliverables": [
+        "categorized expense summary",
+        "formatted P&L workbook"
+      ],
+      "common_traps": [
+        "noisy descriptions",
+        "mixed granularity",
+        "partial uncategorized rows"
+      ]
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [
+        "Senior Auditor",
+        "Accounting Analyst"
+      ],
+      "preferred_evidence": [
+        "description field",
+        "account name",
+        "approved bucket list"
+      ],
+      "suggested_intermediate_artifacts": [
+        "expense_bucket_mapping",
+        "categorized_expense_column"
+      ]
+    }
+  },
+  {
+    "skill_id": "aggregate_source_level_pnl",
+    "skill_name": "Aggregate Source-Level P&L",
+    "skill_type": "fact",
+    "version": "2.0",
+    "domain_tags": ["finance", "audit", "executive_reporting"],
+    "capability_tags": ["aggregation", "source_level_reporting", "net_income_calculation"],
+    "difficulty_tags": ["multi_source", "final_business_deliverable"],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:NormalizedRevenueUSD",
+        "Financial:CategorizedExpense",
+        "Dimension:SourceSystem"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:SourceLevelPnL"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:SourceLevelPnL"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Compute source-level totals and consolidated net income suitable for executive review.",
+      "business_meaning": "Decision makers need a clean roll-up by contributing source, not just row-level calculations.",
+      "hidden_difficulty": "The candidate must preserve correct business logic across normalization, categorization, and aggregation."
+    },
+    "usage_priors": {
+      "common_scenarios": [
+        "executive tour review",
+        "business performance summary",
+        "project profitability analysis"
+      ],
+      "common_deliverables": [
+        "source-level P&L",
+        "management-ready workbook"
+      ],
+      "common_traps": [
+        "double counting",
+        "pre-aggregation before normalization",
+        "sign handling issues"
+      ]
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [
+        "Finance Lead",
+        "Senior Auditor"
+      ],
+      "preferred_evidence": [
+        "source field",
+        "normalized revenue field",
+        "categorized expense field"
+      ],
+      "suggested_intermediate_artifacts": [
+        "source_level_summary_tab",
+        "net_income_totals"
+      ]
+    }
+  }
+]

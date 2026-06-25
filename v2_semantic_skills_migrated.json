@@ -1,0 +1,965 @@
+[
+  {
+    "skill_id": "load_tour_manager_data",
+    "skill_name": "Load Tour Manager Data",
+    "skill_type": "compliance",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "multi_source_ingestion",
+      "raw_evidence_setup"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerRawData"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerRawData"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Load the Tour Manager's mobile expense tracking app data from '{deliverable_file}' containing receipts and venue settlements.",
+      "business_meaning": "Mobile expense tracking app data containing on-the-ground receipts and venue settlements from the Tour Manager.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [
+        "tour_manager_data.xlsx"
+      ],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [
+        "Receipt_ID",
+        "Transaction_Date",
+        "City"
+      ],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "load_production_ledger",
+    "skill_name": "Load Production Company Ledger",
+    "skill_type": "compliance",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "multi_source_ingestion",
+      "ledger_intake"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyRawLedger"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyRawLedger"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Load the Production Company's continuous YTD general ledger export data from '{deliverable_file}'.",
+      "business_meaning": "Continuous Year-To-Date general ledger export data from the central Production Company.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [
+        "production_ledger.xlsx"
+      ],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [
+        "Ledger_Entry_ID",
+        "Posting_Date",
+        "Account_Name"
+      ],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "trap_implicit_currencies",
+    "skill_name": "Trap Implicit Currencies",
+    "skill_type": "robustness",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit",
+      "reporting"
+    ],
+    "capability_tags": [
+      "currency_inference",
+      "hidden_data_quality_issue"
+    ],
+    "difficulty_tags": [
+      "hidden_signal",
+      "implicit_business_rule"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourManagerRawData"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataWithImplicitCurrency"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataWithImplicitCurrency"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Inject implicit local currencies ({target_currencies}) into the Tour Manager's raw data without currency symbols in the headers for {affected_columns}.",
+      "business_meaning": "Raw financial data often lacks explicit currency indicators, relying on the geographic location of the transaction.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "trap_out_of_scope_entries",
+    "skill_name": "Trap Out of Scope Ledger Entries",
+    "skill_type": "robustness",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "trap",
+      "noise",
+      "out_of_scope"
+    ],
+    "difficulty_tags": [
+      "robustness",
+      "data_quality_issue"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:ProductionCompanyRawLedger"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyLedgerWithNoise"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyLedgerWithNoise"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Inject out-of-scope ledger entries dated {noise_months} relating to {noise_type} into the Production Company's YTD ledger.",
+      "business_meaning": "General ledgers contain mixed activities across the year; some entries are irrelevant to the specific tour being analyzed.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "load_tax_rates_incomplete",
+    "skill_name": "Load Incomplete Tax Rates",
+    "skill_type": "compliance",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "reference_table_handling",
+      "tax_reference_setup"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Reference:TaxRatesIncomplete"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Reference:TaxRatesIncomplete"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Load the reference list from '{deliverable_file}', intentionally omitting the tax withholding rate for {omitted_location}.",
+      "business_meaning": "Reference tables for international tax rates are often incomplete or missing specific jurisdictions.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [
+        "tax_rates.xlsx"
+      ],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [
+        "Country",
+        "City",
+        "Withholding_Tax_Rate"
+      ],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "filter_ledger_entries",
+    "skill_name": "Filter Ledger Entries",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "scope_filtering",
+      "period_isolation"
+    ],
+    "difficulty_tags": [
+      "scope_disambiguation"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:ProductionCompanyLedgerWithNoise"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyFilteredLedger"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:ProductionCompanyFilteredLedger"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Filter the Production Company's YTD ledger to exclude transactions dated {excluded_months} that relate to non-Fall Tour activities, isolating {target_month} Fall Music Tour financials.",
+      "business_meaning": "Isolating specific project financials requires filtering out irrelevant dates and activities from a continuous ledger.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "identify_implicit_currency",
+    "skill_name": "Identify Implicit Currency",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit",
+      "reporting"
+    ],
+    "capability_tags": [
+      "currency_inference",
+      "jurisdiction_reasoning"
+    ],
+    "difficulty_tags": [
+      "reasoning_required",
+      "contextual_inference"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourManagerDataWithImplicitCurrency"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataWithIdentifiedCurrency"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataWithIdentifiedCurrency"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Identify the implicit currency (GBP or EUR) for each tour stop in the Tour Manager's data based on the {currency_mapping_logic}.",
+      "business_meaning": "Determining the correct currency for transactions based on the location of the event.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "convert_to_usd",
+    "skill_name": "Convert to USD",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit",
+      "reporting"
+    ],
+    "capability_tags": [
+      "currency_normalization",
+      "fx_conversion"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourManagerDataWithIdentifiedCurrency"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataUSD"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourManagerDataUSD"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Convert the identified local currency amounts in the Tour Manager's data to {target_currency} using {fx_rate_period}.",
+      "business_meaning": "Standardizing international financial data into a single reporting currency using historical exchange rates.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "handle_missing_tax_rate",
+    "skill_name": "Handle Missing Tax Rate",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "reference_gap_resolution",
+      "defensible_assumption_handling"
+    ],
+    "difficulty_tags": [
+      "incomplete_reference_data",
+      "edge_case_reasoning"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Reference:TaxRatesIncomplete"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Reference:TaxRatesComplete"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Reference:TaxRatesComplete"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Handle the missing tax withholding rate for the {missing_location} show by {resolution_strategy}.",
+      "business_meaning": "Resolving gaps in reference data through research, logical assumptions, or explicit flagging.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_withholding_tax",
+    "skill_name": "Calculate Withholding Tax",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "tax_reasoning",
+      "rule_application"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourManagerDataUSD",
+        "Reference:TaxRatesComplete"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourStopsWithTax"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourStopsWithTax"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate the withholding tax amount for each tour stop by applying the specified rates ({tax_rates}) to the gross revenue.",
+      "business_meaning": "Applying jurisdiction-specific tax rates to gross revenues to determine tax liabilities.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_net_revenue",
+    "skill_name": "Calculate Net Revenue",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "calculate",
+      "net_revenue",
+      "tax_deduction"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourStopsWithTax"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourStopsNetRevenue"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TourStopsNetRevenue"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate net revenue for each tour stop by {calculation_logic}.",
+      "business_meaning": "Determining the actual take-home revenue after mandatory tax withholdings are deducted.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "aggregate_net_revenue",
+    "skill_name": "Aggregate Net Revenue",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "aggregate",
+      "summary",
+      "net_revenue"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourStopsNetRevenue"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:AggregatedNetRevenueByLocation"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:AggregatedNetRevenueByLocation"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Aggregate a line-by-line summary of net revenue for each tour stop by {aggregation_keys}.",
+      "business_meaning": "Summarizing transactional revenue data into a location-based view for reporting.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_total_net_revenue",
+    "skill_name": "Calculate Total Net Revenue",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "calculate",
+      "total",
+      "net_revenue"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:AggregatedNetRevenueByLocation"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TotalNetRevenue"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TotalNetRevenue"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate {metric_name} by summing the net revenue of all tour stops.",
+      "business_meaning": "Deriving the top-line net revenue figure for the entire tour.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "categorize_expenses",
+    "skill_name": "Categorize Expenses",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "expense_mapping",
+      "financial_classification"
+    ],
+    "difficulty_tags": [
+      "messy_labels",
+      "taxonomy_mapping"
+    ],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:ProductionCompanyFilteredLedger"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CategorizedExpenses"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CategorizedExpenses"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Categorize all expenses into {expense_categories}.",
+      "business_meaning": "Classifying raw ledger transactions into standardized financial reporting buckets.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_total_expenses",
+    "skill_name": "Calculate Total Expenses",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "finance",
+      "audit"
+    ],
+    "capability_tags": [
+      "calculate",
+      "total",
+      "expenses"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:CategorizedExpenses"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TotalExpenses"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:TotalExpenses"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate {metric_name} by summing the categorized expenses.",
+      "business_meaning": "Deriving the total cost figure for the entire tour.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_net_income",
+    "skill_name": "Calculate Net Income",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "general"
+    ],
+    "capability_tags": [
+      "calculate",
+      "net_income",
+      "profit"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TotalNetRevenue",
+        "Financial:TotalExpenses"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:NetIncome"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:NetIncome"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate {metric_name} by subtracting Total Expenses from Total Net Revenue.",
+      "business_meaning": "Determining the final profitability of the tour by comparing total revenues against total expenses.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "group_financials_by_source",
+    "skill_name": "Group Financials by Source",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "general"
+    ],
+    "capability_tags": [
+      "group",
+      "financials",
+      "source"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:TourStopsNetRevenue",
+        "Financial:CategorizedExpenses"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:GroupedFinancialsBySource"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:GroupedFinancialsBySource"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Group the calculated income and costs by source ({grouping_sources}).",
+      "business_meaning": "Organizing financial data to show the origin of the numbers, distinguishing between field operations and central production.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "calculate_combined_financial_summary",
+    "skill_name": "Calculate Combined Financial Summary",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "general"
+    ],
+    "capability_tags": [
+      "calculate",
+      "combined",
+      "summary"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:GroupedFinancialsBySource"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CombinedFinancialSummary"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Financial:CombinedFinancialSummary"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Calculate the {summary_type} across both sources.",
+      "business_meaning": "Creating a unified view of all financial activities across different operational entities.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "format_profit_and_loss_report",
+    "skill_name": "Format Profit and Loss Report",
+    "skill_type": "fact",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "general"
+    ],
+    "capability_tags": [
+      "format",
+      "report",
+      "usd"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Financial:CombinedFinancialSummary",
+        "Financial:NetIncome"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Report:FormattedProfitAndLoss"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Report:FormattedProfitAndLoss"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Format the report with {formatting_rules}, and add '{header_text}' to the header.",
+      "business_meaning": "Preparing the financial data for executive presentation with clean formatting and clear labeling.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  },
+  {
+    "skill_id": "export_profit_and_loss_excel",
+    "skill_name": "Export Profit and Loss Excel",
+    "skill_type": "hybrid",
+    "version": "2.0-migrated",
+    "domain_tags": [
+      "general"
+    ],
+    "capability_tags": [
+      "export",
+      "excel",
+      "deliverable"
+    ],
+    "difficulty_tags": [],
+    "input_contract": {
+      "requires_semantics": [
+        "Report:FormattedProfitAndLoss"
+      ],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Deliverable:ProfitAndLossExcel"
+      ]
+    },
+    "output_contract": {
+      "requires_semantics": [],
+      "optional_semantics": [],
+      "provides_semantics": [
+        "Deliverable:ProfitAndLossExcel"
+      ]
+    },
+    "semantic_intent": {
+      "goal": "Export the final structured profit and loss report to a new Excel document named '{deliverable_file}'.",
+      "business_meaning": "Generating the final deliverable file for stakeholders to review the tour's financial performance.",
+      "hidden_difficulty": "This is a migrated starter semantic skill. Refine the hidden challenge intent before large-scale generation use."
+    },
+    "usage_priors": {
+      "common_scenarios": [],
+      "common_deliverables": [
+        "final_profit_and_loss_report.xlsx"
+      ],
+      "common_traps": []
+    },
+    "assembly_hints": {
+      "preferred_task_roles": [],
+      "preferred_evidence": [],
+      "suggested_intermediate_artifacts": []
+    }
+  }
+]
