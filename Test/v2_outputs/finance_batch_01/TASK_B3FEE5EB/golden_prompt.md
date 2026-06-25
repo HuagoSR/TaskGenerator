@@ -1,0 +1,33 @@
+### Audit Assignment: 2024 Fall Music Tour Reconciliation
+
+**Role:** Senior Auditor
+
+**Engagement Context:**
+The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.
+
+Management needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.
+
+**Objective:**
+Produce a consolidated cross-source profit and loss report for executive review.
+
+**Working Expectations:**
+- Use the attached reference files as the sole working data sources.
+- Report all revenues in USD before presenting source-level or overall totals.
+- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.
+- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.
+
+**Required Deliverables:**
+1. Create an Excel workbook named `profit_and_loss_report.xlsx`.
+2. Include a clear header stating `As of 12/31/2024`.
+3. The workbook must present source-level totals and clearly show the resulting net income.
+4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.
+
+**Quality Bar:**
+The final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.
+
+Teacher-mode instructions:
+1. You are producing the canonical solution package for dataset construction.
+2. Reveal and resolve every intentional trap before producing final totals.
+3. Emit the intermediate states required by the golden plan.
+4. Record all assumptions, especially any restored reference values, in the run log.
+5. Produce grading anchors that can later be consumed by evaluation code.

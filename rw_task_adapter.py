@@ -48,7 +48,7 @@ class RwTaskCaseExporter:
         annotation: TrainingAnnotation,
         golden_run: GoldenRun,
     ) -> Dict[str, object]:
-        rubric_items = json.loads(dataset_shell.rubric_json)
+        rubric_items = self._build_export_rubric_items(dataset_shell, blueprint, annotation)
         normalized_rubric = self._normalize_rubric_items(rubric_items)
         deliverable_paths = [f"deliverable_files/{Path(path).name}" for path in dataset_shell.deliverable_files]
 
@@ -71,6 +71,115 @@ class RwTaskCaseExporter:
             "rubric": self._build_rw_task_rubric_text(normalized_rubric),
             "rubric_json": json.dumps(normalized_rubric, ensure_ascii=False),
             "extra": extra,
+        }
+
+    def _build_export_rubric_items(
+        self,
+        dataset_shell: V2DatasetPackage,
+        blueprint: TaskBlueprint,
+        annotation: TrainingAnnotation,
+    ) -> List[Dict[str, object]]:
+        golden_outputs = dataset_shell.extra.get("golden_run_outputs") or {}
+        grading_anchors = golden_outputs.get("grading_anchors") or {}
+        golden_targets = grading_anchors.get("golden_targets") or {}
+        intermediate_targets = grading_anchors.get("intermediate_targets") or {}
+        summary = ((golden_targets.get("final_pnl_totals") or {}).get("expected_value") or {})
+
+        if not summary:
+            return json.loads(dataset_shell.rubric_json)
+
+        rubric_items: List[Dict[str, object]] = []
+        row_id = 1
+
+        for source_row in summary.get("by_source", []):
+            source_name = source_row["source_name"]
+            rubric_items.extend(
+                [
+                    self._make_rubric_item(row_id, 3, f"The submission reports `{source_name}` revenue in USD consistent with the golden run totals.", ["outcome"]),
+                    self._make_rubric_item(row_id + 1, 3, f"The submission reports `{source_name}` expenses in USD consistent with the golden run totals.", ["outcome"]),
+                    self._make_rubric_item(row_id + 2, 3, f"The submission reports `{source_name}` net income consistent with the golden run totals.", ["outcome"]),
+                ]
+            )
+            row_id += 3
+
+        overall = summary.get("overall_totals") or {}
+        if overall:
+            rubric_items.extend(
+                [
+                    self._make_rubric_item(row_id, 4, "The overall revenue total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                    self._make_rubric_item(row_id + 1, 4, "The overall expense total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                    self._make_rubric_item(row_id + 2, 4, "The overall net income total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                ]
+            )
+            row_id += 3
+
+        if "currency_resolution_mapping" in intermediate_targets.get("required_states", []):
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    3,
+                    "Rows with implicit local formatting are normalized using jurisdiction-aware currency reasoning instead of being summed as raw strings.",
+                    ["reasoning", "robustness"],
+                )
+            )
+            row_id += 1
+
+        tax_events = intermediate_targets.get("tax_resolution_events") or []
+        if tax_events:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    3,
+                    "Missing withholding-tax reference values are detected and resolved with an explicit, defensible assumption rather than silently ignored.",
+                    ["reasoning", "robustness"],
+                )
+            )
+            row_id += 1
+
+        if "expense_bucket_mapping" in intermediate_targets.get("required_states", []):
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    3,
+                    "Operating expenses are mapped into a consistent reporting taxonomy before final aggregation.",
+                    ["reasoning"],
+                )
+            )
+            row_id += 1
+
+        rubric_items.append(
+            self._make_rubric_item(
+                row_id,
+                2,
+                "Required deliverables exist with the requested filenames and appear professionally structured for business review.",
+                ["compliance"],
+            )
+        )
+        row_id += 1
+
+        for projected_check in annotation.rubric_projection.reasoning_checks:
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    2,
+                    projected_check,
+                    ["reasoning"],
+                )
+            )
+            row_id += 1
+
+        return rubric_items
+
+    def _make_rubric_item(self, row_id: int, score: int, criterion: str, tags: List[str]) -> Dict[str, object]:
+        return {
+            "score": score,
+            "criterion": criterion,
+            "required": True,
+            "rubric_item_id": f"R_{row_id:03d}",
+            "author_type": "model",
+            "tags": tags,
+            "read_only": None,
+            "form_content": None,
         }
 
     def _normalize_rubric_items(self, rubric_items: List[Dict[str, object]]) -> List[Dict[str, object]]:

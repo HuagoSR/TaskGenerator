@@ -1,0 +1,47 @@
+[
+  {
+    "task_id": "TASK_B3FEE5EB",
+    "slug": "music_tour_q4",
+    "seed": 42,
+    "scenario_title": "2024 Fall Music Tour Reconciliation",
+    "case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\finance_batch_01\\TASK_B3FEE5EB",
+    "rw_task_case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_batch_finance_01\\TASK_B3FEE5EB",
+    "overall_totals": {
+      "revenue_usd": 4796581.97,
+      "expense_usd": 4799625.25,
+      "tax_usd": 259302.54,
+      "net_income_usd": -262345.82
+    },
+    "rubric_item_count": 15
+  },
+  {
+    "task_id": "TASK_ECCB3CA1",
+    "slug": "festival_closeout",
+    "seed": 77,
+    "scenario_title": "European Festival Closeout Review",
+    "case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\finance_batch_01\\TASK_ECCB3CA1",
+    "rw_task_case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_batch_finance_01\\TASK_ECCB3CA1",
+    "overall_totals": {
+      "revenue_usd": 4743323.37,
+      "expense_usd": 4872088.01,
+      "tax_usd": 266833.78,
+      "net_income_usd": -395598.42
+    },
+    "rubric_item_count": 15
+  },
+  {
+    "task_id": "TASK_8203EEB4",
+    "slug": "artist_project_margin",
+    "seed": 123,
+    "scenario_title": "International Artist Project Margin Review",
+    "case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\finance_batch_01\\TASK_8203EEB4",
+    "rw_task_case_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v2_outputs\\rw_task_batch_finance_01\\TASK_8203EEB4",
+    "overall_totals": {
+      "revenue_usd": 4913254.27,
+      "expense_usd": 4908922.31,
+      "tax_usd": 244057.73,
+      "net_income_usd": -255096.39
+    },
+    "rubric_item_count": 15
+  }
+]

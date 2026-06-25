@@ -1,0 +1,873 @@
+{
+  "task_id": "TASK_8203EEB4",
+  "sector": "Financial Audit",
+  "occupation": "Senior Auditor",
+  "motif": "extract-organize-calculate",
+  "prompt": "### Audit Assignment: International Artist Project Margin Review\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nReconcile multi-entity operating records into a source-level profitability view for management review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.",
+  "reference_files": [
+    "reference_files/tour_manager_data.xlsx",
+    "reference_files/production_ledger.xlsx",
+    "reference_files/tax_rates.xlsx"
+  ],
+  "deliverable_files": [
+    "deliverable_files/profit_and_loss_report.xlsx",
+    "deliverable_files/task_summary.pdf"
+  ],
+  "rubric": "- [+3] The submission reports `Tour Manager` revenue in USD consistent with the golden run totals.\n- [+3] The submission reports `Tour Manager` expenses in USD consistent with the golden run totals.\n- [+3] The submission reports `Tour Manager` net income consistent with the golden run totals.\n- [+3] The submission reports `Production Company` revenue in USD consistent with the golden run totals.\n- [+3] The submission reports `Production Company` expenses in USD consistent with the golden run totals.\n- [+3] The submission reports `Production Company` net income consistent with the golden run totals.\n- [+4] The overall revenue total matches the golden run within normal rounding tolerance.\n- [+4] The overall expense total matches the golden run within normal rounding tolerance.\n- [+4] The overall net income total matches the golden run within normal rounding tolerance.\n- [+3] Rows with implicit local formatting are normalized using jurisdiction-aware currency reasoning instead of being summed as raw strings.\n- [+3] Missing withholding-tax reference values are detected and resolved with an explicit, defensible assumption rather than silently ignored.\n- [+3] Operating expenses are mapped into a consistent reporting taxonomy before final aggregation.\n- [+2] Required deliverables exist with the requested filenames and appear professionally structured for business review.\n- [+2] The model correctly infers implicit currencies from business context.\n- [+2] The model uses a defensible tax-rate resolution path for incomplete reference data.",
+  "rubric_json": "[{\"score\": 3, \"criterion\": \"The submission reports `Tour Manager` revenue in USD consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_001\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The submission reports `Tour Manager` expenses in USD consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_002\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The submission reports `Tour Manager` net income consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_003\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The submission reports `Production Company` revenue in USD consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_004\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The submission reports `Production Company` expenses in USD consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_005\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"The submission reports `Production Company` net income consistent with the golden run totals.\", \"required\": true, \"rubric_item_id\": \"R_006\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 4, \"criterion\": \"The overall revenue total matches the golden run within normal rounding tolerance.\", \"required\": true, \"rubric_item_id\": \"R_007\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 4, \"criterion\": \"The overall expense total matches the golden run within normal rounding tolerance.\", \"required\": true, \"rubric_item_id\": \"R_008\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 4, \"criterion\": \"The overall net income total matches the golden run within normal rounding tolerance.\", \"required\": true, \"rubric_item_id\": \"R_009\", \"author_type\": \"model\", \"tags\": [\"outcome\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Rows with implicit local formatting are normalized using jurisdiction-aware currency reasoning instead of being summed as raw strings.\", \"required\": true, \"rubric_item_id\": \"R_010\", \"author_type\": \"model\", \"tags\": [\"reasoning\", \"robustness\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Missing withholding-tax reference values are detected and resolved with an explicit, defensible assumption rather than silently ignored.\", \"required\": true, \"rubric_item_id\": \"R_011\", \"author_type\": \"model\", \"tags\": [\"reasoning\", \"robustness\"], \"read_only\": null, \"form_content\": null}, {\"score\": 3, \"criterion\": \"Operating expenses are mapped into a consistent reporting taxonomy before final aggregation.\", \"required\": true, \"rubric_item_id\": \"R_012\", \"author_type\": \"model\", \"tags\": [\"reasoning\"], \"read_only\": null, \"form_content\": null}, {\"score\": 2, \"criterion\": \"Required deliverables exist with the requested filenames and appear professionally structured for business review.\", \"required\": true, \"rubric_item_id\": \"R_013\", \"author_type\": \"model\", \"tags\": [\"compliance\"], \"read_only\": null, \"form_content\": null}, {\"score\": 2, \"criterion\": \"The model correctly infers implicit currencies from business context.\", \"required\": true, \"rubric_item_id\": \"R_014\", \"author_type\": \"model\", \"tags\": [\"reasoning\"], \"read_only\": null, \"form_content\": null}, {\"score\": 2, \"criterion\": \"The model uses a defensible tax-rate resolution path for incomplete reference data.\", \"required\": true, \"rubric_item_id\": \"R_015\", \"author_type\": \"model\", \"tags\": [\"reasoning\"], \"read_only\": null, \"form_content\": null}]",
+  "extra": {
+    "blueprint_id": "bp_financial_audit_8203eeb4",
+    "training_annotation_id": "ann_bp_financial_audit_8203eeb4",
+    "golden_run_id": "gold_bp_financial_audit_8203eeb4",
+    "task_blueprint": {
+      "blueprint_id": "bp_financial_audit_8203eeb4",
+      "template_family": "cross_border_pnl",
+      "task_metadata": {
+        "sector": "Financial Audit",
+        "occupation": "Senior Auditor",
+        "scenario_title": "International Artist Project Margin Review",
+        "task_goal": "Reconcile multi-entity operating records into a source-level profitability view for management review.",
+        "difficulty_level": "medium-high"
+      },
+      "selected_skills": [
+        "load_multi_source_financials",
+        "infer_implicit_currency",
+        "handle_missing_tax_rate",
+        "categorize_operating_expense",
+        "aggregate_source_level_pnl"
+      ],
+      "scenario_spec": {
+        "role": "You are the finance lead supporting a post-period audit review.",
+        "business_context": "The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.",
+        "time_context": "Reporting is being completed in January 2025 for an as-of date of December 31, 2024.",
+        "tone": "professional, business-realistic, non-tutorial"
+      },
+      "data_spec": {
+        "reference_files": [
+          {
+            "file_name": "tour_manager_data.xlsx",
+            "file_role": "source_data",
+            "sheet_specs": [
+              {
+                "sheet_name": "Transactions",
+                "columns": [
+                  {
+                    "name": "Receipt_ID",
+                    "semantic_type": "identifier"
+                  },
+                  {
+                    "name": "Transaction_Date",
+                    "semantic_type": "date"
+                  },
+                  {
+                    "name": "City",
+                    "semantic_type": "location_city"
+                  },
+                  {
+                    "name": "Country",
+                    "semantic_type": "location_country"
+                  },
+                  {
+                    "name": "Description",
+                    "semantic_type": "free_text_description"
+                  },
+                  {
+                    "name": "Gross_Revenue",
+                    "semantic_type": "localized_amount"
+                  },
+                  {
+                    "name": "Expense_Amount",
+                    "semantic_type": "localized_amount"
+                  },
+                  {
+                    "name": "Source",
+                    "semantic_type": "source_system"
+                  }
+                ],
+                "row_count_target": 150
+              }
+            ]
+          },
+          {
+            "file_name": "production_ledger.xlsx",
+            "file_role": "source_data",
+            "sheet_specs": [
+              {
+                "sheet_name": "Ledger",
+                "columns": [
+                  {
+                    "name": "Ledger_Entry_ID",
+                    "semantic_type": "identifier"
+                  },
+                  {
+                    "name": "Posting_Date",
+                    "semantic_type": "date"
+                  },
+                  {
+                    "name": "Account_Name",
+                    "semantic_type": "account_name"
+                  },
+                  {
+                    "name": "Activity_Description",
+                    "semantic_type": "free_text_description"
+                  },
+                  {
+                    "name": "Debit_Amount",
+                    "semantic_type": "amount"
+                  },
+                  {
+                    "name": "Credit_Amount",
+                    "semantic_type": "amount"
+                  },
+                  {
+                    "name": "Source",
+                    "semantic_type": "source_system"
+                  }
+                ],
+                "row_count_target": 400
+              }
+            ]
+          },
+          {
+            "file_name": "tax_rates.xlsx",
+            "file_role": "reference_table",
+            "sheet_specs": [
+              {
+                "sheet_name": "Rates",
+                "columns": [
+                  {
+                    "name": "Country",
+                    "semantic_type": "location_country"
+                  },
+                  {
+                    "name": "City",
+                    "semantic_type": "location_city"
+                  },
+                  {
+                    "name": "Withholding_Tax_Rate",
+                    "semantic_type": "tax_rate"
+                  }
+                ],
+                "row_count_target": 12
+              }
+            ]
+          }
+        ],
+        "data_relationships": [
+          {
+            "relation_type": "lookup",
+            "left": "tour_manager_data.xlsx:Transactions.Country",
+            "right": "tax_rates.xlsx:Rates.Country"
+          }
+        ]
+      },
+      "trap_spec": [
+        {
+          "trap_id": "trap_implicit_currency_01",
+          "source_skill_id": "infer_implicit_currency",
+          "trap_type": "implicit_currency",
+          "injection_target": {
+            "file_name": "tour_manager_data.xlsx",
+            "sheet_name": "Transactions",
+            "columns": [
+              "Gross_Revenue",
+              "Expense_Amount"
+            ]
+          },
+          "injection_policy": {
+            "pattern": "mixed_local_currency_without_header_signal",
+            "severity": "medium",
+            "affected_row_count": 20,
+            "affected_entities": []
+          },
+          "expected_solver_behavior": "Infer currency from geographic context and avoid reporting mixed-currency totals."
+        },
+        {
+          "trap_id": "trap_missing_tax_rate_01",
+          "source_skill_id": "handle_missing_tax_rate",
+          "trap_type": "reference_omission",
+          "injection_target": {
+            "file_name": "tax_rates.xlsx",
+            "sheet_name": "Rates",
+            "columns": [
+              "Withholding_Tax_Rate"
+            ]
+          },
+          "injection_policy": {
+            "pattern": "omit_one_jurisdiction",
+            "severity": "medium",
+            "affected_row_count": null,
+            "affected_entities": [
+              "Amsterdam",
+              "Netherlands"
+            ]
+          },
+          "expected_solver_behavior": "Detect the missing reference and resolve it using business logic or defensible assumptions."
+        }
+      ],
+      "deliverable_spec": [
+        {
+          "file_name": "profit_and_loss_report.xlsx",
+          "file_role": "final_deliverable",
+          "requirements": [
+            "must include header 'As of 12/31/2024'",
+            "must present source-level totals",
+            "must normalize revenue to USD"
+          ]
+        },
+        {
+          "file_name": "task_summary.pdf",
+          "file_role": "final_deliverable",
+          "requirements": [
+            "must summarize reconciliation approach",
+            "must mention any assumptions or anomalies"
+          ]
+        }
+      ],
+      "prompt_spec": {
+        "visible_requirements": [
+          "prepare a structured P&L report",
+          "use the attached files",
+          "report all revenues in USD",
+          "provide an executive-ready workbook"
+        ],
+        "hidden_requirements": [
+          "The candidate should infer how the sources complement each other rather than being told the exact join procedure.",
+          "The candidate should discover the missing currency cues from geography, source conventions, or context rather than from explicit instructions.",
+          "The prompt should not directly announce the missing tax-rate hole; the candidate should detect it during execution.",
+          "The candidate should derive the grouping from business context and deliverable expectations rather than being shown a one-to-one recipe.",
+          "The candidate must preserve correct business logic across normalization, categorization, and aggregation."
+        ],
+        "style_constraints": [
+          "realistic business memo tone",
+          "no explicit data-cleaning tutorial",
+          "no trap disclosure"
+        ]
+      },
+      "golden_plan": {
+        "required_intermediate_states": [
+          "currency_resolution_mapping",
+          "tax_rate_resolution",
+          "expense_bucket_mapping",
+          "source_level_net_revenue",
+          "net_income_totals"
+        ],
+        "required_final_checks": [
+          "deliverable file existence",
+          "format compliance",
+          "net revenue totals",
+          "expense totals",
+          "net income totals"
+        ]
+      }
+    },
+    "training_annotation": {
+      "annotation_id": "ann_bp_financial_audit_8203eeb4",
+      "blueprint_id": "bp_financial_audit_8203eeb4",
+      "capability_profile": {
+        "primary_capabilities": [
+          "multi_source_ingestion",
+          "source_reconciliation_setup",
+          "currency_inference",
+          "cross_source_normalization",
+          "reference_gap_resolution",
+          "defensible_assumption_handling",
+          "expense_mapping",
+          "financial_classification",
+          "aggregation",
+          "source_level_reporting"
+        ],
+        "secondary_capabilities": [
+          "multi_file",
+          "heterogeneous_schema",
+          "implicit_business_rule",
+          "hidden_data_quality_issue",
+          "incomplete_reference_data",
+          "edge_case_reasoning",
+          "messy_labels",
+          "business_taxonomy_mapping",
+          "multi_source",
+          "final_business_deliverable"
+        ]
+      },
+      "supervision_targets": {
+        "final_outcomes": [
+          {
+            "target_id": "final_pnl_totals",
+            "target_type": "exact_or_tolerance_check",
+            "description": "Validate final source-level and total P&L figures against the golden run."
+          },
+          {
+            "target_id": "deliverable_presence",
+            "target_type": "binary_check",
+            "description": "Check that the required workbook and summary file are produced with correct names."
+          }
+        ],
+        "intermediate_outcomes": [
+          {
+            "target_id": "currency_resolution",
+            "target_type": "reasoning_check",
+            "description": "Verify that implicit local amounts are interpreted using the correct jurisdictional cues."
+          },
+          {
+            "target_id": "missing_tax_resolution",
+            "target_type": "reasoning_or_robustness_check",
+            "description": "Verify that the missing tax rate does not silently corrupt final calculations."
+          },
+          {
+            "target_id": "expense_taxonomy_mapping",
+            "target_type": "reasoning_check",
+            "description": "Verify that operating expenses are grouped into the intended reporting buckets before final aggregation."
+          }
+        ]
+      },
+      "failure_modes": [
+        {
+          "failure_id": "fm_mixed_currency_sum",
+          "description": "The model aggregates amounts before normalizing currencies."
+        },
+        {
+          "failure_id": "fm_null_tax_propagation",
+          "description": "A missing tax rate causes null propagation or skipped rows without acknowledgement."
+        },
+        {
+          "failure_id": "fm_format_only_success",
+          "description": "The report looks polished but contains wrong financial logic."
+        },
+        {
+          "failure_id": "fm_source_double_count",
+          "description": "The model merges multi-source figures in a way that double counts revenue or expenses."
+        }
+      ],
+      "rubric_projection": {
+        "fact_checks": [
+          "Final source-level and overall P&L totals match the golden run."
+        ],
+        "reasoning_checks": [
+          "The model correctly infers implicit currencies from business context.",
+          "The model uses a defensible tax-rate resolution path for incomplete reference data."
+        ],
+        "robustness_checks": [
+          "The missing tax-rate omission does not break downstream calculations."
+        ],
+        "compliance_checks": [
+          "Required deliverables exist and satisfy naming and format requirements."
+        ]
+      }
+    },
+    "golden_run": {
+      "golden_run_id": "gold_bp_financial_audit_8203eeb4",
+      "blueprint_id": "bp_financial_audit_8203eeb4",
+      "candidate_prompt": "### Audit Assignment: International Artist Project Margin Review\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nReconcile multi-entity operating records into a source-level profitability view for management review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.",
+      "golden_prompt": "### Audit Assignment: International Artist Project Margin Review\n\n**Role:** Senior Auditor\n\n**Engagement Context:**\nThe client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems. Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nManagement needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n**Objective:**\nReconcile multi-entity operating records into a source-level profitability view for management review.\n\n**Working Expectations:**\n- Use the attached reference files as the sole working data sources.\n- Report all revenues in USD before presenting source-level or overall totals.\n- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n**Required Deliverables:**\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. The workbook must present source-level totals and clearly show the resulting net income.\n4. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n**Quality Bar:**\nThe final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready.\n\nTeacher-mode instructions:\n1. You are producing the canonical solution package for dataset construction.\n2. Reveal and resolve every intentional trap before producing final totals.\n3. Emit the intermediate states required by the golden plan.\n4. Record all assumptions, especially any restored reference values, in the run log.\n5. Produce grading anchors that can later be consumed by evaluation code.",
+      "teacher_hints": {
+        "revealed_traps": [
+          "Some operational rows intentionally omit explicit currency symbols and rely on locale-specific number formatting.",
+          "The tax-rate reference workbook intentionally omits at least one jurisdictional value."
+        ],
+        "expected_intermediate_artifacts": [
+          "currency_resolution_mapping",
+          "tax_rate_resolution",
+          "expense_bucket_mapping",
+          "source_level_net_revenue",
+          "net_income_totals"
+        ],
+        "business_assumptions": [
+          "Revenue and expense amounts from operational files must be normalized to USD before cross-source comparison.",
+          "Missing reference values must be resolved explicitly and logged as teacher assumptions."
+        ]
+      },
+      "expected_outputs": {
+        "deliverables": [
+          "profit_and_loss_report.xlsx",
+          "task_summary.pdf"
+        ],
+        "teacher_artifacts": [
+          "golden_intermediate_values.json",
+          "golden_grading_anchors.json",
+          "golden_run_log.json"
+        ]
+      }
+    },
+    "ground_truth": {
+      "tour_manager_data.xlsx": {
+        "trap_rows": {
+          "trap_implicit_currency_01": [
+            83,
+            21,
+            52,
+            98,
+            46,
+            107,
+            32,
+            121,
+            35,
+            1,
+            41,
+            22,
+            84,
+            8,
+            25,
+            37,
+            56,
+            117,
+            110,
+            51
+          ]
+        }
+      },
+      "production_ledger.xlsx": {
+        "trap_rows": {}
+      },
+      "tax_rates.xlsx": {
+        "trap_rows": {
+          "trap_missing_tax_rate_01": [
+            0,
+            5,
+            11
+          ]
+        }
+      }
+    },
+    "golden_run_outputs": {
+      "intermediate_values": {
+        "currency_resolution_mapping": [
+          {
+            "Country": "France",
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09
+          },
+          {
+            "Country": "Germany",
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09
+          },
+          {
+            "Country": "Netherlands",
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09
+          },
+          {
+            "Country": "Spain",
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09
+          },
+          {
+            "Country": "United Kingdom",
+            "Currency_Code": "GBP",
+            "FX_To_USD": 1.27
+          }
+        ],
+        "tax_rate_resolution": [
+          {
+            "country": "Netherlands",
+            "city": "Amsterdam",
+            "original_rate": null,
+            "resolved_rate": 0.19,
+            "resolution_basis": "teacher_default_country_tax_table"
+          },
+          {
+            "country": "Netherlands",
+            "city": "Amsterdam",
+            "original_rate": null,
+            "resolved_rate": 0.19,
+            "resolution_basis": "teacher_default_country_tax_table"
+          },
+          {
+            "country": "Netherlands",
+            "city": "Rotterdam",
+            "original_rate": null,
+            "resolved_rate": 0.19,
+            "resolution_basis": "teacher_default_country_tax_table"
+          }
+        ],
+        "expense_bucket_mapping": [
+          {
+            "account_name": "Band and Crew Expense",
+            "mapped_bucket": "personnel"
+          },
+          {
+            "account_name": "Hotel and Restaurant Expense",
+            "mapped_bucket": "lodging_and_meals"
+          },
+          {
+            "account_name": "Production Services",
+            "mapped_bucket": "production_ops"
+          },
+          {
+            "account_name": "Tour Revenue",
+            "mapped_bucket": "revenue"
+          },
+          {
+            "account_name": "Travel Expense",
+            "mapped_bucket": "travel"
+          }
+        ],
+        "source_level_net_revenue": [
+          {
+            "source_name": "Tour Manager",
+            "net_revenue_usd": 1273910.54
+          },
+          {
+            "source_name": "Production Company",
+            "net_revenue_usd": 3395286.0
+          }
+        ],
+        "source_level_total_expenses": [
+          {
+            "source_name": "Tour Manager",
+            "expense_usd": 1427734.67
+          },
+          {
+            "source_name": "Production Company",
+            "expense_usd": 3481187.64
+          }
+        ],
+        "net_income_totals": {
+          "revenue_usd": 4913254.27,
+          "expense_usd": 4908922.31,
+          "tax_usd": 244057.73,
+          "net_income_usd": -255096.39
+        },
+        "source_level_pnl_summary": {
+          "by_source": [
+            {
+              "source_name": "Tour Manager",
+              "revenue_usd": 1517968.27,
+              "expense_usd": 1427734.67,
+              "tax_usd": 244057.73,
+              "net_income_usd": -169194.75
+            },
+            {
+              "source_name": "Production Company",
+              "revenue_usd": 3395286.0,
+              "expense_usd": 3481187.64,
+              "tax_usd": 0.0,
+              "net_income_usd": -85901.64
+            }
+          ],
+          "overall_totals": {
+            "revenue_usd": 4913254.27,
+            "expense_usd": 4908922.31,
+            "tax_usd": 244057.73,
+            "net_income_usd": -255096.39
+          }
+        },
+        "tour_manager_row_metrics_sample": [
+          {
+            "Receipt_ID": "RCPT_00001",
+            "Transaction_Date": "2024-10-01",
+            "City": "Manchester",
+            "Country": "United Kingdom",
+            "Description": "Local transport charge",
+            "Gross_Revenue": 11549.49,
+            "Expense_Amount": 10791.06,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 11549.49,
+            "Expense_Amount_Local": 10791.06,
+            "Currency_Code": "GBP",
+            "FX_To_USD": 1.27,
+            "Gross_Revenue_USD": 14667.85,
+            "Expense_Amount_USD": 13704.65,
+            "Resolved_Tax_Rate": 0.2,
+            "Withholding_Tax_USD": 2933.57,
+            "Net_Income_USD": -1970.37
+          },
+          {
+            "Receipt_ID": "RCPT_00002",
+            "Transaction_Date": "2024-10-22",
+            "City": "Hamburg",
+            "Country": "Germany",
+            "Description": "Production runner expense",
+            "Gross_Revenue": "13.362,48",
+            "Expense_Amount": "13.474,70",
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 13362.48,
+            "Expense_Amount_Local": 13474.7,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 14565.1,
+            "Expense_Amount_USD": 14687.42,
+            "Resolved_Tax_Rate": NaN,
+            "Withholding_Tax_USD": NaN,
+            "Net_Income_USD": NaN
+          },
+          {
+            "Receipt_ID": "RCPT_00003",
+            "Transaction_Date": "2024-10-19",
+            "City": "London",
+            "Country": "United Kingdom",
+            "Description": "Crew travel reimbursement",
+            "Gross_Revenue": 13952.51,
+            "Expense_Amount": 12404.9,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 13952.51,
+            "Expense_Amount_Local": 12404.9,
+            "Currency_Code": "GBP",
+            "FX_To_USD": 1.27,
+            "Gross_Revenue_USD": 17719.69,
+            "Expense_Amount_USD": 15754.22,
+            "Resolved_Tax_Rate": 0.2,
+            "Withholding_Tax_USD": 3543.94,
+            "Net_Income_USD": -1578.47
+          },
+          {
+            "Receipt_ID": "RCPT_00004",
+            "Transaction_Date": "2024-10-02",
+            "City": "Valencia",
+            "Country": "Spain",
+            "Description": "Local transport charge",
+            "Gross_Revenue": 7703.65,
+            "Expense_Amount": 6729.14,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 7703.65,
+            "Expense_Amount_Local": 6729.14,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 8396.98,
+            "Expense_Amount_USD": 7334.76,
+            "Resolved_Tax_Rate": 0.24,
+            "Withholding_Tax_USD": 2015.28,
+            "Net_Income_USD": -953.06
+          },
+          {
+            "Receipt_ID": "RCPT_00005",
+            "Transaction_Date": "2024-10-29",
+            "City": "Hamburg",
+            "Country": "Germany",
+            "Description": "Merchandise revenue settlement",
+            "Gross_Revenue": 6900.8,
+            "Expense_Amount": 9539.21,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 6900.8,
+            "Expense_Amount_Local": 9539.21,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 7521.87,
+            "Expense_Amount_USD": 10397.74,
+            "Resolved_Tax_Rate": NaN,
+            "Withholding_Tax_USD": NaN,
+            "Net_Income_USD": NaN
+          },
+          {
+            "Receipt_ID": "RCPT_00006",
+            "Transaction_Date": "2024-10-07",
+            "City": "Bristol",
+            "Country": "United Kingdom",
+            "Description": "Venue settlement adjustment",
+            "Gross_Revenue": 8818.71,
+            "Expense_Amount": 4768.52,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 8818.71,
+            "Expense_Amount_Local": 4768.52,
+            "Currency_Code": "GBP",
+            "FX_To_USD": 1.27,
+            "Gross_Revenue_USD": 11199.76,
+            "Expense_Amount_USD": 6056.02,
+            "Resolved_Tax_Rate": 0.2,
+            "Withholding_Tax_USD": 2239.95,
+            "Net_Income_USD": 2903.79
+          },
+          {
+            "Receipt_ID": "RCPT_00007",
+            "Transaction_Date": "2024-10-08",
+            "City": "London",
+            "Country": "United Kingdom",
+            "Description": "Local transport charge",
+            "Gross_Revenue": 8910.7,
+            "Expense_Amount": 8165.37,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 8910.7,
+            "Expense_Amount_Local": 8165.37,
+            "Currency_Code": "GBP",
+            "FX_To_USD": 1.27,
+            "Gross_Revenue_USD": 11316.59,
+            "Expense_Amount_USD": 10370.02,
+            "Resolved_Tax_Rate": 0.2,
+            "Withholding_Tax_USD": 2263.32,
+            "Net_Income_USD": -1316.75
+          },
+          {
+            "Receipt_ID": "RCPT_00008",
+            "Transaction_Date": "2024-10-06",
+            "City": "Valencia",
+            "Country": "Spain",
+            "Description": "Merchandise revenue settlement",
+            "Gross_Revenue": 6150.49,
+            "Expense_Amount": 11847.25,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 6150.49,
+            "Expense_Amount_Local": 11847.25,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 6704.03,
+            "Expense_Amount_USD": 12913.5,
+            "Resolved_Tax_Rate": 0.24,
+            "Withholding_Tax_USD": 1608.97,
+            "Net_Income_USD": -7818.44
+          },
+          {
+            "Receipt_ID": "RCPT_00009",
+            "Transaction_Date": "2024-10-11",
+            "City": "Amsterdam",
+            "Country": "Netherlands",
+            "Description": "Crew travel reimbursement",
+            "Gross_Revenue": "6.514,48",
+            "Expense_Amount": "8.602,48",
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 6514.48,
+            "Expense_Amount_Local": 8602.48,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 7100.78,
+            "Expense_Amount_USD": 9376.7,
+            "Resolved_Tax_Rate": 0.19,
+            "Withholding_Tax_USD": 1349.15,
+            "Net_Income_USD": -3625.07
+          },
+          {
+            "Receipt_ID": "RCPT_00010",
+            "Transaction_Date": "2024-10-06",
+            "City": "Rotterdam",
+            "Country": "Netherlands",
+            "Description": "Hotel block invoice",
+            "Gross_Revenue": 11102.48,
+            "Expense_Amount": 250,
+            "Source": "Tour Manager",
+            "Gross_Revenue_Local": 11102.48,
+            "Expense_Amount_Local": 250.0,
+            "Currency_Code": "EUR",
+            "FX_To_USD": 1.09,
+            "Gross_Revenue_USD": 12101.7,
+            "Expense_Amount_USD": 272.5,
+            "Resolved_Tax_Rate": 0.19,
+            "Withholding_Tax_USD": 2299.32,
+            "Net_Income_USD": 9529.88
+          }
+        ]
+      },
+      "grading_anchors": {
+        "blueprint_id": "bp_financial_audit_8203eeb4",
+        "golden_targets": {
+          "final_pnl_totals": {
+            "target_type": "exact_or_tolerance_check",
+            "tolerance": 0.05,
+            "expected_value": {
+              "by_source": [
+                {
+                  "source_name": "Tour Manager",
+                  "revenue_usd": 1517968.27,
+                  "expense_usd": 1427734.67,
+                  "tax_usd": 244057.73,
+                  "net_income_usd": -169194.75
+                },
+                {
+                  "source_name": "Production Company",
+                  "revenue_usd": 3395286.0,
+                  "expense_usd": 3481187.64,
+                  "tax_usd": 0.0,
+                  "net_income_usd": -85901.64
+                }
+              ],
+              "overall_totals": {
+                "revenue_usd": 4913254.27,
+                "expense_usd": 4908922.31,
+                "tax_usd": 244057.73,
+                "net_income_usd": -255096.39
+              }
+            }
+          },
+          "deliverable_presence": {
+            "target_type": "binary_check",
+            "expected_files": [
+              "profit_and_loss_report.xlsx",
+              "task_summary.pdf"
+            ]
+          }
+        },
+        "intermediate_targets": {
+          "required_states": [
+            "currency_resolution_mapping",
+            "tax_rate_resolution",
+            "expense_bucket_mapping",
+            "source_level_net_revenue",
+            "net_income_totals"
+          ],
+          "tax_resolution_events": [
+            {
+              "country": "Netherlands",
+              "city": "Amsterdam",
+              "original_rate": null,
+              "resolved_rate": 0.19,
+              "resolution_basis": "teacher_default_country_tax_table"
+            },
+            {
+              "country": "Netherlands",
+              "city": "Amsterdam",
+              "original_rate": null,
+              "resolved_rate": 0.19,
+              "resolution_basis": "teacher_default_country_tax_table"
+            },
+            {
+              "country": "Netherlands",
+              "city": "Rotterdam",
+              "original_rate": null,
+              "resolved_rate": 0.19,
+              "resolution_basis": "teacher_default_country_tax_table"
+            }
+          ]
+        },
+        "rubric_projection": {
+          "fact_checks": [
+            "Final source-level and overall P&L totals match the golden run."
+          ],
+          "reasoning_checks": [
+            "The model correctly infers implicit currencies from business context.",
+            "The model uses a defensible tax-rate resolution path for incomplete reference data."
+          ],
+          "robustness_checks": [
+            "The missing tax-rate omission does not break downstream calculations."
+          ],
+          "compliance_checks": [
+            "Required deliverables exist and satisfy naming and format requirements."
+          ]
+        }
+      },
+      "run_log": {
+        "golden_run_id": "gold_bp_financial_audit_8203eeb4",
+        "blueprint_id": "bp_financial_audit_8203eeb4",
+        "reference_files_read": [
+          "tour_manager_data.xlsx",
+          "production_ledger.xlsx",
+          "tax_rates.xlsx"
+        ],
+        "assumptions": [
+          "GBP rows are converted to USD using 1.27.",
+          "EUR rows are converted to USD using 1.09.",
+          "Missing country tax rates are restored from the canonical teacher reference table."
+        ],
+        "trap_handling": [
+          {
+            "trap_type": "implicit_currency",
+            "resolution": "Country-aware locale parsing and FX normalization applied before aggregation."
+          },
+          {
+            "trap_type": "reference_omission",
+            "resolution": "Missing tax rates restored explicitly and logged in tax_rate_resolution."
+          }
+        ],
+        "generated_teacher_artifacts": [
+          "golden_intermediate_values.json",
+          "golden_grading_anchors.json",
+          "golden_run_log.json"
+        ]
+      }
+    },
+    "rw_task_adapter": {
+      "source": "TaskGenerator V2",
+      "blueprint_id": "bp_financial_audit_8203eeb4",
+      "golden_run_id": "gold_bp_financial_audit_8203eeb4",
+      "training_annotation_id": "ann_bp_financial_audit_8203eeb4"
+    }
+  }
+}
