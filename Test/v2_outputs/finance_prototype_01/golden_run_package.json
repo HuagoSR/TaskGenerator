@@ -1,0 +1,34 @@
+{
+  "golden_run_id": "gold_bp_financial_audit_29592389",
+  "blueprint_id": "bp_financial_audit_29592389",
+  "candidate_prompt": "You are supporting a Senior Auditor engagement.\n\nObjective: Produce a consolidated cross-source profit and loss report for executive review.\n\nContext:\n- The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.\n- Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nUsing the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.\n\nDeliverables:\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.\n\nWork carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready.",
+  "golden_prompt": "You are supporting a Senior Auditor engagement.\n\nObjective: Produce a consolidated cross-source profit and loss report for executive review.\n\nContext:\n- The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.\n- Reporting is being completed in January 2025 for an as-of date of December 31, 2024.\n\nUsing the attached reference files, prepare a structured Excel profit and loss report suitable for executive review. The final workbook must report revenues in USD, present source-level totals, and clearly show the resulting net income.\n\nDeliverables:\n1. Create an Excel workbook named `profit_and_loss_report.xlsx`.\n2. Include a clear header stating `As of 12/31/2024`.\n3. Prepare a PDF summary named `task_summary.pdf` describing your reconciliation approach and any assumptions.\n\nWork carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready.\n\nTeacher-mode instructions:\n1. You are producing the canonical solution package for dataset construction.\n2. Reveal and resolve every intentional trap before producing final totals.\n3. Emit the intermediate states required by the golden plan.\n4. Record all assumptions, especially any restored reference values, in the run log.\n5. Produce grading anchors that can later be consumed by evaluation code.",
+  "teacher_hints": {
+    "revealed_traps": [
+      "Some operational rows intentionally omit explicit currency symbols and rely on locale-specific number formatting.",
+      "The tax-rate reference workbook intentionally omits at least one jurisdictional value."
+    ],
+    "expected_intermediate_artifacts": [
+      "currency_resolution_mapping",
+      "tax_rate_resolution",
+      "expense_bucket_mapping",
+      "source_level_net_revenue",
+      "net_income_totals"
+    ],
+    "business_assumptions": [
+      "Revenue and expense amounts from operational files must be normalized to USD before cross-source comparison.",
+      "Missing reference values must be resolved explicitly and logged as teacher assumptions."
+    ]
+  },
+  "expected_outputs": {
+    "deliverables": [
+      "profit_and_loss_report.xlsx",
+      "task_summary.pdf"
+    ],
+    "teacher_artifacts": [
+      "golden_intermediate_values.json",
+      "golden_grading_anchors.json",
+      "golden_run_log.json"
+    ]
+  }
+}

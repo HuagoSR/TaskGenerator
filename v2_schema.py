@@ -180,6 +180,26 @@ class TrainingAnnotation(BaseModel):
     rubric_projection: RubricProjection
 
 
+class TeacherHints(BaseModel):
+    revealed_traps: List[str] = Field(default_factory=list)
+    expected_intermediate_artifacts: List[str] = Field(default_factory=list)
+    business_assumptions: List[str] = Field(default_factory=list)
+
+
+class ExpectedOutputs(BaseModel):
+    deliverables: List[str] = Field(default_factory=list)
+    teacher_artifacts: List[str] = Field(default_factory=list)
+
+
+class GoldenRun(BaseModel):
+    golden_run_id: str
+    blueprint_id: str
+    candidate_prompt: str
+    golden_prompt: str
+    teacher_hints: TeacherHints
+    expected_outputs: ExpectedOutputs
+
+
 class V2DatasetPackage(BaseModel):
     task_id: str
     prompt: str

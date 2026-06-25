@@ -9,8 +9,10 @@ from v2_schema import (
     DataRelationship,
     DataSpec,
     DeliverableSpec,
+    ExpectedOutputs,
     FailureMode,
     FileSpec,
+    GoldenRun,
     GoldenPlan,
     InjectionPolicy,
     InjectionTarget,
@@ -22,6 +24,7 @@ from v2_schema import (
     SupervisionTargets,
     TaskBlueprint,
     TaskMetadata,
+    TeacherHints,
     TrainingAnnotation,
     TrapSpec,
     V2DatasetPackage,
@@ -48,10 +51,12 @@ class FinanceAuditTaskCompiler:
         blueprint = self._build_blueprint(selected_skills, scenario_title, task_goal)
         annotation = self._build_training_annotation(blueprint, selected_skills)
         prompt = self._build_prompt(blueprint)
-        dataset_shell = self._build_dataset_shell(blueprint, annotation, prompt)
+        golden_run = self._build_golden_run(blueprint, prompt)
+        dataset_shell = self._build_dataset_shell(blueprint, annotation, golden_run, prompt)
         return {
             "blueprint": blueprint,
             "training_annotation": annotation,
+            "golden_run": golden_run,
             "prompt": prompt,
             "dataset_shell": dataset_shell,
         }
@@ -392,10 +397,54 @@ class FinanceAuditTaskCompiler:
             f"Work carefully with the provided sources. The files may reflect realistic operational inconsistencies, so ensure your final deliverables remain internally coherent, well-formatted, and decision-ready."
         )
 
+    def _build_golden_run(self, blueprint: TaskBlueprint, candidate_prompt: str) -> GoldenRun:
+        revealed_traps = []
+        business_assumptions = [
+            "Revenue and expense amounts from operational files must be normalized to USD before cross-source comparison.",
+            "Missing reference values must be resolved explicitly and logged as teacher assumptions.",
+        ]
+        for trap in blueprint.trap_spec:
+            if trap.trap_type == "implicit_currency":
+                revealed_traps.append("Some operational rows intentionally omit explicit currency symbols and rely on locale-specific number formatting.")
+            elif trap.trap_type == "reference_omission":
+                revealed_traps.append("The tax-rate reference workbook intentionally omits at least one jurisdictional value.")
+
+        expected_intermediates = list(dict.fromkeys(blueprint.golden_plan.required_intermediate_states))
+        golden_prompt = (
+            f"{candidate_prompt}\n\n"
+            "Teacher-mode instructions:\n"
+            "1. You are producing the canonical solution package for dataset construction.\n"
+            "2. Reveal and resolve every intentional trap before producing final totals.\n"
+            "3. Emit the intermediate states required by the golden plan.\n"
+            "4. Record all assumptions, especially any restored reference values, in the run log.\n"
+            "5. Produce grading anchors that can later be consumed by evaluation code."
+        )
+
+        return GoldenRun(
+            golden_run_id=f"gold_{blueprint.blueprint_id}",
+            blueprint_id=blueprint.blueprint_id,
+            candidate_prompt=candidate_prompt,
+            golden_prompt=golden_prompt,
+            teacher_hints=TeacherHints(
+                revealed_traps=list(dict.fromkeys(revealed_traps)),
+                expected_intermediate_artifacts=expected_intermediates,
+                business_assumptions=business_assumptions,
+            ),
+            expected_outputs=ExpectedOutputs(
+                deliverables=[item.file_name for item in blueprint.deliverable_spec],
+                teacher_artifacts=[
+                    "golden_intermediate_values.json",
+                    "golden_grading_anchors.json",
+                    "golden_run_log.json",
+                ],
+            ),
+        )
+
     def _build_dataset_shell(
         self,
         blueprint: TaskBlueprint,
         annotation: TrainingAnnotation,
+        golden_run: GoldenRun,
         prompt: str,
     ) -> V2DatasetPackage:
         rubric_lines = []
@@ -428,8 +477,10 @@ class FinanceAuditTaskCompiler:
             extra={
                 "blueprint_id": blueprint.blueprint_id,
                 "training_annotation_id": annotation.annotation_id,
+                "golden_run_id": golden_run.golden_run_id,
                 "task_blueprint": blueprint.model_dump(),
                 "training_annotation": annotation.model_dump(),
+                "golden_run": golden_run.model_dump(),
             },
         )
 
