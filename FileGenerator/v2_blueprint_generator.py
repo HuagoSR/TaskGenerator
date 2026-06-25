@@ -17,6 +17,14 @@ COUNTRY_CITY_OPTIONS: Dict[str, List[str]] = {
     "Netherlands": ["Amsterdam", "Rotterdam"],
 }
 
+COMPACT_COUNTRY_LABEL = {
+    "United Kingdom": "UK",
+    "France": "France",
+    "Germany": "Germany",
+    "Spain": "Spain",
+    "Netherlands": "Netherlands",
+}
+
 TAX_RATE_BY_COUNTRY: Dict[str, float] = {
     "United Kingdom": 0.20,
     "France": 0.15,
@@ -35,11 +43,10 @@ DESCRIPTION_OPTIONS = [
 ]
 
 ACCOUNT_OPTIONS = [
-    "Tour Revenue",
-    "Band and Crew Expense",
-    "Hotel and Restaurant Expense",
-    "Travel Expense",
-    "Production Services",
+    "Band & Crew",
+    "Hotel & Restaurants",
+    "Venue & Production",
+    "Other Costs",
 ]
 
 
@@ -76,6 +83,11 @@ class V2BlueprintFileGenerator:
         return workbook
 
     def _build_sheet(self, file_spec: FileSpec, sheet_spec: SheetSpec) -> pd.DataFrame:
+        if file_spec.file_name == "fall_music_tour_ref_file.xlsx":
+            return self._build_finance_template_sheet(sheet_spec)
+        if file_spec.file_name == "production_company_costs.xlsx":
+            return self._build_production_cost_sheet(sheet_spec)
+
         row_count = sheet_spec.row_count_target
         data: Dict[str, List[object]] = {}
 
@@ -90,6 +102,8 @@ class V2BlueprintFileGenerator:
                 data[col.name] = self._sample_dates(row_count)
             elif col.semantic_type == "location_country":
                 data[col.name] = countries
+            elif col.semantic_type == "location_country_compact":
+                data[col.name] = [COMPACT_COUNTRY_LABEL[country] for country in countries]
             elif col.semantic_type == "location_city":
                 data[col.name] = cities
             elif col.semantic_type == "free_text_description":
@@ -107,6 +121,62 @@ class V2BlueprintFileGenerator:
                 data[col.name] = ["N/A"] * row_count
 
         return pd.DataFrame(data)
+
+    def _build_finance_template_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
+        if sheet_spec.sheet_name == "Inc_Costs_Tracked_by_Tour_Mgr":
+            countries = [
+                "United Kingdom",
+                "France",
+                "France",
+                "Spain",
+                "Spain",
+                "Germany",
+                "Germany",
+            ]
+            cities = ["London", "Paris", "Paris", "Barcelona", "Madrid", "Munich", "Berlin"]
+            dates = ["2024-10-07", "2024-10-09", "2024-10-10", "2024-10-12", "2024-10-14", "2024-10-16", "2024-10-18"]
+            amounts = [230754.0, 175880.0, 168432.0, 125932.0, 110823.0, 99117.0, 132812.0]
+            return pd.DataFrame(
+                {
+                    "Line_Type": [f"Show {idx + 1}" for idx in range(len(countries))],
+                    "Tour_Date": dates,
+                    "City": cities,
+                    "Country": [COMPACT_COUNTRY_LABEL[country] for country in countries],
+                    "Gross_Revenue": amounts,
+                }
+            )
+
+        if sheet_spec.sheet_name == "Assump_Withholding_Tax":
+            rows = [
+                ("UK", 0.20),
+                ("France", 0.15),
+                ("Spain", 0.24),
+                ("Germany", 0.15825),
+                ("Netherlands", 0.19),
+                ("Notes", None),
+            ]
+            return pd.DataFrame(rows, columns=["Country", "Withholding_Tax_Rate"])
+
+        return pd.DataFrame()
+
+    def _build_production_cost_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
+        rows = [
+            ("Band & Crew", "10 members", 345000.0),
+            ("Hotel & Restaurants", "London", 34200.0),
+            ("Hotel & Restaurants", "Paris", 41800.0),
+            ("Hotel & Restaurants", "Barcelona", 22150.0),
+            ("Hotel & Restaurants", "Madrid", 23750.0),
+            ("Hotel & Restaurants", "Munich", 29640.0),
+            ("Hotel & Restaurants", "Berlin", 31860.0),
+            ("Venue & Production", "Equipment Rental", 82400.0),
+            ("Venue & Production", "Ground Transport", 38220.0),
+            ("Venue & Production", "Lighting Support", 90480.0),
+            ("Venue & Production", "Backline", 38400.0),
+            ("Other Costs", "Insurance", 29610.0),
+            ("Other Costs", "Freight", 48240.0),
+            ("Other Costs", "Petty Cash", 12000.0),
+        ]
+        return pd.DataFrame(rows, columns=["Cost_Category", "Cost_Item", "Amount_USD"])
 
     def _apply_traps(self, workbook: GeneratedWorkbook, traps: List[TrapSpec]) -> None:
         for trap in traps:
@@ -140,7 +210,7 @@ class V2BlueprintFileGenerator:
 
         for row_idx in trap_rows:
             country = df.loc[row_idx, "Country"] if "Country" in df.columns else "France"
-            locale_hint = "GBP" if country == "United Kingdom" else "EUR"
+            locale_hint = "GBP" if country in {"United Kingdom", "UK"} else "EUR"
             for col in trap.injection_target.columns:
                 if col not in df.columns:
                     continue

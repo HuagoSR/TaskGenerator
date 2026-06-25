@@ -74,20 +74,20 @@ class FinanceAuditTaskCompiler:
 
         return TaskBlueprint(
             blueprint_id=blueprint_id,
-            template_family="cross_border_pnl",
+            template_family="financial_workbook_rollforward",
             task_metadata=TaskMetadata(
                 sector="Financial Audit",
                 occupation="Senior Auditor",
                 scenario_title=scenario_title,
                 task_goal=task_goal,
-                difficulty_level="medium-high",
+                difficulty_level="medium",
             ),
             selected_skills=selected_ids,
             scenario_spec=ScenarioSpec(
                 role="You are the finance lead supporting a post-period audit review.",
                 business_context=(
-                    "The client operated an international music tour with revenues and costs captured by different teams, "
-                    "ledgers, and operating systems."
+                    "The client operated an international music tour and prepared a partially structured audit workbook with separate tabs "
+                    "for tour-manager revenue, withholding-tax assumptions, and production-company costs."
                 ),
                 time_context="Reporting is being completed in January 2025 for an as-of date of December 31, 2024.",
                 tone="professional, business-realistic, non-tutorial",
@@ -108,63 +108,46 @@ class FinanceAuditTaskCompiler:
             files.extend(
                 [
                     FileSpec(
-                        file_name="tour_manager_data.xlsx",
+                        file_name="fall_music_tour_ref_file.xlsx",
                         file_role="source_data",
                         sheet_specs=[
                             SheetSpec(
-                                sheet_name="Transactions",
-                                row_count_target=150,
+                                sheet_name="Inc_Costs_Tracked_by_Tour_Mgr",
+                                row_count_target=7,
                                 columns=[
-                                    ColumnSpec(name="Receipt_ID", semantic_type="identifier"),
-                                    ColumnSpec(name="Transaction_Date", semantic_type="date"),
+                                    ColumnSpec(name="Line_Type", semantic_type="free_text_description"),
+                                    ColumnSpec(name="Tour_Date", semantic_type="date"),
                                     ColumnSpec(name="City", semantic_type="location_city"),
-                                    ColumnSpec(name="Country", semantic_type="location_country"),
-                                    ColumnSpec(name="Description", semantic_type="free_text_description"),
+                                    ColumnSpec(name="Country", semantic_type="location_country_compact"),
                                     ColumnSpec(name="Gross_Revenue", semantic_type="localized_amount"),
-                                    ColumnSpec(name="Expense_Amount", semantic_type="localized_amount"),
-                                    ColumnSpec(name="Source", semantic_type="source_system"),
+                                ],
+                            ),
+                            SheetSpec(
+                                sheet_name="Assump_Withholding_Tax",
+                                row_count_target=6,
+                                columns=[
+                                    ColumnSpec(name="Country", semantic_type="location_country_compact"),
+                                    ColumnSpec(name="Withholding_Tax_Rate", semantic_type="tax_rate"),
                                 ],
                             )
                         ],
                     ),
                     FileSpec(
-                        file_name="production_ledger.xlsx",
+                        file_name="production_company_costs.xlsx",
                         file_role="source_data",
                         sheet_specs=[
                             SheetSpec(
-                                sheet_name="Ledger",
-                                row_count_target=400,
+                                sheet_name="Costs_Tracked_by_Production_Co",
+                                row_count_target=14,
                                 columns=[
-                                    ColumnSpec(name="Ledger_Entry_ID", semantic_type="identifier"),
-                                    ColumnSpec(name="Posting_Date", semantic_type="date"),
-                                    ColumnSpec(name="Account_Name", semantic_type="account_name"),
-                                    ColumnSpec(name="Activity_Description", semantic_type="free_text_description"),
-                                    ColumnSpec(name="Debit_Amount", semantic_type="amount"),
-                                    ColumnSpec(name="Credit_Amount", semantic_type="amount"),
-                                    ColumnSpec(name="Source", semantic_type="source_system"),
+                                    ColumnSpec(name="Cost_Category", semantic_type="account_name"),
+                                    ColumnSpec(name="Cost_Item", semantic_type="free_text_description"),
+                                    ColumnSpec(name="Amount_USD", semantic_type="amount"),
                                 ],
                             )
                         ],
                     ),
                 ]
-            )
-        if "handle_missing_tax_rate" in selected_ids:
-            files.append(
-                FileSpec(
-                    file_name="tax_rates.xlsx",
-                    file_role="reference_table",
-                    sheet_specs=[
-                        SheetSpec(
-                            sheet_name="Rates",
-                            row_count_target=12,
-                            columns=[
-                                ColumnSpec(name="Country", semantic_type="location_country"),
-                                ColumnSpec(name="City", semantic_type="location_city"),
-                                ColumnSpec(name="Withholding_Tax_Rate", semantic_type="tax_rate"),
-                            ],
-                        )
-                    ],
-                )
             )
         return files
 
@@ -174,8 +157,8 @@ class FinanceAuditTaskCompiler:
             relationships.append(
                 DataRelationship(
                     relation_type="lookup",
-                    left="tour_manager_data.xlsx:Transactions.Country",
-                    right="tax_rates.xlsx:Rates.Country",
+                    left="fall_music_tour_ref_file.xlsx:Inc_Costs_Tracked_by_Tour_Mgr.Country",
+                    right="fall_music_tour_ref_file.xlsx:Assump_Withholding_Tax.Country",
                 )
             )
         return relationships
@@ -189,14 +172,14 @@ class FinanceAuditTaskCompiler:
                     source_skill_id="infer_implicit_currency",
                     trap_type="implicit_currency",
                     injection_target=InjectionTarget(
-                        file_name="tour_manager_data.xlsx",
-                        sheet_name="Transactions",
-                        columns=["Gross_Revenue", "Expense_Amount"],
+                        file_name="fall_music_tour_ref_file.xlsx",
+                        sheet_name="Inc_Costs_Tracked_by_Tour_Mgr",
+                        columns=["Gross_Revenue"],
                     ),
                     injection_policy=InjectionPolicy(
                         pattern="mixed_local_currency_without_header_signal",
                         severity="medium",
-                        affected_row_count=20,
+                        affected_row_count=3,
                     ),
                     expected_solver_behavior=(
                         "Infer currency from geographic context and avoid reporting mixed-currency totals."
@@ -210,14 +193,14 @@ class FinanceAuditTaskCompiler:
                     source_skill_id="handle_missing_tax_rate",
                     trap_type="reference_omission",
                     injection_target=InjectionTarget(
-                        file_name="tax_rates.xlsx",
-                        sheet_name="Rates",
+                        file_name="fall_music_tour_ref_file.xlsx",
+                        sheet_name="Assump_Withholding_Tax",
                         columns=["Withholding_Tax_Rate"],
                     ),
                     injection_policy=InjectionPolicy(
                         pattern="omit_one_jurisdiction",
                         severity="medium",
-                        affected_entities=["Amsterdam", "Netherlands"],
+                        affected_entities=["Germany"],
                     ),
                     expected_solver_behavior=(
                         "Detect the missing reference and resolve it using business logic or defensible assumptions."
@@ -229,30 +212,22 @@ class FinanceAuditTaskCompiler:
     def _build_deliverable_spec(self) -> List[DeliverableSpec]:
         return [
             DeliverableSpec(
-                file_name="profit_and_loss_report.xlsx",
+                file_name="fall_music_tour_output.xlsx",
                 file_role="final_deliverable",
                 requirements=[
                     "must include header 'As of 12/31/2024'",
-                    "must present source-level totals",
-                    "must normalize revenue to USD",
-                ],
-            ),
-            DeliverableSpec(
-                file_name="task_summary.pdf",
-                file_role="final_deliverable",
-                requirements=[
-                    "must summarize reconciliation approach",
-                    "must mention any assumptions or anomalies",
+                    "must present Tour Manager, Production Company, and Total columns",
+                    "must compute gross revenue, withholding tax, total costs, and net income",
                 ],
             ),
         ]
 
     def _build_prompt_spec(self, selected_skills) -> PromptSpec:
         visible = [
-            "prepare a structured P&L report",
+            "complete a structured P&L workbook",
             "use the attached files",
             "report all revenues in USD",
-            "provide an executive-ready workbook",
+            "produce an executive-ready output workbook",
         ]
         hidden = []
         for skill in selected_skills:
@@ -302,12 +277,12 @@ class FinanceAuditTaskCompiler:
             SupervisionTarget(
                 target_id="final_pnl_totals",
                 target_type="exact_or_tolerance_check",
-                description="Validate final source-level and total P&L figures against the golden run.",
+                description="Validate final workbook totals against the golden run.",
             ),
             SupervisionTarget(
                 target_id="deliverable_presence",
                 target_type="binary_check",
-                description="Check that the required workbook and summary file are produced with correct names.",
+                description="Check that the required workbook is produced with the correct name.",
             ),
         ]
 
@@ -357,13 +332,13 @@ class FinanceAuditTaskCompiler:
         ]
 
         rubric_projection = RubricProjection(
-            fact_checks=["Final source-level and overall P&L totals match the golden run."],
+            fact_checks=["Final workbook totals match the golden run."],
             reasoning_checks=[
                 "The model correctly infers implicit currencies from business context.",
                 "The model uses a defensible tax-rate resolution path for incomplete reference data.",
             ],
             robustness_checks=["The missing tax-rate omission does not break downstream calculations."],
-            compliance_checks=["Required deliverables exist and satisfy naming and format requirements."],
+            compliance_checks=["Required workbook exists and satisfies naming and structural requirements."],
         )
 
         return TrainingAnnotation(
@@ -388,20 +363,20 @@ class FinanceAuditTaskCompiler:
             f"**Role:** {blueprint.task_metadata.occupation}\n\n"
             f"**Engagement Context:**\n"
             f"{blueprint.scenario_spec.business_context} {blueprint.scenario_spec.time_context}\n\n"
-            f"Management needs an executive-ready reporting package that reconciles the available operating records into one coherent profit-and-loss view. "
-            f"Your work should support post-period review, surface material assumptions, and preserve a defensible audit trail.\n\n"
+            f"Management needs a completed profit-and-loss workbook that rolls the provided support tabs into one coherent audit-ready summary. "
+            f"Your work should preserve the workbook structure, complete the required calculations, and keep the final result suitable for executive review.\n\n"
             f"**Objective:**\n"
             f"{blueprint.task_metadata.task_goal}\n\n"
             f"**Working Expectations:**\n"
             f"- Use the attached reference files as the sole working data sources.\n"
-            f"- Report all revenues in USD before presenting source-level or overall totals.\n"
-            f"- Reconcile the different operating records into a result that is internally consistent and suitable for executive review.\n"
-            f"- If the source materials contain irregularities or incomplete information, resolve them carefully and document any assumptions in the summary.\n\n"
+            f"- Complete a final P&L workbook that shows Tour Manager, Production Company, and Total columns.\n"
+            f"- Report revenues in USD and apply withholding-tax adjustments before presenting net income.\n"
+            f"- If the source materials contain irregularities or incomplete information, resolve them carefully inside the workbook logic.\n\n"
             f"**Required Deliverables:**\n"
             f"1. Create an Excel workbook named `{deliverable_names[0]}`.\n"
             f"2. Include a clear header stating `As of 12/31/2024`.\n"
-            f"3. The workbook must present source-level totals and clearly show the resulting net income.\n"
-            f"4. Prepare a PDF summary named `{deliverable_names[1]}` describing your reconciliation approach, major assumptions, and any anomalies worth management attention.\n\n"
+            f"3. The workbook must present gross revenue, withholding taxes, total costs, and final net income.\n"
+            f"4. The workbook should be professionally structured and readable without adding unrelated files.\n\n"
             f"**Quality Bar:**\n"
             f"The final package should read like a real client-facing audit work product: numerically coherent, professionally formatted, and decision-ready."
         )

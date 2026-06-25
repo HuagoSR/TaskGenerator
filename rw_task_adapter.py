@@ -93,25 +93,57 @@ class RwTaskCaseExporter:
 
         for source_row in summary.get("by_source", []):
             source_name = source_row["source_name"]
-            rubric_items.extend(
-                [
-                    self._make_rubric_item(row_id, 3, f"The submission reports `{source_name}` revenue in USD consistent with the golden run totals.", ["outcome"]),
-                    self._make_rubric_item(row_id + 1, 3, f"The submission reports `{source_name}` expenses in USD consistent with the golden run totals.", ["outcome"]),
-                    self._make_rubric_item(row_id + 2, 3, f"The submission reports `{source_name}` net income consistent with the golden run totals.", ["outcome"]),
-                ]
+            if float(source_row.get("revenue_usd", 0.0)) != 0.0:
+                rubric_items.append(
+                    self._make_rubric_item(
+                        row_id,
+                        3,
+                        f"The submission reports `{source_name}` gross revenue in USD consistent with the golden run totals.",
+                        ["outcome"],
+                    )
+                )
+                row_id += 1
+            if float(source_row.get("tax_usd", 0.0)) != 0.0:
+                rubric_items.append(
+                    self._make_rubric_item(
+                        row_id,
+                        3,
+                        f"The submission reports `{source_name}` withholding tax in USD consistent with the golden run totals.",
+                        ["outcome"],
+                    )
+                )
+                row_id += 1
+            if float(source_row.get("expense_usd", 0.0)) != 0.0:
+                rubric_items.append(
+                    self._make_rubric_item(
+                        row_id,
+                        3,
+                        f"The submission reports `{source_name}` total costs in USD consistent with the golden run totals.",
+                        ["outcome"],
+                    )
+                )
+                row_id += 1
+            rubric_items.append(
+                self._make_rubric_item(
+                    row_id,
+                    3,
+                    f"The submission reports `{source_name}` net income consistent with the golden run totals.",
+                    ["outcome"],
+                )
             )
-            row_id += 3
+            row_id += 1
 
         overall = summary.get("overall_totals") or {}
         if overall:
             rubric_items.extend(
                 [
                     self._make_rubric_item(row_id, 4, "The overall revenue total matches the golden run within normal rounding tolerance.", ["outcome"]),
-                    self._make_rubric_item(row_id + 1, 4, "The overall expense total matches the golden run within normal rounding tolerance.", ["outcome"]),
-                    self._make_rubric_item(row_id + 2, 4, "The overall net income total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                    self._make_rubric_item(row_id + 1, 4, "The overall withholding-tax total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                    self._make_rubric_item(row_id + 2, 4, "The overall expense total matches the golden run within normal rounding tolerance.", ["outcome"]),
+                    self._make_rubric_item(row_id + 3, 4, "The overall net income total matches the golden run within normal rounding tolerance.", ["outcome"]),
                 ]
             )
-            row_id += 3
+            row_id += 4
 
         if "currency_resolution_mapping" in intermediate_targets.get("required_states", []):
             rubric_items.append(
