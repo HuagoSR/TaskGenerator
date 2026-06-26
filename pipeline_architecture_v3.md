@@ -456,7 +456,18 @@ Current implementation status:
   - consumes `SkillExtractionPromptPackage`
   - emits `ExtractedSkillCandidate` objects
   - is intended for pipeline testing, not final research-quality extraction
+- `v3_skill_extractor.py` also provides an LLM-backed extractor interface:
+  - `BaseSkillExtractor`
+  - `LLMSkillExtractor`
+  - `FallbackSkillExtractor`
+  - Tuzi/OpenAI-compatible provider config from `.env`
+  - DeepSeek official fallback config from `deepseek-key.txt`
 - `Test/run_v3_mock_skill_extractor.py` runs the mock extractor from the command line
+- `Test/run_v3_llm_skill_extractor.py` runs provider selection and fallback:
+  - `auto`: Tuzi/OpenAI-compatible provider, then DeepSeek official, then mock
+  - `tuzi`: only the `.env` provider unless mock fallback is explicitly allowed
+  - `deepseek`: only DeepSeek official unless mock fallback is explicitly allowed
+  - `mock`: deterministic offline extractor
 - `v3_skill_registry.py` provides a first-pass deterministic registry builder:
   - converts candidates into `SkillRegistryEntry` records
   - performs simple name-based deduplication
@@ -466,11 +477,11 @@ Current implementation status:
 What is intentionally not done yet:
 
 - no web search collector
-- no direct model call for skill extraction
+- direct model-call code exists, but external smoke testing may be blocked by data-export policy
 - no semantic embedding or LLM-based registry deduplication
 - no accepted/rejected skill review loop
 
-The immediate next code step is to replace or complement the mock extractor with an LLM-backed `SkillExtractor` that uses the same schema and writes the same candidate format.
+The immediate next code step is to run the LLM extractor on approved non-sensitive source material, then compare the LLM candidates against the mock candidates and feed both into the registry builder.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 

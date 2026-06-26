@@ -132,8 +132,9 @@ Current Pipeline A starting files:
 
 - `v3_source_schema.py`: source-to-skill schema objects
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
-- `v3_skill_extractor.py`: deterministic mock extractor that turns a prompt package into `ExtractedSkillCandidate` records
+- `v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
+- `Test/run_v3_llm_skill_extractor.py`: CLI for Tuzi/OpenAI-compatible, DeepSeek official, and mock fallback extraction
 - `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
@@ -142,9 +143,11 @@ Current Pipeline A status:
 
 - local source normalization works
 - deterministic mock skill extraction works
+- LLM-backed extraction code exists
+- `auto` provider mode tries `.env` Tuzi/OpenAI-compatible config, then `deepseek-key.txt` DeepSeek official config, then mock
 - first-pass registry building works
 - no web collector yet
-- no LLM-backed skill extraction yet
+- external LLM smoke tests may be blocked if they would export private workspace source text
 - no semantic registry deduplication yet
 
 ## GoldenRun Direction

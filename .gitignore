@@ -1,0 +1,6 @@
+.env
+deepseek-key.txt
+__pycache__/
+*.pyc
+Test/v2_outputs/
+Test/v3_source_demo_inputs/

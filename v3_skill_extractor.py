@@ -1,6 +1,9 @@
+import json
 import hashlib
+import os
 from dataclasses import dataclass
-from typing import Iterable, List
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional
 
 from v3_source_schema import (
     ExtractedSkillCandidate,
@@ -156,7 +159,12 @@ SKILL_PATTERNS = [
 ]
 
 
-class MockSkillExtractor:
+class BaseSkillExtractor:
+    def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
+        raise NotImplementedError
+
+
+class MockSkillExtractor(BaseSkillExtractor):
     """Deterministic first-pass extractor for local pipeline testing."""
 
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
@@ -229,3 +237,328 @@ class MockSkillExtractor:
             ],
         )
 
+
+@dataclass
+class ProviderConfig:
+    provider_name: str
+    base_url: str
+    api_key: str
+    model: str
+    timeout_seconds: int = 180
+    temperature: float = 0.2
+    max_tokens: int = 6000
+
+
+@dataclass
+class ProviderAttempt:
+    provider_name: str
+    model: str
+    success: bool
+    candidate_count: int = 0
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
+
+    def to_report(self) -> Dict[str, object]:
+        payload: Dict[str, object] = {
+            "provider_name": self.provider_name,
+            "model": self.model,
+            "success": self.success,
+            "candidate_count": self.candidate_count,
+        }
+        if self.error_type:
+            payload["error_type"] = self.error_type
+        if self.error_message:
+            payload["error_message"] = self.error_message[:1000]
+        return payload
+
+
+class SkillExtractionError(RuntimeError):
+    pass
+
+
+class LLMSkillExtractor(BaseSkillExtractor):
+    def __init__(self, config: ProviderConfig, prompt_block_limit: int = 80, prompt_char_limit: int = 24000):
+        self.config = config
+        self.prompt_block_limit = prompt_block_limit
+        self.prompt_char_limit = prompt_char_limit
+
+    def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
+        response_text = self._call_model(package, max_candidates)
+        payload = self._parse_json_object(response_text)
+        raw_candidates = payload.get("candidates")
+        if not isinstance(raw_candidates, list):
+            raise SkillExtractionError("LLM response JSON must contain a top-level candidates array.")
+
+        valid_source_ids, valid_block_ids = self._valid_evidence_ids(package)
+        candidates = []
+        for raw_candidate in raw_candidates[:max_candidates]:
+            if not isinstance(raw_candidate, dict):
+                raise SkillExtractionError("Each candidate must be a JSON object.")
+            candidate = ExtractedSkillCandidate.model_validate(raw_candidate)
+            self._validate_evidence(candidate, valid_source_ids, valid_block_ids)
+            candidates.append(candidate)
+        if not candidates:
+            raise SkillExtractionError("LLM returned zero valid candidates.")
+        return candidates
+
+    def _call_model(self, package: SkillExtractionPromptPackage, max_candidates: int) -> str:
+        try:
+            from openai import OpenAI
+        except Exception as exc:  # pragma: no cover - environment-specific
+            raise SkillExtractionError(f"OpenAI SDK is unavailable: {exc}") from exc
+
+        client = OpenAI(
+            api_key=self.config.api_key,
+            base_url=self.config.base_url,
+            timeout=self.config.timeout_seconds,
+        )
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You extract reusable semantic skills for real-world-task dataset generation. "
+                    "You must output valid JSON only."
+                ),
+            },
+            {
+                "role": "user",
+                "content": self._build_prompt(package, max_candidates),
+            },
+        ]
+        response = client.chat.completions.create(
+            model=self.config.model,
+            messages=messages,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content
+        if not content:
+            raise SkillExtractionError("LLM returned empty content.")
+        return content
+
+    def _build_prompt(self, package: SkillExtractionPromptPackage, max_candidates: int) -> str:
+        compact_sources = self._compact_sources(package)
+        schema_hint = {
+            "candidates": [
+                {
+                    "candidate_id": "skill_candidate_short_unique_id",
+                    "source_ids": ["source_id"],
+                    "proposed_name": "Reusable Semantic Skill Name",
+                    "domain_tags": ["finance"],
+                    "capability_tags": ["capability_name"],
+                    "difficulty_tags": ["difficulty_name"],
+                    "input_contract": {
+                        "requires_semantics": ["Domain:InputSemantic"],
+                        "optional_semantics": [],
+                        "provides_semantics": [],
+                    },
+                    "output_contract": {
+                        "requires_semantics": [],
+                        "optional_semantics": [],
+                        "provides_semantics": ["Domain:OutputSemantic"],
+                    },
+                    "business_meaning": "What reusable business capability this skill represents.",
+                    "hidden_difficulty": "What makes the task non-trivial.",
+                    "common_failure_modes": ["failure mode"],
+                    "common_deliverables": ["deliverable type"],
+                    "assembly_hints": ["task assembly hint"],
+                    "evidence": [
+                        {
+                            "evidence_id": "evidence_short_unique_id",
+                            "source_id": "source_id",
+                            "normalized_source_id": "normalized_source_id",
+                            "block_ids": ["block_0001"],
+                            "evidence_summary": "Why this evidence supports the skill.",
+                            "supporting_spans": [
+                                {
+                                    "source_id": "source_id",
+                                    "block_id": "block_0001",
+                                    "start_char": 0,
+                                    "end_char": 10,
+                                    "quote": "short quote from provided source",
+                                    "note": "",
+                                }
+                            ],
+                        }
+                    ],
+                    "extraction_status": "candidate",
+                    "extractor_model": self.config.model,
+                    "extraction_trace": ["Extracted by LLM from evidence-backed source blocks."],
+                }
+            ]
+        }
+        return (
+            "Return JSON only. The top-level JSON object must be {\"candidates\": [...]}.\n"
+            f"Return at most {max_candidates} ExtractedSkillCandidate objects.\n\n"
+            "Hard constraints:\n"
+            "- Every candidate must cite at least one evidence object.\n"
+            "- Every evidence object must reference source_id and block_id values that appear in the provided sources.\n"
+            "- Do not encode exact file names, row counts, generated values, or fixed rubric text as the skill definition.\n"
+            "- Extract reusable semantic capabilities, not one-off task instances.\n"
+            "- Use concise English identifiers and tags.\n"
+            "- Include the word json in your reasoning only internally; output JSON only.\n\n"
+            f"Expected JSON shape:\n{json.dumps(schema_hint, ensure_ascii=False, indent=2)}\n\n"
+            f"Extraction instructions:\n{package.instructions}\n\n"
+            f"Constraints from package:\n{json.dumps(package.constraints, ensure_ascii=False, indent=2)}\n\n"
+            f"Normalized sources:\n{json.dumps(compact_sources, ensure_ascii=False, indent=2)}"
+        )
+
+    def _compact_sources(self, package: SkillExtractionPromptPackage) -> List[Dict[str, object]]:
+        compact = []
+        remaining_chars = self.prompt_char_limit
+        for source in package.normalized_sources:
+            blocks = []
+            for block in source.blocks[: self.prompt_block_limit]:
+                if remaining_chars <= 0:
+                    break
+                text = block.text[:1200]
+                remaining_chars -= len(text)
+                blocks.append(
+                    {
+                        "block_id": block.block_id,
+                        "block_type": block.block_type,
+                        "semantic_tags": block.semantic_tags,
+                        "text": text,
+                        "start_char": block.source_span.start_char,
+                        "end_char": block.source_span.end_char,
+                    }
+                )
+            compact.append(
+                {
+                    "source_id": source.source_id,
+                    "normalized_source_id": source.normalized_source_id,
+                    "title": source.title,
+                    "domain_tags": source.domain_tags,
+                    "domain_terms": source.domain_terms[:50],
+                    "blocks": blocks,
+                }
+            )
+        return compact
+
+    def _parse_json_object(self, text: str) -> Dict[str, Any]:
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise SkillExtractionError(f"LLM response was not valid JSON: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise SkillExtractionError("LLM response must be a JSON object.")
+        return payload
+
+    def _valid_evidence_ids(self, package: SkillExtractionPromptPackage) -> tuple[set[str], set[tuple[str, str]]]:
+        source_ids = set()
+        block_ids = set()
+        for source in package.normalized_sources:
+            source_ids.add(source.source_id)
+            for block in source.blocks:
+                block_ids.add((source.source_id, block.block_id))
+        return source_ids, block_ids
+
+    def _validate_evidence(
+        self,
+        candidate: ExtractedSkillCandidate,
+        valid_source_ids: set[str],
+        valid_block_ids: set[tuple[str, str]],
+    ) -> None:
+        if not candidate.evidence:
+            raise SkillExtractionError(f"Candidate {candidate.candidate_id} has no evidence.")
+        for evidence in candidate.evidence:
+            if evidence.source_id not in valid_source_ids:
+                raise SkillExtractionError(f"Evidence {evidence.evidence_id} references unknown source_id {evidence.source_id}.")
+            for block_id in evidence.block_ids:
+                if (evidence.source_id, block_id) not in valid_block_ids:
+                    raise SkillExtractionError(
+                        f"Evidence {evidence.evidence_id} references unknown block_id {block_id} for source {evidence.source_id}."
+                    )
+
+
+class FallbackSkillExtractor(BaseSkillExtractor):
+    def __init__(self, extractors: List[tuple[str, BaseSkillExtractor]], allow_mock_fallback: bool = True):
+        self.extractors = extractors
+        self.allow_mock_fallback = allow_mock_fallback
+        self.attempts: List[ProviderAttempt] = []
+
+    def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
+        self.attempts = []
+        last_error: Optional[Exception] = None
+        for provider_name, extractor in self.extractors:
+            if isinstance(extractor, MockSkillExtractor) and not self.allow_mock_fallback:
+                continue
+            model = self._extractor_model(extractor)
+            try:
+                candidates = extractor.extract(package, max_candidates=max_candidates)
+                self.attempts.append(
+                    ProviderAttempt(
+                        provider_name=provider_name,
+                        model=model,
+                        success=True,
+                        candidate_count=len(candidates),
+                    )
+                )
+                return candidates
+            except Exception as exc:
+                last_error = exc
+                self.attempts.append(
+                    ProviderAttempt(
+                        provider_name=provider_name,
+                        model=model,
+                        success=False,
+                        error_type=type(exc).__name__,
+                        error_message=str(exc),
+                    )
+                )
+        raise SkillExtractionError(f"All extraction providers failed. Last error: {last_error}")
+
+    def _extractor_model(self, extractor: BaseSkillExtractor) -> str:
+        config = getattr(extractor, "config", None)
+        if config is not None:
+            return str(getattr(config, "model", "unknown"))
+        if isinstance(extractor, MockSkillExtractor):
+            return "mock_rule_based_v0"
+        return "unknown"
+
+
+def load_env_file(path: str | Path) -> Dict[str, str]:
+    env_path = Path(path)
+    if not env_path.exists():
+        return {}
+    values = {}
+    for raw_line in env_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def build_tuzi_config(env_path: str | Path, model_override: Optional[str], timeout_seconds: int) -> Optional[ProviderConfig]:
+    env_values = load_env_file(env_path)
+    api_key = env_values.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    base_url = env_values.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
+    model = model_override or env_values.get("OPENAI_MODEL") or os.environ.get("OPENAI_MODEL")
+    if not api_key or not base_url or not model:
+        return None
+    return ProviderConfig(
+        provider_name="tuzi",
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def build_deepseek_config(key_path: str | Path, model: str, timeout_seconds: int) -> Optional[ProviderConfig]:
+    path = Path(key_path)
+    if not path.exists():
+        return None
+    api_key = path.read_text(encoding="utf-8", errors="replace").strip()
+    if not api_key:
+        return None
+    return ProviderConfig(
+        provider_name="deepseek",
+        base_url="https://api.deepseek.com",
+        api_key=api_key,
+        model=model,
+        timeout_seconds=timeout_seconds,
+    )
