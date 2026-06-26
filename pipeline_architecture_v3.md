@@ -436,6 +436,33 @@ Deliverables:
 - `SkillExtractor` runner
 - a small extracted skill registry from 5-10 finance/audit sources
 
+Current implementation status:
+
+- `v3_source_schema.py` defines the first source-to-skill schema layer:
+  - `RawSource`
+  - `NormalizedSource`
+  - `SourceBlock`
+  - `SourceSpan`
+  - `SkillEvidence`
+  - `ExtractedSkillCandidate`
+  - `SkillRegistryEntry`
+  - `SkillExtractionPromptPackage`
+- `Test/run_v3_local_source_to_skill.py` provides a local no-network prototype:
+  - reads `.txt` and `.md` files
+  - creates `RawSource` records
+  - splits text into normalized blocks
+  - emits a skill-extraction prompt package for a later LLM step
+- smoke-test output exists under `Test/v2_outputs/v3_source_to_skill_demo`
+
+What is intentionally not done yet:
+
+- no web search collector
+- no direct model call for skill extraction
+- no registry deduplication
+- no accepted/rejected skill review loop
+
+The immediate next code step is to add the actual `SkillExtractor` layer that consumes `SkillExtractionPromptPackage` and produces `ExtractedSkillCandidate` JSON, either through a model call or a deterministic mock for local testing.
+
 ### Phase 3: Batch Skill-To-Task Prototype
 
 Goal:
