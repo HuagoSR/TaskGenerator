@@ -137,6 +137,9 @@ Current Pipeline A starting files:
 - `Test/run_v3_llm_skill_extractor.py`: CLI for Tuzi/OpenAI-compatible, DeepSeek official, and mock fallback extraction
 - `Test/build_v3_public_smoke_package.py`: builds a public synthetic source package safe for external LLM smoke tests
 - `Test/v3_public_smoke_package`: tracked public synthetic smoke input; generated extraction/registry output dirs are ignored
+- `Test/build_v3_gdpval_prompt_sources.py`: builds GDPVal prompt-only source packages from task_id, sector, occupation, and prompt only
+- `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, operator leakage, and single-instance overfit
+- `Test/run_v3_skill_candidate_reviewer.py`: CLI for reviewed/accepted candidate outputs
 - `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
@@ -149,6 +152,8 @@ Current Pipeline A status:
 - `auto` provider mode tries `.env` Tuzi/OpenAI-compatible config, then `deepseek-key.txt` DeepSeek official config, then mock
 - external providers require `--allow-external-upload`
 - DeepSeek official smoke test has passed on the public synthetic smoke package
+- GDPVal prompt-only extraction has passed on 5 `Accountants and Auditors` prompts with DeepSeek official
+- The first GDPVal run produced 5 accepted registry entries, but the reviewer is probably too permissive for narrow skills such as jurisdiction- or form-specific tax-return candidates
 - first-pass registry building works
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages

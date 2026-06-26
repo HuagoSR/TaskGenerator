@@ -13,8 +13,8 @@ from v3_source_schema import load_skill_candidates  # noqa: E402
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build a first-pass V3 skill registry from extracted skill candidates.")
-    parser.add_argument("--candidates", type=Path, required=True, help="Path to extracted_skill_candidates.json.")
+    parser = argparse.ArgumentParser(description="Build a first-pass V3 skill registry from extracted or accepted skill candidates.")
+    parser.add_argument("--candidates", type=Path, required=True, help="Path to extracted_skill_candidates.json or accepted_skill_candidates.json.")
     parser.add_argument("--output-dir", type=Path, required=True, help="Directory for skill_registry.json and report.")
     args = parser.parse_args()
 
@@ -44,4 +44,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

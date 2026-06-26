@@ -1,0 +1,233 @@
+import re
+from typing import Dict, List, Literal
+
+from pydantic import BaseModel, Field
+
+from v3_source_schema import ExtractedSkillCandidate
+
+
+ReviewDecision = Literal["accept", "revise", "reject"]
+
+
+class SkillReviewScores(BaseModel):
+    reusability_score: float
+    diversity_score: float
+    semantic_clarity_score: float
+    evidence_grounding_score: float
+    assembly_usefulness_score: float
+    operator_leakage_penalty: float
+    single_instance_overfit_penalty: float
+    total_score: float
+
+
+class SkillReviewResult(BaseModel):
+    candidate_id: str
+    proposed_name: str
+    decision: ReviewDecision
+    scores: SkillReviewScores
+    reason_codes: List[str] = Field(default_factory=list)
+    reviewer_notes: List[str] = Field(default_factory=list)
+
+
+class SkillCandidateReviewer:
+    """Deterministic first-pass reviewer prioritizing diversity and reusability."""
+
+    operator_terms = {
+        "operator",
+        "operator_class",
+        "data_params",
+        "generator_type",
+        "uniform",
+        "categorical",
+        "cellperturbation",
+        "filteroperator",
+    }
+    file_pattern = re.compile(r"\b[\w\-]+\.(xlsx|csv|pdf|docx|pptx|txt)\b", re.IGNORECASE)
+    numeric_overfit_pattern = re.compile(r"\b(row\s*\d+|\d+\s*rows?|q[1-4]\s*20\d{2}|20\d{2})\b", re.IGNORECASE)
+    instance_terms = {
+        "this task",
+        "the provided file",
+        "the given spreadsheet",
+        "the attached document",
+        "exactly as requested",
+    }
+
+    def review_many(self, candidates: List[ExtractedSkillCandidate]) -> List[SkillReviewResult]:
+        return [self.review(candidate) for candidate in candidates]
+
+    def accepted_candidates(self, candidates: List[ExtractedSkillCandidate], reviews: List[SkillReviewResult]) -> List[ExtractedSkillCandidate]:
+        review_by_id = {review.candidate_id: review for review in reviews}
+        accepted = []
+        for candidate in candidates:
+            review = review_by_id.get(candidate.candidate_id)
+            if review and review.decision == "accept":
+                accepted.append(candidate.model_copy(update={"extraction_status": "accepted"}))
+        return accepted
+
+    def review(self, candidate: ExtractedSkillCandidate) -> SkillReviewResult:
+        text = self._candidate_text(candidate)
+        reason_codes: List[str] = []
+        notes: List[str] = []
+
+        reusability = self._score_reusability(candidate, text, reason_codes)
+        diversity = self._score_diversity(candidate, reason_codes)
+        semantic_clarity = self._score_semantic_clarity(candidate, reason_codes)
+        evidence_grounding = self._score_evidence(candidate, reason_codes)
+        assembly_usefulness = self._score_assembly(candidate, reason_codes)
+        operator_penalty = self._operator_leakage_penalty(text, reason_codes)
+        overfit_penalty = self._single_instance_overfit_penalty(text, reason_codes)
+
+        total = round(
+            (
+                0.24 * reusability
+                + 0.16 * diversity
+                + 0.20 * semantic_clarity
+                + 0.22 * evidence_grounding
+                + 0.18 * assembly_usefulness
+            )
+            - operator_penalty
+            - overfit_penalty,
+            4,
+        )
+        decision = self._decision(total, reason_codes)
+        if decision == "accept":
+            notes.append("Candidate is reusable, evidence-backed, and useful for downstream task assembly.")
+        elif decision == "revise":
+            notes.append("Candidate is potentially useful but should be revised before registry insertion.")
+        else:
+            notes.append("Candidate should not enter the registry in its current form.")
+
+        return SkillReviewResult(
+            candidate_id=candidate.candidate_id,
+            proposed_name=candidate.proposed_name,
+            decision=decision,
+            scores=SkillReviewScores(
+                reusability_score=reusability,
+                diversity_score=diversity,
+                semantic_clarity_score=semantic_clarity,
+                evidence_grounding_score=evidence_grounding,
+                assembly_usefulness_score=assembly_usefulness,
+                operator_leakage_penalty=operator_penalty,
+                single_instance_overfit_penalty=overfit_penalty,
+                total_score=total,
+            ),
+            reason_codes=reason_codes,
+            reviewer_notes=notes,
+        )
+
+    def _candidate_text(self, candidate: ExtractedSkillCandidate) -> str:
+        parts = [
+            candidate.proposed_name,
+            " ".join(candidate.domain_tags),
+            " ".join(candidate.capability_tags),
+            " ".join(candidate.difficulty_tags),
+            candidate.business_meaning,
+            candidate.hidden_difficulty,
+            " ".join(candidate.common_failure_modes),
+            " ".join(candidate.common_deliverables),
+            " ".join(candidate.assembly_hints),
+        ]
+        return " ".join(parts).lower()
+
+    def _score_reusability(self, candidate: ExtractedSkillCandidate, text: str, reason_codes: List[str]) -> float:
+        score = 0.35
+        if candidate.capability_tags:
+            score += 0.2
+        if candidate.common_deliverables:
+            score += 0.15
+        if candidate.assembly_hints:
+            score += 0.15
+        if any(term in text for term in ["reusable", "general", "across", "task", "workflow", "reconciliation", "analysis"]):
+            score += 0.15
+        if score < 0.65:
+            reason_codes.append("low_reusability")
+        return min(round(score, 4), 1.0)
+
+    def _score_diversity(self, candidate: ExtractedSkillCandidate, reason_codes: List[str]) -> float:
+        tag_count = len(set(candidate.capability_tags + candidate.difficulty_tags + candidate.domain_tags))
+        score = min(1.0, 0.25 + tag_count * 0.08)
+        if len(candidate.capability_tags) >= 2 and len(candidate.difficulty_tags) >= 1:
+            score += 0.15
+        score = min(round(score, 4), 1.0)
+        if score < 0.55:
+            reason_codes.append("low_diversity")
+        return score
+
+    def _score_semantic_clarity(self, candidate: ExtractedSkillCandidate, reason_codes: List[str]) -> float:
+        score = 0.0
+        if len(candidate.proposed_name.strip()) >= 8:
+            score += 0.18
+        if len(candidate.business_meaning.strip()) >= 40:
+            score += 0.24
+        if len(candidate.hidden_difficulty.strip()) >= 30:
+            score += 0.2
+        if candidate.input_contract.requires_semantics or candidate.input_contract.optional_semantics:
+            score += 0.18
+        if candidate.output_contract.provides_semantics:
+            score += 0.2
+        score = min(round(score, 4), 1.0)
+        if score < 0.7:
+            reason_codes.append("weak_semantic_contract")
+        return score
+
+    def _score_evidence(self, candidate: ExtractedSkillCandidate, reason_codes: List[str]) -> float:
+        if not candidate.evidence:
+            reason_codes.append("missing_evidence")
+            return 0.0
+        score = 0.35
+        for evidence in candidate.evidence:
+            if evidence.source_id and evidence.block_ids:
+                score += 0.2
+            if evidence.supporting_spans:
+                score += 0.15
+            if len(evidence.evidence_summary.strip()) >= 30:
+                score += 0.1
+        score = min(round(score, 4), 1.0)
+        if score < 0.75:
+            reason_codes.append("weak_evidence_grounding")
+        return score
+
+    def _score_assembly(self, candidate: ExtractedSkillCandidate, reason_codes: List[str]) -> float:
+        score = 0.3
+        if candidate.assembly_hints:
+            score += 0.25
+        if candidate.common_failure_modes:
+            score += 0.15
+        if candidate.common_deliverables:
+            score += 0.15
+        if candidate.capability_tags:
+            score += 0.15
+        score = min(round(score, 4), 1.0)
+        if score < 0.65:
+            reason_codes.append("weak_assembly_usefulness")
+        return score
+
+    def _operator_leakage_penalty(self, text: str, reason_codes: List[str]) -> float:
+        if any(term in text for term in self.operator_terms):
+            reason_codes.append("operator_leakage")
+            return 0.25
+        return 0.0
+
+    def _single_instance_overfit_penalty(self, text: str, reason_codes: List[str]) -> float:
+        penalty = 0.0
+        if self.file_pattern.search(text):
+            penalty += 0.15
+            reason_codes.append("file_name_overfit")
+        if self.numeric_overfit_pattern.search(text):
+            penalty += 0.1
+            reason_codes.append("specific_value_overfit")
+        if any(term in text for term in self.instance_terms):
+            penalty += 0.1
+            reason_codes.append("single_instance_language")
+        return min(round(penalty, 4), 0.3)
+
+    def _decision(self, total_score: float, reason_codes: List[str]) -> ReviewDecision:
+        blocking = {"missing_evidence", "operator_leakage"}
+        if blocking & set(reason_codes):
+            return "reject"
+        if total_score >= 0.72:
+            return "accept"
+        if total_score >= 0.5:
+            return "revise"
+        return "reject"
+

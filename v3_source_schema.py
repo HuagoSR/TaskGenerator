@@ -23,7 +23,7 @@ SourceBlockType = Literal[
     "domain_term",
     "metadata",
 ]
-ExtractionStatus = Literal["candidate", "accepted", "rejected", "merged"]
+ExtractionStatus = Literal["candidate", "accepted", "rejected", "revise", "merged"]
 
 
 class SourceArtifact(BaseModel):
@@ -169,7 +169,8 @@ def load_normalized_source(path: str) -> NormalizedSource:
 
 def load_skill_candidates(path: str) -> List[ExtractedSkillCandidate]:
     payload = load_json_file(path)
+    if isinstance(payload, dict) and "accepted_candidates" in payload:
+        payload = payload["accepted_candidates"]
     if isinstance(payload, dict) and "candidates" in payload:
         payload = payload["candidates"]
     return [ExtractedSkillCandidate.model_validate(item) for item in payload]
-

@@ -471,6 +471,14 @@ Current implementation status:
   - external providers require `--allow-external-upload`
 - `Test/build_v3_public_smoke_package.py` creates a hand-written public synthetic source package for safe external API smoke tests
 - `Test/v3_public_smoke_package` stores the public synthetic source package; generated extraction/registry outputs are ignored
+- `Test/build_v3_gdpval_prompt_sources.py` builds GDPVal prompt-only source packages:
+  - reads task prompt, task id, sector, and occupation only
+  - excludes rubric, reference files, deliverable files, answer traces, and file contents
+  - prefers direct local Arrow cache loading to avoid unnecessary HuggingFace network calls
+- `v3_skill_reviewer.py` provides a deterministic first-pass candidate reviewer:
+  - scores reusability, diversity, semantic clarity, evidence grounding, and assembly usefulness
+  - penalizes operator leakage and single-instance overfit
+- `Test/run_v3_skill_candidate_reviewer.py` emits reviewed candidates, accepted candidates, and review reports
 - `v3_skill_registry.py` provides a first-pass deterministic registry builder:
   - converts candidates into `SkillRegistryEntry` records
   - performs simple name-based deduplication
@@ -481,11 +489,16 @@ What is intentionally not done yet:
 
 - no web search collector
 - direct DeepSeek smoke testing has passed on the public synthetic package
+- GDPVal prompt-only extraction has passed on 5 `Accountants and Auditors` prompts:
+  - provider: DeepSeek official `deepseek-v4-flash`
+  - candidates produced: 5
+  - reviewer accepted: 5
+  - registry entries produced: 5
 - external testing on private workspace source packages should remain blocked unless the source package is explicitly approved for upload
 - no semantic embedding or LLM-based registry deduplication
-- no accepted/rejected skill review loop
+- accepted/rejected skill review loop exists, but the first-pass reviewer is likely too permissive
 
-The immediate next code step is to compare LLM candidates against mock candidates on approved public or user-cleared sources, then add a review/acceptance layer before registry insertion.
+The immediate next code step is to tighten the reviewer so narrow jurisdiction- or form-specific candidates are marked as `revise` unless they are abstracted into reusable skills.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
