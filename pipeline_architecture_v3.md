@@ -489,10 +489,13 @@ Current implementation status:
   - now also scores atomicity and penalizes task-level overbreadth, form-specific candidates, and jurisdiction-bound candidates
   - emits `suggested_abstraction` for candidates that should be revised into smaller reusable capabilities
 - `Test/run_v3_skill_candidate_reviewer.py` emits reviewed candidates, accepted candidates, and review reports
-- `v3_skill_registry.py` provides a first-pass deterministic registry builder:
+- `v3_skill_registry.py` provides a deterministic registry builder and persistent registry updater:
   - converts candidates into `SkillRegistryEntry` records
-  - performs simple name-based deduplication
+  - performs deterministic exact-name, near-name, and semantic-fingerprint deduplication
+  - updates the persistent JSON registry at `SkillRegistry/v3_skill_registry.json`
+  - emits coverage and possible-duplicate reports
 - `Test/run_v3_skill_registry_builder.py` builds `skill_registry.json` from extracted candidates
+- `Test/run_v3_skill_registry_update.py` updates the persistent registry from one or more candidate files
 - smoke-test output exists under `Test/v2_outputs/v3_source_to_skill_demo`
 
 What is intentionally not done yet:
@@ -514,9 +517,15 @@ What is intentionally not done yet:
   - 10 registry entries in the per-run atomic batch registry
 - external testing on private workspace source packages should remain blocked unless the source package is explicitly approved for upload
 - no semantic embedding or LLM-based registry deduplication
-- accepted/rejected skill review loop exists and is being tightened around atomicity; the current registry remains a per-run batch registry, not yet a persistent unified skill library
+- accepted/rejected skill review loop exists and feeds a persistent unified registry
+- current persistent registry status:
+  - path: `SkillRegistry/v3_skill_registry.json`
+  - source: accepted candidates from the atomic `Accountants and Auditors` GDPVal prompt-only run
+  - entry_count: 10
+  - repeated update with the same candidates is idempotent for entry count and source candidate IDs
+  - revised candidates do not enter the persistent registry
 
-The immediate next code step is to turn the per-run atomic registry into a persistent registry update loop with semantic deduplication and coverage reporting. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
+The immediate next code step is to scale Pipeline A across more GDPVal prompt-only batches and use the persistent registry reports to find coverage gaps, duplicate clusters, and over-broad candidates. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -567,9 +576,11 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- add `v3_source_schema.py`
-- define `RawSource`, `NormalizedSource`, `SourceBlock`, `ExtractedSkillCandidate`, and `SkillRegistryEntry`
-- add a small CLI that reads local source text files and emits extracted skill candidates through an LLM prompt
+- build the next GDPVal prompt-only batch outside `Accountants and Auditors`
+- run LLM atomic skill extraction and deterministic review
+- update `SkillRegistry/v3_skill_registry.json`
+- inspect coverage, possible duplicates, and skipped candidates
+- use those reports to improve extractor prompt, reviewer rules, or deterministic deduplication
 
 This will reconnect the project to the original two-pipeline design:
 

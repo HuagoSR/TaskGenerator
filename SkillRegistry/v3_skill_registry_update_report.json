@@ -1,0 +1,121 @@
+{
+  "input_candidate_count": 10,
+  "existing_entry_count": 10,
+  "new_entry_count": 0,
+  "merged_candidate_count": 10,
+  "skipped_candidate_count": 0,
+  "final_entry_count": 10,
+  "status_counts": {
+    "accepted": 10
+  },
+  "new_entries": [],
+  "merged_candidates": [
+    {
+      "candidate_id": "skill_candidate_001",
+      "proposed_name": "Calculate Audit Sample Size",
+      "skill_id": "skill_e08be4157d",
+      "canonical_name": "Calculate Audit Sample Size",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_002",
+      "proposed_name": "Compute Quarter-on-Quarter Variance",
+      "skill_id": "skill_5332cf7fe8",
+      "canonical_name": "Compute Quarter-on-Quarter Variance",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_003",
+      "proposed_name": "Select Audit Sample with Criteria Coverage",
+      "skill_id": "skill_9e84beae17",
+      "canonical_name": "Select Audit Sample with Criteria Coverage",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_005",
+      "proposed_name": "Apply Foreign Tax Withholding to Revenue",
+      "skill_id": "skill_e1c4dedc31",
+      "canonical_name": "Apply Foreign Tax Withholding to Revenue",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_006",
+      "proposed_name": "Convert Foreign Currency to USD for Reporting",
+      "skill_id": "skill_ce9d7b7f1c",
+      "canonical_name": "Convert Foreign Currency to USD for Reporting",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_007",
+      "proposed_name": "Amortize Prepaid Expenses Over Period",
+      "skill_id": "skill_2d59452de5",
+      "canonical_name": "Amortize Prepaid Expenses Over Period",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_008",
+      "proposed_name": "Summarize Prepaid Account Balances",
+      "skill_id": "skill_cd63ad49e2",
+      "canonical_name": "Summarize Prepaid Account Balances",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_010",
+      "proposed_name": "Reconcile Source Totals to Report Line Items",
+      "skill_id": "skill_9149d84703",
+      "canonical_name": "Reconcile Source Totals to Report Line Items",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_011",
+      "proposed_name": "Consolidate Period Financial Data from Multiple Sources",
+      "skill_id": "skill_03116f26d2",
+      "canonical_name": "Consolidate Period Financial Data from Multiple Sources",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_012",
+      "proposed_name": "Compute Accrual Entries from Supporting Schedules",
+      "skill_id": "skill_61eca3e9f0",
+      "canonical_name": "Compute Accrual Entries from Supporting Schedules",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    }
+  ],
+  "skipped_candidates": [],
+  "possible_duplicates": [],
+  "coverage": {
+    "entry_count": 10,
+    "domain_tag_counts": {
+      "finance": 10,
+      "accounting": 5,
+      "audit": 4,
+      "tax": 2
+    },
+    "capability_tag_counts": {
+      "fact": 8,
+      "reasoning": 6,
+      "compliance": 4
+    },
+    "difficulty_tag_counts": {
+      "medium": 6,
+      "easy": 3,
+      "hard": 1
+    },
+    "low_coverage_capability_hints": []
+  },
+  "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
+  "candidate_paths": [
+    "Test\\v3_gdpval_prompt_sources\\accountants_10\\deepseek_review_atomic_llm\\accepted_skill_candidates.json"
+  ],
+  "dry_run": false
+}

@@ -141,8 +141,11 @@ Current Pipeline A starting files:
 - `Test/build_v3_gdpval_prompt_sources.py`: builds GDPVal prompt-only source packages from task_id, sector, occupation, and prompt only
 - `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, atomicity, operator leakage, single-instance overfit, and task-level overbreadth
 - `Test/run_v3_skill_candidate_reviewer.py`: CLI for reviewed/accepted candidate outputs
-- `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
+- `v3_skill_registry.py`: first-pass registry builder plus persistent registry updater that turns accepted candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
+- `Test/run_v3_skill_registry_update.py`: CLI for updating the persistent registry at `SkillRegistry/v3_skill_registry.json`
+- `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
+- `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
 
 Current Pipeline A status:
@@ -159,7 +162,10 @@ Current Pipeline A status:
 - The reviewer now marks task-level `Preparation` candidates, form-specific candidates, and jurisdiction-bound candidates as `revise` unless their contracts already show an atomic reusable action
 - `revise` review records include `suggested_abstraction` to show how a broad candidate could become a reusable registry skill
 - first-pass registry building works
-- the current `skill_registry.json` outputs are per-run batch registries, not yet a unified persistent skill library
+- per-run `skill_registry.json` outputs remain useful for inspection
+- the persistent unified registry now exists at `SkillRegistry/v3_skill_registry.json`
+- persistent registry update is deterministic and currently uses exact-name, near-name, and semantic-fingerprint matching
+- repeated update with the same accepted candidate file keeps entry_count at 10 and does not duplicate source candidate IDs
 - current atomic GDPVal run artifacts:
   - prompt package: `Test/v3_gdpval_prompt_sources/accountants_10/skill_extraction_prompt_package.json`
   - old strict reviewer regression: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic/`
@@ -171,9 +177,15 @@ Current Pipeline A status:
   - new DeepSeek extraction produced 12 candidates
   - strict reviewer accepted 10 and revised 2
   - atomic registry entry_count is 10
+- current persistent registry result:
+  - update input: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic_llm/accepted_skill_candidates.json`
+  - persistent registry entry_count is 10
+  - revised candidates `Build Structured Profit and Loss Report from Multiple Sources` and `Map Tax Documents to IRS Form Fields` are not present
+- manual registry update command:
+  - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_skill_registry_update.py --candidates Test\v3_gdpval_prompt_sources\accountants_10\deepseek_review_atomic_llm\accepted_skill_candidates.json`
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
-- no semantic registry deduplication yet
+- no embedding or LLM-based registry deduplication yet
 
 ## GoldenRun Direction
 

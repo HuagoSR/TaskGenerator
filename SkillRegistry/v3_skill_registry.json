@@ -1,0 +1,557 @@
+{
+  "registry_version": "v3.0",
+  "entry_count": 10,
+  "entries": [
+    {
+      "skill_id": "skill_e08be4157d",
+      "canonical_name": "Calculate Audit Sample Size",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Population data with risk metrics",
+          "Confidence level and tolerable error rate"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Required sample size",
+          "Sample size calculation details"
+        ]
+      },
+      "business_meaning": "Computes the minimum sample size needed for statistical audit testing given specified confidence and error tolerance.",
+      "hidden_difficulty": "Correct application of statistical formula for sample size determination in audit context.",
+      "failure_modes": [
+        "Incorrect confidence level usage",
+        "Misapplication of formula",
+        "Rounding errors"
+      ],
+      "evidence_refs": [
+        "evidence_001"
+      ],
+      "assembly_hints": [
+        "Combine with population data to select sample",
+        "Use for any audit sampling task"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_001"
+      ]
+    },
+    {
+      "skill_id": "skill_5332cf7fe8",
+      "canonical_name": "Compute Quarter-on-Quarter Variance",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Two quarter data columns (Q2 and Q3 values)",
+          "Row-wise data"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Quarter-on-quarter variance per row"
+        ]
+      },
+      "business_meaning": "Calculates the percentage or absolute variance between two consecutive quarters for audit analysis.",
+      "hidden_difficulty": "Correct handling of zero or negative base values.",
+      "failure_modes": [
+        "Division by zero",
+        "Formatting as percentage",
+        "Incorrect variance direction (QoQ vs YoY)"
+      ],
+      "evidence_refs": [
+        "evidence_002"
+      ],
+      "assembly_hints": [
+        "Can be applied to any period-over-period comparison",
+        "Often combined with sample selection"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_002"
+      ]
+    },
+    {
+      "skill_id": "skill_9e84beae17",
+      "canonical_name": "Select Audit Sample with Criteria Coverage",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Population data with risk metrics",
+          "Sample selection criteria",
+          "Required sample size"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Selected sample rows marked with indicator",
+          "Coverage of all criteria across selected samples"
+        ]
+      },
+      "business_meaning": "Selects a subset of rows from a population for audit testing such that each sample satisfies at least one criterion and all criteria are covered collectively.",
+      "hidden_difficulty": "Ensuring coverage of all criteria with minimum sample size, avoiding duplicate coverage, combinatorial optimization.",
+      "failure_modes": [
+        "Missing criteria coverage",
+        "Over-sampling",
+        "Selecting non-representative sample"
+      ],
+      "evidence_refs": [
+        "evidence_003"
+      ],
+      "assembly_hints": [
+        "Combine with population data",
+        "Use sample size from skill 'Calculate Audit Sample Size'"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_003"
+      ]
+    },
+    {
+      "skill_id": "skill_e1c4dedc31",
+      "canonical_name": "Apply Foreign Tax Withholding to Revenue",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "tax"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Gross revenue by country",
+          "Withholding tax rates per country"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Net revenue after withholding",
+          "Withholding tax amount per country"
+        ]
+      },
+      "business_meaning": "Reduces gross revenue by applicable foreign tax withholding rates to compute net revenue, handling multiple countries with different rates.",
+      "hidden_difficulty": "Correct application of percentage rates per country and ensuring accurate subtraction.",
+      "failure_modes": [
+        "Applying rate to net instead of gross",
+        "Rounding discrepancies",
+        "Using wrong rate for country"
+      ],
+      "evidence_refs": [
+        "evidence_005"
+      ],
+      "assembly_hints": [
+        "Combine with currency conversion skill",
+        "Use for international revenue reporting"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_005"
+      ]
+    },
+    {
+      "skill_id": "skill_ce9d7b7f1c",
+      "canonical_name": "Convert Foreign Currency to USD for Reporting",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "tax"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Revenue amounts in foreign currencies",
+          "Exchange rates (implicit or explicit)"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Revenue amounts converted to USD"
+        ]
+      },
+      "business_meaning": "Converts monetary values from various currencies to a single reporting currency (USD) for consistent financial reporting.",
+      "hidden_difficulty": "Handling exchange rate source and date applicability.",
+      "failure_modes": [
+        "Incorrect conversion direction",
+        "Rounding errors",
+        "Using wrong exchange rate"
+      ],
+      "evidence_refs": [
+        "evidence_006"
+      ],
+      "assembly_hints": [
+        "Combine with withholding skill",
+        "Use for multinational financial statements"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_006"
+      ]
+    },
+    {
+      "skill_id": "skill_2d59452de5",
+      "canonical_name": "Amortize Prepaid Expenses Over Period",
+      "version": "3.0",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Invoice details with amounts and period",
+          "Amortization start and end dates"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Monthly amortization schedule",
+          "Remaining balance by month",
+          "Total amortized amount"
+        ]
+      },
+      "business_meaning": "Spreads the cost of a prepaid expense over its useful life on a monthly basis, tracking original amount, monthly expense, and remaining balance.",
+      "hidden_difficulty": "Determining amortization period correctly, handling partial months, allocation across multiple invoices.",
+      "failure_modes": [
+        "Incorrect period calculation",
+        "Mismatch between total and monthly amounts",
+        "Missing amortization for some invoices"
+      ],
+      "evidence_refs": [
+        "evidence_007"
+      ],
+      "assembly_hints": [
+        "Combine with summary reports",
+        "Use for any prepaid asset accounting"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_007"
+      ]
+    },
+    {
+      "skill_id": "skill_cd63ad49e2",
+      "canonical_name": "Summarize Prepaid Account Balances",
+      "version": "3.0",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Detailed amortization schedules for prepaid expenses and insurance"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Total prepaid expenses YTD",
+          "Total amortization YTD",
+          "Ending balance as of report date"
+        ]
+      },
+      "business_meaning": "Aggregates totals from detailed prepaid schedules into a high-level summary snapshot for reporting.",
+      "hidden_difficulty": "Ensuring totals match detailed schedules, correct YTD calculations.",
+      "failure_modes": [
+        "Date range cut-off errors",
+        "Double-counting",
+        "Missing transactions"
+      ],
+      "evidence_refs": [
+        "evidence_008"
+      ],
+      "assembly_hints": [
+        "Combine with amortization schedule skill",
+        "Use for month-end close"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_008"
+      ]
+    },
+    {
+      "skill_id": "skill_9149d84703",
+      "canonical_name": "Reconcile Source Totals to Report Line Items",
+      "version": "3.0",
+      "domain_tags": [
+        "accounting",
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Source transaction data",
+          "Previous period report",
+          "Current period adjustments"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Reconciled financial report line items",
+          "Variance explanations"
+        ]
+      },
+      "business_meaning": "Verifies that totals from detailed source files match the aggregated amounts in financial report line items, identifying and adjusting discrepancies.",
+      "hidden_difficulty": "Handling multiple source files with different formats, ensuring all transactions are captured, proper period cut-off.",
+      "failure_modes": [
+        "Duplicate entries",
+        "Misclassification of transactions",
+        "Missing source file"
+      ],
+      "evidence_refs": [
+        "evidence_010"
+      ],
+      "assembly_hints": [
+        "Combine with consolidation skill",
+        "Use for month-end close process"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_010"
+      ]
+    },
+    {
+      "skill_id": "skill_03116f26d2",
+      "canonical_name": "Consolidate Period Financial Data from Multiple Sources",
+      "version": "3.0",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Source data files (payroll, accruals, financials)",
+          "Previous period workbook",
+          "Mapping of accounts"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Consolidated financial statements",
+          "Supporting schedules"
+        ]
+      },
+      "business_meaning": "Combines financial data from disparate source systems (payroll, accruals, general ledger) into a unified financial package for a reporting period.",
+      "hidden_difficulty": "Ensuring all sources are incorporated correctly, handling different data structures, maintaining data integrity.",
+      "failure_modes": [
+        "Data duplication",
+        "Incorrect account mapping",
+        "Omitting a source file"
+      ],
+      "evidence_refs": [
+        "evidence_011"
+      ],
+      "assembly_hints": [
+        "Part of month-end close process",
+        "Use reconciliation skill to verify totals"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_011"
+      ]
+    },
+    {
+      "skill_id": "skill_61eca3e9f0",
+      "canonical_name": "Compute Accrual Entries from Supporting Schedules",
+      "version": "3.0",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Supporting accrual files",
+          "Previous period accrual balances"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Accrual journal entries",
+          "Updated accrual schedules"
+        ]
+      },
+      "business_meaning": "Calculates accrual amounts (e.g., bonuses, miscellaneous) based on underlying data and updates the financial package accordingly.",
+      "hidden_difficulty": "Correctly applying accrual methodology, ensuring consistency with prior periods.",
+      "failure_modes": [
+        "Classification errors",
+        "Incorrect accrual amount",
+        "Missing reversal of prior accruals"
+      ],
+      "evidence_refs": [
+        "evidence_012"
+      ],
+      "assembly_hints": [
+        "Combine with consolidation skill",
+        "Use for month-end adjustments"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "skill_candidate_012"
+      ]
+    }
+  ]
+}

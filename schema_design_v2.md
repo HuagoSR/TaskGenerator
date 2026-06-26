@@ -87,6 +87,9 @@ Current GDPVal prompt-only validation:
 - a new DeepSeek run with the atomic prompt and `max_candidates=30` produced 12 candidates
 - the stricter reviewer accepted 10 and revised 2 broad/form-bound candidates
 - the resulting per-run registry contains 10 entries and excludes the revised task-level candidates
+- the persistent registry update loop now stores accepted atomic skills in `SkillRegistry/v3_skill_registry.json`
+- this persistent registry currently has 10 entries, all from the accepted atomic GDPVal accountant/auditor run
+- per-run registries are still useful inspection artifacts, but the persistent registry is the source that future Pipeline B sampling should eventually consume
 
 ## Object 1: SemanticSkill
 
