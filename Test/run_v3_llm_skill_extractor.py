@@ -35,6 +35,8 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
             timeout_seconds=args.timeout_seconds,
         )
         if tuzi_config is not None:
+            if not args.allow_external_upload:
+                raise RuntimeError("Tuzi provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("tuzi", LLMSkillExtractor(tuzi_config)))
         elif args.provider == "tuzi":
             raise RuntimeError("Tuzi provider requested, but .env OPENAI_API_KEY/OPENAI_BASE_URL/OPENAI_MODEL are incomplete.")
@@ -56,6 +58,8 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
             timeout_seconds=args.timeout_seconds,
         )
         if deepseek_config is not None:
+            if not args.allow_external_upload:
+                raise RuntimeError("DeepSeek provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("deepseek", LLMSkillExtractor(deepseek_config)))
         elif args.provider == "deepseek":
             raise RuntimeError("DeepSeek provider requested, but deepseek-key.txt is missing or empty.")
@@ -125,6 +129,7 @@ def main() -> None:
     parser.add_argument("--max-candidates", type=int, default=8)
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument("--allow-mock-fallback", action="store_true")
+    parser.add_argument("--allow-external-upload", action="store_true", help="Required before sending prompt-package content to Tuzi or DeepSeek.")
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
     parser.add_argument("--deepseek-key-path", type=Path, default=DEFAULT_DEEPSEEK_KEY_PATH)
     args = parser.parse_args()

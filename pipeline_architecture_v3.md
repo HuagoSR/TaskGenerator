@@ -468,6 +468,9 @@ Current implementation status:
   - `tuzi`: only the `.env` provider unless mock fallback is explicitly allowed
   - `deepseek`: only DeepSeek official unless mock fallback is explicitly allowed
   - `mock`: deterministic offline extractor
+  - external providers require `--allow-external-upload`
+- `Test/build_v3_public_smoke_package.py` creates a hand-written public synthetic source package for safe external API smoke tests
+- `Test/v3_public_smoke_package` stores the public synthetic source package; generated extraction/registry outputs are ignored
 - `v3_skill_registry.py` provides a first-pass deterministic registry builder:
   - converts candidates into `SkillRegistryEntry` records
   - performs simple name-based deduplication
@@ -477,11 +480,12 @@ Current implementation status:
 What is intentionally not done yet:
 
 - no web search collector
-- direct model-call code exists, but external smoke testing may be blocked by data-export policy
+- direct DeepSeek smoke testing has passed on the public synthetic package
+- external testing on private workspace source packages should remain blocked unless the source package is explicitly approved for upload
 - no semantic embedding or LLM-based registry deduplication
 - no accepted/rejected skill review loop
 
-The immediate next code step is to run the LLM extractor on approved non-sensitive source material, then compare the LLM candidates against the mock candidates and feed both into the registry builder.
+The immediate next code step is to compare LLM candidates against mock candidates on approved public or user-cleared sources, then add a review/acceptance layer before registry insertion.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 

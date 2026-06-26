@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 Test/v2_outputs/
 Test/v3_source_demo_inputs/
+Test/v3_public_smoke_package/*_extraction/
+Test/v3_public_smoke_package/*_registry/
+Test/v3_public_smoke_package/deepseek_guard_check/

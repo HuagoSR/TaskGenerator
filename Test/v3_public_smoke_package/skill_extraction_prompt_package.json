@@ -1,0 +1,150 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "normalized_sources": [
+    {
+      "normalized_source_id": "public_norm_nonprofit_reconciliation",
+      "source_id": "public_src_nonprofit_reconciliation",
+      "title": "Public Synthetic Nonprofit Donation Reconciliation",
+      "domain_tags": [
+        "finance",
+        "audit",
+        "public_synthetic"
+      ],
+      "blocks": [
+        {
+          "block_id": "block_0001",
+          "block_type": "paragraph",
+          "text": "Public synthetic audit training note.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0001",
+            "start_char": 0,
+            "end_char": 37,
+            "quote": "Public synthetic audit training note.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        },
+        {
+          "block_id": "block_0002",
+          "block_type": "task_prompt",
+          "text": "A regional nonprofit receives donations through two payment processors and a small number of mailed checks. A monthly finance review asks the analyst to reconcile processor exports against the general ledger, identify duplicate donor receipts, and produce a short variance explanation for management.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0002",
+            "start_char": 39,
+            "end_char": 339,
+            "quote": "A regional nonprofit receives donations through two payment processors and a small number of mailed checks. A monthly finance review asks the analyst to reconcile processor exports against the general ledger, identify duplicate donor receipts, and produce a short variance explanation for management.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        },
+        {
+          "block_id": "block_0003",
+          "block_type": "paragraph",
+          "text": "The source materials include one spreadsheet with processor settlement rows, one spreadsheet with general ledger revenue rows, and a policy note explaining that refunds after month-end should be excluded from current-month donation revenue.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0003",
+            "start_char": 341,
+            "end_char": 581,
+            "quote": "The source materials include one spreadsheet with processor settlement rows, one spreadsheet with general ledger revenue rows, and a policy note explaining that refunds after month-end should be excluded from current-month donation revenue.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        },
+        {
+          "block_id": "block_0004",
+          "block_type": "task_prompt",
+          "text": "The intended task is not to copy rows into a template. The analyst must create a new workbook with a clean reconciliation summary, a list of exceptions, and a management-ready explanation of unresolved differences.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0004",
+            "start_char": 583,
+            "end_char": 797,
+            "quote": "The intended task is not to copy rows into a template. The analyst must create a new workbook with a clean reconciliation summary, a list of exceptions, and a management-ready explanation of unresolved differences.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        },
+        {
+          "block_id": "block_0005",
+          "block_type": "paragraph",
+          "text": "Common mistakes include double-counting duplicate donor receipts, treating refunded payments as current-month revenue, ignoring processor fees, and producing a polished workbook whose totals do not tie back to the source exports.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0005",
+            "start_char": 799,
+            "end_char": 1028,
+            "quote": "Common mistakes include double-counting duplicate donor receipts, treating refunded payments as current-month revenue, ignoring processor fees, and producing a polished workbook whose totals do not tie back to the source exports.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        },
+        {
+          "block_id": "block_0006",
+          "block_type": "rubric",
+          "text": "Useful evaluation criteria include whether the final revenue total ties to the reconciled source data, whether excluded refunds are documented, whether duplicate receipts are isolated, and whether the final workbook is readable for a finance manager.",
+          "source_span": {
+            "source_id": "public_src_nonprofit_reconciliation",
+            "block_id": "block_0006",
+            "start_char": 1030,
+            "end_char": 1280,
+            "quote": "Useful evaluation criteria include whether the final revenue total ties to the reconciled source data, whether excluded refunds are documented, whether duplicate receipts are isolated, and whether the final workbook is readable for a finance manager.",
+            "note": ""
+          },
+          "semantic_tags": [
+            "finance",
+            "audit",
+            "reconciliation"
+          ],
+          "metadata": {}
+        }
+      ],
+      "domain_terms": [
+        "donation revenue",
+        "duplicate receipt",
+        "refund exclusion",
+        "reconciliation"
+      ],
+      "detected_artifacts": [],
+      "candidate_task_patterns": [
+        "Reconcile processor exports against general ledger revenue rows.",
+        "Create a new workbook with reconciliation summary, exceptions, and management explanation."
+      ],
+      "normalizer_version": "v3.0"
+    }
+  ],
+  "instructions": "Extract reusable semantic skills from this public synthetic audit note. Return skills that could generalize to other real-world reconciliation tasks.",
+  "expected_schema": "ExtractedSkillCandidate[]",
+  "constraints": [
+    "Return JSON only.",
+    "Use only source_id and block_id values from the provided normalized source.",
+    "Do not encode exact file names, row counts, or fixed rubric text."
+  ]
+}

@@ -135,6 +135,8 @@ Current Pipeline A starting files:
 - `v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
 - `Test/run_v3_llm_skill_extractor.py`: CLI for Tuzi/OpenAI-compatible, DeepSeek official, and mock fallback extraction
+- `Test/build_v3_public_smoke_package.py`: builds a public synthetic source package safe for external LLM smoke tests
+- `Test/v3_public_smoke_package`: tracked public synthetic smoke input; generated extraction/registry output dirs are ignored
 - `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
@@ -145,9 +147,11 @@ Current Pipeline A status:
 - deterministic mock skill extraction works
 - LLM-backed extraction code exists
 - `auto` provider mode tries `.env` Tuzi/OpenAI-compatible config, then `deepseek-key.txt` DeepSeek official config, then mock
+- external providers require `--allow-external-upload`
+- DeepSeek official smoke test has passed on the public synthetic smoke package
 - first-pass registry building works
 - no web collector yet
-- external LLM smoke tests may be blocked if they would export private workspace source text
+- external LLM tests should only use public or explicitly user-cleared source packages
 - no semantic registry deduplication yet
 
 ## GoldenRun Direction
