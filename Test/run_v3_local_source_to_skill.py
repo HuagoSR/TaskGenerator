@@ -33,7 +33,8 @@ def read_text(path: Path) -> str:
 
 def split_blocks(text: str, source_id: str) -> List[SourceBlock]:
     blocks: List[SourceBlock] = []
-    for idx, match in enumerate(re.finditer(r"\S(?:.*?)(?:\n\s*\n|$)", text, flags=re.DOTALL), start=1):
+    pattern = r"\S(?:.*?)(?:\n\s*\n|$)"
+    for idx, match in enumerate(re.finditer(pattern, text, flags=re.DOTALL), start=1):
         block_text = match.group(0).strip()
         if not block_text:
             continue
@@ -59,15 +60,15 @@ def split_blocks(text: str, source_id: str) -> List[SourceBlock]:
 
 def infer_block_type(text: str) -> str:
     lower = text.lower()
-    if "rubric" in lower or "评分" in text or "criterion" in lower:
+    if "rubric" in lower or "criterion" in lower:
         return "rubric"
-    if "task" in lower or "assignment" in lower or "deliverable" in lower or "题目" in text:
+    if "task" in lower or "assignment" in lower or "deliverable" in lower:
         return "task_prompt"
     if "|" in text and text.count("|") >= 4:
         return "table"
-    if any(token in text for token in ["=", "公式", "calculate", "compute"]):
+    if any(token in lower for token in ["=", "calculate", "compute"]):
         return "formula"
-    if len(text) < 120 and (":" in text or "：" in text):
+    if len(text) < 120 and ":" in text:
         return "domain_term"
     return "paragraph"
 
@@ -76,15 +77,15 @@ def infer_semantic_tags(text: str) -> List[str]:
     tags = []
     lower = text.lower()
     tag_patterns = {
-        "finance": ["audit", "revenue", "expense", "tax", "withholding", "p&l", "财务", "审计"],
-        "spreadsheet": ["excel", "spreadsheet", "workbook", "sheet", "xlsx", "表格"],
-        "rubric": ["rubric", "criterion", "score", "评分"],
-        "task": ["task", "assignment", "deliverable", "题目", "任务"],
-        "reasoning": ["infer", "reconcile", "resolve", "compare", "推理", "核对"],
-        "robustness": ["missing", "incomplete", "irregular", "trap", "缺失", "异常"],
+        "finance": ["audit", "revenue", "expense", "tax", "withholding", "p&l"],
+        "spreadsheet": ["excel", "spreadsheet", "workbook", "sheet", "xlsx"],
+        "rubric": ["rubric", "criterion", "score"],
+        "task": ["task", "assignment", "deliverable"],
+        "reasoning": ["infer", "reconcile", "resolve", "compare"],
+        "robustness": ["missing", "incomplete", "irregular", "trap"],
     }
     for tag, patterns in tag_patterns.items():
-        if any(pattern in lower or pattern in text for pattern in patterns):
+        if any(pattern in lower for pattern in patterns):
             tags.append(tag)
     return tags
 
@@ -92,8 +93,7 @@ def infer_semantic_tags(text: str) -> List[str]:
 def extract_domain_terms(blocks: List[SourceBlock]) -> List[str]:
     terms = set()
     for block in blocks:
-        for tag in block.semantic_tags:
-            terms.add(tag)
+        terms.update(block.semantic_tags)
         for match in re.finditer(r"`([^`]{3,80})`", block.text):
             terms.add(match.group(1))
     return sorted(terms)

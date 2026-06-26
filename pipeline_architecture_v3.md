@@ -452,16 +452,25 @@ Current implementation status:
   - creates `RawSource` records
   - splits text into normalized blocks
   - emits a skill-extraction prompt package for a later LLM step
+- `v3_skill_extractor.py` provides a deterministic mock extractor:
+  - consumes `SkillExtractionPromptPackage`
+  - emits `ExtractedSkillCandidate` objects
+  - is intended for pipeline testing, not final research-quality extraction
+- `Test/run_v3_mock_skill_extractor.py` runs the mock extractor from the command line
+- `v3_skill_registry.py` provides a first-pass deterministic registry builder:
+  - converts candidates into `SkillRegistryEntry` records
+  - performs simple name-based deduplication
+- `Test/run_v3_skill_registry_builder.py` builds `skill_registry.json` from extracted candidates
 - smoke-test output exists under `Test/v2_outputs/v3_source_to_skill_demo`
 
 What is intentionally not done yet:
 
 - no web search collector
 - no direct model call for skill extraction
-- no registry deduplication
+- no semantic embedding or LLM-based registry deduplication
 - no accepted/rejected skill review loop
 
-The immediate next code step is to add the actual `SkillExtractor` layer that consumes `SkillExtractionPromptPackage` and produces `ExtractedSkillCandidate` JSON, either through a model call or a deterministic mock for local testing.
+The immediate next code step is to replace or complement the mock extractor with an LLM-backed `SkillExtractor` that uses the same schema and writes the same candidate format.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 

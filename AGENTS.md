@@ -132,7 +132,20 @@ Current Pipeline A starting files:
 
 - `v3_source_schema.py`: source-to-skill schema objects
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
+- `v3_skill_extractor.py`: deterministic mock extractor that turns a prompt package into `ExtractedSkillCandidate` records
+- `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
+- `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
+- `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
+
+Current Pipeline A status:
+
+- local source normalization works
+- deterministic mock skill extraction works
+- first-pass registry building works
+- no web collector yet
+- no LLM-backed skill extraction yet
+- no semantic registry deduplication yet
 
 ## GoldenRun Direction
 
