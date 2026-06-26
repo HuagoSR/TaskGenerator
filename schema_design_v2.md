@@ -356,6 +356,344 @@ Current prototype status:
 - batch generation side: now supports multiple finance variants instead of a single canonical case
 - evaluation side: partly operational, with some model/provider instability still unresolved
 
+## Early Evaluation Findings
+
+We have now run real rw-task evaluations on the current finance cases, not only static inspection.
+
+Current takeaways:
+
+- the provider environment is unstable across model families, so "probe success" is not enough to trust a model for full task evaluation
+- `gemini-3-pro-preview` can fail because it triggers external search during the task and the search backend returns an error
+- some GPT-family runs can appear responsive on a tiny probe but still stall or fail to finish cleanly in a long multi-turn task
+- `claude-3-7-sonnet-latest` and `deepseek-v3.2` currently look like the most usable models for iterative dataset validation in this environment
+
+More importantly, the finance task is already showing a meaningful error pattern:
+
+- several models successfully produce a professional-looking workbook
+- several models correctly aggregate production-company costs
+- several models make a defensible assumption for the missing Germany withholding-tax rate
+- but multiple models still fail the same core step: inferring that source revenue is in local currency and converting it into the shared reporting currency before final aggregation
+
+This is useful because it suggests that:
+
+- the current task is not trivially solved by spreadsheet formatting ability alone
+- the implicit-currency skill is currently a stronger discriminator than the missing-tax-rate skill
+- the next round of task design should preserve this business-realistic ambiguity while making evaluation more executable
+
+At the current stage, the main scoring signal is:
+
+- models often get structure and expense taxonomy mostly right
+- models often miss cross-jurisdiction currency normalization
+- therefore score separation is driven primarily by numeric business reasoning rather than by cosmetic workbook layout
+
+## Pipeline View
+
+The V2 project should now be treated as a **data production pipeline**, not just a collection of prototype tasks.
+
+From a systems perspective, the pipeline has six layers:
+
+1. `SemanticSkill` extraction layer
+2. `TaskBlueprint` assembly layer
+3. reference-file generation layer
+4. `GoldenRun` teacher-solution layer
+5. dataset export and evaluation-adapter layer
+6. quality-control and filtering layer
+
+This framing matters because the long-term goal is not to handcraft one good finance task. The goal is to repeatedly produce many GDPVal-style training tasks with:
+
+- stable semantics
+- realistic evidence files
+- reliable supervision
+- low manual review cost
+- measurable model-separation value
+
+## Layer Responsibilities
+
+### 1. SemanticSkill extraction layer
+
+This layer should answer only:
+
+- what capability is being tested
+- what semantic inputs are required
+- what semantic outputs are expected
+- what hidden challenge is intended
+
+This layer should **not** decide:
+
+- exact workbook schema
+- exact file names
+- exact row counts
+- exact rubric wording
+- exact data-generation operators
+
+Its job is to keep the capability inventory reusable across domains and task templates.
+
+### 2. TaskBlueprint assembly layer
+
+This layer is the main scenario-construction layer.
+
+It should decide:
+
+- task role and business framing
+- selected skill combination
+- deliverable type
+- evidence package structure
+- hidden traps and challenge mix
+- target difficulty and realism profile
+
+This is the right place for stronger LLM involvement, because this layer benefits from flexible composition and realistic scenario writing.
+
+### 3. Reference-file generation layer
+
+This layer turns the blueprint into concrete evidence files.
+
+Its job is to produce:
+
+- realistic spreadsheets, documents, or other inputs
+- business-plausible values and inconsistencies
+- traceable source structure for later verification
+
+Current macro judgment:
+
+- this layer should be **code-led by default**
+- LLMs may help with realism, naming, wording, and document-style variation
+- but the numeric backbone should remain deterministic enough that `GoldenRun` can trust it
+
+In other words:
+
+- use code for structured numeric generation
+- use LLMs as controlled assistants for semantic enrichment, not as the sole source of truth
+
+### 4. GoldenRun teacher-solution layer
+
+This layer is the core supervision engine.
+
+Its job is to produce:
+
+- canonical intermediate states
+- canonical final outputs
+- trap-resolution records
+- grading anchors
+
+Macro principle:
+
+- this layer should be as deterministic as possible
+- it is the main defense against supervision drift
+- it should not depend on prompt wording or one specific candidate layout
+
+### 5. Dataset export and evaluation-adapter layer
+
+This layer packages tasks for two different downstream uses:
+
+- training-data export
+- external evaluation export such as rw-task / GDPVal-style runners
+
+The same core sample should ideally support both:
+
+- a training-facing representation
+- an evaluation-facing representation
+
+This avoids building two disconnected pipelines.
+
+### 6. Quality-control and filtering layer
+
+This layer decides whether a generated sample is actually worth keeping.
+
+It should answer:
+
+- is the schema complete
+- are the files internally consistent
+- does `GoldenRun` execute cleanly
+- is the rubric verifiable
+- does the task appear too trivial, too noisy, or too brittle
+- does the task create meaningful model separation
+
+This layer is what turns a generator into a dataset factory.
+
+## Layer Interfaces
+
+The most important engineering priority now is to make the boundaries between layers explicit.
+
+The intended contracts are:
+
+- `SemanticSkill` -> `TaskBlueprint`
+  - passes semantic capability requirements and assembly hints
+- `TaskBlueprint` -> reference-file generation
+  - passes concrete file specs, traps, and deliverable plan
+- reference-file generation -> `GoldenRun`
+  - passes concrete evidence files and scenario metadata
+- `GoldenRun` -> `TrainingAnnotation`
+  - passes executable intermediate states and final grading anchors
+- dataset package -> export adapters
+  - passes prompt, files, deliverables, rubric, and metadata
+- quality-control layer -> final dataset
+  - passes only accepted samples forward
+
+Without these contracts, the system risks collapsing back into tightly coupled prompt-and-rubric bundles.
+
+## Automation Strategy
+
+The right macro question is not "should we use code or LLMs?" in general.
+
+The right question is "which layer benefits from flexibility, and which layer needs determinism?"
+
+Current recommended allocation:
+
+- `SemanticSkill` extraction: LLM-heavy
+- `TaskBlueprint` assembly: hybrid, with meaningful LLM involvement
+- reference-file generation: code-heavy, with optional LLM assistance
+- `GoldenRun`: code-heavy and deterministic
+- export adapters: code-heavy
+- quality control: code-first, with selective LLM review only for ambiguous cases
+
+This allocation preserves realism without losing supervision reliability.
+
+## Quality Funnel
+
+Not every generated sample should go through full model evaluation.
+
+The intended quality funnel is:
+
+1. schema validation
+2. reference-file sanity checks
+3. `GoldenRun` execution check
+4. rubric / grading-anchor consistency check
+5. static quality scoring
+6. limited real-model evaluation on a filtered subset
+7. final keep / revise / discard decision
+
+This is important for scale.
+
+If full rw-task evaluation is run on every sample:
+
+- generation becomes too expensive
+- provider instability dominates research velocity
+- debugging becomes noisy
+
+If full rw-task evaluation is used only at the end of the funnel:
+
+- we can scale sample generation much more cheaply
+- we can reserve expensive evaluation for the most promising candidates
+
+## Accepted Sample Checklist
+
+Before a generated sample is allowed into expensive evaluation or the retained training pool, it should satisfy a minimal acceptance checklist.
+
+The checklist should be enforced by code, not only by manual inspection.
+
+Current required checks are:
+
+1. required case files exist
+2. required `golden_run` artifacts exist
+3. `TaskBlueprint`, `TrainingAnnotation`, `GoldenRun`, and dataset shell all parse successfully
+4. cross-file IDs are linked correctly
+5. reference files on disk match the blueprint manifest
+6. required intermediate states promised by the blueprint are present in `golden_intermediate_values.json`
+7. rw-task export exists and is linked to the same task identity
+
+This checklist is now implemented as a first-pass quality gate in:
+
+- `v2_quality_gate.py`
+- `Test/run_v2_quality_gate.py`
+
+For batch-level use, the current finance prototype also has a funnel runner:
+
+- `Test/run_v2_batch_funnel.py`
+
+Its purpose is to combine:
+
+1. structural gate pass/fail
+2. static quality score
+3. next-step routing
+
+So the pipeline can distinguish between:
+
+- samples that are structurally broken
+- samples that are structurally valid but weak
+- samples that are strong enough to justify expensive real-model evaluation
+
+This is intentionally different from static quality scoring:
+
+- the quality gate asks "is this sample structurally valid and pipeline-safe?"
+- the quality scorer asks "is this sample likely to be a good training/evaluation task?"
+
+Both are needed, but the gate should run first.
+
+## Failure Modes at the Pipeline Level
+
+The most important macro risks are no longer single-task spreadsheet bugs.
+
+They are:
+
+- `SemanticSkill` entries becoming too vague to assemble reliably
+- `TaskBlueprint` becoming too template-specific and losing reuse value
+- reference-file generation becoming unrealistic or overly synthetic
+- `GoldenRun` becoming too teacher-specific and hard to generalize
+- rubrics becoming descriptive but not executable
+- quality control depending too much on unstable provider-side evaluation
+
+These are the pipeline-level risks we should optimize against.
+
+## Current Bottleneck
+
+The current bottleneck is not "can we make one finance task harder?"
+
+The current bottleneck is:
+
+- can we define a repeatable, low-friction path from semantic skill inventory to accepted high-quality dataset samples
+
+That means the next engineering value comes more from:
+
+- contract hardening
+- funnel design
+- verification design
+- modularization of generation layers
+
+than from additional micro-tuning of one candidate workbook.
+
+## Status on 2026-06-26
+
+As of June 26, 2026, the V2 finance line has already moved beyond a pure prototype sketch.
+
+What has been completed:
+
+1. the old operator-heavy direction has been replaced with the `SemanticSkill` -> `TaskBlueprint` -> reference-file generation -> `GoldenRun` -> export flow
+2. the finance/audit domain has a working end-to-end prototype that generates:
+   - reference spreadsheets
+   - prompt and golden prompt
+   - `TrainingAnnotation`
+   - `GoldenRun` artifacts
+   - rw-task-compatible exports
+3. GDPVal alignment has been verified using the original HuggingFace dataset, especially the fact that many tasks require creating a new deliverable file rather than filling an output template
+4. finance supervision has been upgraded from coarse aggregate totals to mixed structure-plus-numeric checks
+5. a 5-case finance batch has been generated and statically scored
+6. a first-pass `quality gate` has been implemented to check structural completeness and pipeline linkage before expensive evaluation
+7. a batch-level funnel runner has been implemented to combine:
+   - structural gate pass/fail
+   - static quality score
+   - next-step routing
+8. real rw-task evaluations have already been run on selected finance cases, which confirmed that the current tasks do create meaningful failure patterns rather than only formatting differences
+
+What has been learned:
+
+- the pipeline itself is now much more stable than before
+- the main separator in the current finance tasks is cross-jurisdiction currency normalization, not spreadsheet formatting
+- provider-side instability is real, so expensive model evaluation should remain late in the funnel
+- the current finance cases are mostly **structurally valid**, but still not strong enough on average to be automatically prioritized for expensive rw-task evaluation
+
+Current evidence from the funnel:
+
+- all 5 current finance batch cases pass the structural quality gate
+- none of the 5 current finance batch cases yet cross the static threshold for "prioritize for rw-task evaluation"
+- the immediate weakness is therefore not pipeline breakage, but sample-quality uplift
+
+In short:
+
+- pipeline health: improved substantially
+- sample validity: already good
+- sample quality: improving, but still the main bottleneck
+- scaling readiness: close for deterministic layers, not yet ready for indiscriminate large-scale generation
+
 ## Generation Workflow
 
 The V2 generation flow is:
@@ -371,21 +709,300 @@ The V2 generation flow is:
 
 The next major improvements are:
 
-- make rubric generation line-item-aware rather than generic source-metric-aware
-- add checks for structural workbook properties such as sheet names, required headers, and spreadsheet-error absence
 - make free-generation deliverables easier to verify without assuming a fixed workbook layout
 - use stronger models for assembly and validation while keeping teacher artifacts deterministic
 - compare generated tasks with GDPVal samples using the rw-task evaluation stack
+- decide whether the missing-tax-rate trap should remain a secondary skill while implicit-currency reasoning stays the primary separator
+- decide how much layout freedom should be tolerated before verification quality drops too much
+- formalize layer-by-layer contracts so the pipeline scales beyond the finance prototype
+- decide what the minimal "accepted sample" checklist is before expensive evaluation is allowed
 
 ## Near-Term Plan
 
 The next execution plan is:
 
-1. analyze more GDPVal finance/accounting prompts and rubrics to extract recurring supervision patterns
-2. push the current finance rubric from text-level fine-grained checks toward more executable verification logic where possible
-3. use the new 5-case finance batch to run another round of rw-task evaluation on the strongest and most balanced cases using models that are actually stable in the current provider environment
-4. filter or revise the weaker-margin variants before scaling batch size further
-5. only after the above, decide whether stronger LLM involvement is needed in task assembly
+1. formalize the V2 pipeline as a layered production system with explicit interfaces and acceptance criteria
+2. implement the quality funnel so cheap deterministic checks happen before expensive model evaluation
+3. strengthen the executable verification contract between reference-file generation, `GoldenRun`, and rubric export
+4. keep the finance prototype as the first domain, but use it mainly to validate pipeline design rather than endlessly hand-tuning one task
+5. after the funnel is stable, expand the finance batch and then consider additional domains
+6. only after the pipeline is stable, revisit where more LLM involvement is actually worth the added variance
+
+## Next Concrete Plan
+
+The next practical step should not be another round of ad hoc model testing.
+
+The next practical step should be to improve the **quality-improvement loop** for structurally valid samples.
+
+That loop should be:
+
+1. inspect funnel outputs
+2. identify why a sample is rated as `revise_before_eval`
+3. map each weak score component back to:
+   - blueprint design
+   - reference-file generation
+   - golden supervision design
+   - prompt framing
+4. encode the fix into the generator instead of patching individual outputs
+5. regenerate the batch and rerun the same funnel
+
+So the immediate engineering plan is:
+
+1. define a finance-specific optimization playbook for low-scoring but gate-passing samples
+2. connect each weak static-quality component to explicit generator-side interventions
+3. regenerate the 5-case finance batch after those interventions
+4. rerun the batch funnel and compare before/after quality distributions
+5. only then send the improved subset into another round of rw-task evaluation
+
+## Finance Optimization Playbook
+
+The first version of the finance optimization playbook has now been implemented.
+
+Files:
+
+- `v2_finance_optimization.py`
+- `Test/run_v2_finance_optimization_playbook.py`
+
+Inputs:
+
+- `Test/v2_outputs/finance_batch_01/quality_report.json`
+- `Test/v2_outputs/quality_gate_reports/finance_batch_01_funnel_report.json`
+
+Outputs:
+
+- `Test/v2_outputs/optimization_reports/finance_batch_01_optimization_playbook.json`
+- `Test/v2_outputs/optimization_reports/finance_batch_01_optimization_playbook.md`
+
+Current diagnosis:
+
+- all 5 finance cases pass the structural quality gate
+- 3 cases are primarily limited by `result_supervision`
+- 2 cases are primarily limited by `challenge_balance`
+
+Current recommended actions:
+
+1. `improve_result_supervision`
+   - target layer: `GoldenRun + rw_task_adapter`
+   - add more executable worksheet-level grading anchors
+   - make show-level FX-normalized revenue, country-level withholding, source-level subtotals, and formula-error checks easier to verify
+
+2. `rebalance_financial_profile`
+   - target layer: `FileGenerator finance profiles`
+   - tune revenue and cost profiles so net margins remain in the preferred challenge band
+   - adjust generated business data rather than patching prompts after generation
+
+This changes the workflow from:
+
+- generate cases
+- inspect scores manually
+- decide informally what to fix
+
+to:
+
+- generate cases
+- run quality gate
+- run static scoring
+- generate optimization playbook
+- modify generator-side logic
+- regenerate and compare quality distribution
+
+This is the beginning of a real feedback loop for dataset construction.
+
+## First Optimization Pass
+
+The first generator-side optimization pass has been completed.
+
+Implemented changes:
+
+1. `GoldenRun` now emits explicit `executable_verification_targets`
+   - show-level FX-normalized revenue
+   - show-level withholding
+   - country-level withholding
+   - expense category totals
+   - source-level P&L totals
+   - spreadsheet error absence
+
+2. `FinanceTaskQualityScorer` now gives `result_supervision` credit for:
+   - line-item numeric anchors
+   - group-total numeric anchors
+   - source-level and overall P&L anchors
+   - executable verification target coverage
+
+3. `FileGenerator` finance profiles were rebalanced for the two previously high-margin cases
+   - profile 2 production costs were increased to bring net margin close to 10%
+   - profile 4 production costs were increased to bring net margin close to 10%
+
+4. The challenge-balance scorer was adjusted for this finance template
+   - the previous metric over-penalized tasks with one revenue source and one cost source
+   - the revised metric includes expense pressure relative to revenue
+
+Before this pass:
+
+- all 5 finance cases passed the structural gate
+- static scores were around 70.15-71.75
+- 3 cases were weakest on `result_supervision`
+- 2 cases were weakest on `challenge_balance`
+- all cases were routed to `revise_before_eval`
+
+After this pass:
+
+- all 5 finance cases still pass the structural gate
+- all 5 finance cases score 78.75
+- all 5 finance cases are routed to `keep_in_training_pool`
+- `result_supervision` improved to 85.0
+- `challenge_balance` improved to 80.0
+- the new weakest component is `structural_complexity`
+
+Interpretation:
+
+- the first quality-improvement loop worked
+- supervision and financial balance are no longer the main blockers
+- the next useful improvement is controlled structural richness, not more micro-tuning of numeric traps
+
+Next optimization target:
+
+- add one small, realistic dependency only if it improves the task's business structure
+- candidate examples:
+  - a small FX policy table
+  - a management adjustment table
+  - a reconciliation note sheet
+  - a simple source-control schedule for excluded or duplicate rows
+
+This should be done carefully. Adding files or sheets only for score inflation would make the task less realistic.
+
+## Second Optimization Pass
+
+The second optimization pass added one realistic structural dependency: an attached FX policy workbook.
+
+Implemented changes:
+
+1. `TaskBlueprint` now includes `fx_policy.xlsx`
+   - sheet: `FX_Policy`
+   - fields: `Currency_Code`, `Reporting_Currency`, `FX_To_USD`, `Effective_Date`
+
+2. the prompt now explicitly tells the candidate to use the attached FX policy for local-currency revenue normalization
+
+3. `FileGenerator` now emits `fx_policy.xlsx` as part of the reference-file package
+
+4. `GoldenRun` now reads FX rates from `fx_policy.xlsx`
+   - this replaces hardcoded FX application inside the teacher run
+   - `fx_policy_table` is emitted as a required intermediate state
+
+5. executable verification targets now include `fx_policy_application`
+
+6. prompt-realism scoring now recognizes GDPVal-style prompt structure
+   - role
+   - engagement context
+   - objective
+   - working expectations
+   - required deliverables
+   - quality bar
+   - multi-file reference dependency
+
+After this pass:
+
+- all 5 finance cases pass the structural quality gate
+- all 5 finance cases score 83.75
+- all 5 finance cases are routed to `prioritize_for_rw_task_eval`
+- `structural_complexity` improved to 82.25
+- `prompt_realism` improved to 92.0
+- `result_supervision` remains 85.0
+- `challenge_balance` remains 80.0
+- the weakest remaining component is `reasoning_depth` at 79.5
+
+Interpretation:
+
+- the finance batch is now strong enough for another limited rw-task evaluation round
+- further static optimization is less urgent than validating whether these improved tasks actually separate real models better
+- the next meaningful evidence should come from model runs, not another static-score-only iteration
+
+Recommended next evaluation subset:
+
+- run the top 1-2 current finance cases through `claude-3-7-sonnet-latest`
+- run the same subset through `deepseek-v3.2`
+- optionally test one stronger but less stable provider model only after the stable baseline is collected
+
+The goal is to compare the new FX-policy version against the earlier task behavior:
+
+- old static score: roughly 70-72
+- first pass: 78.75
+- second pass: 83.75
+- expected dynamic question: does this produce better or clearer model separation?
+
+## Third Optimization Pass
+
+The second-pass dynamic evaluation showed that the task's main remaining ambiguity was not FX conversion, but the missing Germany withholding-tax rate.
+
+Observed behavior before this pass:
+
+- `claude-3-7-sonnet-latest` improved to 62/77 after the FX-policy addition
+- `deepseek-v3.2` improved to 55/77 after the FX-policy addition
+- both models used `fx_policy.xlsx` correctly
+- both models still struggled with Germany withholding tax because `Assump_Withholding_Tax` intentionally omitted Germany
+- the previous GoldenRun restored Germany from a hidden teacher default, which made exact grading less fair for training data
+
+Design correction:
+
+- keep the missing Germany value in `Assump_Withholding_Tax`
+- add a realistic support sheet named `Tax_Policy_Notes` inside `fall_music_tour_ref_file.xlsx`
+- include Germany's standard nonresident performer withholding rate of 15.825% in that support sheet
+- require candidates to use supporting tax policy notes for incomplete withholding-tax assumptions
+- make GoldenRun resolve missing tax rates from `Tax_Policy_Notes`, not from a hidden default
+
+This preserves the intended challenge:
+
+- the model still has to notice that the main tax assumption table is incomplete
+- the model still has to perform cross-sheet fallback lookup
+- exact grading is now grounded in visible input files rather than hidden teacher knowledge
+
+Implemented changes:
+
+1. `TaskBlueprint` includes a new `Tax_Policy_Notes` sheet in `fall_music_tour_ref_file.xlsx`
+   - fields: `Jurisdiction`, `Policy_Topic`, `Resolved_Withholding_Tax_Rate`, `Source_Note`
+
+2. `FileGenerator` emits the policy-note sheet while preserving the Germany omission in `Assump_Withholding_Tax`
+
+3. `GoldenRun` now emits:
+   - `tax_policy_note_lookup`
+   - `tax_rate_resolution` with resolution basis `Tax_Policy_Notes`
+
+4. executable verification targets now include `tax_policy_note_resolution`
+
+5. the prompt now tells candidates to use supporting tax policy notes to resolve incomplete withholding-tax assumptions
+
+Static validation after this pass:
+
+- all 5 finance cases pass the structural quality gate
+- all 5 finance cases have zero blocking issues and zero warnings
+- all 5 finance cases remain at static score 83.75
+- all 5 finance cases remain routed to `prioritize_for_rw_task_eval`
+
+Dynamic validation after this pass:
+
+- selected case: `TASK_374E0FBA`
+- model: `claude-3-7-sonnet-latest`
+- grader result: 77/77
+- output log explicitly states that Germany WHT was resolved via `Tax_Policy_Notes` to 15.825%
+- attempted model: `deepseek-v3.2`
+- DeepSeek computed the key FX, withholding-tax, and net-income values correctly in the log, but did not finish writing the final workbook before the 5-minute local timeout
+
+Interpretation:
+
+- the tax ambiguity fix worked
+- the task became fairer and more deterministic for training supervision
+- the current single task is now too easy for Claude after the support note is added
+- the current task can still stress long-horizon execution for slower models, so timeout/completion should be tracked separately from numeric reasoning correctness
+- the next dataset-level goal is not to make this exact sample harder by hiding required data again, but to create a controlled difficulty ladder across multiple cases and models
+
+Next recommended direction:
+
+- run the same tax-note version on `deepseek-v3.2` to see whether the model gap remains
+- add one additional reasoning dependency only after dynamic evidence shows the current batch no longer separates models
+- likely next dependencies:
+  - duplicate or excluded-row handling
+  - management adjustment table
+  - source-control tie-out schedule
+  - reconciliation note that affects only one subset of rows
 
 ## Summary
 

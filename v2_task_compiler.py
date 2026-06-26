@@ -129,7 +129,17 @@ class FinanceAuditTaskCompiler:
                                     ColumnSpec(name="Country", semantic_type="location_country_compact"),
                                     ColumnSpec(name="Withholding_Tax_Rate", semantic_type="tax_rate"),
                                 ],
-                            )
+                            ),
+                            SheetSpec(
+                                sheet_name="Tax_Policy_Notes",
+                                row_count_target=1,
+                                columns=[
+                                    ColumnSpec(name="Jurisdiction", semantic_type="location_country"),
+                                    ColumnSpec(name="Policy_Topic", semantic_type="free_text_description"),
+                                    ColumnSpec(name="Resolved_Withholding_Tax_Rate", semantic_type="tax_rate"),
+                                    ColumnSpec(name="Source_Note", semantic_type="free_text_description"),
+                                ],
+                            ),
                         ],
                     ),
                     FileSpec(
@@ -147,6 +157,22 @@ class FinanceAuditTaskCompiler:
                             )
                         ],
                     ),
+                    FileSpec(
+                        file_name="fx_policy.xlsx",
+                        file_role="reference_table",
+                        sheet_specs=[
+                            SheetSpec(
+                                sheet_name="FX_Policy",
+                                row_count_target=3,
+                                columns=[
+                                    ColumnSpec(name="Currency_Code", semantic_type="currency_code"),
+                                    ColumnSpec(name="Reporting_Currency", semantic_type="currency_code"),
+                                    ColumnSpec(name="FX_To_USD", semantic_type="fx_rate"),
+                                    ColumnSpec(name="Effective_Date", semantic_type="date"),
+                                ],
+                            )
+                        ],
+                    ),
                 ]
             )
         return files
@@ -159,6 +185,21 @@ class FinanceAuditTaskCompiler:
                     relation_type="lookup",
                     left="fall_music_tour_ref_file.xlsx:Inc_Costs_Tracked_by_Tour_Mgr.Country",
                     right="fall_music_tour_ref_file.xlsx:Assump_Withholding_Tax.Country",
+                )
+            )
+            relationships.append(
+                DataRelationship(
+                    relation_type="fallback_lookup",
+                    left="fall_music_tour_ref_file.xlsx:Assump_Withholding_Tax.Country",
+                    right="fall_music_tour_ref_file.xlsx:Tax_Policy_Notes.Jurisdiction",
+                )
+            )
+        if "infer_implicit_currency" in selected_ids:
+            relationships.append(
+                DataRelationship(
+                    relation_type="lookup",
+                    left="fall_music_tour_ref_file.xlsx:Inc_Costs_Tracked_by_Tour_Mgr.Country",
+                    right="fx_policy.xlsx:FX_Policy.Currency_Code",
                 )
             )
         return relationships
@@ -203,7 +244,7 @@ class FinanceAuditTaskCompiler:
                         affected_entities=["Germany"],
                     ),
                     expected_solver_behavior=(
-                        "Detect the missing reference and resolve it using business logic or defensible assumptions."
+                        "Detect the missing reference and resolve it from the supporting tax policy notes before finalizing totals."
                     ),
                 )
             )
@@ -227,6 +268,8 @@ class FinanceAuditTaskCompiler:
             "complete a structured P&L workbook",
             "use the attached files",
             "report all revenues in USD",
+            "apply the provided FX policy when normalizing local revenue amounts",
+            "resolve incomplete withholding-tax assumptions using supporting policy notes",
             "produce an executive-ready output workbook",
         ]
         hidden = []
@@ -251,6 +294,7 @@ class FinanceAuditTaskCompiler:
         capability_to_state = {
             "currency_inference": "currency_resolution_mapping",
             "reference_gap_resolution": "tax_rate_resolution",
+            "fallback_reference_lookup": "tax_policy_note_lookup",
             "expense_mapping": "expense_bucket_mapping",
             "aggregation": "source_level_net_revenue",
             "net_income_calculation": "net_income_totals",
@@ -259,6 +303,10 @@ class FinanceAuditTaskCompiler:
             for tag in skill.capability_tags:
                 if tag in capability_to_state:
                     intermediate.append(capability_to_state[tag])
+            if skill.skill_id == "infer_implicit_currency":
+                intermediate.append("fx_policy_table")
+            if skill.skill_id == "handle_missing_tax_rate":
+                intermediate.append("tax_policy_note_lookup")
         if "source_level_net_revenue" in intermediate:
             final_checks.extend(["net revenue totals", "expense totals", "net income totals"])
         return GoldenPlan(
@@ -300,7 +348,7 @@ class FinanceAuditTaskCompiler:
                 SupervisionTarget(
                     target_id="missing_tax_resolution",
                     target_type="reasoning_or_robustness_check",
-                    description="Verify that the missing tax rate does not silently corrupt final calculations.",
+                    description="Verify that the missing tax rate is resolved from supporting tax policy notes before final calculations.",
                 )
             )
         if "categorize_operating_expense" in blueprint.selected_skills:
@@ -335,7 +383,7 @@ class FinanceAuditTaskCompiler:
             fact_checks=["Final workbook totals match the golden run."],
             reasoning_checks=[
                 "The model correctly infers implicit currencies from business context.",
-                "The model uses a defensible tax-rate resolution path for incomplete reference data.",
+                "The model resolves incomplete withholding-tax assumptions from supporting policy notes.",
             ],
             robustness_checks=["The missing tax-rate omission does not break downstream calculations."],
             compliance_checks=["Required workbook exists and satisfies naming and structural requirements."],
@@ -371,6 +419,8 @@ class FinanceAuditTaskCompiler:
             f"- Use the attached reference files as the sole working data sources.\n"
             f"- Complete a final P&L workbook that shows Tour Manager, Production Company, and Total columns.\n"
             f"- Report revenues in USD and apply withholding-tax adjustments before presenting net income.\n"
+            f"- Use the attached FX policy for local-currency revenue normalization.\n"
+            f"- Use supporting tax policy notes to resolve incomplete withholding-tax assumptions.\n"
             f"- If the source materials contain irregularities or incomplete information, resolve them carefully inside the workbook logic.\n\n"
             f"**Required Deliverables:**\n"
             f"1. Create an Excel workbook named `{deliverable_names[0]}`.\n"
@@ -385,7 +435,7 @@ class FinanceAuditTaskCompiler:
         revealed_traps = []
         business_assumptions = [
             "Revenue and expense amounts from operational files must be normalized to USD before cross-source comparison.",
-            "Missing reference values must be resolved explicitly and logged as teacher assumptions.",
+            "Missing withholding-tax values must be resolved from supporting policy notes before final totals are computed.",
         ]
         for trap in blueprint.trap_spec:
             if trap.trap_type == "implicit_currency":

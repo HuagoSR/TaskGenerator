@@ -137,14 +137,26 @@ class FinanceTaskQualityScorer:
         return min(score, 100.0)
 
     def _score_result_supervision(self, golden_anchors: Dict[str, object], rubric_items: List[Dict[str, object]]) -> float:
-        source_rows = golden_anchors["golden_targets"]["final_pnl_totals"]["expected_value"]["by_source"]
-        overall_totals = golden_anchors["golden_targets"]["final_pnl_totals"]["expected_value"]["overall_totals"]
+        golden_targets = golden_anchors["golden_targets"]
+        source_rows = golden_targets["final_pnl_totals"]["expected_value"]["by_source"]
+        overall_totals = golden_targets["final_pnl_totals"]["expected_value"]["overall_totals"]
+        revenue_line_items = golden_targets.get("revenue_line_items", {}).get("expected_value", [])
+        withholding_by_country = golden_targets.get("withholding_by_country", {}).get("expected_value", [])
+        expense_category_totals = golden_targets.get("expense_category_totals", {}).get("expected_value", [])
+        executable_targets = golden_anchors.get("executable_verification_targets", {})
         outcome_rows = sum(1 for item in rubric_items if "outcome" in (item.get("tags") or []))
-        distinct_numeric_checks = len(source_rows) * 3 + len(overall_totals)
-        tolerance = golden_anchors["golden_targets"]["final_pnl_totals"].get("tolerance", 0.0)
-        score = 18.0
-        score += min(outcome_rows * 2.4, 24.0)
-        score += min(distinct_numeric_checks * 1.6, 20.0)
+        distinct_numeric_checks = (
+            len(source_rows) * 4
+            + len(overall_totals)
+            + len(revenue_line_items) * 3
+            + len(withholding_by_country)
+            + len(expense_category_totals)
+        )
+        tolerance = golden_targets["final_pnl_totals"].get("tolerance", 0.0)
+        score = 16.0
+        score += min(outcome_rows * 2.0, 22.0)
+        score += min(distinct_numeric_checks * 0.8, 28.0)
+        score += min(len(executable_targets) * 2.0, 12.0)
         if tolerance <= 0.05:
             score += 7.0
         return min(score, 100.0)
@@ -153,6 +165,7 @@ class FinanceTaskQualityScorer:
         length = len(prompt)
         style_constraints = blueprint["prompt_spec"]["style_constraints"]
         visible_requirements = blueprint["prompt_spec"]["visible_requirements"]
+        reference_files = blueprint["data_spec"]["reference_files"]
         score = 18.0
         if 900 <= length <= 2600:
             score += 30.0
@@ -165,6 +178,17 @@ class FinanceTaskQualityScorer:
         if "no trap disclosure" in style_constraints:
             score += 10.0
         score += min(len(visible_requirements) * 2.0, 8.0)
+        required_sections = [
+            "**Role:**",
+            "**Engagement Context:**",
+            "**Objective:**",
+            "**Working Expectations:**",
+            "**Required Deliverables:**",
+            "**Quality Bar:**",
+        ]
+        score += min(sum(1 for section in required_sections if section in prompt) * 1.5, 9.0)
+        if "sole working data sources" in prompt and len(reference_files) >= 3:
+            score += 5.0
         return min(score, 100.0)
 
     def _score_challenge_balance(self, golden_anchors: Dict[str, object]) -> float:
@@ -195,6 +219,11 @@ class FinanceTaskQualityScorer:
         tax_usd = abs(float(overall["tax_usd"]))
         if tax_usd / revenue >= 0.03:
             score += 8.0
+        expense_pressure = abs(float(overall["expense_usd"])) / revenue
+        if 0.55 <= expense_pressure <= 0.85:
+            score += 15.0
+        elif 0.45 <= expense_pressure <= 0.95:
+            score += 8.0
         return min(score, 100.0)
 
     def _build_diagnostics(
@@ -212,6 +241,7 @@ class FinanceTaskQualityScorer:
             "rubric_item_count": len(rubric_items),
             "hidden_requirement_count": len(blueprint["prompt_spec"]["hidden_requirements"]),
             "source_count": len(golden_anchors["golden_targets"]["final_pnl_totals"]["expected_value"]["by_source"]),
+            "executable_verification_target_count": len(golden_anchors.get("executable_verification_targets", {})),
             "net_margin_ratio": net_margin_ratio,
             "top_component": max(component_scores, key=component_scores.get),
             "weakest_component": min(component_scores, key=component_scores.get),

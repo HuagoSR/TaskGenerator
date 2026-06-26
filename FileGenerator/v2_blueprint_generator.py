@@ -33,6 +33,21 @@ TAX_RATE_BY_COUNTRY: Dict[str, float] = {
     "Netherlands": 0.19,
 }
 
+FX_POLICY_ROWS = [
+    ("GBP", "USD", 1.27, "2024-12-31"),
+    ("EUR", "USD", 1.09, "2024-12-31"),
+    ("USD", "USD", 1.00, "2024-12-31"),
+]
+
+TAX_POLICY_NOTE_ROWS = [
+    (
+        "Germany",
+        "Standard nonresident performer withholding",
+        0.15825,
+        "Use for German tour-stop revenue when the main withholding assumption table is incomplete.",
+    ),
+]
+
 DESCRIPTION_OPTIONS = [
     "Venue settlement adjustment",
     "Crew travel reimbursement",
@@ -125,11 +140,11 @@ FINANCE_TOUR_PROFILES = [
             ("Hotel & Restaurants", "Munich", 29840.0),
             ("Hotel & Restaurants", "Hamburg", 27430.0),
             ("Hotel & Restaurants", "Berlin", 31560.0),
-            ("Venue & Production", "PA and Staging", 96400.0),
+            ("Venue & Production", "PA and Staging", 126400.0),
             ("Venue & Production", "Backline", 41800.0),
             ("Other Costs", "Ground Transport", 38980.0),
             ("Other Costs", "Insurance", 28320.0),
-            ("Other Costs", "Freight", 46120.0),
+            ("Other Costs", "Freight", 71520.0),
         ],
     },
     {
@@ -171,7 +186,7 @@ FINANCE_TOUR_PROFILES = [
             ("Show 8", "2024-07-22", "Hamburg", "Germany", 109430.0),
         ],
         "expense_rows": [
-            ("Band & Crew", "11 members", 358000.0),
+            ("Band & Crew", "11 members", 398000.0),
             ("Hotel & Restaurants", "Manchester", 29640.0),
             ("Hotel & Restaurants", "Paris", 38120.0),
             ("Hotel & Restaurants", "Lyon", 25780.0),
@@ -180,11 +195,11 @@ FINANCE_TOUR_PROFILES = [
             ("Hotel & Restaurants", "Munich", 28730.0),
             ("Hotel & Restaurants", "Berlin", 30410.0),
             ("Hotel & Restaurants", "Hamburg", 26390.0),
-            ("Venue & Production", "Stage and Rigging", 91800.0),
+            ("Venue & Production", "Stage and Rigging", 121800.0),
             ("Venue & Production", "Backline", 40260.0),
             ("Other Costs", "Ground Transport", 37240.0),
             ("Other Costs", "Insurance", 26950.0),
-            ("Other Costs", "Freight", 43880.0),
+            ("Other Costs", "Freight", 68520.0),
         ],
     },
 ]
@@ -229,6 +244,8 @@ class V2BlueprintFileGenerator:
             return self._build_finance_template_sheet(sheet_spec)
         if file_spec.file_name == "production_company_costs.xlsx":
             return self._build_production_cost_sheet(sheet_spec)
+        if file_spec.file_name == "fx_policy.xlsx":
+            return self._build_fx_policy_sheet(sheet_spec)
 
         row_count = sheet_spec.row_count_target
         data: Dict[str, List[object]] = {}
@@ -288,11 +305,23 @@ class V2BlueprintFileGenerator:
             ]
             return pd.DataFrame(rows, columns=["Country", "Withholding_Tax_Rate"])
 
+        if sheet_spec.sheet_name == "Tax_Policy_Notes":
+            return pd.DataFrame(
+                TAX_POLICY_NOTE_ROWS,
+                columns=["Jurisdiction", "Policy_Topic", "Resolved_Withholding_Tax_Rate", "Source_Note"],
+            )
+
         return pd.DataFrame()
 
     def _build_production_cost_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
         rows = self.profile["expense_rows"]
         return pd.DataFrame(rows, columns=["Cost_Category", "Cost_Item", "Amount_USD"])
+
+    def _build_fx_policy_sheet(self, sheet_spec: SheetSpec) -> pd.DataFrame:
+        return pd.DataFrame(
+            FX_POLICY_ROWS,
+            columns=["Currency_Code", "Reporting_Currency", "FX_To_USD", "Effective_Date"],
+        )
 
     def _apply_traps(self, workbook: GeneratedWorkbook, traps: List[TrapSpec]) -> None:
         for trap in traps:

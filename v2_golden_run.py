@@ -59,13 +59,23 @@ class FinanceAuditGoldenRunExecutor:
             reference_path / "fall_music_tour_ref_file.xlsx",
             sheet_name="Assump_Withholding_Tax",
         )
+        tax_policy_df = pd.read_excel(
+            reference_path / "fall_music_tour_ref_file.xlsx",
+            sheet_name="Tax_Policy_Notes",
+        )
         prod_df = pd.read_excel(
             reference_path / "production_company_costs.xlsx",
             sheet_name="Costs_Tracked_by_Production_Co",
         )
+        fx_policy_df = pd.read_excel(
+            reference_path / "fx_policy.xlsx",
+            sheet_name="FX_Policy",
+        )
 
-        normalized_tour_df, currency_mapping = self._normalize_tour_rows(tour_df)
-        resolved_tax_df, tax_resolution = self._resolve_tax_rates(tax_df)
+        fx_policy_table, fx_lookup = self._load_fx_policy(fx_policy_df)
+        normalized_tour_df, currency_mapping = self._normalize_tour_rows(tour_df, fx_lookup)
+        tax_policy_note_lookup = self._load_tax_policy_notes(tax_policy_df)
+        resolved_tax_df, tax_resolution = self._resolve_tax_rates(tax_df, tax_policy_note_lookup)
 
         tax_lookup = resolved_tax_df.set_index("Country")["Resolved_Withholding_Tax_Rate"].to_dict()
         normalized_tour_df["Resolved_Tax_Rate"] = normalized_tour_df["Country"].map(tax_lookup)
@@ -84,7 +94,9 @@ class FinanceAuditGoldenRunExecutor:
         expense_category_totals = self._build_expense_category_totals(normalized_prod_df)
 
         intermediate_values = {
+            "fx_policy_table": fx_policy_table,
             "currency_resolution_mapping": currency_mapping,
+            "tax_policy_note_lookup": tax_policy_note_lookup,
             "tax_rate_resolution": tax_resolution,
             "expense_bucket_mapping": expense_bucket_mapping,
             "source_level_net_revenue": [
@@ -122,11 +134,11 @@ class FinanceAuditGoldenRunExecutor:
             "reference_files_read": [
                 "fall_music_tour_ref_file.xlsx",
                 "production_company_costs.xlsx",
+                "fx_policy.xlsx",
             ],
             "assumptions": [
-                "UK rows are converted to USD using 1.27.",
-                "France, Germany, Spain, and Netherlands rows are converted to USD using 1.09.",
-                "Missing withholding tax assumptions are restored from the canonical teacher tax table.",
+                "FX rates are read from fx_policy.xlsx.",
+                "Missing withholding tax assumptions are restored from Tax_Policy_Notes in the reference workbook.",
             ],
             "trap_handling": [
                 {
@@ -135,7 +147,7 @@ class FinanceAuditGoldenRunExecutor:
                 },
                 {
                     "trap_type": "reference_omission",
-                    "resolution": "Missing withholding tax assumptions are restored explicitly before tax-adjusted totals are produced.",
+                    "resolution": "Missing withholding tax assumptions are resolved from the supporting tax policy notes before tax-adjusted totals are produced.",
                 },
             ],
             "generated_teacher_artifacts": golden_run.expected_outputs.teacher_artifacts,
@@ -151,14 +163,45 @@ class FinanceAuditGoldenRunExecutor:
             run_log=run_log,
         )
 
-    def _normalize_tour_rows(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
+    def _load_fx_policy(self, df: pd.DataFrame) -> Tuple[List[Dict[str, object]], Dict[str, float]]:
+        policy = df.copy()
+        policy["FX_To_USD"] = pd.to_numeric(policy["FX_To_USD"], errors="coerce")
+        policy_rows = [
+            {
+                "currency_code": str(row["Currency_Code"]),
+                "reporting_currency": str(row["Reporting_Currency"]),
+                "fx_to_usd": round(float(row["FX_To_USD"]), 6),
+                "effective_date": str(row["Effective_Date"]),
+            }
+            for _, row in policy.iterrows()
+        ]
+        fx_lookup = {row["currency_code"]: row["fx_to_usd"] for row in policy_rows}
+        return policy_rows, fx_lookup
+
+    def _load_tax_policy_notes(self, df: pd.DataFrame) -> List[Dict[str, object]]:
+        policy = df.copy()
+        policy["Resolved_Withholding_Tax_Rate"] = pd.to_numeric(
+            policy["Resolved_Withholding_Tax_Rate"],
+            errors="coerce",
+        )
+        return [
+            {
+                "jurisdiction": str(row["Jurisdiction"]),
+                "policy_topic": str(row["Policy_Topic"]),
+                "resolved_withholding_tax_rate": round(float(row["Resolved_Withholding_Tax_Rate"]), 6),
+                "source_note": str(row["Source_Note"]),
+            }
+            for _, row in policy.iterrows()
+        ]
+
+    def _normalize_tour_rows(self, df: pd.DataFrame, fx_lookup: Dict[str, float]) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
         normalized = df.copy()
         normalized["Gross_Revenue_Local"] = normalized.apply(
             lambda row: self._parse_localized_amount(row["Gross_Revenue"], row["Country"]),
             axis=1,
         )
         normalized["Currency_Code"] = normalized["Country"].map(COUNTRY_CURRENCY)
-        normalized["FX_To_USD"] = normalized["Currency_Code"].map(FX_TO_USD)
+        normalized["FX_To_USD"] = normalized["Currency_Code"].map(fx_lookup)
         normalized["Gross_Revenue_USD"] = (
             normalized["Gross_Revenue_Local"] * normalized["FX_To_USD"]
         ).round(2)
@@ -171,24 +214,39 @@ class FinanceAuditGoldenRunExecutor:
         )
         return normalized, mapping
 
-    def _resolve_tax_rates(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
+    def _resolve_tax_rates(
+        self,
+        df: pd.DataFrame,
+        tax_policy_note_lookup: List[Dict[str, object]],
+    ) -> Tuple[pd.DataFrame, List[Dict[str, object]]]:
         resolved = df.copy()
         resolved["Resolved_Withholding_Tax_Rate"] = resolved["Withholding_Tax_Rate"]
         resolution_notes: List[Dict[str, object]] = []
+        policy_lookup = {
+            row["jurisdiction"]: row
+            for row in tax_policy_note_lookup
+            if row.get("jurisdiction")
+        }
 
         for idx, row in resolved.iterrows():
             country = row["Country"]
             if pd.isna(country) or str(country).strip() == "" or str(country).strip() == "Notes":
                 continue
             if pd.isna(row["Resolved_Withholding_Tax_Rate"]):
-                restored = DEFAULT_TAX_RATES[str(country)]
+                policy_note = policy_lookup.get(str(country))
+                if policy_note:
+                    restored = float(policy_note["resolved_withholding_tax_rate"])
+                    resolution_basis = "Tax_Policy_Notes"
+                else:
+                    restored = DEFAULT_TAX_RATES[str(country)]
+                    resolution_basis = "teacher_default_country_tax_table_fallback"
                 resolved.loc[idx, "Resolved_Withholding_Tax_Rate"] = restored
                 resolution_notes.append(
                     {
                         "country": str(country),
                         "original_rate": None,
                         "resolved_rate": restored,
-                        "resolution_basis": "teacher_default_country_tax_table",
+                        "resolution_basis": resolution_basis,
                     }
                 )
 
@@ -329,6 +387,55 @@ class FinanceAuditGoldenRunExecutor:
                 "expense_category_totals": {
                     "target_type": "group_total_check",
                     "expected_value": expense_category_totals,
+                },
+            },
+            "executable_verification_targets": {
+                "show_level_fx_revenue": {
+                    "target_type": "line_item_numeric_check",
+                    "description": "Verify each tour stop's gross revenue after jurisdiction-aware FX normalization.",
+                    "source_anchor": "golden_targets.revenue_line_items",
+                    "required_fields": ["line_type", "city", "country", "gross_revenue_usd"],
+                },
+                "fx_policy_application": {
+                    "target_type": "reference_policy_check",
+                    "description": "Verify that local revenue values are normalized using the attached FX policy table.",
+                    "source_anchor": "intermediate_values.fx_policy_table",
+                    "required_fields": ["currency_code", "reporting_currency", "fx_to_usd"],
+                },
+                "tax_policy_note_resolution": {
+                    "target_type": "fallback_reference_check",
+                    "description": "Verify that omitted withholding-tax assumptions are resolved from the supporting tax policy notes.",
+                    "source_anchor": "intermediate_values.tax_policy_note_lookup",
+                    "required_fields": ["jurisdiction", "resolved_withholding_tax_rate", "source_note"],
+                },
+                "show_level_withholding": {
+                    "target_type": "line_item_numeric_check",
+                    "description": "Verify each tour stop's withholding tax after tax-rate resolution.",
+                    "source_anchor": "golden_targets.revenue_line_items",
+                    "required_fields": ["line_type", "city", "country", "withholding_tax_usd"],
+                },
+                "country_level_withholding": {
+                    "target_type": "group_total_numeric_check",
+                    "description": "Verify withholding-tax totals by country.",
+                    "source_anchor": "golden_targets.withholding_by_country",
+                    "required_fields": ["country", "withholding_tax_usd"],
+                },
+                "expense_category_totals": {
+                    "target_type": "group_total_numeric_check",
+                    "description": "Verify production costs by reporting category.",
+                    "source_anchor": "golden_targets.expense_category_totals",
+                    "required_fields": ["cost_category", "amount_usd"],
+                },
+                "source_level_pnl": {
+                    "target_type": "source_total_numeric_check",
+                    "description": "Verify source-level and overall P&L totals.",
+                    "source_anchor": "golden_targets.final_pnl_totals",
+                    "required_fields": ["revenue_usd", "expense_usd", "tax_usd", "net_income_usd"],
+                },
+                "spreadsheet_error_absence": {
+                    "target_type": "workbook_error_scan",
+                    "description": "Verify that final workbooks do not contain visible spreadsheet calculation errors.",
+                    "error_tokens": ["#DIV/0!", "#VALUE!", "#REF!", "#NAME?", "#N/A"],
                 },
             },
             "intermediate_targets": {
