@@ -35,6 +35,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
             timeout_seconds=args.timeout_seconds,
         )
         if tuzi_config is not None:
+            tuzi_config.max_tokens = args.max_tokens
             if not args.allow_external_upload:
                 raise RuntimeError("Tuzi provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("tuzi", LLMSkillExtractor(tuzi_config)))
@@ -58,6 +59,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
             timeout_seconds=args.timeout_seconds,
         )
         if deepseek_config is not None:
+            deepseek_config.max_tokens = args.max_tokens
             if not args.allow_external_upload:
                 raise RuntimeError("DeepSeek provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("deepseek", LLMSkillExtractor(deepseek_config)))
@@ -126,7 +128,8 @@ def main() -> None:
     parser.add_argument("--provider", choices=["auto", "tuzi", "deepseek", "mock"], default="auto")
     parser.add_argument("--model", default=None, help="Override .env OPENAI_MODEL for the Tuzi/OpenAI-compatible provider.")
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash", help="DeepSeek official model.")
-    parser.add_argument("--max-candidates", type=int, default=8)
+    parser.add_argument("--max-candidates", type=int, default=30)
+    parser.add_argument("--max-tokens", type=int, default=6000, help="Maximum completion tokens for LLM providers.")
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument("--allow-mock-fallback", action="store_true")
     parser.add_argument("--allow-external-upload", action="store_true", help="Required before sending prompt-package content to Tuzi or DeepSeek.")

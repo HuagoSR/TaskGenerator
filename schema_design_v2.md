@@ -42,6 +42,52 @@ The new pipeline leans toward:
 - assembling realistic tasks with stronger LLM assistance
 - generating explicit `GoldenRun` artifacts for result-based supervision
 
+## V3 Atomic Skill Extraction Update
+
+V3 now inherits the useful parts of the old skill-extraction line without keeping its brittle operator-heavy payloads.
+
+Already carried forward:
+
+- old `ports.requires/provides` are represented as `input_contract` and `output_contract`
+- old business intent and data-profile context are represented as `business_meaning`, `common_deliverables`, and `assembly_hints`
+- old Fact / Reasoning / Robustness / Compliance review dimensions are represented as tags and reviewer checks
+- evidence grounding is mandatory through `SkillEvidence` spans that cite source and block IDs
+
+The key correction after the first GDPVal prompt-only run is that `SemanticSkill` must be more atomic than a full task.
+
+Task-level candidates such as:
+
+- `Individual Tax Return (Form 1040) Preparation`
+- `Profit and Loss Report Preparation with Tax Withholding`
+- `Prepaid Expense Amortization Schedule Preparation`
+
+are useful signals, but they are too broad for direct registry insertion unless decomposed. The registry should prefer reusable atomic capabilities such as:
+
+- mapping source-document fields to filing inputs
+- detecting missing supporting schedules or policy notes
+- reconciling source totals to report line items
+- computing period allocation schedules
+- validating jurisdiction-specific compliance evidence
+
+This means Pipeline A should optimize for:
+
+- diversity across capability types
+- reusability across future tasks
+- composability inside Pipeline B
+- source-grounded evidence
+- no leakage of exact files, rows, generated values, forms, or rubric wording into the skill identity
+
+The deterministic reviewer now treats task-level overbreadth as a first-class risk. Broad `Preparation` candidates, form-bound tax candidates, and jurisdiction-bound candidates should generally be marked `revise` with a suggested abstraction rather than entering the registry unchanged.
+
+Current GDPVal prompt-only validation:
+
+- old DeepSeek run on 5 `Accountants and Auditors` prompts produced 5 candidates and the earlier reviewer accepted all 5
+- rerunning the stricter reviewer on that old output now gives 2 accepted and 3 revise decisions
+- `Individual Tax Return (Form 1040) Preparation` is now revised toward `Structured Statutory Filing Input Mapping` or `Jurisdiction-Specific Compliance Schedule Selection`
+- a new DeepSeek run with the atomic prompt and `max_candidates=30` produced 12 candidates
+- the stricter reviewer accepted 10 and revised 2 broad/form-bound candidates
+- the resulting per-run registry contains 10 entries and excludes the revised task-level candidates
+
 ## Object 1: SemanticSkill
 
 `SemanticSkill` should be execution-agnostic. It does not commit to exact files, rows, operators, or final rubric wording.

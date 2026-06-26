@@ -197,6 +197,14 @@ It should not describe:
 - fixed rubric text
 - one-off spreadsheet layouts
 
+Current V3 refinement:
+
+- skills should also avoid being whole GDPVal tasks in disguise
+- one source prompt may yield several atomic skill candidates
+- `Prepare Form 1040`, `Create a P&L Report`, and `Build an Audit Workbook` are task-level signals, not ideal registry entries
+- preferred registry entries are smaller reusable actions such as input mapping, missing-evidence detection, cross-source reconciliation, period allocation, compliance-rule selection, and final-output validation
+- broad task-level candidates should be revised into atomic abstractions before registry insertion
+
 ### 4. SkillRegistry
 
 Responsibility:
@@ -478,6 +486,8 @@ Current implementation status:
 - `v3_skill_reviewer.py` provides a deterministic first-pass candidate reviewer:
   - scores reusability, diversity, semantic clarity, evidence grounding, and assembly usefulness
   - penalizes operator leakage and single-instance overfit
+  - now also scores atomicity and penalizes task-level overbreadth, form-specific candidates, and jurisdiction-bound candidates
+  - emits `suggested_abstraction` for candidates that should be revised into smaller reusable capabilities
 - `Test/run_v3_skill_candidate_reviewer.py` emits reviewed candidates, accepted candidates, and review reports
 - `v3_skill_registry.py` provides a first-pass deterministic registry builder:
   - converts candidates into `SkillRegistryEntry` records
@@ -494,11 +504,19 @@ What is intentionally not done yet:
   - candidates produced: 5
   - reviewer accepted: 5
   - registry entries produced: 5
+- that first GDPVal run is now considered a successful plumbing test but a weak skill-quality target because it produced mostly task-level skills rather than atomic skills
+- after adding the atomic extraction prompt and stricter reviewer, the same GDPVal prompt-only package produced:
+  - 12 DeepSeek candidates with `--max-candidates 30`
+  - 10 accepted atomic or near-atomic candidates
+  - 2 revise candidates:
+    - `Build Structured Profit and Loss Report from Multiple Sources`
+    - `Map Tax Documents to IRS Form Fields`
+  - 10 registry entries in the per-run atomic batch registry
 - external testing on private workspace source packages should remain blocked unless the source package is explicitly approved for upload
 - no semantic embedding or LLM-based registry deduplication
-- accepted/rejected skill review loop exists, but the first-pass reviewer is likely too permissive
+- accepted/rejected skill review loop exists and is being tightened around atomicity; the current registry remains a per-run batch registry, not yet a persistent unified skill library
 
-The immediate next code step is to tighten the reviewer so narrow jurisdiction- or form-specific candidates are marked as `revise` unless they are abstracted into reusable skills.
+The immediate next code step is to turn the per-run atomic registry into a persistent registry update loop with semantic deduplication and coverage reporting. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 

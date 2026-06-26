@@ -46,6 +46,7 @@ def main() -> None:
                 "decision": review.decision,
                 "total_score": review.scores.total_score,
                 "reason_codes": review.reason_codes,
+                "suggested_abstraction": review.suggested_abstraction,
             }
             for review in reviews
         ],
@@ -63,4 +64,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

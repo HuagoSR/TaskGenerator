@@ -122,11 +122,12 @@ The next priority is Pipeline A.
 
 Recommended next implementation steps:
 
-1. Add `v3_source_schema.py` for source-to-skill objects.
-2. Add a local source-to-skill prototype that reads text files and emits `ExtractedSkillCandidate` records.
-3. Later connect the collector to stirrup so a model can search the web in a sandbox and save source materials.
-4. Build a skill registry update/deduplication step.
-5. Only after that, update Pipeline B so it samples from the registry instead of hardcoded finance skills.
+1. Keep improving Pipeline A around atomic, reusable, evidence-backed skill extraction.
+2. Use GDPVal prompt-only packages as a safe benchmark-like input source, but do not use GDPVal rubrics/files/answer traces for extraction.
+3. Treat one GDPVal prompt as potentially yielding multiple atomic skills; avoid one-prompt-one-broad-skill extraction.
+4. Later connect the collector to stirrup so a model can search the web in a sandbox and save source materials.
+5. Build a persistent registry update/deduplication step.
+6. Only after that, update Pipeline B so it samples from the registry instead of hardcoded finance skills.
 
 Current Pipeline A starting files:
 
@@ -138,7 +139,7 @@ Current Pipeline A starting files:
 - `Test/build_v3_public_smoke_package.py`: builds a public synthetic source package safe for external LLM smoke tests
 - `Test/v3_public_smoke_package`: tracked public synthetic smoke input; generated extraction/registry output dirs are ignored
 - `Test/build_v3_gdpval_prompt_sources.py`: builds GDPVal prompt-only source packages from task_id, sector, occupation, and prompt only
-- `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, operator leakage, and single-instance overfit
+- `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, atomicity, operator leakage, single-instance overfit, and task-level overbreadth
 - `Test/run_v3_skill_candidate_reviewer.py`: CLI for reviewed/accepted candidate outputs
 - `v3_skill_registry.py`: first-pass registry builder that turns candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
@@ -153,8 +154,23 @@ Current Pipeline A status:
 - external providers require `--allow-external-upload`
 - DeepSeek official smoke test has passed on the public synthetic smoke package
 - GDPVal prompt-only extraction has passed on 5 `Accountants and Auditors` prompts with DeepSeek official
-- The first GDPVal run produced 5 accepted registry entries, but the reviewer is probably too permissive for narrow skills such as jurisdiction- or form-specific tax-return candidates
+- The first GDPVal run produced 5 accepted registry entries, but that should be interpreted as a plumbing success, not a quality target
+- Those first candidates were too task-level, e.g. full report/tax-return/schedule preparation skills; the current direction is atomic skill extraction
+- The reviewer now marks task-level `Preparation` candidates, form-specific candidates, and jurisdiction-bound candidates as `revise` unless their contracts already show an atomic reusable action
+- `revise` review records include `suggested_abstraction` to show how a broad candidate could become a reusable registry skill
 - first-pass registry building works
+- the current `skill_registry.json` outputs are per-run batch registries, not yet a unified persistent skill library
+- current atomic GDPVal run artifacts:
+  - prompt package: `Test/v3_gdpval_prompt_sources/accountants_10/skill_extraction_prompt_package.json`
+  - old strict reviewer regression: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic/`
+  - new atomic DeepSeek extraction: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_extraction_atomic/`
+  - new strict review: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic_llm/`
+  - new atomic registry: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_registry_atomic/`
+- current atomic GDPVal result:
+  - old 5-candidate output now reviews as 2 accept / 3 revise
+  - new DeepSeek extraction produced 12 candidates
+  - strict reviewer accepted 10 and revised 2
+  - atomic registry entry_count is 10
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
 - no semantic registry deduplication yet
