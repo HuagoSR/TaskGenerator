@@ -1,5 +1,20 @@
 # TaskGenerator V2 Schema Design
 
+## Document Status
+
+This document records the V2 schema design, finance prototype, and experiment history.
+
+The current macro roadmap is now maintained in:
+
+- `pipeline_architecture_v3.md`
+
+Use the documents as follows:
+
+- `schema_design_v2.md`: schema details, V2 object definitions, finance prototype evidence, and quality-gate lessons
+- `pipeline_architecture_v3.md`: project-level plan for batch automatic task generation, source-to-skill extraction, skill-to-task assembly, and GoldenRun engineering
+
+The main project direction is no longer to keep polishing one finance task. The finance task is a prototype for discovering pipeline constraints.
+
 ## Goal
 
 Build a GDPVal-style real-world-task generation framework for **training** rather than only evaluation.
