@@ -58,9 +58,9 @@ class SkillRegistryBuilder:
         return SkillRegistryEntry(
             skill_id=stable_id("skill", slugify(candidate.proposed_name)),
             canonical_name=candidate.proposed_name,
-            domain_tags=candidate.domain_tags,
-            capability_tags=candidate.capability_tags,
-            difficulty_tags=candidate.difficulty_tags,
+            domain_tags=self._normalize_tags(candidate.domain_tags),
+            capability_tags=self._normalize_tags(candidate.capability_tags),
+            difficulty_tags=self._normalize_tags(candidate.difficulty_tags),
             input_contract=candidate.input_contract,
             output_contract=candidate.output_contract,
             business_meaning=candidate.business_meaning,
@@ -69,20 +69,22 @@ class SkillRegistryBuilder:
             evidence_refs=evidence_refs,
             assembly_hints=candidate.assembly_hints,
             stats=SkillRegistryStats(usage_count=1),
-            source_candidate_ids=[candidate.candidate_id],
+            source_candidate_ids=[self._candidate_ref(candidate)],
         )
 
     def _merge_candidate(self, entry: SkillRegistryEntry, candidate: ExtractedSkillCandidate) -> None:
-        is_new_candidate = candidate.candidate_id not in set(entry.source_candidate_ids)
-        entry.domain_tags = sorted(set(entry.domain_tags + candidate.domain_tags))
-        entry.capability_tags = sorted(set(entry.capability_tags + candidate.capability_tags))
-        entry.difficulty_tags = sorted(set(entry.difficulty_tags + candidate.difficulty_tags))
+        candidate_ref = self._candidate_ref(candidate)
+        existing_refs = set(entry.source_candidate_ids)
+        is_new_candidate = candidate_ref not in existing_refs and candidate.candidate_id not in existing_refs
+        entry.domain_tags = self._normalize_tags(entry.domain_tags + candidate.domain_tags)
+        entry.capability_tags = self._normalize_tags(entry.capability_tags + candidate.capability_tags)
+        entry.difficulty_tags = self._normalize_tags(entry.difficulty_tags + candidate.difficulty_tags)
         entry.failure_modes = sorted(set(entry.failure_modes + candidate.common_failure_modes))
         entry.assembly_hints = sorted(set(entry.assembly_hints + candidate.assembly_hints))
         entry.evidence_refs = sorted(
             set(entry.evidence_refs + [evidence.evidence_id for evidence in candidate.evidence])
         )
-        entry.source_candidate_ids = sorted(set(entry.source_candidate_ids + [candidate.candidate_id]))
+        entry.source_candidate_ids = sorted(set(entry.source_candidate_ids + [candidate_ref]))
         if is_new_candidate:
             entry.stats.usage_count += 1
 
@@ -95,7 +97,7 @@ class SkillRegistryBuilder:
             payload = payload["entries"]
         if not isinstance(payload, list):
             raise ValueError(f"Registry file must contain an entries array: {registry_path}")
-        return [SkillRegistryEntry.model_validate(item) for item in payload]
+        return [self._normalize_entry(SkillRegistryEntry.model_validate(item)) for item in payload]
 
     def write_registry(self, path: str | Path, entries: List[SkillRegistryEntry]) -> None:
         registry_path = Path(path)
@@ -113,7 +115,7 @@ class SkillRegistryBuilder:
         existing_entries: List[SkillRegistryEntry],
         candidates: List[ExtractedSkillCandidate],
     ) -> Tuple[List[SkillRegistryEntry], Dict[str, Any]]:
-        entries = [entry.model_copy(deep=True) for entry in existing_entries]
+        entries = [self._normalize_entry(entry.model_copy(deep=True)) for entry in existing_entries]
         report: Dict[str, Any] = {
             "input_candidate_count": len(candidates),
             "existing_entry_count": len(existing_entries),
@@ -248,6 +250,10 @@ class SkillRegistryBuilder:
             tokens = tokens[1:]
         return "_".join(tokens) or slugify(name)
 
+    def _candidate_ref(self, candidate: ExtractedSkillCandidate) -> str:
+        source_key = ",".join(sorted(candidate.source_ids))
+        return stable_id("source_candidate", f"{source_key}::{candidate.candidate_id}::{candidate.proposed_name}")
+
     def _candidate_fingerprint(self, candidate: ExtractedSkillCandidate) -> set[str]:
         return self._fingerprint(
             candidate.capability_tags,
@@ -288,5 +294,21 @@ class SkillRegistryBuilder:
         counts: Dict[str, int] = {}
         for tags in tag_groups:
             for tag in tags:
-                counts[tag] = counts.get(tag, 0) + 1
+                normalized = self._normalize_tag(tag)
+                if normalized:
+                    counts[normalized] = counts.get(normalized, 0) + 1
         return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+    def _normalize_entry(self, entry: SkillRegistryEntry) -> SkillRegistryEntry:
+        entry.domain_tags = self._normalize_tags(entry.domain_tags)
+        entry.capability_tags = self._normalize_tags(entry.capability_tags)
+        entry.difficulty_tags = self._normalize_tags(entry.difficulty_tags)
+        return entry
+
+    def _normalize_tags(self, tags: List[str]) -> List[str]:
+        return sorted({normalized for tag in tags if (normalized := self._normalize_tag(tag))})
+
+    def _normalize_tag(self, tag: str) -> str:
+        normalized = re.sub(r"\s+", "_", tag.strip().lower())
+        normalized = re.sub(r"[^a-z0-9_]+", "_", normalized).strip("_")
+        return normalized

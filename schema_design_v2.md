@@ -88,8 +88,15 @@ Current GDPVal prompt-only validation:
 - the stricter reviewer accepted 10 and revised 2 broad/form-bound candidates
 - the resulting per-run registry contains 10 entries and excludes the revised task-level candidates
 - the persistent registry update loop now stores accepted atomic skills in `SkillRegistry/v3_skill_registry.json`
-- this persistent registry currently has 10 entries, all from the accepted atomic GDPVal accountant/auditor run
+- this persistent registry currently has 44 entries from four GDPVal prompt-only occupation batches:
+  - `Accountants and Auditors`
+  - `Financial Managers`
+  - `Financial and Investment Analysts`
+  - `Compliance Officers`
 - per-run registries are still useful inspection artifacts, but the persistent registry is the source that future Pipeline B sampling should eventually consume
+- the multi-batch runner is `Test/run_v3_gdpval_pipeline_a_batch.py`
+- the latest aggregate batch report is `SkillRegistry/v3_pipeline_a_batch_report.json`
+- current batch-scale lesson: `max_candidates=30` can produce truncated JSON from DeepSeek on larger prompt batches, so the batch runner defaults to `max_candidates=15` and `max_tokens=12000`
 
 ## Object 1: SemanticSkill
 

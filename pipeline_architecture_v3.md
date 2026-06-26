@@ -483,6 +483,12 @@ Current implementation status:
   - reads task prompt, task id, sector, and occupation only
   - excludes rubric, reference files, deliverable files, answer traces, and file contents
   - prefers direct local Arrow cache loading to avoid unnecessary HuggingFace network calls
+- `Test/run_v3_gdpval_pipeline_a_batch.py` runs a GDPVal prompt-only Pipeline A batch:
+  - builds prompt-only packages
+  - calls an external LLM extractor without mock fallback
+  - runs deterministic review
+  - updates the persistent registry
+  - emits an aggregate batch report
 - `v3_skill_reviewer.py` provides a deterministic first-pass candidate reviewer:
   - scores reusability, diversity, semantic clarity, evidence grounding, and assembly usefulness
   - penalizes operator leakage and single-instance overfit
@@ -520,12 +526,18 @@ What is intentionally not done yet:
 - accepted/rejected skill review loop exists and feeds a persistent unified registry
 - current persistent registry status:
   - path: `SkillRegistry/v3_skill_registry.json`
-  - source: accepted candidates from the atomic `Accountants and Auditors` GDPVal prompt-only run
-  - entry_count: 10
-  - repeated update with the same candidates is idempotent for entry count and source candidate IDs
+  - sources: accepted candidates from `Accountants and Auditors`, `Financial Managers`, `Financial and Investment Analysts`, and `Compliance Officers`
+  - entry_count: 44
+  - repeated update with the same batch outputs is idempotent for entry count and source candidate IDs
   - revised candidates do not enter the persistent registry
+- current GDPVal Pipeline A batch result:
+  - batch runner path: `Test/run_v3_gdpval_pipeline_a_batch.py`
+  - aggregate report path: `SkillRegistry/v3_pipeline_a_batch_report.json`
+  - successful new batches: `Financial Managers`, `Financial and Investment Analysts`, `Compliance Officers`
+  - final registry coverage includes `finance=40`, `compliance=7`, `government=7`, `accounting=5`, `audit=4`
+  - `max_candidates=30` can trigger DeepSeek JSON truncation on some batches; the batch runner default is now `max_candidates=15`, `max_tokens=12000`
 
-The immediate next code step is to scale Pipeline A across more GDPVal prompt-only batches and use the persistent registry reports to find coverage gaps, duplicate clusters, and over-broad candidates. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
+The immediate next code step is to improve batch-level diagnostics and reviewer calibration using the multi-batch reports. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -576,11 +588,10 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- build the next GDPVal prompt-only batch outside `Accountants and Auditors`
-- run LLM atomic skill extraction and deterministic review
-- update `SkillRegistry/v3_skill_registry.json`
-- inspect coverage, possible duplicates, and skipped candidates
-- use those reports to improve extractor prompt, reviewer rules, or deterministic deduplication
+- add stronger batch diagnostics for suspicious all-accepted batches and overly broad atomic names
+- inspect why `Financial and Investment Analysts` produced 15 accepted / 0 revise and whether reviewer thresholds are too permissive for that domain
+- expand coverage intentionally after reviewer calibration, not by blindly adding many occupations
+- keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
 
 This will reconnect the project to the original two-pipeline design:
 

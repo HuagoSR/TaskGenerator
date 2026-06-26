@@ -126,8 +126,8 @@ Recommended next implementation steps:
 2. Use GDPVal prompt-only packages as a safe benchmark-like input source, but do not use GDPVal rubrics/files/answer traces for extraction.
 3. Treat one GDPVal prompt as potentially yielding multiple atomic skills; avoid one-prompt-one-broad-skill extraction.
 4. Later connect the collector to stirrup so a model can search the web in a sandbox and save source materials.
-5. Build a persistent registry update/deduplication step.
-6. Only after that, update Pipeline B so it samples from the registry instead of hardcoded finance skills.
+5. Use the persistent registry update/deduplication step to scale Pipeline A across more prompt-only batches.
+6. Only after Pipeline A has broader coverage and better reviewer calibration, update Pipeline B so it samples from the registry instead of hardcoded finance skills.
 
 Current Pipeline A starting files:
 
@@ -139,6 +139,7 @@ Current Pipeline A starting files:
 - `Test/build_v3_public_smoke_package.py`: builds a public synthetic source package safe for external LLM smoke tests
 - `Test/v3_public_smoke_package`: tracked public synthetic smoke input; generated extraction/registry output dirs are ignored
 - `Test/build_v3_gdpval_prompt_sources.py`: builds GDPVal prompt-only source packages from task_id, sector, occupation, and prompt only
+- `Test/run_v3_gdpval_pipeline_a_batch.py`: one-command GDPVal prompt-only Pipeline A batch runner
 - `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, atomicity, operator leakage, single-instance overfit, and task-level overbreadth
 - `Test/run_v3_skill_candidate_reviewer.py`: CLI for reviewed/accepted candidate outputs
 - `v3_skill_registry.py`: first-pass registry builder plus persistent registry updater that turns accepted candidates into `SkillRegistryEntry` records
@@ -146,6 +147,7 @@ Current Pipeline A starting files:
 - `Test/run_v3_skill_registry_update.py`: CLI for updating the persistent registry at `SkillRegistry/v3_skill_registry.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
+- `SkillRegistry/v3_pipeline_a_batch_report.json`: latest aggregate Pipeline A batch report
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
 
 Current Pipeline A status:
@@ -165,7 +167,7 @@ Current Pipeline A status:
 - per-run `skill_registry.json` outputs remain useful for inspection
 - the persistent unified registry now exists at `SkillRegistry/v3_skill_registry.json`
 - persistent registry update is deterministic and currently uses exact-name, near-name, and semantic-fingerprint matching
-- repeated update with the same accepted candidate file keeps entry_count at 10 and does not duplicate source candidate IDs
+- repeated update with the same accepted candidate files keeps entry_count stable and does not duplicate source candidate IDs
 - current atomic GDPVal run artifacts:
   - prompt package: `Test/v3_gdpval_prompt_sources/accountants_10/skill_extraction_prompt_package.json`
   - old strict reviewer regression: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic/`
@@ -178,11 +180,21 @@ Current Pipeline A status:
   - strict reviewer accepted 10 and revised 2
   - atomic registry entry_count is 10
 - current persistent registry result:
-  - update input: `Test/v3_gdpval_prompt_sources/accountants_10/deepseek_review_atomic_llm/accepted_skill_candidates.json`
-  - persistent registry entry_count is 10
+  - sources: `Accountants and Auditors`, `Financial Managers`, `Financial and Investment Analysts`, `Compliance Officers`
+  - persistent registry entry_count is 44
   - revised candidates `Build Structured Profit and Loss Report from Multiple Sources` and `Map Tax Documents to IRS Form Fields` are not present
-- manual registry update command:
+- current Pipeline A batch result:
+  - batch runner: `Test/run_v3_gdpval_pipeline_a_batch.py`
+  - batch report: `SkillRegistry/v3_pipeline_a_batch_report.json`
+  - `Financial Managers`: 14 candidates, 12 accepted, 2 revise
+  - `Financial and Investment Analysts`: 15 candidates, 15 accepted, 0 revise
+  - `Compliance Officers`: 8 candidates, 7 accepted, 1 revise
+  - final coverage includes `finance=40`, `compliance=7`, `government=7`, `accounting=5`, `audit=4`
+  - `max_candidates=30` triggered truncated DeepSeek JSON on a larger batch; batch default is now `max_candidates=15`, `max_tokens=12000`
+- manual registry update command for the original accountant/auditor batch:
   - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_skill_registry_update.py --candidates Test\v3_gdpval_prompt_sources\accountants_10\deepseek_review_atomic_llm\accepted_skill_candidates.json`
+- manual batch runner command:
+  - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_gdpval_pipeline_a_batch.py --occupation "Financial Managers" --occupation "Financial and Investment Analysts" --occupation "Compliance Officers" --limit 5 --provider deepseek --deepseek-model deepseek-v4-flash --allow-external-upload`
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
 - no embedding or LLM-based registry deduplication yet

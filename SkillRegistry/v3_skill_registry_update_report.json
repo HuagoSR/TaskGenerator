@@ -1,12 +1,12 @@
 {
-  "input_candidate_count": 10,
-  "existing_entry_count": 10,
+  "input_candidate_count": 44,
+  "existing_entry_count": 44,
   "new_entry_count": 0,
-  "merged_candidate_count": 10,
+  "merged_candidate_count": 44,
   "skipped_candidate_count": 0,
-  "final_entry_count": 10,
+  "final_entry_count": 44,
   "status_counts": {
-    "accepted": 10
+    "accepted": 44
   },
   "new_entries": [],
   "merged_candidates": [
@@ -89,33 +89,358 @@
       "canonical_name": "Compute Accrual Entries from Supporting Schedules",
       "match_reason": "exact_name",
       "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_001",
+      "proposed_name": "Competitive Market Position Assessment",
+      "skill_id": "skill_fc94d146aa",
+      "canonical_name": "Competitive Market Position Assessment",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_002",
+      "proposed_name": "Strategic Opportunity and Imperative Articulation",
+      "skill_id": "skill_0f1a49e2b3",
+      "canonical_name": "Strategic Opportunity and Imperative Articulation",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_005",
+      "proposed_name": "Branch or Segment Data Aggregation with Selection",
+      "skill_id": "skill_62c4a25083",
+      "canonical_name": "Branch or Segment Data Aggregation with Selection",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_006",
+      "proposed_name": "Compensation Expense Calculation by Category",
+      "skill_id": "skill_c9019cb8f7",
+      "canonical_name": "Compensation Expense Calculation by Category",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_007",
+      "proposed_name": "Quarterly Period Aggregation and Reporting",
+      "skill_id": "skill_57e71afb9c",
+      "canonical_name": "Quarterly Period Aggregation and Reporting",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_008",
+      "proposed_name": "Scenario Analysis with Input Parameter Modeling",
+      "skill_id": "skill_9a99bc2a48",
+      "canonical_name": "Scenario Analysis with Input Parameter Modeling",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_009",
+      "proposed_name": "Capital Investment Evaluation with Directional NPV/IRR",
+      "skill_id": "skill_d1c90affe1",
+      "canonical_name": "Capital Investment Evaluation with Directional NPV/IRR",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_010",
+      "proposed_name": "Financial and Operational Risk Identification",
+      "skill_id": "skill_246ef1ff44",
+      "canonical_name": "Financial and Operational Risk Identification",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_011",
+      "proposed_name": "Risk Mitigation Strategy Formulation",
+      "skill_id": "skill_a7e408f86d",
+      "canonical_name": "Risk Mitigation Strategy Formulation",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_012",
+      "proposed_name": "Payroll Calculation by Contract Categories",
+      "skill_id": "skill_e52ac368e2",
+      "canonical_name": "Payroll Calculation by Contract Categories",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_013",
+      "proposed_name": "Collective Bargaining Agreement Compliance Validation",
+      "skill_id": "skill_42c3f0f6b3",
+      "canonical_name": "Collective Bargaining Agreement Compliance Validation",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_candidate_014",
+      "proposed_name": "Flexible Roster and Production Schedule Configuration",
+      "skill_id": "skill_74b7229e70",
+      "canonical_name": "Flexible Roster and Production Schedule Configuration",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_001",
+      "proposed_name": "Retrieve and normalize financial data from open web",
+      "skill_id": "skill_b655abc3af",
+      "canonical_name": "Retrieve and normalize financial data from open web",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_002",
+      "proposed_name": "Compute LTM and NTM PE multiples",
+      "skill_id": "skill_66264f3e45",
+      "canonical_name": "Compute LTM and NTM PE multiples",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_003",
+      "proposed_name": "Aggregate weighted metrics by hierarchical sector group",
+      "skill_id": "skill_6980777c59",
+      "canonical_name": "Aggregate weighted metrics by hierarchical sector group",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_004",
+      "proposed_name": "Compile company profiles for private targets",
+      "skill_id": "skill_253fe8c255",
+      "canonical_name": "Compile company profiles for private targets",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_005",
+      "proposed_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
+      "skill_id": "skill_c3231b0442",
+      "canonical_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_006",
+      "proposed_name": "Structure financial analysis into presentation slides",
+      "skill_id": "skill_ca217c991a",
+      "canonical_name": "Structure financial analysis into presentation slides",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_007",
+      "proposed_name": "Summarize macroeconomic environment for a target region",
+      "skill_id": "skill_6e2a21dff6",
+      "canonical_name": "Summarize macroeconomic environment for a target region",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_008",
+      "proposed_name": "Analyze venture capital and technology market landscape in a region",
+      "skill_id": "skill_4572e6f40e",
+      "canonical_name": "Analyze venture capital and technology market landscape in a region",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_009",
+      "proposed_name": "Evaluate fintech landscape for investment opportunities",
+      "skill_id": "skill_f2aecbbcc2",
+      "canonical_name": "Evaluate fintech landscape for investment opportunities",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_010",
+      "proposed_name": "Implement multiple numerical pricing methods for American options",
+      "skill_id": "skill_aab7a832fa",
+      "canonical_name": "Implement multiple numerical pricing methods for American options",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_011",
+      "proposed_name": "Benchmark computational performance of pricing algorithms",
+      "skill_id": "skill_2d2c96785c",
+      "canonical_name": "Benchmark computational performance of pricing algorithms",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_012",
+      "proposed_name": "Generate convergence and pricing comparison visualizations",
+      "skill_id": "skill_bf9bd6091a",
+      "canonical_name": "Generate convergence and pricing comparison visualizations",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_013",
+      "proposed_name": "Analyze commodity market fundamentals (oil and gas)",
+      "skill_id": "skill_59ae7c335f",
+      "canonical_name": "Analyze commodity market fundamentals (oil and gas)",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_014",
+      "proposed_name": "Design portfolio optimization under constraints",
+      "skill_id": "skill_7df7904391",
+      "canonical_name": "Design portfolio optimization under constraints",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_cand_015",
+      "proposed_name": "Propose trading and sales strategy based on market analysis",
+      "skill_id": "skill_20f48b3a32",
+      "canonical_name": "Propose trading and sales strategy based on market analysis",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_001",
+      "proposed_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
+      "skill_id": "skill_d8eef0e5be",
+      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_002",
+      "proposed_name": "Map Statutory Requirements to Binary Compliance Test Questions",
+      "skill_id": "skill_bbc59bf86a",
+      "canonical_name": "Map Statutory Requirements to Binary Compliance Test Questions",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_003",
+      "proposed_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+      "skill_id": "skill_a986e22147",
+      "canonical_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_004",
+      "proposed_name": "Compute Expenditure-to-Time Elapsed Ratio for Grant Spending Analysis",
+      "skill_id": "skill_f19f7dcd54",
+      "canonical_name": "Compute Expenditure-to-Time Elapsed Ratio for Grant Spending Analysis",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_005",
+      "proposed_name": "Identify Fast- and Slow-Spending Patterns as Compliance Risk Indicators",
+      "skill_id": "skill_c5bc26514c",
+      "canonical_name": "Identify Fast- and Slow-Spending Patterns as Compliance Risk Indicators",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_006",
+      "proposed_name": "Analyze Transaction Networks for Money Laundering Connections",
+      "skill_id": "skill_d571f8505c",
+      "canonical_name": "Analyze Transaction Networks for Money Laundering Connections",
+      "match_reason": "exact_name",
+      "match_score": 1.0
+    },
+    {
+      "candidate_id": "skill_008",
+      "proposed_name": "Correlate Beneficial Ownership with Transaction Activity",
+      "skill_id": "skill_434f32b3ba",
+      "canonical_name": "Correlate Beneficial Ownership with Transaction Activity",
+      "match_reason": "exact_name",
+      "match_score": 1.0
     }
   ],
   "skipped_candidates": [],
   "possible_duplicates": [],
   "coverage": {
-    "entry_count": 10,
+    "entry_count": 44,
     "domain_tag_counts": {
-      "finance": 10,
+      "finance": 40,
+      "compliance": 7,
+      "government": 7,
       "accounting": 5,
       "audit": 4,
-      "tax": 2
+      "hr": 4,
+      "grants": 3,
+      "reporting": 3,
+      "quantitative_finance": 2,
+      "risk_management": 2,
+      "strategy": 2,
+      "tax": 2,
+      "valuation": 2,
+      "analysis": 1,
+      "commodities": 1,
+      "communication": 1,
+      "compensation": 1,
+      "data_analysis": 1,
+      "data_retrieval": 1,
+      "fintech": 1,
+      "investigations": 1,
+      "investment": 1,
+      "legal": 1,
+      "m_a": 1,
+      "macro": 1,
+      "operations": 1,
+      "payroll": 1,
+      "portfolio_management": 1,
+      "ride_hailing": 1,
+      "trading": 1,
+      "venture_capital": 1
     },
     "capability_tag_counts": {
-      "fact": 8,
-      "reasoning": 6,
-      "compliance": 4
+      "reasoning": 28,
+      "fact": 22,
+      "compliance": 10,
+      "robustness": 8,
+      "computation": 4,
+      "analysis": 2,
+      "planning": 2,
+      "design": 1
     },
     "difficulty_tag_counts": {
-      "medium": 6,
+      "medium": 18,
+      "hard": 4,
       "easy": 3,
-      "hard": 1
+      "data_aggregation": 2,
+      "high": 2,
+      "low": 2,
+      "algorithm_implementation": 1,
+      "constrained_optimization": 1,
+      "data_analysis": 1,
+      "data_discovery": 1,
+      "data_extraction": 1,
+      "data_synthesis": 1,
+      "data_visualization": 1,
+      "hierarchical_computation": 1,
+      "information_design": 1,
+      "multiples_standardization": 1,
+      "performance_measurement": 1,
+      "sector_analysis": 1,
+      "strategy_synthesis": 1
     },
-    "low_coverage_capability_hints": []
+    "low_coverage_capability_hints": [
+      "design"
+    ]
   },
   "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
   "candidate_paths": [
-    "Test\\v3_gdpval_prompt_sources\\accountants_10\\deepseek_review_atomic_llm\\accepted_skill_candidates.json"
+    "Test\\v3_gdpval_prompt_sources\\accountants_10\\deepseek_review_atomic_llm\\accepted_skill_candidates.json",
+    "Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_managers\\review\\accepted_skill_candidates.json",
+    "Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_and_investment_analysts\\review\\accepted_skill_candidates.json",
+    "Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\compliance_officers\\review\\accepted_skill_candidates.json"
   ],
   "dry_run": false
 }

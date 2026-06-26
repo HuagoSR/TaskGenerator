@@ -1,6 +1,6 @@
 {
   "registry_version": "v3.0",
-  "entry_count": 10,
+  "entry_count": 44,
   "entries": [
     {
       "skill_id": "skill_e08be4157d",
@@ -54,7 +54,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_001"
+        "skill_candidate_001",
+        "source_candidate_7a53e620ce"
       ]
     },
     {
@@ -108,7 +109,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_002"
+        "skill_candidate_002",
+        "source_candidate_eec59cb44b"
       ]
     },
     {
@@ -164,7 +166,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_003"
+        "skill_candidate_003",
+        "source_candidate_45d2f183a9"
       ]
     },
     {
@@ -219,7 +222,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_005"
+        "skill_candidate_005",
+        "source_candidate_abbc4e169e"
       ]
     },
     {
@@ -272,7 +276,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_006"
+        "skill_candidate_006",
+        "source_candidate_65a6713576"
       ]
     },
     {
@@ -328,7 +333,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_007"
+        "skill_candidate_007",
+        "source_candidate_591a3c25a9"
       ]
     },
     {
@@ -382,7 +388,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_008"
+        "skill_candidate_008",
+        "source_candidate_ccf473015c"
       ]
     },
     {
@@ -439,7 +446,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_010"
+        "skill_candidate_010",
+        "source_candidate_da8d1b62e9"
       ]
     },
     {
@@ -495,7 +503,8 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_011"
+        "skill_candidate_011",
+        "source_candidate_eb55605afc"
       ]
     },
     {
@@ -550,7 +559,1807 @@
         "model_separation_stats": {}
       },
       "source_candidate_ids": [
-        "skill_candidate_012"
+        "skill_candidate_012",
+        "source_candidate_0997681ef2"
+      ]
+    },
+    {
+      "skill_id": "skill_fc94d146aa",
+      "canonical_name": "Competitive Market Position Assessment",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "ride_hailing",
+        "strategy"
+      ],
+      "capability_tags": [
+        "analysis",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Strategy:CompetitiveLandscapeData"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Strategy:MarketPositionAssessment"
+        ]
+      },
+      "business_meaning": "Analyze a company's current market position relative to competitors, identifying strengths, weaknesses, and strategic imperatives.",
+      "hidden_difficulty": "Requires synthesizing qualitative and quantitative competitive dynamics without explicit structured data.",
+      "failure_modes": [
+        "Ignoring regulatory constraints",
+        "Overly optimistic assessment"
+      ],
+      "evidence_refs": [
+        "evidence_001"
+      ],
+      "assembly_hints": [
+        "Combine with strategic opportunity assessment to form a complete strategy presentation."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_9412ee2f07"
+      ]
+    },
+    {
+      "skill_id": "skill_0f1a49e2b3",
+      "canonical_name": "Strategic Opportunity and Imperative Articulation",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "strategy"
+      ],
+      "capability_tags": [
+        "planning",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Strategy:MarketPositionAssessment"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Strategy:ActionableRecommendations"
+        ]
+      },
+      "business_meaning": "Translate market analysis into specific, actionable growth strategies and recommendations.",
+      "hidden_difficulty": "Must balance ambition with realism, considering local regulations, supply constraints, and user experience.",
+      "failure_modes": [
+        "Lack of localization",
+        "Too generic recommendations"
+      ],
+      "evidence_refs": [
+        "evidence_002"
+      ],
+      "assembly_hints": [
+        "Follows competitive assessment; can be paired with risk analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_295b40b0d4"
+      ]
+    },
+    {
+      "skill_id": "skill_62c4a25083",
+      "canonical_name": "Branch or Segment Data Aggregation with Selection",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:BranchLevelData"
+        ],
+        "optional_semantics": [
+          "Finance:AggregateView"
+        ],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:AggregatedReportByBranch"
+        ]
+      },
+      "business_meaning": "Aggregate financial data by branch or segment, allowing user selection of specific branches or overall company view.",
+      "hidden_difficulty": "Implementing dynamic dropdown and ensuring aggregation consistency.",
+      "failure_modes": [
+        "Duplicating or missing entries",
+        "Incorrect consolidation"
+      ],
+      "evidence_refs": [
+        "evidence_005"
+      ],
+      "assembly_hints": [
+        "Often combined with income statement and variance analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_6e10885dcd"
+      ]
+    },
+    {
+      "skill_id": "skill_c9019cb8f7",
+      "canonical_name": "Compensation Expense Calculation by Category",
+      "version": "3.0",
+      "domain_tags": [
+        "compensation",
+        "finance",
+        "hr"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:CompensationAssumptions",
+          "HR:HeadcountRoster"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:CompensationExpenseByType"
+        ]
+      },
+      "business_meaning": "Calculate total compensation expense broken down by compensation type (e.g., base salary, bonuses) using headcount and rate assumptions.",
+      "hidden_difficulty": "Multiple compensation types may have different calculation rules (e.g., hourly vs fixed).",
+      "failure_modes": [
+        "Double counting",
+        "Misapplying rates to wrong categories"
+      ],
+      "evidence_refs": [
+        "evidence_006"
+      ],
+      "assembly_hints": [
+        "Can be combined with quarterly reporting and scenario analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_47ca5114b5"
+      ]
+    },
+    {
+      "skill_id": "skill_57e71afb9c",
+      "canonical_name": "Quarterly Period Aggregation and Reporting",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "low"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:PeriodData"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:QuarterlySummary"
+        ]
+      },
+      "business_meaning": "Aggregate financial data from monthly or periodic data into quarterly summaries.",
+      "hidden_difficulty": "Ensuring correct period mapping and handling partial quarters.",
+      "failure_modes": [
+        "Data duplication",
+        "Misalignment of fiscal quarters"
+      ],
+      "evidence_refs": [
+        "evidence_007"
+      ],
+      "assembly_hints": [
+        "Often used for compensation or revenue reporting."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_a0aecd9f0a"
+      ]
+    },
+    {
+      "skill_id": "skill_9a99bc2a48",
+      "canonical_name": "Scenario Analysis with Input Parameter Modeling",
+      "version": "3.0",
+      "domain_tags": [
+        "analysis",
+        "finance"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:CurrentAssumptions"
+        ],
+        "optional_semantics": [
+          "Finance:FutureAssumptions"
+        ],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:ProjectedResultsWithSensitivity"
+        ]
+      },
+      "business_meaning": "Build a model that allows changing input drivers (e.g., rates, terms) to see projected results and growth rates under different scenarios.",
+      "hidden_difficulty": "Designing flexible input fields and ensuring calculations update correctly; projecting multiple years.",
+      "failure_modes": [
+        "Fragile model structure",
+        "Incorrect growth rate calculations"
+      ],
+      "evidence_refs": [
+        "evidence_008"
+      ],
+      "assembly_hints": [
+        "Used for financial planning and sensitivity analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_ee0f10f094"
+      ]
+    },
+    {
+      "skill_id": "skill_d1c90affe1",
+      "canonical_name": "Capital Investment Evaluation with Directional NPV/IRR",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "investment"
+      ],
+      "capability_tags": [
+        "analysis",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:ProjectCashFlows",
+          "Finance:WACC"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:NPV_IRR_Estimate",
+          "Finance:InvestmentRecommendation"
+        ]
+      },
+      "business_meaning": "Perform high-level financial analysis of investment projects using net present value and internal rate of return estimates, with qualitative justification.",
+      "hidden_difficulty": "Dealing with directional estimates rather than exact numbers; balancing quantitative and qualitative factors.",
+      "failure_modes": [
+        "Ignoring non-financial risks",
+        "Overconfidence in estimates"
+      ],
+      "evidence_refs": [
+        "evidence_009"
+      ],
+      "assembly_hints": [
+        "Follows by risk identification and mitigation."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_fb35d1aea0"
+      ]
+    },
+    {
+      "skill_id": "skill_246ef1ff44",
+      "canonical_name": "Financial and Operational Risk Identification",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "risk_management"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:ProjectDetails"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Risk:TopRisks"
+        ]
+      },
+      "business_meaning": "Identify the top financial and operational risks associated with a project or investment.",
+      "hidden_difficulty": "Requires domain knowledge to foresee and prioritize risks.",
+      "failure_modes": [
+        "Missing key risks",
+        "Vague risk statements"
+      ],
+      "evidence_refs": [
+        "evidence_010"
+      ],
+      "assembly_hints": [
+        "Often paired with mitigation strategy."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_8d23bfd4c5"
+      ]
+    },
+    {
+      "skill_id": "skill_a7e408f86d",
+      "canonical_name": "Risk Mitigation Strategy Formulation",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "risk_management"
+      ],
+      "capability_tags": [
+        "planning",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Risk:IdentifiedRisks"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Risk:MitigationPlan"
+        ]
+      },
+      "business_meaning": "Develop specific strategies to mitigate identified risks and suggest contingency plans.",
+      "hidden_difficulty": "Creating actionable and robust contingency plans.",
+      "failure_modes": [
+        "Mitigations too generic",
+        "Unrealistic contingency plans"
+      ],
+      "evidence_refs": [
+        "evidence_011"
+      ],
+      "assembly_hints": [
+        "Follows risk identification; part of investment recommendation."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_5d47d8818d"
+      ]
+    },
+    {
+      "skill_id": "skill_e52ac368e2",
+      "canonical_name": "Payroll Calculation by Contract Categories",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "hr",
+        "payroll"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "HR:EmployeeRoster",
+          "Finance:ContractRateAssumptions"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Payroll:CalculatedAmountsByPerson"
+        ]
+      },
+      "business_meaning": "Calculate weekly payroll amounts for each employee based on collective bargaining agreement categories and rates.",
+      "hidden_difficulty": "Multiple payroll categories with different calculation rules (e.g., per diem, mileage).",
+      "failure_modes": [
+        "Incorrect rate application",
+        "Missing categories"
+      ],
+      "evidence_refs": [
+        "evidence_012"
+      ],
+      "assembly_hints": [
+        "Must include CBA compliance validation and flexible roster."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_faa3e592a0"
+      ]
+    },
+    {
+      "skill_id": "skill_42c3f0f6b3",
+      "canonical_name": "Collective Bargaining Agreement Compliance Validation",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "hr",
+        "legal"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Legal:CBA_Clauses",
+          "Payroll:InputData"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:ValidationFlag",
+          "Compliance:ConflictReport"
+        ]
+      },
+      "business_meaning": "Check payroll inputs against collective bargaining agreement terms to highlight conflicts or violations.",
+      "hidden_difficulty": "Interpreting CBA rules and applying them to variable inputs; multiple conditions.",
+      "failure_modes": [
+        "False positives/negatives",
+        "Missed edge cases"
+      ],
+      "evidence_refs": [
+        "evidence_013"
+      ],
+      "assembly_hints": [
+        "Integrated into payroll model; user inputs trigger validation."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_50f628b654"
+      ]
+    },
+    {
+      "skill_id": "skill_74b7229e70",
+      "canonical_name": "Flexible Roster and Production Schedule Configuration",
+      "version": "3.0",
+      "domain_tags": [
+        "hr",
+        "operations"
+      ],
+      "capability_tags": [
+        "design",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Operations:ProductionRunSpec",
+          "HR:OrchestraConfiguration"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Operations:ConfigurablePayrollModel"
+        ]
+      },
+      "business_meaning": "Design a payroll model that can accommodate any orchestra configuration or production run duration, easily updatable for changing rates.",
+      "hidden_difficulty": "Building a flexible structure that scales to different ensemble sizes and contract terms.",
+      "failure_modes": [
+        "Complexity causing errors",
+        "Model too rigid for new scenarios"
+      ],
+      "evidence_refs": [
+        "evidence_014"
+      ],
+      "assembly_hints": [
+        "Underpins the payroll calculation and compliance features."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_78fe06cb9f"
+      ]
+    },
+    {
+      "skill_id": "skill_b655abc3af",
+      "canonical_name": "Retrieve and normalize financial data from open web",
+      "version": "3.0",
+      "domain_tags": [
+        "data_retrieval",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_extraction"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:CompanyList",
+          "Finance:SubSectorList"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:NormalizedFinancialMetrics"
+        ]
+      },
+      "business_meaning": "Ability to fetch publicly available financial data for a given set of companies and organize it into a structured format.",
+      "hidden_difficulty": "Ensuring data completeness and accuracy from multiple public sources.",
+      "failure_modes": [
+        "inconsistent data sources",
+        "missing data for some companies"
+      ],
+      "evidence_refs": [
+        "evid_001"
+      ],
+      "assembly_hints": [
+        "Often combined with data validation and cleaning skills."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_12072f6a65"
+      ]
+    },
+    {
+      "skill_id": "skill_66264f3e45",
+      "canonical_name": "Compute LTM and NTM PE multiples",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "valuation"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_aggregation"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:PriceData",
+          "Finance:EarningsData"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:PEMultiple",
+          "Finance:ForwardPEMultiple"
+        ]
+      },
+      "business_meaning": "Ability to calculate trailing and forward price-to-earnings multiples from stock price and earnings data.",
+      "hidden_difficulty": "Handling different fiscal years and analyst consensus estimates.",
+      "failure_modes": [
+        "incorrect period alignment",
+        "using stale data"
+      ],
+      "evidence_refs": [
+        "evid_002"
+      ],
+      "assembly_hints": [
+        "Requires synchronized price and earnings data."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_4bf5b9abf1"
+      ]
+    },
+    {
+      "skill_id": "skill_6980777c59",
+      "canonical_name": "Aggregate weighted metrics by hierarchical sector group",
+      "version": "3.0",
+      "domain_tags": [
+        "data_analysis",
+        "finance"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hierarchical_computation"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:CompanyMetrics",
+          "Finance:SectorHierarchy"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:WeightedAggregates",
+          "Finance:PercentageOfTotal"
+        ]
+      },
+      "business_meaning": "Ability to compute weighted averages and percentage contributions for sub-groups within a larger index or portfolio.",
+      "hidden_difficulty": "Correct weighting logic and handling firms with multiple sub-sectors.",
+      "failure_modes": [
+        "double counting",
+        "incorrect weight propagation"
+      ],
+      "evidence_refs": [
+        "evid_003"
+      ],
+      "assembly_hints": [
+        "Often used after metric computation skills."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_43bc920f7c"
+      ]
+    },
+    {
+      "skill_id": "skill_253fe8c255",
+      "canonical_name": "Compile company profiles for private targets",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "m_a"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_discovery"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:TargetSector",
+          "Finance:MandateObjectives"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:PrivateCompanyProfile"
+        ]
+      },
+      "business_meaning": "Ability to research and synthesize key information (description, valuation, funding, investors, customers) for private companies in a sector.",
+      "hidden_difficulty": "Finding reliable private company data; non-standard formats.",
+      "failure_modes": [
+        "missing data",
+        "outdated or inaccurate information"
+      ],
+      "evidence_refs": [
+        "evid_004"
+      ],
+      "assembly_hints": [
+        "Often combined with comparable company analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_e357bbe823"
+      ]
+    },
+    {
+      "skill_id": "skill_c3231b0442",
+      "canonical_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "valuation"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "multiples_standardization"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:PublicCompanyFinancials",
+          "Finance:TargetValuation"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:ComparableValuationRange"
+        ]
+      },
+      "business_meaning": "Ability to identify a set of public comparables and compute valuation multiples (Revenue, EBITDA, PE) for benchmarking.",
+      "hidden_difficulty": "Selecting appropriate peers and normalizing financial metrics across companies.",
+      "failure_modes": [
+        "inappropriate peer selection",
+        "inconsistent financial definitions"
+      ],
+      "evidence_refs": [
+        "evid_005"
+      ],
+      "assembly_hints": [
+        "Often requires financial data retrieval and normalization first."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_b9e4cd6c4e"
+      ]
+    },
+    {
+      "skill_id": "skill_ca217c991a",
+      "canonical_name": "Structure financial analysis into presentation slides",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "information_design"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:AnalyticalResults",
+          "Business:PresentationTemplate"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Business:SlideDeck",
+          "Business:PDFAttachment"
+        ]
+      },
+      "business_meaning": "Ability to synthesize financial research into executive-ready slide decks with clear narratives and visuals.",
+      "hidden_difficulty": "Balancing comprehensiveness with conciseness for senior audiences.",
+      "failure_modes": [
+        "lack of actionable insights",
+        "too much text"
+      ],
+      "evidence_refs": [
+        "evid_006"
+      ],
+      "assembly_hints": [
+        "Often combines multiple analysis skills into a single deliverable."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_7feaa39055"
+      ]
+    },
+    {
+      "skill_id": "skill_6e2a21dff6",
+      "canonical_name": "Summarize macroeconomic environment for a target region",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "macro"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_synthesis"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Geography:RegionName",
+          "Macro:IndicatorsRequest"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Macro:Overview",
+          "Macro:KeyTrends"
+        ]
+      },
+      "business_meaning": "Ability to gather and summarize key macro indicators (GDP, inflation, demographics, etc.) for a given region to inform strategy.",
+      "hidden_difficulty": "Selecting relevant indicators and providing balanced analysis.",
+      "failure_modes": [
+        "omitting key risks",
+        "outdated data"
+      ],
+      "evidence_refs": [
+        "evid_007"
+      ],
+      "assembly_hints": [
+        "Often used to set context for industry or company-specific analysis."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_c2642930c5"
+      ]
+    },
+    {
+      "skill_id": "skill_4572e6f40e",
+      "canonical_name": "Analyze venture capital and technology market landscape in a region",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "venture_capital"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_aggregation"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Geography:RegionName",
+          "VC:SegmentFocus"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "VC:MarketLandscape",
+          "VC:Trends"
+        ]
+      },
+      "business_meaning": "Ability to research and summarize the state of venture capital activity, technology startups, and investment trends in a region.",
+      "hidden_difficulty": "Finding reliable and comparable data across countries.",
+      "failure_modes": [
+        "bias towards well-known firms",
+        "inconsistent data sources"
+      ],
+      "evidence_refs": [
+        "evid_008"
+      ],
+      "assembly_hints": [
+        "Often paired with industry deep-dives like fintech."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_c780aedbf4"
+      ]
+    },
+    {
+      "skill_id": "skill_f2aecbbcc2",
+      "canonical_name": "Evaluate fintech landscape for investment opportunities",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "fintech"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "sector_analysis"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Geography:RegionName",
+          "Finance:InvestmentThesis"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:LandscapeOverview",
+          "Finance:OpportunityMap"
+        ]
+      },
+      "business_meaning": "Ability to map the fintech ecosystem in a region, including key subsectors, players, regulatory environment, and potential synergies.",
+      "hidden_difficulty": "Rapidly changing regulatory and competitive landscape.",
+      "failure_modes": [
+        "focusing only on well-funded firms",
+        "overlooking regulatory hurdles"
+      ],
+      "evidence_refs": [
+        "evid_009"
+      ],
+      "assembly_hints": [
+        "Often requires macro and venture market context first."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_cb4a536478"
+      ]
+    },
+    {
+      "skill_id": "skill_aab7a832fa",
+      "canonical_name": "Implement multiple numerical pricing methods for American options",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "quantitative_finance"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "algorithm_implementation"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:OptionContractTerms",
+          "Math:PricingMethodology"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:OptionPrice",
+          "Math:NumericalSolution"
+        ]
+      },
+      "business_meaning": "Ability to develop and code multiple numerical approaches (binomial trees, finite differences, Monte Carlo) for pricing American options.",
+      "hidden_difficulty": "Handling early exercise feature and ensuring convergence.",
+      "failure_modes": [
+        "incorrect boundary conditions",
+        "non-convergent algorithms"
+      ],
+      "evidence_refs": [
+        "evid_010"
+      ],
+      "assembly_hints": [
+        "Often used for comparative analysis of methodologies."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_674c987a25"
+      ]
+    },
+    {
+      "skill_id": "skill_2d2c96785c",
+      "canonical_name": "Benchmark computational performance of pricing algorithms",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "quantitative_finance"
+      ],
+      "capability_tags": [
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "performance_measurement"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Math:NumericalMethodImplementations",
+          "Tech:RuntimeEnvironment"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Tech:RuntimeBenchmark",
+          "Tech:AccuracyMetric"
+        ]
+      },
+      "business_meaning": "Ability to measure and compare runtime and accuracy of different numerical methods to guide production deployment.",
+      "hidden_difficulty": "Accounting for variance in Monte Carlo and ensuring fair comparisons.",
+      "failure_modes": [
+        "ignoring numerical stability",
+        "insufficient test cases"
+      ],
+      "evidence_refs": [
+        "evid_011"
+      ],
+      "assembly_hints": [
+        "Typically used after implementing multiple methods."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_71057103ff"
+      ]
+    },
+    {
+      "skill_id": "skill_bf9bd6091a",
+      "canonical_name": "Generate convergence and pricing comparison visualizations",
+      "version": "3.0",
+      "domain_tags": [
+        "communication",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_visualization"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Math:NumericalResults",
+          "Tech:PlottingSpec"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Tech:ConvergencePlot",
+          "Tech:ComparisonChart"
+        ]
+      },
+      "business_meaning": "Ability to create visualizations that illustrate convergence behavior, pricing differences, and runtime benchmarks for quantitative analysis.",
+      "hidden_difficulty": "Choosing informative plot types and axes for clarity.",
+      "failure_modes": [
+        "misleading scales",
+        "overcrowded plots"
+      ],
+      "evidence_refs": [
+        "evid_012"
+      ],
+      "assembly_hints": [
+        "Often combined with benchmarking skills."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_9d3b237405"
+      ]
+    },
+    {
+      "skill_id": "skill_59ae7c335f",
+      "canonical_name": "Analyze commodity market fundamentals (oil and gas)",
+      "version": "3.0",
+      "domain_tags": [
+        "commodities",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_analysis"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Commodity:OilGasMarketData",
+          "Business:ResearchQuestion"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Commodity:SupplyDemandBalance",
+          "Commodity:PriceDrivers"
+        ]
+      },
+      "business_meaning": "Ability to analyze supply-demand dynamics, geopolitical impacts, and price drivers for oil and natural gas markets.",
+      "hidden_difficulty": "Integrating multiple data sources and geopolitical analysis.",
+      "failure_modes": [
+        "ignoring non-OPEC supply",
+        "overemphasis on short-term news"
+      ],
+      "evidence_refs": [
+        "evid_013"
+      ],
+      "assembly_hints": [
+        "Often used to support trading strategy development."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_a1a273b358"
+      ]
+    },
+    {
+      "skill_id": "skill_7df7904391",
+      "canonical_name": "Design portfolio optimization under constraints",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "portfolio_management"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "constrained_optimization"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:PortfolioConstraints",
+          "Finance:AssetReturns"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:PortfolioAllocation",
+          "Finance:RiskMetrics"
+        ]
+      },
+      "business_meaning": "Ability to allocate assets within defined constraints (sector limits, duration, etc.) to maximize returns over a horizon.",
+      "hidden_difficulty": "Handling multiple constraints and non-linear objectives.",
+      "failure_modes": [
+        "ignoring correlation",
+        "overfitting to historical data"
+      ],
+      "evidence_refs": [
+        "evid_014"
+      ],
+      "assembly_hints": [
+        "Requires market analysis as input."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_8fefa2ecd0"
+      ]
+    },
+    {
+      "skill_id": "skill_20f48b3a32",
+      "canonical_name": "Propose trading and sales strategy based on market analysis",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "trading"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "strategy_synthesis"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:MarketAnalysis",
+          "Finance:PortfolioConstraints"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Business:ActionableStrategy",
+          "Finance:TradingRecommendations"
+        ]
+      },
+      "business_meaning": "Ability to formulate a concrete set of trading and sales actions derived from fundamental market analysis and portfolio objectives.",
+      "hidden_difficulty": "Balancing conviction with risk management and regulatory compliance.",
+      "failure_modes": [
+        "not aligning with constraints",
+        "vague recommendations"
+      ],
+      "evidence_refs": [
+        "evid_015"
+      ],
+      "assembly_hints": [
+        "Often follows market analysis and portfolio optimization skills."
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_465e0541eb"
+      ]
+    },
+    {
+      "skill_id": "skill_d8eef0e5be",
+      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Government:GrantApplicantProfile",
+          "Government:RiskManagementFramework"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Government:RiskAssessmentQuestionSet"
+        ]
+      },
+      "business_meaning": "Design a structured set of questions to evaluate a grant applicant's financial management and internal control systems, applicable across different applicant types.",
+      "hidden_difficulty": "Must cover diverse applicant types (universities, non-profits, local governments) while ensuring all relevant risk areas are addressed without being overly prescriptive.",
+      "failure_modes": [
+        "Inconsistent coverage of financial and internal control aspects",
+        "Questions not aligned with regulatory requirements (2 C.F.R. 200.205)",
+        "Questions too vague to elicit meaningful risk insights"
+      ],
+      "evidence_refs": [
+        "ev_001"
+      ],
+      "assembly_hints": [
+        "Combine with data extraction skills to auto-populate from applicant records",
+        "Use alongside scoring rubric generation for risk classification"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_0d153c117d"
+      ]
+    },
+    {
+      "skill_id": "skill_bbc59bf86a",
+      "canonical_name": "Map Statutory Requirements to Binary Compliance Test Questions",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:StatutoryText",
+          "Finance:AuditScope"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:ComplianceTestQuestionSet"
+        ]
+      },
+      "business_meaning": "Convert specific legal provisions into closed-ended (Yes/No/Not Applicable) test questions to verify compliance during audits.",
+      "hidden_difficulty": "Must interpret legal text precisely and phrase questions to avoid ambiguity while covering all critical elements of the statute.",
+      "failure_modes": [
+        "Incorrectly limiting answers to Yes/No/NA when more nuance is needed",
+        "Missing edge cases not explicitly covered by statute",
+        "Questions misinterpret the legal requirement"
+      ],
+      "evidence_refs": [
+        "ev_002"
+      ],
+      "assembly_hints": [
+        "Can be chained with exception statement generation to automate audit documentation",
+        "Works with skill that parses statutes into logical elements"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_0342f52b7d"
+      ]
+    },
+    {
+      "skill_id": "skill_a986e22147",
+      "canonical_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "high"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:NonComplianceFinding",
+          "Finance:RegulatoryReference"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:ExceptionStatement"
+        ]
+      },
+      "business_meaning": "Craft a narrative that explains how a specific failure to comply with a regulatory requirement occurred, suitable for audit reporting.",
+      "hidden_difficulty": "Must mirror regulatory tone and clearly articulate the gap between required action and actual behavior, often requiring interpretation of handbook language.",
+      "failure_modes": [
+        "Missing specific details about the failure mode",
+        "Statement too generic, not linking to specific regulatory text",
+        "Tone too legalistic or too soft"
+      ],
+      "evidence_refs": [
+        "ev_003"
+      ],
+      "assembly_hints": [
+        "Combines with compliance test question generation to fully automate audit workpapers",
+        "May require input from data analysis skills that identify non-compliance events"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_170f20d99f"
+      ]
+    },
+    {
+      "skill_id": "skill_f19f7dcd54",
+      "canonical_name": "Compute Expenditure-to-Time Elapsed Ratio for Grant Spending Analysis",
+      "version": "3.0",
+      "domain_tags": [
+        "finance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "low"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Government:GrantSpendingData",
+          "Government:ProjectPeriodTimeline"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Government:SpendingRatio",
+          "Government:ElapsedPeriodRatio"
+        ]
+      },
+      "business_meaning": "Calculate the percentage of grant funds spent relative to the percentage of the project period elapsed, to identify spending rate anomalies.",
+      "hidden_difficulty": "Requires accurate date math and handling of partial periods; straightforward calculation.",
+      "failure_modes": [
+        "Incorrect date difference calculation (e.g., using calendar vs business days)",
+        "Not handling zero elapsed time edge case",
+        "Rounding errors in percentages"
+      ],
+      "evidence_refs": [
+        "ev_004"
+      ],
+      "assembly_hints": [
+        "Can be used as input to more complex risk scoring models",
+        "Combine with threshold-based flagging skill to identify fast/slow spenders"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_f476e6d890"
+      ]
+    },
+    {
+      "skill_id": "skill_c5bc26514c",
+      "canonical_name": "Identify Fast- and Slow-Spending Patterns as Compliance Risk Indicators",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Government:SpendingRatio",
+          "Government:ElapsedPeriodRatio"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Government:SpendingRiskFlag"
+        ]
+      },
+      "business_meaning": "Apply predefined thresholds to spending ratios to flag grants that may indicate non-compliance risk due to anomalously fast or slow spending.",
+      "hidden_difficulty": "Thresholds are arbitrary; need to consider context (e.g., project type) and avoid false positives.",
+      "failure_modes": [
+        "Flagging grants with legitimate front-loaded spending",
+        "Missing slow spenders due to incorrect threshold",
+        "Not documenting rationale for threshold application"
+      ],
+      "evidence_refs": [
+        "ev_005"
+      ],
+      "assembly_hints": [
+        "Can feed into risk scoring or workflow for further investigation",
+        "Depends on spending ratio skill"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_03261f748c"
+      ]
+    },
+    {
+      "skill_id": "skill_d571f8505c",
+      "canonical_name": "Analyze Transaction Networks for Money Laundering Connections",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government",
+        "investigations"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "high"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:CustomerProfile",
+          "Finance:TransactionRecords",
+          "Finance:EntityRelationship"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:SuspiciousActivityIndicators",
+          "Finance:EntityLinkAnalysis"
+        ]
+      },
+      "business_meaning": "Trace and correlate transactions between linked entities (individuals, businesses) to uncover patterns indicative of money laundering, such as layering or structuring.",
+      "hidden_difficulty": "Requires synthesizing diverse data types (account statements, beneficial ownership, transaction history) and identifying non-obvious links.",
+      "failure_modes": [
+        "Failing to document the logical chain of evidence",
+        "Misinterpreting legitimate business transactions as suspicious",
+        "Overlooking indirect connections"
+      ],
+      "evidence_refs": [
+        "ev_006"
+      ],
+      "assembly_hints": [
+        "May integrate with regulatory threshold detection skill",
+        "Often precedes SAR writing skill"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_8e23e9e11a"
+      ]
+    },
+    {
+      "skill_id": "skill_434f32b3ba",
+      "canonical_name": "Correlate Beneficial Ownership with Transaction Activity",
+      "version": "3.0",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:BeneficialOwnership",
+          "Finance:AccountTransactions"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:OwnershipActivityLink"
+        ]
+      },
+      "business_meaning": "Cross-reference business ownership data with transaction history to identify discrepancies or suspicious patterns (e.g., personal expenses through business accounts).",
+      "hidden_difficulty": "Ownership structures may be complex, and transactions can be mislabeled. Requires careful integration of two data sources.",
+      "failure_modes": [
+        "False positives due to legitimate personal/business mingling",
+        "Incorrectly matching owners to accounts",
+        "Not considering multiple ownership layers"
+      ],
+      "evidence_refs": [
+        "ev_008"
+      ],
+      "assembly_hints": [
+        "Can trigger further transaction review skills",
+        "Often part of a larger AML investigation workflow"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_6ff4872d10"
       ]
     }
   ]
