@@ -133,6 +133,7 @@ Current Pipeline A starting files:
 
 - `v3_source_schema.py`: source-to-skill schema objects
 - `v3_source_collector.py`: Stirrup/E2B-backed SourceCollector contracts, prompt builder, manifest validator, and RawSource writer
+- `v3_source_search_tools.py`: Serper-backed Stirrup-compatible web search/fetch tool provider
 - `Test/run_v3_stirrup_source_collector.py`: CLI for collecting public web source materials; requires explicit `--allow-web-collection`
 - `Test/run_v3_collected_sources_to_skill_package.py`: connector CLI for turning collected `RawSource` records into normalized sources and a skill-extraction prompt package
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
@@ -220,11 +221,14 @@ Current Pipeline A status:
   - audit decisions are deterministic governance hints, not ground-truth skill quality labels
 - SourceCollector MVP now exists:
   - default env path: `E:\THU\2026Spring\SRT\rw-task\.env`
+  - default search backend: `serper`, using `SERPER_API_KEY`
+  - Brave search remains available with `--search-backend brave`, but it is not recommended unless `BRAVE_API_KEY` is valid
   - dry-run prompt command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_stirrup_source_collector.py --dry-run-prompt --output-dir <output_dir>`
-  - formal web collection command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_stirrup_source_collector.py --topic "audit evidence reconciliation and internal control testing" --limit 3 --allow-web-collection --output-dir <output_dir>`
+  - formal web collection command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_stirrup_source_collector.py --search-backend serper --topic "audit evidence reconciliation and internal control testing" --limit 3 --allow-web-collection --output-dir <output_dir>`
   - connector command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_collected_sources_to_skill_package.py --collection-dir <output_dir>`
   - collector output is source material only; it must not write skills, tasks, rubrics, or registry entries
-  - formal web collection has not been run in this environment; if E2B/Stirrup/Brave/API/network access fails, stop and report rather than using a mock substitute
+  - Serper smoke result: `Test\v3_web_source_collections\audit_smoke_serper_02` collected 3 accepted RawSources and normalized them into `normalized_package\skill_extraction_prompt_package.json`
+  - if E2B/Stirrup/Serper/API/network access fails, stop and report rather than using a mock substitute
 
 ## GoldenRun Direction
 

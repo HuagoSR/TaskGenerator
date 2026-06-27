@@ -115,13 +115,16 @@ Current GDPVal prompt-only validation:
   - audit decisions are deterministic governance hints for future sampling, not ground-truth labels
 - the first SourceCollector MVP now exists:
   - module: `v3_source_collector.py`
+  - search tools: `v3_source_search_tools.py`
   - web collection CLI: `Test/run_v3_stirrup_source_collector.py`
   - connector CLI: `Test/run_v3_collected_sources_to_skill_package.py`
   - default env source: `E:\THU\2026Spring\SRT\rw-task\.env`
+  - default search backend: Serper via `SERPER_API_KEY`
+  - Brave remains a compatibility backend only; the default path no longer requires `BRAVE_API_KEY`
   - SourceCollector emits `RawSource` records and raw text artifacts, not skills
   - collected `RawSource` records can be normalized into a `SkillExtractionPromptPackage`
   - formal web collection requires `--allow-web-collection`; dry-run prompt generation works offline
-  - no formal network/E2B smoke has been run yet in this environment
+  - Serper smoke `audit_smoke_serper_02` collected 3 accepted RawSources and produced a normalized skill extraction prompt package
   - this preserves the boundary between source gathering and semantic skill extraction
 
 ## Object 1: SemanticSkill

@@ -462,10 +462,15 @@ Current implementation status:
   - source collection prompt builder
   - manifest validator
   - RawSource writer
+- `v3_source_search_tools.py` provides a Serper-backed Stirrup-compatible search/fetch provider:
+  - default search backend is now `serper`
+  - `SERPER_API_KEY` is read from the `rw-task` env file
+  - Brave remains an optional compatibility backend, but is not required for the default path
 - `Test/run_v3_stirrup_source_collector.py` provides a Stirrup/E2B-backed collection CLI:
   - defaults to `E:\THU\2026Spring\SRT\rw-task\.env`
   - requires explicit `--allow-web-collection` for real web access
   - supports `--dry-run-prompt` for local prompt/request inspection
+  - supports `--search-backend serper|brave`
   - uses the `rw-task` Stirrup/E2B environment rather than a separate key path
 - `Test/run_v3_collected_sources_to_skill_package.py` connects collected `RawSource` records to the existing normalization and skill prompt package flow
 - `Test/run_v3_local_source_to_skill.py` provides a local no-network prototype:
@@ -519,7 +524,6 @@ Current implementation status:
 
 What is intentionally not done yet:
 
-- no successful formal web collection smoke has been run yet
 - SourceCollector does not extract skills, generate tasks, write rubrics, or update the registry
 - no large-scale web crawling or source quality scoring
 - direct DeepSeek smoke testing has passed on the public synthetic package
@@ -568,8 +572,14 @@ What is intentionally not done yet:
   - current audit result is 6 audited entries and 6 `quarantine_recommended` governance hints
   - audit reasons include `source_collection_leakage`, `broad_deliverable_or_task_level`, `visual_or_presentation_deliverable`, `weak_atomic_action`, and `stale_due_to_reviewer_calibration`
   - audit decisions are not quality truth and do not mark entries inactive; they are pre-sampling warnings for future Pipeline B
+- current SourceCollector smoke status:
+  - Serper API direct test returned `status=200` and organic search results
+  - `Test/run_v3_stirrup_source_collector.py --search-backend serper` succeeded on `audit_smoke_serper_02`
+  - result: 3 requested sources, 3 collected sources, 3 accepted RawSources, `search_backend=serper`
+  - connector produced `normalized_package/skill_extraction_prompt_package.json`
+  - first failed Serper run exposed a Windows console encoding issue and an overly loose collection prompt; both were tightened before the successful run
 
-The immediate next code step is to add a persistent registry audit / quarantine mechanism for entries that newer reviewer rules no longer accept. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
+The immediate next code step is to inspect the Serper-collected source package and, if the source quality is acceptable, run it through LLM extraction, deterministic review, and registry update as separate Pipeline A stages. The expected progress unit should remain a batch: new source materials enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -620,10 +630,9 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- run a controlled SourceCollector smoke test on 3 public finance/audit/compliance sources
 - inspect collected raw text manually before letting it enter LLM skill extraction
-- normalize the collected `RawSource` records into a skill-extraction prompt package
-- only after source quality is acceptable, run LLM extraction/review/registry update as a separate step
+- use the collected Serper smoke package as the first web-source input to LLM extraction only after source quality is acceptable
+- run LLM extraction/review/registry update as separate steps, not inside SourceCollector
 - keep stale/quarantine handling report-only unless a later schema migration explicitly adds registry status fields
 - keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
 

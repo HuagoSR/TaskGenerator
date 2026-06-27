@@ -34,6 +34,7 @@ class SourceCollectionRequest(BaseModel):
     source_count: int = 3
     collector_model: str = ""
     e2b_template: str = "rw-task-sandbox:stable"
+    search_backend: str = "serper"
     created_at: str = Field(default_factory=utc_now)
     notes: List[str] = Field(default_factory=list)
 
@@ -59,6 +60,7 @@ class SourceCollectionReport(BaseModel):
     accepted_source_count: int
     collector_model: str
     e2b_template: str
+    search_backend: str = ""
     validation_errors: List[str] = Field(default_factory=list)
     raw_source_paths: List[str] = Field(default_factory=list)
     raw_text_paths: List[str] = Field(default_factory=list)
@@ -73,6 +75,7 @@ def build_collection_request(
     source_count: int,
     collector_model: str,
     e2b_template: str,
+    search_backend: str = "serper",
 ) -> SourceCollectionRequest:
     request_key = "::".join([topic, ",".join(domain_tags), ",".join(queries), str(source_count)])
     return SourceCollectionRequest(
@@ -83,6 +86,7 @@ def build_collection_request(
         source_count=source_count,
         collector_model=collector_model,
         e2b_template=e2b_template,
+        search_backend=search_backend,
         notes=[
             "Collector gathers source materials only.",
             "Collector must not extract skills, generate tasks, or write rubrics.",
@@ -119,10 +123,13 @@ def build_collection_prompt(request: SourceCollectionRequest) -> str:
         "Requirements:\n"
         "- Use web search to find public, citable, relevant materials.\n"
         "- Prefer professional guides, regulatory guidance, case writeups, audit/accounting explainers, or public examples.\n"
+        "- Use at most 3 web_search calls and at most 5 fetch_web_page calls.\n"
+        "- Once you have enough evidence for the target source count, stop searching and finish immediately.\n"
         "- Each source must include a URL, title, readable excerpt, retrieval timestamp, and relevance rationale.\n"
         "- The excerpt must contain actual source content, not just a search result title or URL.\n"
         "- Do not include private, paywalled-only, or credentialed materials.\n"
         "- Do not include GDPVal rubrics, answer traces, or generated deliverables.\n"
+        "- Prefer finishing with 3 good sources over continuing to search for perfect sources.\n"
         "- Finish by returning only JSON matching this shape:\n\n"
         f"```json\n{json.dumps(schema, ensure_ascii=False, indent=2)}\n```\n"
     )
@@ -259,6 +266,7 @@ def write_collected_sources(
         "request_id": request.request_id,
         "collector_model": request.collector_model,
         "e2b_template": request.e2b_template,
+        "search_backend": request.search_backend,
         "source_count": len(manifest_sources),
         "sources": manifest_sources,
         "validation_errors": validation_errors,
@@ -274,6 +282,7 @@ def write_collected_sources(
         accepted_source_count=len(accepted_records),
         collector_model=request.collector_model,
         e2b_template=request.e2b_template,
+        search_backend=request.search_backend,
         validation_errors=validation_errors,
         raw_source_paths=raw_source_paths,
         raw_text_paths=raw_text_paths,

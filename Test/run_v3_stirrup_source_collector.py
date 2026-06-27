@@ -19,6 +19,7 @@ from v3_source_collector import (  # noqa: E402
     utc_now,
     write_collected_sources,
 )
+from v3_source_search_tools import SerperWebToolProvider  # noqa: E402
 from v3_source_schema import dump_json_file  # noqa: E402
 
 
@@ -26,6 +27,12 @@ RW_TASK_ROOT = ROOT.parent / "rw-task"
 DEFAULT_ENV_PATH = RW_TASK_ROOT / ".env"
 DEFAULT_OUTPUT_ROOT = ROOT / "Test" / "v3_web_source_collections"
 DEFAULT_E2B_TEMPLATE = "rw-task-sandbox:stable"
+
+
+def configure_console_encoding() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def load_env_file(path: Path) -> None:
@@ -85,13 +92,27 @@ def load_artifact_manifest(artifacts_dir: Path) -> Dict[str, Any] | None:
     return None
 
 
+def build_web_tool_provider(args: argparse.Namespace):
+    if args.search_backend == "serper":
+        require_env(args.serper_api_key_env)
+        return SerperWebToolProvider(
+            api_key_env=args.serper_api_key_env,
+            timeout=args.web_timeout_seconds,
+            num_results=args.search_result_count,
+        )
+    from stirrup.tools import WebToolProvider
+
+    require_env("BRAVE_API_KEY")
+    return WebToolProvider(timeout=args.web_timeout_seconds)
+
+
 async def run_stirrup_collection(args: argparse.Namespace, prompt: str) -> Dict[str, Any]:
     if str(RW_TASK_ROOT) not in sys.path:
         sys.path.insert(0, str(RW_TASK_ROOT))
 
     from stirrup import Agent, aggregate_metadata
     from stirrup.clients.chat_completions_client import ChatCompletionsClient
-    from stirrup.tools import ViewImageToolProvider, WebToolProvider
+    from stirrup.tools import ViewImageToolProvider
     from stirrup.tools.code_backends.e2b import E2BCodeExecToolProvider
 
     api_key = (
@@ -109,7 +130,6 @@ async def run_stirrup_collection(args: argparse.Namespace, prompt: str) -> Dict[
     if not api_key:
         raise RuntimeError("Set AGENT_API_KEY or STIRRUP_OPENAI_API_KEY in the env file.")
     require_env("E2B_API_KEY")
-    require_env("BRAVE_API_KEY")
 
     client = ChatCompletionsClient(
         base_url=base_url,
@@ -123,7 +143,7 @@ async def run_stirrup_collection(args: argparse.Namespace, prompt: str) -> Dict[
         max_turns=args.max_turns,
         tools=[
             E2BCodeExecToolProvider(template=args.e2b_template, timeout=args.e2b_timeout_seconds),
-            WebToolProvider(),
+            build_web_tool_provider(args),
             ViewImageToolProvider(),
         ],
     )
@@ -146,6 +166,7 @@ def write_json(path: Path, payload: object) -> None:
 
 
 def main() -> None:
+    configure_console_encoding()
     parser = argparse.ArgumentParser(description="Collect public web source materials for V3 Pipeline A using Stirrup/E2B.")
     parser.add_argument("--topic", default="audit evidence reconciliation and internal control testing")
     parser.add_argument("--domain", action="append", default=["finance", "audit", "compliance"], help="Domain tag. Can be repeated.")
@@ -155,9 +176,13 @@ def main() -> None:
     parser.add_argument("--e2b-template", default=DEFAULT_E2B_TEMPLATE)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
-    parser.add_argument("--max-turns", type=int, default=12)
+    parser.add_argument("--max-turns", type=int, default=16)
     parser.add_argument("--max-tokens", type=int, default=6000)
     parser.add_argument("--e2b-timeout-seconds", type=int, default=1800)
+    parser.add_argument("--web-timeout-seconds", type=int, default=180)
+    parser.add_argument("--search-result-count", type=int, default=5)
+    parser.add_argument("--search-backend", choices=["serper", "brave"], default="serper")
+    parser.add_argument("--serper-api-key-env", default="SERPER_API_KEY")
     parser.add_argument("--allow-web-collection", action="store_true")
     parser.add_argument("--dry-run-prompt", action="store_true", help="Write request and prompt only; do not call Stirrup.")
     args = parser.parse_args()
@@ -176,6 +201,7 @@ def main() -> None:
         source_count=args.limit,
         collector_model=args.model,
         e2b_template=args.e2b_template,
+        search_backend=args.search_backend,
     )
     prompt = build_collection_prompt(request)
     dump_json_file(request, str(args.output_dir / "collection_request.json"))
@@ -193,6 +219,7 @@ def main() -> None:
         {
             "history_turn_count": run_result["history_turn_count"],
             "metadata": run_result["metadata"],
+            "search_backend": args.search_backend,
         },
     )
     payload = load_artifact_manifest(args.output_dir / "artifacts") or extract_json_payload(run_result["finish_params"])
