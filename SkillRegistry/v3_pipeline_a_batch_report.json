@@ -10,15 +10,23 @@
       "output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_managers",
       "prompt_package": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_managers\\skill_extraction_prompt_package.json",
       "candidate_count": 14,
-      "accepted_count": 12,
-      "revise_count": 2,
+      "accepted_count": 11,
+      "revise_count": 3,
       "rejected_count": 0,
       "registry_new_entry_count": 0,
-      "registry_merged_candidate_count": 12,
+      "registry_merged_candidate_count": 11,
       "registry_skipped_candidate_count": 0,
       "registry_final_entry_count": 44,
       "possible_duplicate_count": 0,
-      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_managers\\review\\accepted_skill_candidates.json"
+      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_managers\\review\\accepted_skill_candidates.json",
+      "diagnostics": {
+        "occupation": "Financial Managers",
+        "reason_code_counts": {
+          "task_level_overbreadth": 3
+        },
+        "suspicious_accepted_candidates": [],
+        "warnings": []
+      }
     },
     {
       "batch_id": "financial_and_investment_analysts",
@@ -27,15 +35,25 @@
       "output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_and_investment_analysts",
       "prompt_package": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_and_investment_analysts\\skill_extraction_prompt_package.json",
       "candidate_count": 15,
-      "accepted_count": 15,
-      "revise_count": 0,
+      "accepted_count": 11,
+      "revise_count": 4,
       "rejected_count": 0,
       "registry_new_entry_count": 0,
-      "registry_merged_candidate_count": 15,
+      "registry_merged_candidate_count": 11,
       "registry_skipped_candidate_count": 0,
       "registry_final_entry_count": 44,
       "possible_duplicate_count": 0,
-      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_and_investment_analysts\\review\\accepted_skill_candidates.json"
+      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\financial_and_investment_analysts\\review\\accepted_skill_candidates.json",
+      "diagnostics": {
+        "occupation": "Financial and Investment Analysts",
+        "reason_code_counts": {
+          "source_collection_leakage": 1,
+          "task_level_overbreadth": 3,
+          "task_level_penalty_reduced_by_atomic_contract": 1
+        },
+        "suspicious_accepted_candidates": [],
+        "warnings": []
+      }
     },
     {
       "batch_id": "compliance_officers",
@@ -44,15 +62,37 @@
       "output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\compliance_officers",
       "prompt_package": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\compliance_officers\\skill_extraction_prompt_package.json",
       "candidate_count": 8,
-      "accepted_count": 7,
-      "revise_count": 1,
+      "accepted_count": 6,
+      "revise_count": 2,
       "rejected_count": 0,
       "registry_new_entry_count": 0,
-      "registry_merged_candidate_count": 7,
+      "registry_merged_candidate_count": 6,
       "registry_skipped_candidate_count": 0,
       "registry_final_entry_count": 44,
       "possible_duplicate_count": 0,
-      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\compliance_officers\\review\\accepted_skill_candidates.json"
+      "accepted_candidates_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_gdpval_prompt_sources\\pipeline_a_batches\\compliance_officers\\review\\accepted_skill_candidates.json",
+      "diagnostics": {
+        "occupation": "Compliance Officers",
+        "reason_code_counts": {
+          "task_level_overbreadth": 2
+        },
+        "suspicious_accepted_candidates": [
+          {
+            "candidate_id": "skill_003",
+            "proposed_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+            "warning_codes": [
+              "weak_atomic_verb"
+            ],
+            "total_score": 0.9472
+          }
+        ],
+        "warnings": [
+          {
+            "code": "suspicious_accepted_candidates",
+            "message": "1 accepted candidates should be inspected."
+          }
+        ]
+      }
     }
   ],
   "coverage": {
@@ -127,5 +167,39 @@
   },
   "provider": "deepseek",
   "deepseek_model": "deepseek-v4-flash",
-  "reuse_existing": true
+  "max_candidates": 15,
+  "max_tokens": 12000,
+  "timeout_seconds": 180,
+  "reuse_existing": true,
+  "diagnostics": {
+    "reason_code_counts": {
+      "source_collection_leakage": 1,
+      "task_level_overbreadth": 8,
+      "task_level_penalty_reduced_by_atomic_contract": 1
+    },
+    "warning_counts": {
+      "suspicious_accepted_candidates": 1
+    },
+    "batch_warnings": [
+      {
+        "batch_id": "compliance_officers",
+        "occupation": "Compliance Officers",
+        "code": "suspicious_accepted_candidates",
+        "message": "1 accepted candidates should be inspected."
+      }
+    ],
+    "suspicious_accepted_candidates": [
+      {
+        "batch_id": "compliance_officers",
+        "occupation": "Compliance Officers",
+        "candidate_id": "skill_003",
+        "proposed_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+        "warning_codes": [
+          "weak_atomic_verb"
+        ],
+        "total_score": 0.9472
+      }
+    ],
+    "suspicious_accepted_count": 1
+  }
 }

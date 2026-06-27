@@ -81,6 +81,10 @@ class SkillCandidateReviewer:
         "workbook preparation",
         "document generation",
         "report generation",
+        "presentation generation",
+        "question construction",
+        "questionnaire construction",
+        "narrative drafting",
         "prepare report",
         "prepare return",
         "prepare form",
@@ -88,6 +92,8 @@ class SkillCandidateReviewer:
         "create report",
         "create workbook",
         "create spreadsheet",
+        "presentation slides",
+        "slide deck",
     }
     task_level_name_terms = {
         "preparation",
@@ -98,13 +104,21 @@ class SkillCandidateReviewer:
         "workbook preparation",
         "document generation",
         "report generation",
+        "presentation generation",
+        "question construction",
+        "questionnaire construction",
+        "narrative drafting",
     }
     form_specific_pattern = re.compile(
         r"\b(form\s*\d+|1040|1099|w-?2|schedule\s+(?:[a-z]\b|\d+\b)|irs|tax return|jurisdiction-specific|country-specific)\b",
         re.IGNORECASE,
     )
     broad_deliverable_pattern = re.compile(
-        r"\b(build|create|prepare|produce|generate)\b.{0,40}\b(report|workbook|spreadsheet|statement|return|deliverable|document)\b",
+        r"\b(build|create|prepare|produce|generate|structure|construct|write|compile|draft)\b.{0,60}\b(report|workbook|spreadsheet|statement|return|deliverable|document|presentation|slides?|deck|questions?|questionnaire|narrative|profiles?|visualizations?)\b",
+        re.IGNORECASE,
+    )
+    source_collection_pattern = re.compile(
+        r"\b(open\s+web|web\s+search|retrieve\s+and\s+normalize|external\s+data\s+retrieval|sourcecollector|collect\s+source)\b",
         re.IGNORECASE,
     )
 
@@ -296,6 +310,8 @@ class SkillCandidateReviewer:
             score -= 0.22
         if self.form_specific_pattern.search(text):
             score -= 0.12
+        if self.source_collection_pattern.search(text):
+            score -= 0.18
 
         score = max(0.0, min(round(score, 4), 1.0))
         if score < 0.65:
@@ -342,6 +358,9 @@ class SkillCandidateReviewer:
         if self.form_specific_pattern.search(text):
             penalty += 0.14
             reason_codes.append("form_or_jurisdiction_specific")
+        if self.source_collection_pattern.search(text):
+            penalty += 0.16
+            reason_codes.append("source_collection_leakage")
         if appears_atomic and penalty:
             penalty *= 0.5
             reason_codes.append("task_level_penalty_reduced_by_atomic_contract")
@@ -351,7 +370,7 @@ class SkillCandidateReviewer:
         blocking = {"missing_evidence", "operator_leakage"}
         if blocking & set(reason_codes):
             return "reject"
-        revise_only = {"task_level_overbreadth", "form_or_jurisdiction_specific", "low_atomicity"}
+        revise_only = {"task_level_overbreadth", "form_or_jurisdiction_specific", "low_atomicity", "source_collection_leakage"}
         if revise_only & set(reason_codes):
             if total_score >= 0.48:
                 return "revise"
@@ -368,8 +387,14 @@ class SkillCandidateReviewer:
         reason_set = set(reason_codes)
         if "form_or_jurisdiction_specific" in reason_set and any(term in text for term in ["1040", "tax return", "irs", "form"]):
             return "Structured Statutory Filing Input Mapping or Jurisdiction-Specific Compliance Schedule Selection"
+        if "source_collection_leakage" in reason_set:
+            return "Source Evidence Normalization From Candidate-Visible Materials"
         if "task_level_overbreadth" in reason_set and any(term in name for term in ["report", "statement", "workbook"]):
             return "Source-to-Report Metric Mapping or Financial Statement Component Assembly"
+        if "task_level_overbreadth" in reason_set and any(term in name for term in ["presentation", "slide", "deck"]):
+            return "Evidence-to-Executive-Insight Structuring"
+        if "task_level_overbreadth" in reason_set and any(term in name for term in ["question", "questionnaire"]):
+            return "Compliance Criterion Mapping or Risk-Control Coverage Selection"
         if "task_level_overbreadth" in reason_set and "schedule" in name:
             return "Periodic Allocation Schedule Calculation"
         if "low_atomicity" in reason_set:

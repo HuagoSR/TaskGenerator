@@ -97,6 +97,12 @@ Current GDPVal prompt-only validation:
 - the multi-batch runner is `Test/run_v3_gdpval_pipeline_a_batch.py`
 - the latest aggregate batch report is `SkillRegistry/v3_pipeline_a_batch_report.json`
 - current batch-scale lesson: `max_candidates=30` can produce truncated JSON from DeepSeek on larger prompt batches, so the batch runner defaults to `max_candidates=15` and `max_tokens=12000`
+- batch diagnostics now record reason-code counts, suspicious accepted candidates, and provider/parameter metadata
+- after stricter reviewer calibration, the three multi-batch rerun results are:
+  - `Financial Managers`: 14 candidates, 11 accepted, 3 revise
+  - `Financial and Investment Analysts`: 15 candidates, 11 accepted, 4 revise
+  - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
+- the persistent registry still has 44 entries; the latest update report lists 6 unmatched existing entries that should be audited rather than silently deleted
 
 ## Object 1: SemanticSkill
 

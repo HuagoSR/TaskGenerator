@@ -186,11 +186,14 @@ Current Pipeline A status:
 - current Pipeline A batch result:
   - batch runner: `Test/run_v3_gdpval_pipeline_a_batch.py`
   - batch report: `SkillRegistry/v3_pipeline_a_batch_report.json`
-  - `Financial Managers`: 14 candidates, 12 accepted, 2 revise
-  - `Financial and Investment Analysts`: 15 candidates, 15 accepted, 0 revise
-  - `Compliance Officers`: 8 candidates, 7 accepted, 1 revise
+  - `Financial Managers`: 14 candidates, 11 accepted, 3 revise
+  - `Financial and Investment Analysts`: 15 candidates, 11 accepted, 4 revise
+  - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
   - final coverage includes `finance=40`, `compliance=7`, `government=7`, `accounting=5`, `audit=4`
   - `max_candidates=30` triggered truncated DeepSeek JSON on a larger batch; batch default is now `max_candidates=15`, `max_tokens=12000`
+  - batch diagnostics now include reason-code counts, suspicious accepted candidates, batch warnings, provider/model, `max_candidates`, `max_tokens`, timeout, and reuse mode
+  - latest diagnostics show 1 suspicious accepted candidate: `Write Exception Statements for Regulatory Non-Compliance Findings`
+  - latest registry update report lists 6 unmatched existing entries that are still in the persistent registry but no longer touched by the stricter accepted-candidate rerun
 - manual registry update command for the original accountant/auditor batch:
   - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_skill_registry_update.py --candidates Test\v3_gdpval_prompt_sources\accountants_10\deepseek_review_atomic_llm\accepted_skill_candidates.json`
 - manual batch runner command:
@@ -198,6 +201,7 @@ Current Pipeline A status:
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
 - no embedding or LLM-based registry deduplication yet
+- no registry quarantine/inactive mechanism yet; current stale-entry handling is report-only via `unmatched_existing_entries`
 
 ## GoldenRun Direction
 

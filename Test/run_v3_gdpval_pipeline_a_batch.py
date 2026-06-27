@@ -1,8 +1,10 @@
 import argparse
 import json
 import sys
+import re
+from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +47,22 @@ DEFAULT_OCCUPATIONS = [
     "Financial Managers",
     "Compliance Officers",
 ]
+SUSPICIOUS_DELIVERABLE_PATTERN = re.compile(
+    r"\b(structure|construct|write|compile|draft|generate|prepare|create|build)\b.{0,60}\b(report|presentation|slides?|deck|questions?|questionnaire|narrative|profiles?|visualizations?)\b",
+    re.IGNORECASE,
+)
+SOURCE_COLLECTION_PATTERN = re.compile(
+    r"\b(open\s+web|web\s+search|retrieve\s+and\s+normalize|external\s+data\s+retrieval|sourcecollector|collect\s+source)\b",
+    re.IGNORECASE,
+)
+ATOMIC_VERB_PATTERN = re.compile(
+    r"\b(map|detect|classify|reconcile|compute|validate|apply|extract|normalize|identify|allocate|match|compare|convert|resolve|tie|aggregate|correlate|benchmark|summarize|analyze|evaluate|implement|perform|propose|design)\b",
+    re.IGNORECASE,
+)
+ATOMIC_NOUN_PATTERN = re.compile(
+    r"\b(analysis|assessment|articulation|aggregation|calculation|computation|modeling|evaluation|identification|formulation|validation|configuration|benchmarking|correlation|optimization|summarization|comparison)\b",
+    re.IGNORECASE,
+)
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -237,6 +255,94 @@ def update_registry(
     return report
 
 
+def diagnose_review_report(report: Dict[str, object], occupation: str) -> Dict[str, object]:
+    decisions = list(report["decisions"])
+    reason_counts: Counter[str] = Counter()
+    suspicious_accepted = []
+    warnings = []
+
+    if report["candidate_count"] >= 5 and report["accepted_count"] == report["candidate_count"]:
+        warnings.append(
+            {
+                "code": "all_candidates_accepted",
+                "message": "All candidates were accepted; reviewer calibration should be inspected for this batch.",
+            }
+        )
+
+    for decision in decisions:
+        reason_counts.update(decision.get("reason_codes", []))
+        if decision.get("decision") != "accept":
+            continue
+        name = str(decision.get("proposed_name", ""))
+        warning_codes = []
+        if SUSPICIOUS_DELIVERABLE_PATTERN.search(name):
+            warning_codes.append("broad_deliverable_name")
+        if SOURCE_COLLECTION_PATTERN.search(name):
+            warning_codes.append("source_collection_behavior")
+        if not ATOMIC_VERB_PATTERN.search(name) and not ATOMIC_NOUN_PATTERN.search(name):
+            warning_codes.append("weak_atomic_verb")
+        if warning_codes:
+            suspicious_accepted.append(
+                {
+                    "candidate_id": decision.get("candidate_id"),
+                    "proposed_name": name,
+                    "warning_codes": warning_codes,
+                    "total_score": decision.get("total_score"),
+                }
+            )
+
+    if suspicious_accepted:
+        warnings.append(
+            {
+                "code": "suspicious_accepted_candidates",
+                "message": f"{len(suspicious_accepted)} accepted candidates should be inspected.",
+            }
+        )
+
+    return {
+        "occupation": occupation,
+        "reason_code_counts": dict(sorted(reason_counts.items())),
+        "suspicious_accepted_candidates": suspicious_accepted,
+        "warnings": warnings,
+    }
+
+
+def aggregate_diagnostics(batch_summaries: List[Dict[str, object]]) -> Dict[str, object]:
+    reason_counts: Counter[str] = Counter()
+    warning_counts: Counter[str] = Counter()
+    suspicious_accepted = []
+    batch_warnings = []
+
+    for batch in batch_summaries:
+        diagnostics = batch["diagnostics"]
+        reason_counts.update(diagnostics["reason_code_counts"])
+        for warning in diagnostics["warnings"]:
+            warning_counts.update([warning["code"]])
+            batch_warnings.append(
+                {
+                    "batch_id": batch["batch_id"],
+                    "occupation": batch["occupation"],
+                    **warning,
+                }
+            )
+        for item in diagnostics["suspicious_accepted_candidates"]:
+            suspicious_accepted.append(
+                {
+                    "batch_id": batch["batch_id"],
+                    "occupation": batch["occupation"],
+                    **item,
+                }
+            )
+
+    return {
+        "reason_code_counts": dict(sorted(reason_counts.items())),
+        "warning_counts": dict(sorted(warning_counts.items())),
+        "batch_warnings": batch_warnings,
+        "suspicious_accepted_candidates": suspicious_accepted,
+        "suspicious_accepted_count": len(suspicious_accepted),
+    }
+
+
 def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupation: str) -> Dict[str, object]:
     batch_slug = slugify(occupation)
     batch_dir = args.output_root / batch_slug
@@ -244,6 +350,7 @@ def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupatio
     package = write_prompt_package(batch_dir, selected_rows, include_public_upload_note=True)
     candidates = run_extraction(args, package, batch_dir / "extraction")
     review_result = run_review(candidates, batch_dir / "review")
+    diagnostics = diagnose_review_report(review_result["report"], occupation)
     registry_report = update_registry(
         args.registry_path,
         review_result["accepted_candidates"],
@@ -265,6 +372,7 @@ def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupatio
         "registry_final_entry_count": registry_report["final_entry_count"],
         "possible_duplicate_count": len(registry_report["possible_duplicates"]),
         "accepted_candidates_path": review_result["accepted_candidates_path"],
+        "diagnostics": diagnostics,
     }
 
 
@@ -305,7 +413,11 @@ def main() -> None:
         "coverage": builder.coverage_report(final_entries),
         "provider": args.provider,
         "deepseek_model": args.deepseek_model,
+        "max_candidates": args.max_candidates,
+        "max_tokens": args.max_tokens,
+        "timeout_seconds": args.timeout_seconds,
         "reuse_existing": args.reuse_existing,
+        "diagnostics": aggregate_diagnostics(batch_summaries),
     }
     write_json(args.batch_report_path, aggregate_report)
     print(json.dumps(aggregate_report, ensure_ascii=False, indent=2))

@@ -534,10 +534,19 @@ What is intentionally not done yet:
   - batch runner path: `Test/run_v3_gdpval_pipeline_a_batch.py`
   - aggregate report path: `SkillRegistry/v3_pipeline_a_batch_report.json`
   - successful new batches: `Financial Managers`, `Financial and Investment Analysts`, `Compliance Officers`
+  - after reviewer calibration and `--reuse-existing` rerun:
+    - `Financial Managers`: 14 candidates, 11 accepted, 3 revise
+    - `Financial and Investment Analysts`: 15 candidates, 11 accepted, 4 revise
+    - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
   - final registry coverage includes `finance=40`, `compliance=7`, `government=7`, `accounting=5`, `audit=4`
   - `max_candidates=30` can trigger DeepSeek JSON truncation on some batches; the batch runner default is now `max_candidates=15`, `max_tokens=12000`
+- current batch diagnostics:
+  - aggregate report records reason-code counts, batch warnings, suspicious accepted candidates, provider/model/parameter metadata, and reuse mode
+  - `source_collection_leakage` now flags open-web retrieval candidates as reviewer revise rather than registry-ready skills
+  - the latest report has 1 suspicious accepted candidate: `Write Exception Statements for Regulatory Non-Compliance Findings`
+  - the registry update report now lists 6 unmatched existing entries that remain in the persistent registry but are not touched by the stricter accepted-candidate rerun
 
-The immediate next code step is to improve batch-level diagnostics and reviewer calibration using the multi-batch reports. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
+The immediate next code step is to add a persistent registry audit / quarantine mechanism for entries that newer reviewer rules no longer accept. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -588,9 +597,9 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- add stronger batch diagnostics for suspicious all-accepted batches and overly broad atomic names
-- inspect why `Financial and Investment Analysts` produced 15 accepted / 0 revise and whether reviewer thresholds are too permissive for that domain
-- expand coverage intentionally after reviewer calibration, not by blindly adding many occupations
+- add a non-destructive registry audit report for unmatched existing entries
+- decide whether stale entries should be marked inactive/quarantined in metadata or only reported externally
+- inspect the 6 current unmatched entries before expanding coverage further
 - keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
 
 This will reconnect the project to the original two-pipeline design:

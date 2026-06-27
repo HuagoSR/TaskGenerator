@@ -128,8 +128,11 @@ class SkillRegistryBuilder:
             "merged_candidates": [],
             "skipped_candidates": [],
             "possible_duplicates": [],
+            "unmatched_existing_entries": [],
+            "unmatched_existing_entry_count": 0,
             "coverage": {},
         }
+        touched_skill_ids = set()
 
         for candidate in candidates:
             status = candidate.extraction_status
@@ -151,6 +154,7 @@ class SkillRegistryBuilder:
                 entry, match_reason, match_score = match
                 self._merge_candidate(entry, candidate)
                 report["merged_candidate_count"] += 1
+                touched_skill_ids.add(entry.skill_id)
                 report["merged_candidates"].append(
                     {
                         "candidate_id": candidate.candidate_id,
@@ -175,6 +179,7 @@ class SkillRegistryBuilder:
 
             new_entry = self._entry_from_candidate(candidate)
             entries.append(new_entry)
+            touched_skill_ids.add(new_entry.skill_id)
             report["new_entry_count"] += 1
             report["new_entries"].append(
                 {
@@ -186,6 +191,15 @@ class SkillRegistryBuilder:
             )
 
         report["final_entry_count"] = len(entries)
+        report["unmatched_existing_entries"] = [
+            {
+                "skill_id": entry.skill_id,
+                "canonical_name": entry.canonical_name,
+            }
+            for entry in entries
+            if entry.skill_id not in touched_skill_ids
+        ]
+        report["unmatched_existing_entry_count"] = len(report["unmatched_existing_entries"])
         report["coverage"] = self.coverage_report(entries)
         return entries, report
 

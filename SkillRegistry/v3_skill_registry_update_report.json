@@ -1,12 +1,12 @@
 {
-  "input_candidate_count": 44,
+  "input_candidate_count": 38,
   "existing_entry_count": 44,
   "new_entry_count": 0,
-  "merged_candidate_count": 44,
+  "merged_candidate_count": 38,
   "skipped_candidate_count": 0,
   "final_entry_count": 44,
   "status_counts": {
-    "accepted": 44
+    "accepted": 38
   },
   "new_entries": [],
   "merged_candidates": [
@@ -87,14 +87,6 @@
       "proposed_name": "Compute Accrual Entries from Supporting Schedules",
       "skill_id": "skill_61eca3e9f0",
       "canonical_name": "Compute Accrual Entries from Supporting Schedules",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
-      "candidate_id": "skill_candidate_001",
-      "proposed_name": "Competitive Market Position Assessment",
-      "skill_id": "skill_fc94d146aa",
-      "canonical_name": "Competitive Market Position Assessment",
       "match_reason": "exact_name",
       "match_score": 1.0
     },
@@ -187,14 +179,6 @@
       "match_score": 1.0
     },
     {
-      "candidate_id": "skill_cand_001",
-      "proposed_name": "Retrieve and normalize financial data from open web",
-      "skill_id": "skill_b655abc3af",
-      "canonical_name": "Retrieve and normalize financial data from open web",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
       "candidate_id": "skill_cand_002",
       "proposed_name": "Compute LTM and NTM PE multiples",
       "skill_id": "skill_66264f3e45",
@@ -211,26 +195,10 @@
       "match_score": 1.0
     },
     {
-      "candidate_id": "skill_cand_004",
-      "proposed_name": "Compile company profiles for private targets",
-      "skill_id": "skill_253fe8c255",
-      "canonical_name": "Compile company profiles for private targets",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
       "candidate_id": "skill_cand_005",
       "proposed_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
       "skill_id": "skill_c3231b0442",
       "canonical_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
-      "candidate_id": "skill_cand_006",
-      "proposed_name": "Structure financial analysis into presentation slides",
-      "skill_id": "skill_ca217c991a",
-      "canonical_name": "Structure financial analysis into presentation slides",
       "match_reason": "exact_name",
       "match_score": 1.0
     },
@@ -275,14 +243,6 @@
       "match_score": 1.0
     },
     {
-      "candidate_id": "skill_cand_012",
-      "proposed_name": "Generate convergence and pricing comparison visualizations",
-      "skill_id": "skill_bf9bd6091a",
-      "canonical_name": "Generate convergence and pricing comparison visualizations",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
       "candidate_id": "skill_cand_013",
       "proposed_name": "Analyze commodity market fundamentals (oil and gas)",
       "skill_id": "skill_59ae7c335f",
@@ -303,14 +263,6 @@
       "proposed_name": "Propose trading and sales strategy based on market analysis",
       "skill_id": "skill_20f48b3a32",
       "canonical_name": "Propose trading and sales strategy based on market analysis",
-      "match_reason": "exact_name",
-      "match_score": 1.0
-    },
-    {
-      "candidate_id": "skill_001",
-      "proposed_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
-      "skill_id": "skill_d8eef0e5be",
-      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
       "match_reason": "exact_name",
       "match_score": 1.0
     },
@@ -365,6 +317,33 @@
   ],
   "skipped_candidates": [],
   "possible_duplicates": [],
+  "unmatched_existing_entries": [
+    {
+      "skill_id": "skill_fc94d146aa",
+      "canonical_name": "Competitive Market Position Assessment"
+    },
+    {
+      "skill_id": "skill_b655abc3af",
+      "canonical_name": "Retrieve and normalize financial data from open web"
+    },
+    {
+      "skill_id": "skill_253fe8c255",
+      "canonical_name": "Compile company profiles for private targets"
+    },
+    {
+      "skill_id": "skill_ca217c991a",
+      "canonical_name": "Structure financial analysis into presentation slides"
+    },
+    {
+      "skill_id": "skill_bf9bd6091a",
+      "canonical_name": "Generate convergence and pricing comparison visualizations"
+    },
+    {
+      "skill_id": "skill_d8eef0e5be",
+      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls"
+    }
+  ],
+  "unmatched_existing_entry_count": 6,
   "coverage": {
     "entry_count": 44,
     "domain_tag_counts": {
