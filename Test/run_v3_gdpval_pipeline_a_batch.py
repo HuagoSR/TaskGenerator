@@ -40,6 +40,7 @@ from v3_source_schema import (  # noqa: E402
 DEFAULT_OUTPUT_ROOT = ROOT / "Test" / "v3_gdpval_prompt_sources" / "pipeline_a_batches"
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
 DEFAULT_BATCH_REPORT_PATH = ROOT / "SkillRegistry" / "v3_pipeline_a_batch_report.json"
+DEFAULT_AUDIT_REPORT_PATH = ROOT / "SkillRegistry" / "v3_skill_registry_audit_report.json"
 DEFAULT_ENV_PATH = ROOT / ".env"
 DEFAULT_DEEPSEEK_KEY_PATH = ROOT / "deepseek-key.txt"
 DEFAULT_OCCUPATIONS = [
@@ -383,6 +384,7 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--registry-path", type=Path, default=DEFAULT_REGISTRY_PATH)
     parser.add_argument("--batch-report-path", type=Path, default=DEFAULT_BATCH_REPORT_PATH)
+    parser.add_argument("--audit-report-path", type=Path, default=DEFAULT_AUDIT_REPORT_PATH)
     parser.add_argument("--provider", choices=["auto", "tuzi", "deepseek"], default="deepseek")
     parser.add_argument("--model", default=None, help="Override .env OPENAI_MODEL for Tuzi/OpenAI-compatible provider.")
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash")
@@ -418,6 +420,11 @@ def main() -> None:
         "timeout_seconds": args.timeout_seconds,
         "reuse_existing": args.reuse_existing,
         "diagnostics": aggregate_diagnostics(batch_summaries),
+        "registry_audit_report": {
+            "path": str(args.audit_report_path),
+            "exists": args.audit_report_path.exists(),
+            "note": "Batch runner does not execute or apply registry audit automatically.",
+        },
     }
     write_json(args.batch_report_path, aggregate_report)
     print(json.dumps(aggregate_report, ensure_ascii=False, indent=2))

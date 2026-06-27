@@ -145,8 +145,11 @@ Current Pipeline A starting files:
 - `v3_skill_registry.py`: first-pass registry builder plus persistent registry updater that turns accepted candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/run_v3_skill_registry_update.py`: CLI for updating the persistent registry at `SkillRegistry/v3_skill_registry.json`
+- `v3_skill_registry_audit.py`: non-destructive deterministic audit helper for stale or suspicious persistent registry entries
+- `Test/run_v3_skill_registry_audit.py`: CLI for writing `SkillRegistry/v3_skill_registry_audit_report.json` without changing the registry
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
+- `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
 - `SkillRegistry/v3_pipeline_a_batch_report.json`: latest aggregate Pipeline A batch report
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
 
@@ -201,7 +204,17 @@ Current Pipeline A status:
 - no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
 - no embedding or LLM-based registry deduplication yet
-- no registry quarantine/inactive mechanism yet; current stale-entry handling is report-only via `unmatched_existing_entries`
+- no registry quarantine/inactive mechanism yet; stale-entry handling is report-first and non-destructive
+- registry audit now exists as a governance layer:
+  - default command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_skill_registry_audit.py`
+  - default output: `SkillRegistry/v3_skill_registry_audit_report.json`
+  - default behavior: audit only `unmatched_existing_entries` from the latest update report
+  - optional `--include-all`: audit all persistent registry entries
+  - current audit result: 6 entries audited, 6 `quarantine_recommended`
+  - the audit recognized open-web retrieval as `source_collection_leakage`
+  - the audit recognized profiles, slides, visualizations, and risk-assessment questions as broad/task-level registry risks
+  - the audit does not delete, rewrite, deactivate, or quarantine registry entries
+  - audit decisions are deterministic governance hints, not ground-truth skill quality labels
 
 ## GoldenRun Direction
 

@@ -103,6 +103,16 @@ Current GDPVal prompt-only validation:
   - `Financial and Investment Analysts`: 15 candidates, 11 accepted, 4 revise
   - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
 - the persistent registry still has 44 entries; the latest update report lists 6 unmatched existing entries that should be audited rather than silently deleted
+- a non-destructive persistent registry audit now exists:
+  - module: `v3_skill_registry_audit.py`
+  - CLI: `Test/run_v3_skill_registry_audit.py`
+  - default output: `SkillRegistry/v3_skill_registry_audit_report.json`
+  - default scope: `unmatched_existing_entries` from the latest registry update report
+  - current result: 6 audited entries, all reported as `quarantine_recommended`
+  - the audit recognized open-web retrieval as `source_collection_leakage`
+  - the audit recognized profiles, slides, visualizations, and risk-assessment-question construction as broad deliverable or task-level risks
+  - this is report-only; no `SkillRegistryEntry` schema migration, deletion, inactive flag, or automatic quarantine has been introduced
+  - audit decisions are deterministic governance hints for future sampling, not ground-truth labels
 
 ## Object 1: SemanticSkill
 

@@ -1,0 +1,160 @@
+{
+  "audit_version": "v3.registry_audit.1",
+  "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
+  "update_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry_update_report.json",
+  "include_all": false,
+  "registry_entry_count": 44,
+  "audited_entry_count": 6,
+  "unmatched_entry_count": 6,
+  "audit_decision_counts": {
+    "quarantine_recommended": 6
+  },
+  "reason_code_counts": {
+    "broad_deliverable_or_task_level": 4,
+    "source_collection_leakage": 1,
+    "stale_due_to_reviewer_calibration": 6,
+    "visual_or_presentation_deliverable": 3,
+    "weak_atomic_action": 1
+  },
+  "records": [
+    {
+      "skill_id": "skill_fc94d146aa",
+      "canonical_name": "Competitive Market Position Assessment",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_action": "Do not sample as an atomic skill until revised into evidence-to-insight or visualization validation subskills.",
+      "suggested_abstraction": "Evidence-to-Executive-Insight Structuring or Visualization Consistency Validation",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "evidence_001"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_9412ee2f07"
+        ],
+        "usage_count": 1
+      }
+    },
+    {
+      "skill_id": "skill_b655abc3af",
+      "canonical_name": "Retrieve and normalize financial data from open web",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "source_collection_leakage",
+        "stale_due_to_reviewer_calibration"
+      ],
+      "suggested_action": "Do not sample this entry for Pipeline B; re-extract as source normalization or evidence handling skill.",
+      "suggested_abstraction": "Source Evidence Normalization From Candidate-Visible Materials",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "evid_001"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_12072f6a65"
+        ],
+        "usage_count": 1
+      }
+    },
+    {
+      "skill_id": "skill_253fe8c255",
+      "canonical_name": "Compile company profiles for private targets",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "broad_deliverable_or_task_level",
+        "stale_due_to_reviewer_calibration",
+        "weak_atomic_action"
+      ],
+      "suggested_action": "Keep for historical trace only; decompose into smaller semantic input-output skills before sampling.",
+      "suggested_abstraction": "Entity Attribute Extraction or Comparable Entity Evidence Mapping",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "evid_004"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_e357bbe823"
+        ],
+        "usage_count": 1
+      }
+    },
+    {
+      "skill_id": "skill_ca217c991a",
+      "canonical_name": "Structure financial analysis into presentation slides",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "broad_deliverable_or_task_level",
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_action": "Do not sample as an atomic skill until revised into evidence-to-insight or visualization validation subskills.",
+      "suggested_abstraction": "Evidence-to-Executive-Insight Structuring or Visualization Consistency Validation",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "evid_006"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_7feaa39055"
+        ],
+        "usage_count": 1
+      }
+    },
+    {
+      "skill_id": "skill_bf9bd6091a",
+      "canonical_name": "Generate convergence and pricing comparison visualizations",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "broad_deliverable_or_task_level",
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_action": "Do not sample as an atomic skill until revised into evidence-to-insight or visualization validation subskills.",
+      "suggested_abstraction": "Evidence-to-Executive-Insight Structuring or Visualization Consistency Validation",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "evid_012"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_9d3b237405"
+        ],
+        "usage_count": 1
+      }
+    },
+    {
+      "skill_id": "skill_d8eef0e5be",
+      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
+      "audit_decision": "quarantine_recommended",
+      "reason_codes": [
+        "broad_deliverable_or_task_level",
+        "stale_due_to_reviewer_calibration"
+      ],
+      "suggested_action": "Keep for historical trace only; decompose into smaller semantic input-output skills before sampling.",
+      "suggested_abstraction": "Compliance Criterion Mapping or Risk-Control Coverage Selection",
+      "evidence_summary": {
+        "evidence_ref_count": 1,
+        "evidence_refs": [
+          "ev_001"
+        ],
+        "source_candidate_id_count": 1,
+        "source_candidate_ids": [
+          "source_candidate_0d153c117d"
+        ],
+        "usage_count": 1
+      }
+    }
+  ],
+  "notes": [
+    "This audit is non-destructive: it does not delete, rewrite, deactivate, or quarantine registry entries.",
+    "Audit decisions are deterministic governance hints, not ground-truth skill quality labels."
+  ]
+}

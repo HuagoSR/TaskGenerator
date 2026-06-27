@@ -545,6 +545,14 @@ What is intentionally not done yet:
   - `source_collection_leakage` now flags open-web retrieval candidates as reviewer revise rather than registry-ready skills
   - the latest report has 1 suspicious accepted candidate: `Write Exception Statements for Regulatory Non-Compliance Findings`
   - the registry update report now lists 6 unmatched existing entries that remain in the persistent registry but are not touched by the stricter accepted-candidate rerun
+- current registry audit status:
+  - `v3_skill_registry_audit.py` implements a non-destructive deterministic audit helper
+  - `Test/run_v3_skill_registry_audit.py` writes `SkillRegistry/v3_skill_registry_audit_report.json`
+  - the audit reads `SkillRegistry/v3_skill_registry.json` and the latest update report, but does not change the registry
+  - default audit scope is the 6 `unmatched_existing_entries`; `--include-all` audits the full registry
+  - current audit result is 6 audited entries and 6 `quarantine_recommended` governance hints
+  - audit reasons include `source_collection_leakage`, `broad_deliverable_or_task_level`, `visual_or_presentation_deliverable`, `weak_atomic_action`, and `stale_due_to_reviewer_calibration`
+  - audit decisions are not quality truth and do not mark entries inactive; they are pre-sampling warnings for future Pipeline B
 
 The immediate next code step is to add a persistent registry audit / quarantine mechanism for entries that newer reviewer rules no longer accept. The expected progress unit should remain a batch: new prompt-only sources enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
 
@@ -597,9 +605,9 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- add a non-destructive registry audit report for unmatched existing entries
-- decide whether stale entries should be marked inactive/quarantined in metadata or only reported externally
-- inspect the 6 current unmatched entries before expanding coverage further
+- use the new non-destructive registry audit report before expanding coverage further
+- keep stale/quarantine handling report-only unless a later schema migration explicitly adds registry status fields
+- inspect and decompose the 6 current unmatched entries before allowing them to influence Pipeline B sampling
 - keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
 
 This will reconnect the project to the original two-pipeline design:
