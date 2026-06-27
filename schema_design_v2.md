@@ -113,6 +113,16 @@ Current GDPVal prompt-only validation:
   - the audit recognized profiles, slides, visualizations, and risk-assessment-question construction as broad deliverable or task-level risks
   - this is report-only; no `SkillRegistryEntry` schema migration, deletion, inactive flag, or automatic quarantine has been introduced
   - audit decisions are deterministic governance hints for future sampling, not ground-truth labels
+- the first SourceCollector MVP now exists:
+  - module: `v3_source_collector.py`
+  - web collection CLI: `Test/run_v3_stirrup_source_collector.py`
+  - connector CLI: `Test/run_v3_collected_sources_to_skill_package.py`
+  - default env source: `E:\THU\2026Spring\SRT\rw-task\.env`
+  - SourceCollector emits `RawSource` records and raw text artifacts, not skills
+  - collected `RawSource` records can be normalized into a `SkillExtractionPromptPackage`
+  - formal web collection requires `--allow-web-collection`; dry-run prompt generation works offline
+  - no formal network/E2B smoke has been run yet in this environment
+  - this preserves the boundary between source gathering and semantic skill extraction
 
 ## Object 1: SemanticSkill
 

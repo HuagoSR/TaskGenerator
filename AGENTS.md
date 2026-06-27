@@ -132,6 +132,9 @@ Recommended next implementation steps:
 Current Pipeline A starting files:
 
 - `v3_source_schema.py`: source-to-skill schema objects
+- `v3_source_collector.py`: Stirrup/E2B-backed SourceCollector contracts, prompt builder, manifest validator, and RawSource writer
+- `Test/run_v3_stirrup_source_collector.py`: CLI for collecting public web source materials; requires explicit `--allow-web-collection`
+- `Test/run_v3_collected_sources_to_skill_package.py`: connector CLI for turning collected `RawSource` records into normalized sources and a skill-extraction prompt package
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
 - `v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
@@ -215,6 +218,13 @@ Current Pipeline A status:
   - the audit recognized profiles, slides, visualizations, and risk-assessment questions as broad/task-level registry risks
   - the audit does not delete, rewrite, deactivate, or quarantine registry entries
   - audit decisions are deterministic governance hints, not ground-truth skill quality labels
+- SourceCollector MVP now exists:
+  - default env path: `E:\THU\2026Spring\SRT\rw-task\.env`
+  - dry-run prompt command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_stirrup_source_collector.py --dry-run-prompt --output-dir <output_dir>`
+  - formal web collection command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_stirrup_source_collector.py --topic "audit evidence reconciliation and internal control testing" --limit 3 --allow-web-collection --output-dir <output_dir>`
+  - connector command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_collected_sources_to_skill_package.py --collection-dir <output_dir>`
+  - collector output is source material only; it must not write skills, tasks, rubrics, or registry entries
+  - formal web collection has not been run in this environment; if E2B/Stirrup/Brave/API/network access fails, stop and report rather than using a mock substitute
 
 ## GoldenRun Direction
 

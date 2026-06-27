@@ -455,6 +455,19 @@ Current implementation status:
   - `ExtractedSkillCandidate`
   - `SkillRegistryEntry`
   - `SkillExtractionPromptPackage`
+- `v3_source_collector.py` implements the first SourceCollector contract layer:
+  - `SourceCollectionRequest`
+  - `CollectedSourceRecord`
+  - `SourceCollectionReport`
+  - source collection prompt builder
+  - manifest validator
+  - RawSource writer
+- `Test/run_v3_stirrup_source_collector.py` provides a Stirrup/E2B-backed collection CLI:
+  - defaults to `E:\THU\2026Spring\SRT\rw-task\.env`
+  - requires explicit `--allow-web-collection` for real web access
+  - supports `--dry-run-prompt` for local prompt/request inspection
+  - uses the `rw-task` Stirrup/E2B environment rather than a separate key path
+- `Test/run_v3_collected_sources_to_skill_package.py` connects collected `RawSource` records to the existing normalization and skill prompt package flow
 - `Test/run_v3_local_source_to_skill.py` provides a local no-network prototype:
   - reads `.txt` and `.md` files
   - creates `RawSource` records
@@ -506,7 +519,9 @@ Current implementation status:
 
 What is intentionally not done yet:
 
-- no web search collector
+- no successful formal web collection smoke has been run yet
+- SourceCollector does not extract skills, generate tasks, write rubrics, or update the registry
+- no large-scale web crawling or source quality scoring
 - direct DeepSeek smoke testing has passed on the public synthetic package
 - GDPVal prompt-only extraction has passed on 5 `Accountants and Auditors` prompts:
   - provider: DeepSeek official `deepseek-v4-flash`
@@ -605,9 +620,11 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- use the new non-destructive registry audit report before expanding coverage further
+- run a controlled SourceCollector smoke test on 3 public finance/audit/compliance sources
+- inspect collected raw text manually before letting it enter LLM skill extraction
+- normalize the collected `RawSource` records into a skill-extraction prompt package
+- only after source quality is acceptable, run LLM extraction/review/registry update as a separate step
 - keep stale/quarantine handling report-only unless a later schema migration explicitly adds registry status fields
-- inspect and decompose the 6 current unmatched entries before allowing them to influence Pipeline B sampling
 - keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
 
 This will reconnect the project to the original two-pipeline design:
