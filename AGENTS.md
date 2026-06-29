@@ -136,6 +136,8 @@ Current Pipeline A starting files:
 - `v3_source_search_tools.py`: Serper-backed Stirrup-compatible web search/fetch tool provider
 - `Test/run_v3_stirrup_source_collector.py`: CLI for collecting public web source materials; requires explicit `--allow-web-collection`
 - `Test/run_v3_collected_sources_to_skill_package.py`: connector CLI for turning collected `RawSource` records into normalized sources and a skill-extraction prompt package
+- `Test/run_v3_web_source_pipeline_a.py`: one-command runner for existing collected web sources -> normalization -> LLM extraction -> review -> persistent registry update
+- `Test/run_v3_web_source_pipeline_a_batch.py`: batch runner for multiple web-source topics or existing collection dirs -> collection/reuse -> Pipeline A -> aggregate quality report
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
 - `v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
@@ -151,9 +153,12 @@ Current Pipeline A starting files:
 - `Test/run_v3_skill_registry_update.py`: CLI for updating the persistent registry at `SkillRegistry/v3_skill_registry.json`
 - `v3_skill_registry_audit.py`: non-destructive deterministic audit helper for stale or suspicious persistent registry entries
 - `Test/run_v3_skill_registry_audit.py`: CLI for writing `SkillRegistry/v3_skill_registry_audit_report.json` without changing the registry
+- `v3_registry_sampling_readiness.py`: report-only sampler readiness assessor that combines registry, audit, and reviewer calibration signals
+- `Test/run_v3_registry_sampling_readiness.py`: CLI for writing `SkillRegistry/v3_registry_sampling_readiness_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
+- `SkillRegistry/v3_registry_sampling_readiness_report.json`: latest non-destructive pre-sampling readiness report for future Pipeline B
 - `SkillRegistry/v3_pipeline_a_batch_report.json`: latest aggregate Pipeline A batch report
 - `Test/v2_outputs/v3_source_to_skill_demo`: smoke-test output from the local prototype
 
@@ -187,8 +192,8 @@ Current Pipeline A status:
   - strict reviewer accepted 10 and revised 2
   - atomic registry entry_count is 10
 - current persistent registry result:
-  - sources: `Accountants and Auditors`, `Financial Managers`, `Financial and Investment Analysts`, `Compliance Officers`
-  - persistent registry entry_count is 44
+  - sources: GDPVal prompt-only batches plus Serper web-source finance/audit/compliance batches
+  - persistent registry entry_count is 66
   - revised candidates `Build Structured Profit and Loss Report from Multiple Sources` and `Map Tax Documents to IRS Form Fields` are not present
 - current Pipeline A batch result:
   - batch runner: `Test/run_v3_gdpval_pipeline_a_batch.py`
@@ -205,7 +210,6 @@ Current Pipeline A status:
   - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_skill_registry_update.py --candidates Test\v3_gdpval_prompt_sources\accountants_10\deepseek_review_atomic_llm\accepted_skill_candidates.json`
 - manual batch runner command:
   - `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_gdpval_pipeline_a_batch.py --occupation "Financial Managers" --occupation "Financial and Investment Analysts" --occupation "Compliance Officers" --limit 5 --provider deepseek --deepseek-model deepseek-v4-flash --allow-external-upload`
-- no web collector yet
 - external LLM tests should only use public or explicitly user-cleared source packages
 - no embedding or LLM-based registry deduplication yet
 - no registry quarantine/inactive mechanism yet; stale-entry handling is report-first and non-destructive
@@ -229,6 +233,35 @@ Current Pipeline A status:
   - collector output is source material only; it must not write skills, tasks, rubrics, or registry entries
   - Serper smoke result: `Test\v3_web_source_collections\audit_smoke_serper_02` collected 3 accepted RawSources and normalized them into `normalized_package\skill_extraction_prompt_package.json`
   - if E2B/Stirrup/Serper/API/network access fails, stop and report rather than using a mock substitute
+- web-source Pipeline A runner now exists:
+  - dry-run/source-quality command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_web_source_pipeline_a.py --collection-dir Test\v3_web_source_collections\audit_smoke_serper_02 --dry-run`
+  - formal command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_web_source_pipeline_a.py --collection-dir Test\v3_web_source_collections\audit_smoke_serper_02 --provider deepseek --deepseek-model deepseek-v4-flash --allow-external-upload`
+  - output: `<collection_dir>\pipeline_a_run\source_quality_report.json`, `extraction\extracted_skill_candidates.json`, `review\accepted_skill_candidates.json`, `registry_update\registry_update_report.json`, and `web_source_pipeline_a_report.json`
+  - current web-source smoke result: source quality `pass`, 5 candidates, 5 accepted, registry grew from 44 to 49 entries
+  - idempotency check with `--reuse-existing` produced 0 new entries and 5 merged candidates, leaving registry entry_count at 49
+  - runner consumes existing collected sources and does not call Serper/E2B again
+- web-source Pipeline A batch runner now exists:
+  - formal command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_web_source_pipeline_a_batch.py --allow-web-collection --allow-external-upload`
+  - idempotency command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_web_source_pipeline_a_batch.py --allow-web-collection --allow-external-upload --reuse-existing`
+  - default topics: `audit evidence reconciliation`, `internal control testing`, `compliance documentation review`
+  - aggregate report: `SkillRegistry/v3_web_source_pipeline_a_batch_report.json`
+  - latest formal batch collected 9 sources across 3 topics, source quality `pass` for all 3 topic batches
+  - original formal batch produced 17 candidates, 17 accepted, 0 revise, 0 reject, and raised persistent registry entry_count to 66
+  - reviewer calibration now marks the same 17 candidates as 8 accept / 9 revise, mainly for broad documentation deliverables and broad control-assessment skills
+  - idempotency rerun now reports 0 new entries, 8 merged candidates, and registry entry_count remains 66
+  - batch report now records `run_mode`, `registry_entry_count_before`, `registry_entry_count_after`, and `registry_entry_delta_this_run`
+  - `idempotency_no_growth_expected` replaces the earlier misleading `registry_no_growth` warning in reuse runs
+  - reviewer calibration report: `SkillRegistry/v3_skill_reviewer_calibration_report.json`
+  - web-source governance audit report: `SkillRegistry/v3_web_source_registry_audit_report.json`
+  - governance remains report-only; no registry entries are deleted, deactivated, or quarantined
+- registry sampling readiness now exists as a bridge to future Pipeline B:
+  - command: `D:\miniconda3\envs\real-world-task\python.exe Test\run_v3_registry_sampling_readiness.py`
+  - default output: `SkillRegistry/v3_registry_sampling_readiness_report.json`
+  - it combines `SkillRegistry/v3_skill_registry.json`, registry audit reports, and reviewer calibration reports
+  - current result on 66 entries: 30 `sample_ready`, 7 `sample_with_caution`, 29 `exclude_until_revised`
+  - `single_source_support` lowers sampling weight but does not by itself block sampling
+  - `exclude_until_revised` entries should not be consumed by future Pipeline B unless manually decomposed or revised
+  - readiness decisions are deterministic sampling hints, not schema status fields and not quality truth
 
 ## GoldenRun Direction
 

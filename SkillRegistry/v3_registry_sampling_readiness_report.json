@@ -1,0 +1,2309 @@
+{
+  "readiness_version": "v3.registry_sampling_readiness.1",
+  "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
+  "audit_report_paths": [
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry_audit_report.json",
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_web_source_registry_audit_report.json"
+  ],
+  "calibration_report_paths": [
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_reviewer_calibration_report.json"
+  ],
+  "registry_entry_count": 66,
+  "readiness_decision_counts": {
+    "exclude_until_revised": 29,
+    "sample_ready": 30,
+    "sample_with_caution": 7
+  },
+  "reason_code_counts": {
+    "audit_manual_review_needed": 15,
+    "audit_quarantine_recommended": 6,
+    "audit_revise_recommended": 2,
+    "broad_control_assessment": 5,
+    "broad_deliverable_or_task_level": 4,
+    "broad_documentation_deliverable": 7,
+    "calibration_revise": 9,
+    "single_source_support": 66,
+    "source_collection_leakage": 1,
+    "stale_due_to_reviewer_calibration": 6,
+    "task_level_penalty_reduced_by_atomic_contract": 7,
+    "visual_or_presentation_deliverable": 3,
+    "weak_action_granularity": 3,
+    "weak_atomic_action": 16,
+    "web_source_batch_governance_attention": 17
+  },
+  "domain_readiness_counts": {
+    "accounting": {
+      "exclude_until_revised": 2,
+      "sample_ready": 3
+    },
+    "analysis": {
+      "sample_ready": 1
+    },
+    "audit": {
+      "exclude_until_revised": 12,
+      "sample_ready": 7,
+      "sample_with_caution": 7
+    },
+    "commodities": {
+      "exclude_until_revised": 1
+    },
+    "communication": {
+      "exclude_until_revised": 1
+    },
+    "compensation": {
+      "sample_ready": 1
+    },
+    "compliance": {
+      "exclude_until_revised": 14,
+      "sample_ready": 6,
+      "sample_with_caution": 6
+    },
+    "data_analysis": {
+      "exclude_until_revised": 1
+    },
+    "data_retrieval": {
+      "exclude_until_revised": 1
+    },
+    "finance": {
+      "exclude_until_revised": 28,
+      "sample_ready": 27,
+      "sample_with_caution": 7
+    },
+    "fintech": {
+      "sample_ready": 1
+    },
+    "government": {
+      "exclude_until_revised": 4,
+      "sample_ready": 3
+    },
+    "grants": {
+      "exclude_until_revised": 1,
+      "sample_ready": 2
+    },
+    "hr": {
+      "sample_ready": 4
+    },
+    "investigations": {
+      "exclude_until_revised": 1
+    },
+    "investment": {
+      "sample_ready": 1
+    },
+    "legal": {
+      "sample_ready": 1
+    },
+    "m_a": {
+      "exclude_until_revised": 1
+    },
+    "macro": {
+      "exclude_until_revised": 1
+    },
+    "operations": {
+      "sample_ready": 1
+    },
+    "payroll": {
+      "sample_ready": 1
+    },
+    "portfolio_management": {
+      "sample_ready": 1
+    },
+    "quantitative_finance": {
+      "exclude_until_revised": 2
+    },
+    "reporting": {
+      "exclude_until_revised": 1,
+      "sample_ready": 2
+    },
+    "ride_hailing": {
+      "exclude_until_revised": 1
+    },
+    "risk_management": {
+      "sample_ready": 2
+    },
+    "strategy": {
+      "exclude_until_revised": 1,
+      "sample_ready": 1
+    },
+    "tax": {
+      "sample_ready": 2
+    },
+    "trading": {
+      "sample_ready": 1
+    },
+    "valuation": {
+      "sample_ready": 2
+    },
+    "venture_capital": {
+      "exclude_until_revised": 1
+    }
+  },
+  "capability_readiness_counts": {
+    "accountability": {
+      "sample_with_caution": 1
+    },
+    "analysis": {
+      "exclude_until_revised": 1,
+      "sample_ready": 1
+    },
+    "assertion_verification": {
+      "exclude_until_revised": 1
+    },
+    "assessment": {
+      "exclude_until_revised": 1
+    },
+    "classification": {
+      "sample_with_caution": 1
+    },
+    "compliance": {
+      "exclude_until_revised": 6,
+      "sample_ready": 8
+    },
+    "compliance_testing": {
+      "exclude_until_revised": 1
+    },
+    "compliance_verification": {
+      "exclude_until_revised": 1
+    },
+    "computation": {
+      "sample_ready": 4
+    },
+    "control_evaluation": {
+      "exclude_until_revised": 2
+    },
+    "cross_referencing": {
+      "exclude_until_revised": 1
+    },
+    "design": {
+      "sample_ready": 1
+    },
+    "documentation": {
+      "exclude_until_revised": 1
+    },
+    "documentation_review": {
+      "exclude_until_revised": 1,
+      "sample_with_caution": 1
+    },
+    "evaluation": {
+      "exclude_until_revised": 2,
+      "sample_with_caution": 2
+    },
+    "evidence_evaluation": {
+      "exclude_until_revised": 2,
+      "sample_ready": 1
+    },
+    "exception_management": {
+      "sample_ready": 1
+    },
+    "fact": {
+      "exclude_until_revised": 11,
+      "sample_ready": 13,
+      "sample_with_caution": 1
+    },
+    "frameworks": {
+      "exclude_until_revised": 1
+    },
+    "issue_management": {
+      "sample_with_caution": 1
+    },
+    "judgment": {
+      "exclude_until_revised": 1,
+      "sample_ready": 1
+    },
+    "planning": {
+      "sample_ready": 2
+    },
+    "reasoning": {
+      "exclude_until_revised": 13,
+      "sample_ready": 18
+    },
+    "reconciliation": {
+      "sample_ready": 1
+    },
+    "remediation_planning": {
+      "sample_with_caution": 1
+    },
+    "risk_assessment": {
+      "sample_with_caution": 2
+    },
+    "robustness": {
+      "exclude_until_revised": 5,
+      "sample_ready": 4,
+      "sample_with_caution": 1
+    },
+    "sampling": {
+      "sample_ready": 1
+    },
+    "scoping": {
+      "sample_with_caution": 1
+    },
+    "statistical_analysis": {
+      "sample_ready": 1
+    },
+    "testing": {
+      "sample_with_caution": 2
+    }
+  },
+  "records": [
+    {
+      "skill_id": "skill_e08be4157d",
+      "canonical_name": "Calculate Audit Sample Size",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_001",
+        "source_candidate_7a53e620ce"
+      ]
+    },
+    {
+      "skill_id": "skill_5332cf7fe8",
+      "canonical_name": "Compute Quarter-on-Quarter Variance",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_002",
+        "source_candidate_eec59cb44b"
+      ]
+    },
+    {
+      "skill_id": "skill_9e84beae17",
+      "canonical_name": "Select Audit Sample with Criteria Coverage",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_003",
+        "source_candidate_45d2f183a9"
+      ]
+    },
+    {
+      "skill_id": "skill_e1c4dedc31",
+      "canonical_name": "Apply Foreign Tax Withholding to Revenue",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "tax"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_005",
+        "source_candidate_abbc4e169e"
+      ]
+    },
+    {
+      "skill_id": "skill_ce9d7b7f1c",
+      "canonical_name": "Convert Foreign Currency to USD for Reporting",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "tax"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_006",
+        "source_candidate_65a6713576"
+      ]
+    },
+    {
+      "skill_id": "skill_2d59452de5",
+      "canonical_name": "Amortize Prepaid Expenses Over Period",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_007",
+        "source_candidate_591a3c25a9"
+      ]
+    },
+    {
+      "skill_id": "skill_cd63ad49e2",
+      "canonical_name": "Summarize Prepaid Account Balances",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_008",
+        "source_candidate_ccf473015c"
+      ]
+    },
+    {
+      "skill_id": "skill_9149d84703",
+      "canonical_name": "Reconcile Source Totals to Report Line Items",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "accounting",
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_010",
+        "source_candidate_da8d1b62e9"
+      ]
+    },
+    {
+      "skill_id": "skill_03116f26d2",
+      "canonical_name": "Consolidate Period Financial Data from Multiple Sources",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_011",
+        "source_candidate_eb55605afc"
+      ]
+    },
+    {
+      "skill_id": "skill_61eca3e9f0",
+      "canonical_name": "Compute Accrual Entries from Supporting Schedules",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "accounting",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 2,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "skill_candidate_012",
+        "source_candidate_0997681ef2"
+      ]
+    },
+    {
+      "skill_id": "skill_fc94d146aa",
+      "canonical_name": "Competitive Market Position Assessment",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "single_source_support",
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_sampling_action": "Exclude from Pipeline B sampling until manually revised.",
+      "domain_tags": [
+        "finance",
+        "ride_hailing",
+        "strategy"
+      ],
+      "capability_tags": [
+        "analysis",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_9412ee2f07"
+      ]
+    },
+    {
+      "skill_id": "skill_0f1a49e2b3",
+      "canonical_name": "Strategic Opportunity and Imperative Articulation",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "strategy"
+      ],
+      "capability_tags": [
+        "planning",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_295b40b0d4"
+      ]
+    },
+    {
+      "skill_id": "skill_62c4a25083",
+      "canonical_name": "Branch or Segment Data Aggregation with Selection",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_6e10885dcd"
+      ]
+    },
+    {
+      "skill_id": "skill_c9019cb8f7",
+      "canonical_name": "Compensation Expense Calculation by Category",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "compensation",
+        "finance",
+        "hr"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_47ca5114b5"
+      ]
+    },
+    {
+      "skill_id": "skill_57e71afb9c",
+      "canonical_name": "Quarterly Period Aggregation and Reporting",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "low"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_a0aecd9f0a"
+      ]
+    },
+    {
+      "skill_id": "skill_9a99bc2a48",
+      "canonical_name": "Scenario Analysis with Input Parameter Modeling",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "analysis",
+        "finance"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_ee0f10f094"
+      ]
+    },
+    {
+      "skill_id": "skill_d1c90affe1",
+      "canonical_name": "Capital Investment Evaluation with Directional NPV/IRR",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "investment"
+      ],
+      "capability_tags": [
+        "analysis",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_fb35d1aea0"
+      ]
+    },
+    {
+      "skill_id": "skill_246ef1ff44",
+      "canonical_name": "Financial and Operational Risk Identification",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "risk_management"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_8d23bfd4c5"
+      ]
+    },
+    {
+      "skill_id": "skill_a7e408f86d",
+      "canonical_name": "Risk Mitigation Strategy Formulation",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "risk_management"
+      ],
+      "capability_tags": [
+        "planning",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_5d47d8818d"
+      ]
+    },
+    {
+      "skill_id": "skill_e52ac368e2",
+      "canonical_name": "Payroll Calculation by Contract Categories",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "hr",
+        "payroll"
+      ],
+      "capability_tags": [
+        "computation",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_faa3e592a0"
+      ]
+    },
+    {
+      "skill_id": "skill_42c3f0f6b3",
+      "canonical_name": "Collective Bargaining Agreement Compliance Validation",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "compliance",
+        "hr",
+        "legal"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_50f628b654"
+      ]
+    },
+    {
+      "skill_id": "skill_74b7229e70",
+      "canonical_name": "Flexible Roster and Production Schedule Configuration",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "hr",
+        "operations"
+      ],
+      "capability_tags": [
+        "design",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_78fe06cb9f"
+      ]
+    },
+    {
+      "skill_id": "skill_b655abc3af",
+      "canonical_name": "Retrieve and normalize financial data from open web",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "single_source_support",
+        "source_collection_leakage",
+        "stale_due_to_reviewer_calibration"
+      ],
+      "suggested_sampling_action": "Do not sample as a task skill; reframe as source collection or evidence-normalization infrastructure.",
+      "domain_tags": [
+        "data_retrieval",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_extraction"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_12072f6a65"
+      ]
+    },
+    {
+      "skill_id": "skill_66264f3e45",
+      "canonical_name": "Compute LTM and NTM PE multiples",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "valuation"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_aggregation"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_4bf5b9abf1"
+      ]
+    },
+    {
+      "skill_id": "skill_6980777c59",
+      "canonical_name": "Aggregate weighted metrics by hierarchical sector group",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "data_analysis",
+        "finance"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hierarchical_computation"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_43bc920f7c"
+      ]
+    },
+    {
+      "skill_id": "skill_253fe8c255",
+      "canonical_name": "Compile company profiles for private targets",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "broad_deliverable_or_task_level",
+        "single_source_support",
+        "stale_due_to_reviewer_calibration",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "finance",
+        "m_a"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_discovery"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_e357bbe823"
+      ]
+    },
+    {
+      "skill_id": "skill_c3231b0442",
+      "canonical_name": "Perform comparable company analysis on Revenue, EBITDA, PE multiples",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "valuation"
+      ],
+      "capability_tags": [
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "multiples_standardization"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_b9e4cd6c4e"
+      ]
+    },
+    {
+      "skill_id": "skill_ca217c991a",
+      "canonical_name": "Structure financial analysis into presentation slides",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "broad_deliverable_or_task_level",
+        "single_source_support",
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "finance",
+        "reporting"
+      ],
+      "capability_tags": [
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "information_design"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_7feaa39055"
+      ]
+    },
+    {
+      "skill_id": "skill_6e2a21dff6",
+      "canonical_name": "Summarize macroeconomic environment for a target region",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "finance",
+        "macro"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_synthesis"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_c2642930c5"
+      ]
+    },
+    {
+      "skill_id": "skill_4572e6f40e",
+      "canonical_name": "Analyze venture capital and technology market landscape in a region",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "finance",
+        "venture_capital"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_aggregation"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_c780aedbf4"
+      ]
+    },
+    {
+      "skill_id": "skill_f2aecbbcc2",
+      "canonical_name": "Evaluate fintech landscape for investment opportunities",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "fintech"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "sector_analysis"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_cb4a536478"
+      ]
+    },
+    {
+      "skill_id": "skill_aab7a832fa",
+      "canonical_name": "Implement multiple numerical pricing methods for American options",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "finance",
+        "quantitative_finance"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "algorithm_implementation"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_674c987a25"
+      ]
+    },
+    {
+      "skill_id": "skill_2d2c96785c",
+      "canonical_name": "Benchmark computational performance of pricing algorithms",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "finance",
+        "quantitative_finance"
+      ],
+      "capability_tags": [
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "performance_measurement"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_71057103ff"
+      ]
+    },
+    {
+      "skill_id": "skill_bf9bd6091a",
+      "canonical_name": "Generate convergence and pricing comparison visualizations",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "broad_deliverable_or_task_level",
+        "single_source_support",
+        "stale_due_to_reviewer_calibration",
+        "visual_or_presentation_deliverable"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "communication",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact"
+      ],
+      "difficulty_tags": [
+        "data_visualization"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_9d3b237405"
+      ]
+    },
+    {
+      "skill_id": "skill_59ae7c335f",
+      "canonical_name": "Analyze commodity market fundamentals (oil and gas)",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "commodities",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "data_analysis"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_a1a273b358"
+      ]
+    },
+    {
+      "skill_id": "skill_7df7904391",
+      "canonical_name": "Design portfolio optimization under constraints",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "portfolio_management"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "constrained_optimization"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_8fefa2ecd0"
+      ]
+    },
+    {
+      "skill_id": "skill_20f48b3a32",
+      "canonical_name": "Propose trading and sales strategy based on market analysis",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "trading"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "strategy_synthesis"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_465e0541eb"
+      ]
+    },
+    {
+      "skill_id": "skill_d8eef0e5be",
+      "canonical_name": "Construct Risk Assessment Questions for Grant Applicant Financial Management and Internal Controls",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_quarantine_recommended",
+        "broad_deliverable_or_task_level",
+        "single_source_support",
+        "stale_due_to_reviewer_calibration"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "compliance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_0d153c117d"
+      ]
+    },
+    {
+      "skill_id": "skill_bbc59bf86a",
+      "canonical_name": "Map Statutory Requirements to Binary Compliance Test Questions",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_0342f52b7d"
+      ]
+    },
+    {
+      "skill_id": "skill_a986e22147",
+      "canonical_name": "Write Exception Statements for Regulatory Non-Compliance Findings",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "high"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_170f20d99f"
+      ]
+    },
+    {
+      "skill_id": "skill_f19f7dcd54",
+      "canonical_name": "Compute Expenditure-to-Time Elapsed Ratio for Grant Spending Analysis",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "finance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "low"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_f476e6d890"
+      ]
+    },
+    {
+      "skill_id": "skill_c5bc26514c",
+      "canonical_name": "Identify Fast- and Slow-Spending Patterns as Compliance Risk Indicators",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "compliance",
+        "government",
+        "grants"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_03261f748c"
+      ]
+    },
+    {
+      "skill_id": "skill_d571f8505c",
+      "canonical_name": "Analyze Transaction Networks for Money Laundering Connections",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government",
+        "investigations"
+      ],
+      "capability_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "high"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_8e23e9e11a"
+      ]
+    },
+    {
+      "skill_id": "skill_434f32b3ba",
+      "canonical_name": "Correlate Beneficial Ownership with Transaction Activity",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "compliance",
+        "finance",
+        "government"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "medium"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_6ff4872d10"
+      ]
+    },
+    {
+      "skill_id": "skill_bb94a7eb4f",
+      "canonical_name": "Reconcile Audit Evidence from Multiple Sources",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evidence_evaluation",
+        "reconciliation"
+      ],
+      "difficulty_tags": [
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_d25bab170d"
+      ]
+    },
+    {
+      "skill_id": "skill_ee4304ae3f",
+      "canonical_name": "Evaluate Reliability of Audit Evidence",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evidence_evaluation",
+        "judgment"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_13c1b76d0e"
+      ]
+    },
+    {
+      "skill_id": "skill_d7ee699ef7",
+      "canonical_name": "Apply Sampling in Tests of Controls",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "sampling",
+        "statistical_analysis"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_5ed32d4e99"
+      ]
+    },
+    {
+      "skill_id": "skill_21b64a3c34",
+      "canonical_name": "Handle Exceptions in Control Testing",
+      "readiness_decision": "sample_ready",
+      "sampling_weight": 0.8,
+      "reason_codes": [
+        "single_source_support"
+      ],
+      "suggested_sampling_action": "Eligible for default Pipeline B sampling with provenance visible; prefer higher support when available.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "exception_management",
+        "judgment"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_f83ed31256"
+      ]
+    },
+    {
+      "skill_id": "skill_0ff735355b",
+      "canonical_name": "Corroborate Audit Evidence from Different Procedures",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "single_source_support",
+        "weak_atomic_action"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "cross_referencing",
+        "evidence_evaluation"
+      ],
+      "difficulty_tags": [
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 0,
+      "calibration_signal_count": 0,
+      "source_candidate_ids": [
+        "source_candidate_39552a2da8"
+      ]
+    },
+    {
+      "skill_id": "skill_d472618e0c",
+      "canonical_name": "Validate audit evidence sufficiency and appropriateness",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "moderate"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_bc96015747"
+      ]
+    },
+    {
+      "skill_id": "skill_d2d18bb874",
+      "canonical_name": "Document audit procedures and rationale",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_3cc61b7227"
+      ]
+    },
+    {
+      "skill_id": "skill_85c5fb351d",
+      "canonical_name": "Reperform reconciliation calculations",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_2556b54727"
+      ]
+    },
+    {
+      "skill_id": "skill_6704e920eb",
+      "canonical_name": "Trace reconciling items to supporting documents",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "moderate"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_9899b597bf"
+      ]
+    },
+    {
+      "skill_id": "skill_f34ec2ad05",
+      "canonical_name": "Investigate reconciling items for exceptions",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_ce1bef0cc9"
+      ]
+    },
+    {
+      "skill_id": "skill_7328e98bc1",
+      "canonical_name": "Assess Material Weakness in Internal Control",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_control_assessment",
+        "calibration_revise",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "assessment",
+        "evaluation"
+      ],
+      "difficulty_tags": [
+        "expert"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_8a394bcf5f"
+      ]
+    },
+    {
+      "skill_id": "skill_89fc50d284",
+      "canonical_name": "Test Operating Effectiveness of Internal Controls",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evaluation",
+        "testing"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_68e32e39fe"
+      ]
+    },
+    {
+      "skill_id": "skill_a9a044020b",
+      "canonical_name": "Evaluate Control Deficiencies and Classify Severity",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "classification",
+        "evaluation"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_440f185596"
+      ]
+    },
+    {
+      "skill_id": "skill_8ed7ad7e51",
+      "canonical_name": "Apply COSO Components to Evaluate Control Environment",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_control_assessment",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evaluation",
+        "frameworks"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_205e2108f3"
+      ]
+    },
+    {
+      "skill_id": "skill_5af7ad7112",
+      "canonical_name": "Select Controls for Testing Based on Risk Assessment",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "risk_assessment",
+        "testing"
+      ],
+      "difficulty_tags": [
+        "advanced"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_9def1a8d5b"
+      ]
+    },
+    {
+      "skill_id": "skill_fa2fe698df",
+      "canonical_name": "Document Control Testing Procedures and Results",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_control_assessment",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "weak_action_granularity",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "documentation"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_9701a88f6f"
+      ]
+    },
+    {
+      "skill_id": "skill_718105b79d",
+      "canonical_name": "Verify audit documentation completeness and clarity",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_revise_recommended",
+        "broad_control_assessment",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "weak_action_granularity",
+        "weak_atomic_action",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance_verification",
+        "documentation_review"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_e8c0dcc5a2"
+      ]
+    },
+    {
+      "skill_id": "skill_7755b699b3",
+      "canonical_name": "Assess control design and operating effectiveness",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "broad_control_assessment",
+        "broad_documentation_deliverable",
+        "calibration_revise",
+        "single_source_support",
+        "task_level_penalty_reduced_by_atomic_contract",
+        "weak_action_granularity",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until decomposed into smaller semantic input-output skills.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance_testing",
+        "control_evaluation"
+      ],
+      "difficulty_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_e1ac31457e"
+      ]
+    },
+    {
+      "skill_id": "skill_9bbc749c9b",
+      "canonical_name": "Scope internal controls for compliance",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "risk_assessment",
+        "scoping"
+      ],
+      "difficulty_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_490c9a27c0"
+      ]
+    },
+    {
+      "skill_id": "skill_8713180837",
+      "canonical_name": "Validate control ownership assignment",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "accountability",
+        "documentation_review"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "fact"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_8c59fb5c33"
+      ]
+    },
+    {
+      "skill_id": "skill_a1930957ca",
+      "canonical_name": "Identify and document remediation plans for control gaps",
+      "readiness_decision": "sample_with_caution",
+      "sampling_weight": 0.35,
+      "reason_codes": [
+        "audit_manual_review_needed",
+        "single_source_support",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Downweight and inspect before using in Pipeline B because this came from a calibrated web-source batch.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "issue_management",
+        "remediation_planning"
+      ],
+      "difficulty_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "evidence_ref_count": 2,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_33685b812b"
+      ]
+    },
+    {
+      "skill_id": "skill_b3d89d2bfb",
+      "canonical_name": "Assess alignment of control objectives with financial statement assertions",
+      "readiness_decision": "exclude_until_revised",
+      "sampling_weight": 0.0,
+      "reason_codes": [
+        "audit_revise_recommended",
+        "single_source_support",
+        "weak_atomic_action",
+        "web_source_batch_governance_attention"
+      ],
+      "suggested_sampling_action": "Do not sample until renamed or decomposed into a single reusable action.",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "assertion_verification",
+        "control_evaluation"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "evidence_ref_count": 1,
+      "source_candidate_id_count": 1,
+      "usage_count": 1,
+      "audit_signal_count": 1,
+      "calibration_signal_count": 1,
+      "source_candidate_ids": [
+        "source_candidate_cc27e6b42b"
+      ]
+    }
+  ],
+  "notes": [
+    "This report is non-destructive and does not modify SkillRegistryEntry records.",
+    "Decisions are sampling governance hints for future Pipeline B, not ground-truth skill quality labels.",
+    "Pipeline B should default to sample_ready entries, downweight sample_with_caution entries, and avoid exclude_until_revised entries."
+  ]
+}

@@ -473,6 +473,18 @@ Current implementation status:
   - supports `--search-backend serper|brave`
   - uses the `rw-task` Stirrup/E2B environment rather than a separate key path
 - `Test/run_v3_collected_sources_to_skill_package.py` connects collected `RawSource` records to the existing normalization and skill prompt package flow
+- `Test/run_v3_web_source_pipeline_a.py` runs Pipeline A on an existing collected web-source directory:
+  - consumes collected `RawSource` records and does not call Serper/E2B again
+  - writes source quality diagnostics before LLM extraction
+  - normalizes the collection into a `SkillExtractionPromptPackage`
+  - calls external LLM extraction only with explicit `--allow-external-upload`
+  - runs deterministic review and updates the persistent registry from accepted candidates only
+  - emits `web_source_pipeline_a_report.json`
+- `Test/run_v3_web_source_pipeline_a_batch.py` runs Pipeline A across multiple web-source topics or existing collection directories:
+  - calls SourceCollector for new topics
+  - reuses existing collection and extraction outputs with `--reuse-existing`
+  - writes an aggregate source-quality and registry-growth report
+  - keeps collection, extraction, review, and registry update as separate per-topic artifacts
 - `Test/run_v3_local_source_to_skill.py` provides a local no-network prototype:
   - reads `.txt` and `.md` files
   - creates `RawSource` records
@@ -525,7 +537,8 @@ Current implementation status:
 What is intentionally not done yet:
 
 - SourceCollector does not extract skills, generate tasks, write rubrics, or update the registry
-- no large-scale web crawling or source quality scoring
+- no large-scale web crawling
+- source quality diagnostics are lightweight checks, not a source-quality truth model
 - direct DeepSeek smoke testing has passed on the public synthetic package
 - GDPVal prompt-only extraction has passed on 5 `Accountants and Auditors` prompts:
   - provider: DeepSeek official `deepseek-v4-flash`
@@ -545,8 +558,8 @@ What is intentionally not done yet:
 - accepted/rejected skill review loop exists and feeds a persistent unified registry
 - current persistent registry status:
   - path: `SkillRegistry/v3_skill_registry.json`
-  - sources: accepted candidates from `Accountants and Auditors`, `Financial Managers`, `Financial and Investment Analysts`, and `Compliance Officers`
-  - entry_count: 44
+  - sources: accepted candidates from GDPVal prompt-only batches and Serper web-source finance/audit/compliance batches
+  - entry_count: 66
   - repeated update with the same batch outputs is idempotent for entry count and source candidate IDs
   - revised candidates do not enter the persistent registry
 - current GDPVal Pipeline A batch result:
@@ -578,8 +591,38 @@ What is intentionally not done yet:
   - result: 3 requested sources, 3 collected sources, 3 accepted RawSources, `search_backend=serper`
   - connector produced `normalized_package/skill_extraction_prompt_package.json`
   - first failed Serper run exposed a Windows console encoding issue and an overly loose collection prompt; both were tightened before the successful run
+- current web-source Pipeline A smoke status:
+  - runner path: `Test/run_v3_web_source_pipeline_a.py`
+  - input collection: `Test/v3_web_source_collections/audit_smoke_serper_02`
+  - source quality status: `pass`
+  - DeepSeek official `deepseek-v4-flash` produced 5 candidates
+  - deterministic reviewer accepted 5, revised 0, rejected 0
+  - persistent registry update added 5 new entries and raised entry_count from 44 to 49
+  - rerunning with `--reuse-existing` produced 0 new entries and 5 merged candidates, keeping entry_count at 49
+- current web-source Pipeline A batch status:
+  - runner path: `Test/run_v3_web_source_pipeline_a_batch.py`
+  - aggregate report path: `SkillRegistry/v3_web_source_pipeline_a_batch_report.json`
+  - default topics: `audit evidence reconciliation`, `internal control testing`, `compliance documentation review`
+  - formal batch collected 9 sources across 3 topics and all 3 source-quality reports passed
+  - DeepSeek official `deepseek-v4-flash` produced 17 candidates
+  - the first reviewer pass accepted 17, revised 0, rejected 0; this was treated as a calibration warning
+  - after reviewer calibration, the same 17 candidates review as 8 accept, 9 revise, 0 reject
+  - new reason codes include `broad_documentation_deliverable`, `broad_control_assessment`, and `weak_action_granularity`
+  - persistent registry reached entry_count 66
+  - idempotency rerun with `--reuse-existing` now reports run mode, registry count before/after, 0 entry delta, and 8 merged candidates under the calibrated reviewer
+  - `idempotency_no_growth_expected` distinguishes expected no-growth reuse runs from true quality no-growth warnings
+- current Pipeline A quality governance status:
+  - `Test/run_v3_skill_reviewer_calibration.py` writes `SkillRegistry/v3_skill_reviewer_calibration_report.json`
+  - web-source candidate-file audit writes `SkillRegistry/v3_web_source_registry_audit_report.json`
+  - candidate-file audit uses deterministic registry candidate refs and avoids broad matching on non-unique raw candidate IDs
+  - audit marks web-derived entries with `web_source_batch_governance_attention` but does not modify registry entries
+  - `v3_registry_sampling_readiness.py` and `Test/run_v3_registry_sampling_readiness.py` now turn registry, audit, and calibration signals into a pre-sampling report
+  - readiness report path: `SkillRegistry/v3_registry_sampling_readiness_report.json`
+  - current readiness result on 66 registry entries: 30 `sample_ready`, 7 `sample_with_caution`, 29 `exclude_until_revised`
+  - readiness is report-only; it does not add registry status fields, delete entries, or quarantine entries in-place
+  - `single_source_support` is treated as a sampling-weight signal rather than a blocking quality failure
 
-The immediate next code step is to inspect the Serper-collected source package and, if the source quality is acceptable, run it through LLM extraction, deterministic review, and registry update as separate Pipeline A stages. The expected progress unit should remain a batch: new source materials enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes for extractor prompt and reviewer improvement.
+The immediate Pipeline A-to-B bridge is now available: future Pipeline B should read the sampling readiness report before selecting skills. The expected progress unit should remain a batch: new source materials enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes, and the readiness report decides which registry entries are safe enough to sample.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -630,11 +673,12 @@ The next implementation step should be Pipeline A, not another finance task.
 
 Recommended first code task:
 
-- inspect collected raw text manually before letting it enter LLM skill extraction
-- use the collected Serper smoke package as the first web-source input to LLM extraction only after source quality is acceptable
-- run LLM extraction/review/registry update as separate steps, not inside SourceCollector
+- use `SkillRegistry/v3_registry_sampling_readiness_report.json` as the first input filter for Pipeline B sampling
+- keep reviewer calibration reproducible on extracted candidate files before expanding web-source collection
+- compare GDPVal-derived and web-derived skills using coverage, possible duplicates, and reviewer/audit reason codes
 - keep stale/quarantine handling report-only unless a later schema migration explicitly adds registry status fields
 - keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
+- implement a minimal `SkillSampler` that samples only from `sample_ready` entries by default and records any `sample_with_caution` override explicitly
 
 This will reconnect the project to the original two-pipeline design:
 

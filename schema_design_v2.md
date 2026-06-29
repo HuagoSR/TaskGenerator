@@ -88,7 +88,7 @@ Current GDPVal prompt-only validation:
 - the stricter reviewer accepted 10 and revised 2 broad/form-bound candidates
 - the resulting per-run registry contains 10 entries and excludes the revised task-level candidates
 - the persistent registry update loop now stores accepted atomic skills in `SkillRegistry/v3_skill_registry.json`
-- this persistent registry currently has 44 entries from four GDPVal prompt-only occupation batches:
+- this persistent registry had 44 entries from four GDPVal prompt-only occupation batches before the first web-source Pipeline A smoke:
   - `Accountants and Auditors`
   - `Financial Managers`
   - `Financial and Investment Analysts`
@@ -102,7 +102,7 @@ Current GDPVal prompt-only validation:
   - `Financial Managers`: 14 candidates, 11 accepted, 3 revise
   - `Financial and Investment Analysts`: 15 candidates, 11 accepted, 4 revise
   - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
-- the persistent registry still has 44 entries; the latest update report lists 6 unmatched existing entries that should be audited rather than silently deleted
+- after the first web-source smoke and the 3-topic web-source batch, the persistent registry has 66 entries; the older GDPVal update report still lists 6 unmatched existing entries that should be audited rather than silently deleted
 - a non-destructive persistent registry audit now exists:
   - module: `v3_skill_registry_audit.py`
   - CLI: `Test/run_v3_skill_registry_audit.py`
@@ -118,6 +118,8 @@ Current GDPVal prompt-only validation:
   - search tools: `v3_source_search_tools.py`
   - web collection CLI: `Test/run_v3_stirrup_source_collector.py`
   - connector CLI: `Test/run_v3_collected_sources_to_skill_package.py`
+  - web-source Pipeline A runner: `Test/run_v3_web_source_pipeline_a.py`
+  - web-source Pipeline A batch runner: `Test/run_v3_web_source_pipeline_a_batch.py`
   - default env source: `E:\THU\2026Spring\SRT\rw-task\.env`
   - default search backend: Serper via `SERPER_API_KEY`
   - Brave remains a compatibility backend only; the default path no longer requires `BRAVE_API_KEY`
@@ -125,7 +127,28 @@ Current GDPVal prompt-only validation:
   - collected `RawSource` records can be normalized into a `SkillExtractionPromptPackage`
   - formal web collection requires `--allow-web-collection`; dry-run prompt generation works offline
   - Serper smoke `audit_smoke_serper_02` collected 3 accepted RawSources and produced a normalized skill extraction prompt package
+  - web-source Pipeline A dry-run on `audit_smoke_serper_02` produced source quality status `pass`
+  - formal web-source Pipeline A with DeepSeek official `deepseek-v4-flash` produced 5 candidates, 5 accepted, 0 revise, and 0 reject
+  - persistent registry update added 5 web-derived entries, raising `SkillRegistry/v3_skill_registry.json` from 44 to 49 entries
+  - idempotency rerun with `--reuse-existing` produced 0 new entries and 5 merged candidates, keeping entry_count at 49
+  - the 3-topic web-source batch collected 9 sources, all source-quality reports passed, and DeepSeek produced 17 candidates
+  - the first deterministic reviewer accepted all 17 web-source batch candidates; this was a useful plumbing success but also a reviewer-calibration warning
+  - reviewer calibration now reviews the same 17 extracted candidates as 8 accept and 9 revise
+  - new review reason codes target broad documentation deliverables, broad control-assessment skills, and weak action granularity
+  - the web-source batch raised the persistent registry to 66 entries; idempotency rerun produced 0 new entries and 17 merged candidates
+  - after calibration, idempotency rerun keeps entry_count at 66 and reports 8 merged accepted candidates because 9 former accepted candidates now revise
+  - reviewer calibration and web-source governance audit are report-only and do not mutate `SkillRegistryEntry`
+  - no new schema was introduced for web-source batch mode; it reuses `RawSource`, `NormalizedSource`, `ExtractedSkillCandidate`, and `SkillRegistryEntry`
   - this preserves the boundary between source gathering and semantic skill extraction
+- a non-destructive sampling readiness layer now exists:
+  - module: `v3_registry_sampling_readiness.py`
+  - CLI: `Test/run_v3_registry_sampling_readiness.py`
+  - default output: `SkillRegistry/v3_registry_sampling_readiness_report.json`
+  - it combines persistent registry entries, registry audit records, and reviewer calibration records
+  - current result on 66 registry entries: 30 `sample_ready`, 7 `sample_with_caution`, and 29 `exclude_until_revised`
+  - this layer does not add `status`, `inactive`, or `quarantine` fields to `SkillRegistryEntry`
+  - `single_source_support` is a sampling weight signal, not a standalone rejection reason
+  - future Pipeline B sampling should default to `sample_ready`, downweight `sample_with_caution`, and avoid `exclude_until_revised`
 
 ## Object 1: SemanticSkill
 
