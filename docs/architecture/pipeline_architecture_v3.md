@@ -32,6 +32,10 @@ Current authoritative documents:
   - finance prototype history
   - quality-gate lessons
   - dynamic evaluation notes
+- `docs/architecture/pipeline_b_completion_plan_2026-06-30.md`
+  - concrete Pipeline B completion plan
+  - implementation phases from resource-aware sampling to rw-task export
+  - first-slice test plan for the next code change
 
 Historical context documents:
 
@@ -266,6 +270,16 @@ Current implementation direction:
   - failed tasks decrease them or mark them for review
 - use bandit-style exploration only after filtering by readiness and semantic compatibility
 
+Long-term graph objective:
+
+- the current transition graph is a bootstrap report, not the final learnable graph
+- the final system should maintain a persistent transition-prior store outside `SkillRegistryEntry`
+- that store should accumulate local trace evidence, deterministic resource-compatibility evidence, motif co-occurrence, and later Pipeline B task outcomes
+- future priors should track fields such as `observed_count`, `success_count`, `failure_count`, `prior_score`, `posterior_score`, `exploration_bonus`, source batch IDs, and task feedback IDs
+- the eventual sampler should predict the next useful skill or subgraph conditioned on the current partial skill graph, not only the last skill
+- task structures may be chains, trees, DAG-like plans, or constraint graphs; the sampler should choose executable motifs or subgraphs rather than arbitrary flat skill lists
+- UCB1 or another bandit-style policy belongs after feedback exists; before then, reports should remain honest static heuristics
+
 Important distinction:
 
 - a generated task need not be a single chain of skills
@@ -330,6 +344,14 @@ Current verified graph-layer smoke results:
   - no registry update is performed
 - Pipeline A to B handoff is documented in `docs/handoffs/PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
 
+Remaining closed-loop gaps:
+
+- no persistent `SkillTransitionPriorStore` exists yet; transition edges are still per-run or aggregate reports
+- no true probabilistic sampler exists yet; readiness, motif, role, and edge scores are static ranking signals
+- no UCB1 or bandit update exists yet; there is no reliable reward history until Pipeline B generates and grades tasks
+- no Pipeline B feedback updater exists yet; task-generation failures do not yet change skill, edge, or motif weights
+- these gaps should be treated as the macro reason for Pipeline B work, not as optional polish
+
 ## Pipeline B: Skill-To-Task Design
 
 ### 1. SkillSampler
@@ -346,6 +368,20 @@ Examples:
 - normalize local-currency revenue before aggregation
 - resolve missing reference values before final totals
 - reconcile source-control totals before producing a client report
+
+Near-term sampler target:
+
+- first implement a resource-aware, report-first subgraph sampler
+- record selected skills, resource nodes, compatibility edges, motif assumptions, and missing Pipeline A signals
+- do not claim learned probability or UCB behavior in this first sampler
+- preserve enough identifiers for a future prior updater to connect task outcomes back to skills, edges, and motifs
+
+Long-term sampler target:
+
+- sample executable motifs or subgraphs from a persistent transition-prior store
+- support conditioned skill-chain or skill-graph prediction, where the next choice depends on the whole partial graph
+- balance exploration and exploitation with a bandit policy after enough task feedback exists
+- use Pipeline B quality and model-separation evidence to update future sampling weights
 
 ### 2. TaskBlueprintAssembler
 
@@ -781,10 +817,16 @@ Recommended next code tasks:
 
 - build a minimal `SkillSampler` that reads `SkillRegistry/v3_pipeline_b_seed_set_report.json`
 - sample a small motif-constrained skill-resource subgraph, not an arbitrary flat skill list
+- emit a structured Pipeline B feedback report from the first sampler/blueprint run, even before full GoldenRun or rubric exists
 - emit a draft `TaskBlueprint` or equivalent report-only prototype before full rw-task export
 - record missing Pipeline A fields discovered during assembly
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
 - continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
+
+The implementation should deliberately avoid two traps:
+
+- do not keep expanding Pipeline A in isolation once Pipeline B can reveal what signals are actually missing
+- do not implement a fake bandit sampler before task-quality feedback exists; first log the feedback contract, then learn from it
 
 This will reconnect the project to the original two-pipeline design:
 

@@ -83,6 +83,7 @@ Read these first:
 
 - `docs/architecture/pipeline_architecture_v3.md`: current macro roadmap and future plan
 - `docs/architecture/schema_design_v2.md`: V2 schema details, finance prototype history, and evaluation lessons
+- `docs/architecture/pipeline_b_completion_plan_2026-06-30.md`: concrete execution plan for completing Pipeline B
 
 Older stage reports are useful history, especially for why the project moved away from operator-heavy skill extraction, but they are not the current plan unless restated in `docs/architecture/pipeline_architecture_v3.md`.
 
@@ -161,24 +162,40 @@ Do not overfit to the current music-tour finance task. It was a probe, not the f
 
 ## Current Priority
 
-The next priority is Pipeline A.
+The current priority is the Pipeline A-to-B bridge.
 
-Recommended next implementation steps:
+Pipeline A is no longer just trying to accumulate more isolated atomic skills. It should now support Pipeline B by exposing composable skill-graph signals: typed semantic resources, local transition traces, motif hints, graph roles, readiness, and sampling risks. Pipeline B should then reveal which of those signals are actually useful by trying to assemble and validate task packages.
 
-1. Keep improving Pipeline A around atomic, reusable, evidence-backed skill extraction.
-2. Upgrade Pipeline A from isolated skill nodes to a composable skill graph.
-3. Preserve the old port idea, but do not rely on string-equality port matching.
-4. Treat ports as typed semantic resources with attributes, such as `MonetaryAmount`, `FinancialMetric`, `ControlEvidence`, `AuditFinding`, `Jurisdiction`, or `TimePeriod`.
-5. Extract local skill traces from sources, so natural source order such as `A -> B -> C` can become initial transition evidence.
-6. Store transition priors and compatibility signals outside skill nodes, not as static `possible_successors` embedded in every skill.
-7. Use GDPVal prompt-only and web-source batches to learn common task motifs, such as reconciliation, policy application, evidence fan-in, exception escalation, and cross-check validation.
-8. Keep governance report-first: transition/readiness decisions should not mutate or delete registry entries unless a later schema migration explicitly adds such fields.
+Final system objective:
 
-New Pipeline A target:
+- build a closed-loop task factory, not a one-way generator
+- use Pipeline A to mine reusable semantic skills and graph priors from sources
+- use Pipeline B to sample executable skill subgraphs, generate tasks, validate them, and report task outcomes
+- feed task outcomes back into skill, edge, and motif priors so future sampling improves
+
+Important missing final layers:
+
+- `SkillTransitionPriorStore`: a persistent store outside `SkillRegistryEntry` for transition/motif evidence, with fields such as `observed_count`, `success_count`, `failure_count`, `prior_score`, `posterior_score`, `exploration_bonus`, source evidence, and task feedback IDs
+- probabilistic subgraph sampler: a future sampler that turns readiness, motif, role, and edge-prior signals into a distribution over executable subgraphs
+- UCB1 or related bandit policy: a later exploration/exploitation mechanism, only meaningful after generated tasks produce comparable quality feedback
+- Pipeline B feedback updater: a report-first then explicit-update loop that converts task generation, GoldenRun, rubric, quality-gate, and model-separation results into prior updates
+
+Near-term implementation rule:
+
+- do not keep expanding Pipeline A in isolation when Pipeline B can expose the missing signals
+- do not write static `possible_successors` into each skill entry
+- do not run all-pairs LLM successor judging across the registry
+- do not claim UCB/bandit behavior before quality feedback exists
+- first implement a resource-aware Pipeline B subgraph sampler and feedback report
+- then build task-package components and use their failures to drive further Pipeline A improvements
+
+The current Pipeline A graph target remains:
 
 - move from `source -> atomic skills -> registry` to `source -> atomic skills + semantic resources + local transition traces + motif hints -> composable registry graph`
 - keep the registry useful for future Pipeline B by making each skill's compositional interface explicit
-- avoid returning to the slow old strategy where every new skill triggers all-pairs LLM successor judging
+- preserve the old port idea through typed semantic resources rather than brittle string-equality port matching
+- store transition priors and compatibility signals outside skill nodes
+- keep governance report-first unless a later schema migration explicitly adds durable prior or status fields
 
 Current Pipeline A starting files:
 
