@@ -86,6 +86,47 @@ Read these first:
 
 Older stage reports are useful history, especially for why the project moved away from operator-heavy skill extraction, but they are not the current plan unless restated in `docs/architecture/pipeline_architecture_v3.md`.
 
+## Repository Layout And Storage Rules
+
+Keep the repository organized by separating active code, authoritative docs, durable reports, and generated artifacts.
+
+Root directory:
+
+- Keep only active top-level Python modules, project coordination files, and stable top-level package directories here.
+- Current root-level Python modules such as `v2_*.py`, `v3_*.py`, `rw_task_adapter.py`, and `task_schemma.py` remain in root until a deliberate `src/` package migration is completed.
+- Do not add new stage reports, screenshots, experiment dumps, notebooks, one-off prompts, or generated outputs to the root directory.
+
+Documentation:
+
+- `docs/architecture/` stores authoritative architecture and schema documents, currently:
+  - `docs/architecture/pipeline_architecture_v3.md`
+  - `docs/architecture/schema_design_v2.md`
+- `docs/handoffs/` stores dated handoff documents, such as Pipeline A and Pipeline A-to-B handoffs.
+- `docs/reports/stage_reports/` stores historical stage reports in Markdown or PDF form.
+- `docs/reports/assets/` stores images used by reports. Stage report image links should be relative to the report, for example `../assets/image.png`.
+- `docs/examples/` stores small static example JSON files that are useful for explanation but are not active generated outputs.
+
+Artifacts and generated outputs:
+
+- `artifacts/pipeline_b/` stores Pipeline B prototype outputs and other retained Pipeline B run artifacts.
+- `artifacts/archive/` stores historical logs or generated evidence that should be preserved but should not live beside active code.
+- `SkillRegistry/` remains the active registry/report directory for Pipeline A and Pipeline B runners. Do not move registry JSON reports unless the runner defaults and documentation are migrated in the same change.
+- `Test/v2_outputs/`, `Test/v3_gdpval_prompt_sources/`, and `Test/v3_web_source_collections/` are generated-output locations and should stay ignored unless a specific small artifact is intentionally promoted.
+
+Code and runner placement:
+
+- Keep reusable implementation modules in root for now, matching the existing import style.
+- Keep command-line runners under `Test/` until the later `src/` package migration creates a cleaner CLI/module layout.
+- Keep legacy operator-heavy code under `Skill/`; do not mix new Pipeline A/B modules into `Skill/` unless the work is explicitly about that legacy path.
+- Keep reference-file generator code under `FileGenerator/` and prompt assembly utilities under `Prompt/`.
+
+Cleanliness rules:
+
+- New generated outputs should go under `artifacts/` or an ignored `Test/...` generated-output directory, not root.
+- New persistent design docs should go under `docs/architecture/`, `docs/handoffs/`, or `docs/reports/` as appropriate.
+- Temporary logs should not be committed from active code directories. If a log has research value, move it to `artifacts/archive/`.
+- Update `AGENTS.md` and the relevant architecture docs whenever a path becomes an expected project convention.
+
 ## Current Code State
 
 Useful existing assets:

@@ -51,6 +51,14 @@ Code-facing documents and artifacts:
 - `v2_quality_gate.py`: current structural acceptance gate
 - `v2_task_quality.py`: current static quality scorer
 
+Repository layout convention:
+
+- Keep active V2/V3 modules at repository root until the planned `src/` package migration is done.
+- Keep architecture and schema docs under `docs/architecture/`.
+- Keep dated handoffs under `docs/handoffs/`.
+- Keep stage reports and report images under `docs/reports/`.
+- Keep retained run outputs and logs under `artifacts/`, while leaving `SkillRegistry/` as the active registry/report directory for current runners.
+
 Document maintenance rule:
 
 - put schema changes in `docs/architecture/schema_design_v2.md`
