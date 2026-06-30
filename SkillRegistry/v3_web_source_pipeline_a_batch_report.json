@@ -1,0 +1,345 @@
+{
+  "status": "success",
+  "batch_count": 3,
+  "output_root": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches",
+  "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
+  "report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_web_source_pipeline_a_batch_report.json",
+  "provider": "deepseek",
+  "model": null,
+  "deepseek_model": "deepseek-v4-flash",
+  "search_backend": "serper",
+  "limit": 3,
+  "max_candidates": 15,
+  "max_tokens": 12000,
+  "timeout_seconds": 180,
+  "reuse_existing": true,
+  "dry_run_pipeline": false,
+  "run_mode": "reuse_existing",
+  "registry_entry_count_before": 66,
+  "registry_entry_count_after": 66,
+  "registry_entry_delta_this_run": 0,
+  "registry_growth_note": "This report describes the current run only. In reuse_existing mode, zero growth is expected when prior accepted candidates are idempotently merged.",
+  "totals": {
+    "candidate_count": 17,
+    "accepted_count": 8,
+    "revise_count": 9,
+    "rejected_count": 0,
+    "registry_new_entry_count": 0,
+    "registry_merged_candidate_count": 8,
+    "registry_skipped_candidate_count": 0,
+    "possible_duplicate_count": 0
+  },
+  "graph_summary": {
+    "enabled": true,
+    "edge_count": 9,
+    "motif_count": 3,
+    "usable_edge_count": 2,
+    "blocked_edge_count": 7
+  },
+  "source_quality_summary": {
+    "total_source_count": 9,
+    "status_counts": {
+      "pass": 3
+    },
+    "warning_counts": {},
+    "failure_counts": {}
+  },
+  "graph_extraction_summary": {
+    "batch_count": 3,
+    "graph_ready_count": 3,
+    "resource_count": 0,
+    "trace_edge_count": 0,
+    "motif_hint_count": 0,
+    "warning_counts": {
+      "missing_provided_typed_resources": 3,
+      "missing_required_typed_resources": 3,
+      "multi_candidate_without_motif_hints": 3,
+      "multi_candidate_without_trace_edges": 3
+    }
+  },
+  "warning_counts": {
+    "graph_extraction_missing_provided_typed_resources": 3,
+    "graph_extraction_missing_required_typed_resources": 3,
+    "graph_extraction_multi_candidate_without_motif_hints": 3,
+    "graph_extraction_multi_candidate_without_trace_edges": 3,
+    "idempotency_no_growth_expected": 3
+  },
+  "review_reason_code_counts": {
+    "broad_control_assessment": 5,
+    "broad_documentation_deliverable": 7,
+    "task_level_penalty_reduced_by_atomic_contract": 7,
+    "weak_action_granularity": 3
+  },
+  "batches": [
+    {
+      "batch_id": "audit_evidence_reconciliation",
+      "topic": "audit evidence reconciliation",
+      "status": "success",
+      "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation",
+      "pipeline_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run",
+      "collector": {
+        "status": "reused_existing",
+        "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation",
+        "note": "Existing collection_report.json and raw_sources were reused."
+      },
+      "source_quality": {
+        "status": "pass",
+        "source_count": 3,
+        "failed_source_count": 0,
+        "warning_source_count": 0,
+        "warning_counts": {},
+        "failure_counts": {}
+      },
+      "candidate_count": 5,
+      "accepted_count": 1,
+      "revise_count": 4,
+      "rejected_count": 0,
+      "registry_new_entry_count": 0,
+      "registry_merged_candidate_count": 1,
+      "registry_skipped_candidate_count": 0,
+      "registry_final_entry_count": 66,
+      "possible_duplicate_count": 0,
+      "review_reason_code_counts": {
+        "broad_documentation_deliverable": 4,
+        "task_level_penalty_reduced_by_atomic_contract": 4
+      },
+      "graph_extraction_diagnostics": {
+        "path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\graph_extraction_diagnostics.json",
+        "resource_count": 0,
+        "trace_edge_count": 0,
+        "motif_hint_count": 0,
+        "warning_codes": [
+          "missing_required_typed_resources",
+          "missing_provided_typed_resources",
+          "multi_candidate_without_trace_edges",
+          "multi_candidate_without_motif_hints"
+        ],
+        "is_graph_ready": true
+      },
+      "graph_summary": {
+        "transition_graph_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\transition_graph\\skill_transition_graph_report.json",
+        "composition_readiness_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\transition_graph\\composition_readiness_report.json",
+        "edge_count": 3,
+        "motif_count": 1,
+        "usable_edge_count": 0,
+        "blocked_edge_count": 3,
+        "top_motifs": [
+          [
+            "fan_in_reconciliation",
+            1
+          ]
+        ],
+        "role_counts": {
+          "fan_in": 1,
+          "starter": 4,
+          "synthesis": 3,
+          "transform": 2,
+          "validator": 2
+        }
+      },
+      "warnings": [
+        {
+          "code": "idempotency_no_growth_expected",
+          "message": "Reuse run merged existing accepted candidates without growing the registry."
+        },
+        {
+          "code": "graph_extraction_missing_required_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_missing_provided_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_trace_edges",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_motif_hints",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        }
+      ]
+    },
+    {
+      "batch_id": "internal_control_testing",
+      "topic": "internal control testing",
+      "status": "success",
+      "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing",
+      "pipeline_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run",
+      "collector": {
+        "status": "reused_existing",
+        "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing",
+        "note": "Existing collection_report.json and raw_sources were reused."
+      },
+      "source_quality": {
+        "status": "pass",
+        "source_count": 3,
+        "failed_source_count": 0,
+        "warning_source_count": 0,
+        "warning_counts": {},
+        "failure_counts": {}
+      },
+      "candidate_count": 6,
+      "accepted_count": 3,
+      "revise_count": 3,
+      "rejected_count": 0,
+      "registry_new_entry_count": 0,
+      "registry_merged_candidate_count": 3,
+      "registry_skipped_candidate_count": 0,
+      "registry_final_entry_count": 66,
+      "possible_duplicate_count": 0,
+      "review_reason_code_counts": {
+        "broad_control_assessment": 3,
+        "broad_documentation_deliverable": 1,
+        "task_level_penalty_reduced_by_atomic_contract": 2,
+        "weak_action_granularity": 1
+      },
+      "graph_extraction_diagnostics": {
+        "path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\graph_extraction_diagnostics.json",
+        "resource_count": 0,
+        "trace_edge_count": 0,
+        "motif_hint_count": 0,
+        "warning_codes": [
+          "missing_required_typed_resources",
+          "missing_provided_typed_resources",
+          "multi_candidate_without_trace_edges",
+          "multi_candidate_without_motif_hints"
+        ],
+        "is_graph_ready": true
+      },
+      "graph_summary": {
+        "transition_graph_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\transition_graph\\skill_transition_graph_report.json",
+        "composition_readiness_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\transition_graph\\composition_readiness_report.json",
+        "edge_count": 2,
+        "motif_count": 1,
+        "usable_edge_count": 0,
+        "blocked_edge_count": 2,
+        "top_motifs": [
+          [
+            "fan_in_reconciliation",
+            1
+          ]
+        ],
+        "role_counts": {
+          "fan_in": 6,
+          "synthesis": 4,
+          "transform": 5,
+          "validator": 3
+        }
+      },
+      "warnings": [
+        {
+          "code": "idempotency_no_growth_expected",
+          "message": "Reuse run merged existing accepted candidates without growing the registry."
+        },
+        {
+          "code": "graph_extraction_missing_required_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_missing_provided_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_trace_edges",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_motif_hints",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        }
+      ]
+    },
+    {
+      "batch_id": "compliance_documentation_review",
+      "topic": "compliance documentation review",
+      "status": "success",
+      "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review",
+      "pipeline_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run",
+      "collector": {
+        "status": "reused_existing",
+        "collection_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review",
+        "note": "Existing collection_report.json and raw_sources were reused."
+      },
+      "source_quality": {
+        "status": "pass",
+        "source_count": 3,
+        "failed_source_count": 0,
+        "warning_source_count": 0,
+        "warning_counts": {},
+        "failure_counts": {}
+      },
+      "candidate_count": 6,
+      "accepted_count": 4,
+      "revise_count": 2,
+      "rejected_count": 0,
+      "registry_new_entry_count": 0,
+      "registry_merged_candidate_count": 4,
+      "registry_skipped_candidate_count": 0,
+      "registry_final_entry_count": 66,
+      "possible_duplicate_count": 0,
+      "review_reason_code_counts": {
+        "broad_control_assessment": 2,
+        "broad_documentation_deliverable": 2,
+        "task_level_penalty_reduced_by_atomic_contract": 1,
+        "weak_action_granularity": 2
+      },
+      "graph_extraction_diagnostics": {
+        "path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\graph_extraction_diagnostics.json",
+        "resource_count": 0,
+        "trace_edge_count": 0,
+        "motif_hint_count": 0,
+        "warning_codes": [
+          "missing_required_typed_resources",
+          "missing_provided_typed_resources",
+          "multi_candidate_without_trace_edges",
+          "multi_candidate_without_motif_hints"
+        ],
+        "is_graph_ready": true
+      },
+      "graph_summary": {
+        "transition_graph_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\transition_graph\\skill_transition_graph_report.json",
+        "composition_readiness_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\transition_graph\\composition_readiness_report.json",
+        "edge_count": 4,
+        "motif_count": 1,
+        "usable_edge_count": 2,
+        "blocked_edge_count": 2,
+        "top_motifs": [
+          [
+            "fan_in_reconciliation",
+            1
+          ]
+        ],
+        "role_counts": {
+          "fan_in": 5,
+          "starter": 1,
+          "synthesis": 3,
+          "transform": 4,
+          "validator": 3
+        }
+      },
+      "warnings": [
+        {
+          "code": "idempotency_no_growth_expected",
+          "message": "Reuse run merged existing accepted candidates without growing the registry."
+        },
+        {
+          "code": "graph_extraction_missing_required_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_missing_provided_typed_resources",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_trace_edges",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        },
+        {
+          "code": "graph_extraction_multi_candidate_without_motif_hints",
+          "message": "Graph extraction diagnostics emitted a warning; inspect graph_extraction_diagnostics.json."
+        }
+      ]
+    }
+  ]
+}

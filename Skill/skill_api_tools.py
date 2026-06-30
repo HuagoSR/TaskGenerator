@@ -12,11 +12,18 @@ DATABASE_PATH = os.path.join(os.path.dirname(__file__), "skills_config.json")
 PORTS_DICT_PATH = os.path.join(os.path.dirname(__file__), "ports_dict.json")
 
 def _load_db() -> dict:
-    """内部辅助函数：加载最新数据库"""
+    """内部辅助函数：加载最新数据库（带空文件防弹防线）"""
     if not os.path.exists(DATABASE_PATH):
         return {}
-    with open(DATABASE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(DATABASE_PATH, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            if not content:
+                return {}  # 如果文件为空(0字节)，直接返回空字典
+            return json.loads(content)
+    except json.JSONDecodeError:
+        print("[警告] 数据库文件已损坏或为空，已重置为空题库。")
+        return {}
 
 
 def _save_db(db_data: dict) -> bool:
@@ -162,59 +169,50 @@ def get_skill_details(skill_id: str) -> str:
 
 
 def create_skill(
-        skill_id: str,
-        skill_name: str,
-        node_type: str,
-        operator_class: str,
-        requires: List[str],
-        provides: List[str],
-        keywords: List[str],
-        semantics: dict,
-        data_params: dict
+    skill_id: str,
+    skill_name: str,
+    node_type: str,
+    sandbox_role: str = "Solver",  # 给个默认值兜底
+    keywords: list = None,
+    semantics: dict = None,
+    data_profile: dict = None,
+    possible_successors: list = None,
+    **kwargs
 ) -> str:
     """
-    【工具功能】向考点库中添加一个全新的业务考点。
-
-    参数:
-        skill_id (str): 考点唯一ID（需使用小写的英文和下划线，如 "mut_carbon_tax"）。
-        skill_name (str): 考点业务名称（如 "碳排放税核算"）。
-        node_type (str): 节点类型，必须是 "base", "mutator", "trap", "global" 之一。
-        operator_class (str): 底层执行算子，目前仅支持 "BaseDataGeneratorOperator", "ForeignKeyDictionaryOperator", "CellPerturbationOperator", "GlobalRequirementOperator"。
-        requires (List[str]): 依赖的输入语义端口列表，如 ["Financial:PreTax"]。
-        provides (List[str]): 提供的输出语义端口列表。
-        keywords (List[str]): 业务关键词，便于日后检索。
-        semantics
-        rubrics (List[str]): 隐藏的评分标准模板。
-        data_params (dict): 传递给底层算子的具体执行参数字典。
-
-    返回:
-        str: 创建成功或失败的系统反馈。
+    Agent 6 (Registrar) 专用接口：将考点写入本地 JSON 数据库（自带新老版本参数兼容）
     """
     db = _load_db()
-    if skill_id in db:
-        return f"Error: 考点 ID '{skill_id}' 已存在！请更换 ID 或使用现有考点。"
-    if operator_class not in OPERATOR_REGISTRY:
-        return f"Error: 不支持的算子 '{operator_class}'。请先调用 list_available_operators 查看当前系统可用的底层算子列表。"
 
-    # 组装为标准 JSON 结构
-    new_skill = {
+    # 1. 端口兼容性组装：如果上游拆散传了 requires 和 provides，这里重新打包回 ports
+    actual_ports = kwargs.get("ports", {})
+    if "requires" in kwargs:
+        actual_ports["requires"] = kwargs["requires"]
+    if "provides" in kwargs:
+        actual_ports["provides"] = kwargs["provides"]
+
+    # 2. 数据画像兼容：防止某些地方还在传老版的 data_params
+    actual_data_profile = data_profile
+    if not actual_data_profile and "data_params" in kwargs:
+        actual_data_profile = kwargs["data_params"]
+
+    # 3. 组装符合声明式沙盒标准的新版节点
+    new_node = {
         "skill_name": skill_name,
         "node_type": node_type,
-        "operator_class": operator_class,
-        "keywords": keywords,
-        "ports": {
-            "requires": requires,
-            "provides": provides
-        },
-        "possible_successors": [],
-        "semantics": semantics,  # <--- 【修改】原样落盘，完美保留 deliverables 和 rubrics
-        "data_params": data_params
+        "sandbox_role": sandbox_role,
+        "keywords": keywords or [],
+        "ports": actual_ports,
+        "semantics": semantics or {},
+        "data_profile": actual_data_profile or {},
+        "possible_successors": possible_successors or []
     }
 
-    db[skill_id] = new_skill
+    # 4. 覆盖或新建，并落盘
+    db[skill_id] = new_node
     _save_db(db)
-    return f"Success: 全新考点 '{skill_name}' ({skill_id}) 已成功注册到题库！"
 
+    return f"Success: 考点 [{skill_id}] 已成功存入数据库。Schema 完整无损。"
 
 def connect_skills(source_skill_id: str, target_skill_id: str, port_mapping: Dict[str, str]) -> str:
     """

@@ -1,0 +1,24 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "motif_hint_count": 1,
+  "motif_hints": [
+    {
+      "motif_type": "fan_in_reconciliation",
+      "candidate_ids": [
+        "skill_apply_refund_exclusion",
+        "skill_identify_duplicate_receipts",
+        "skill_reconcile_processor_gl"
+      ],
+      "evidence_block_ids": [
+        "block_0002",
+        "block_0003",
+        "block_0005"
+      ],
+      "confidence": 0.8,
+      "reason_codes": [
+        "source_implies_multiple_data_sources_and_quality_checks"
+      ],
+      "summary": "Multiple data sources (processor, GL, duplicates, refunds) converge into a reconciliation and exception reporting workflow."
+    }
+  ]
+}

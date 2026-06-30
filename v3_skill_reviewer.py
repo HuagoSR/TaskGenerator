@@ -71,6 +71,12 @@ class SkillCandidateReviewer:
         "convert",
         "resolve",
         "tie",
+        "trace",
+        "test",
+        "select",
+        "scope",
+        "reperform",
+        "investigate",
     }
     task_level_terms = {
         "preparation",
@@ -119,6 +125,17 @@ class SkillCandidateReviewer:
     )
     source_collection_pattern = re.compile(
         r"\b(open\s+web|web\s+search|retrieve\s+and\s+normalize|external\s+data\s+retrieval|sourcecollector|collect\s+source)\b",
+        re.IGNORECASE,
+    )
+    broad_documentation_deliverable_pattern = re.compile(
+        r"\b(report|memo|memorandum|workpaper(?:\s+package)?|documentation\s+package|"
+        r"review\s+checklist|deficiency\s+memo|testing\s+workpapers?|summary\s+of\s+conclusions)\b",
+        re.IGNORECASE,
+    )
+    broad_control_assessment_pattern = re.compile(
+        r"\b(assess|evaluate|verify|document)\b.{0,80}\b("
+        r"effectiveness|completeness|clarity|control\s+design|operating\s+effectiveness|"
+        r"procedures\s+and\s+results|material\s+weakness|control\s+environment)\b",
         re.IGNORECASE,
     )
 
@@ -312,6 +329,9 @@ class SkillCandidateReviewer:
             score -= 0.12
         if self.source_collection_pattern.search(text):
             score -= 0.18
+        if self._weak_action_granularity(candidate):
+            score -= 0.1
+            reason_codes.append("weak_action_granularity")
 
         score = max(0.0, min(round(score, 4), 1.0))
         if score < 0.65:
@@ -361,8 +381,19 @@ class SkillCandidateReviewer:
         if self.source_collection_pattern.search(text):
             penalty += 0.16
             reason_codes.append("source_collection_leakage")
+        if self.broad_control_assessment_pattern.search(name):
+            penalty += 0.1
+            reason_codes.append("broad_control_assessment")
+        deliverable_text = " ".join(candidate.common_deliverables).lower()
+        broad_deliverable_hits = self.broad_documentation_deliverable_pattern.findall(deliverable_text)
+        if len(broad_deliverable_hits) >= 2:
+            penalty += 0.08
+            reason_codes.append("broad_documentation_deliverable")
         if appears_atomic and penalty:
-            penalty *= 0.5
+            reducible = penalty
+            if "broad_control_assessment" in reason_codes or "broad_documentation_deliverable" in reason_codes:
+                reducible = max(0.0, penalty - 0.1)
+            penalty = 0.1 + reducible * 0.5 if reducible != penalty else penalty * 0.5
             reason_codes.append("task_level_penalty_reduced_by_atomic_contract")
         return min(round(penalty, 4), 0.32)
 
@@ -370,7 +401,15 @@ class SkillCandidateReviewer:
         blocking = {"missing_evidence", "operator_leakage"}
         if blocking & set(reason_codes):
             return "reject"
-        revise_only = {"task_level_overbreadth", "form_or_jurisdiction_specific", "low_atomicity", "source_collection_leakage"}
+        revise_only = {
+            "task_level_overbreadth",
+            "form_or_jurisdiction_specific",
+            "low_atomicity",
+            "source_collection_leakage",
+            "broad_documentation_deliverable",
+            "broad_control_assessment",
+            "weak_action_granularity",
+        }
         if revise_only & set(reason_codes):
             if total_score >= 0.48:
                 return "revise"
@@ -397,6 +436,20 @@ class SkillCandidateReviewer:
             return "Compliance Criterion Mapping or Risk-Control Coverage Selection"
         if "task_level_overbreadth" in reason_set and "schedule" in name:
             return "Periodic Allocation Schedule Calculation"
+        if "broad_control_assessment" in reason_set:
+            return "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+        if "broad_documentation_deliverable" in reason_set:
+            return "A narrower evidence-documentation action such as tracing one evidence item, validating one workpaper assertion, or detecting one missing support"
         if "low_atomicity" in reason_set:
             return "A single reusable action such as mapping, reconciling, validating, resolving, or allocating one semantic input-output pair"
         return ""
+
+    def _weak_action_granularity(self, candidate: ExtractedSkillCandidate) -> bool:
+        name = candidate.proposed_name.lower()
+        if not self.broad_control_assessment_pattern.search(name):
+            return False
+        output_count = len(candidate.output_contract.provides_semantics)
+        requires_count = len(candidate.input_contract.requires_semantics)
+        deliverable_text = " ".join(candidate.common_deliverables).lower()
+        broad_deliverable_count = len(self.broad_documentation_deliverable_pattern.findall(deliverable_text))
+        return output_count > 1 or requires_count > 4 or broad_deliverable_count >= 2

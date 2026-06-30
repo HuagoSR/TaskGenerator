@@ -1,0 +1,11 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "attempts": [
+    {
+      "provider_name": "deepseek",
+      "model": "deepseek-v4-flash",
+      "success": true,
+      "candidate_count": 3
+    }
+  ]
+}

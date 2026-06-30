@@ -124,6 +124,7 @@ Notes:
     log_pipeline_trace("Agent 3", drafts)
     if not drafts: return
 
+    '''
     print("\n[Phase 2] 物理算子匹配...")
     matched_nodes = run_agent_4_matcher(drafts)
     log_pipeline_trace("Agent 4", matched_nodes)
@@ -148,7 +149,9 @@ Notes:
 
     # 如果系统里什么算子都不缺（比如后续题库极其丰富了），直接走到底
     print("未触发熔断，直接进入入库阶段！")
-    finalized = run_agent_5_validator(matched_nodes)
+    '''
+
+    finalized = run_agent_5_validator(drafts)
     log_pipeline_trace("Agent 5", finalized)
     run_agent_6_registrar(finalized)
     new_ids = [node["skill_id"] for node in finalized]

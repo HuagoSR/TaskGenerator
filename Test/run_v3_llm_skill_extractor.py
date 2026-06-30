@@ -17,6 +17,10 @@ from v3_skill_extractor import (  # noqa: E402
     build_deepseek_config,
     build_tuzi_config,
 )
+from v3_skill_graph_diagnostics import (  # noqa: E402
+    build_graph_extraction_diagnostics,
+    write_graph_extraction_diagnostics,
+)
 from v3_source_schema import SkillExtractionPromptPackage, load_json_file  # noqa: E402
 
 
@@ -91,8 +95,12 @@ def write_outputs(
     provider_name: str,
     candidates: List[object],
     attempts: List[object],
+    trace_edges: List[object] | None = None,
+    motif_hints: List[object] | None = None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
+    trace_edges = trace_edges or []
+    motif_hints = motif_hints or []
     candidate_payload = {
         "request_id": package.request_id,
         "extractor": provider_name,
@@ -103,6 +111,8 @@ def write_outputs(
         "request_id": package.request_id,
         "normalized_source_count": len(package.normalized_sources),
         "candidate_count": len(candidates),
+        "trace_edge_count": len(trace_edges),
+        "motif_hint_count": len(motif_hints),
         "candidate_names": [candidate.proposed_name for candidate in candidates],
         "provider_used": provider_name,
     }
@@ -117,6 +127,35 @@ def write_outputs(
         json.dump(report_payload, f, ensure_ascii=False, indent=2)
     with open(output_dir / "provider_attempts.json", "w", encoding="utf-8") as f:
         json.dump(attempts_payload, f, ensure_ascii=False, indent=2)
+    with open(output_dir / "skill_trace_edges.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "request_id": package.request_id,
+                "trace_edge_count": len(trace_edges),
+                "trace_edges": [edge.model_dump(mode="json") for edge in trace_edges],
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+    with open(output_dir / "skill_motif_hints.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "request_id": package.request_id,
+                "motif_hint_count": len(motif_hints),
+                "motif_hints": [hint.model_dump(mode="json") for hint in motif_hints],
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+    diagnostics = build_graph_extraction_diagnostics(
+        candidates=candidates,
+        trace_edges=trace_edges,
+        motif_hints=motif_hints,
+        package=package,
+    )
+    write_graph_extraction_diagnostics(diagnostics, output_dir / "graph_extraction_diagnostics.json")
 
     print(json.dumps(report_payload, ensure_ascii=False, indent=2))
 
@@ -150,6 +189,8 @@ def main() -> None:
         provider_name=provider_used,
         candidates=candidates,
         attempts=setup_attempts + extractor.attempts,
+        trace_edges=extractor.last_trace_edges,
+        motif_hints=extractor.last_motif_hints,
     )
 
 

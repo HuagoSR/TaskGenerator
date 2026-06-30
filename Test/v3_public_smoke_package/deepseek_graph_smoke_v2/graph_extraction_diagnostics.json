@@ -1,0 +1,41 @@
+{
+  "diagnostics_version": "v3.graph_extraction_diagnostics.1",
+  "candidate_count": 3,
+  "typed_resource_summary": {
+    "resource_count": 11,
+    "resource_type_counts": {
+      "ExceptionRecord": 3,
+      "MonetaryAmount": 3,
+      "PolicyRule": 1,
+      "StructuredTable": 4
+    },
+    "candidates_with_required_resources": 3,
+    "candidates_with_provided_resources": 3,
+    "missing_required_resource_candidate_ids": [],
+    "missing_provided_resource_candidate_ids": [],
+    "unknown_resource_evidence_refs": []
+  },
+  "trace_edge_summary": {
+    "trace_edge_count": 2,
+    "relation_type_counts": {
+      "cross_check": 1,
+      "local_order": 1
+    },
+    "candidate_coverage_count": 3,
+    "candidate_coverage_ratio": 1.0,
+    "unknown_candidate_refs": [],
+    "unknown_block_refs": []
+  },
+  "motif_hint_summary": {
+    "motif_hint_count": 1,
+    "motif_type_counts": {
+      "fan_in_reconciliation": 1
+    },
+    "candidate_coverage_count": 3,
+    "candidate_coverage_ratio": 1.0,
+    "unknown_candidate_refs": [],
+    "unknown_block_refs": []
+  },
+  "warnings": [],
+  "is_graph_ready": true
+}

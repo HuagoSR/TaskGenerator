@@ -1,0 +1,224 @@
+{
+  "calibration_version": "v3.reviewer_calibration.1",
+  "candidate_file_count": 3,
+  "candidate_count": 17,
+  "decision_counts": {
+    "accept": 8,
+    "revise": 9
+  },
+  "reason_code_counts": {
+    "broad_control_assessment": 5,
+    "broad_documentation_deliverable": 7,
+    "task_level_penalty_reduced_by_atomic_contract": 7,
+    "weak_action_granularity": 3
+  },
+  "suspicious_accepted_count": 0,
+  "suspicious_accepted_candidates": [],
+  "records": [
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_01",
+      "proposed_name": "Validate audit evidence sufficiency and appropriateness",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.8674,
+      "reason_codes": [
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower evidence-documentation action such as tracing one evidence item, validating one workpaper assertion, or detecting one missing support"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_02",
+      "proposed_name": "Document audit procedures and rationale",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.8472,
+      "reason_codes": [
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower evidence-documentation action such as tracing one evidence item, validating one workpaper assertion, or detecting one missing support"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_03",
+      "proposed_name": "Reperform reconciliation calculations",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.836,
+      "reason_codes": [
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower evidence-documentation action such as tracing one evidence item, validating one workpaper assertion, or detecting one missing support"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_04",
+      "proposed_name": "Trace reconciling items to supporting documents",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.936,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_05",
+      "proposed_name": "Investigate reconciling items for exceptions",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.809,
+      "reason_codes": [
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower evidence-documentation action such as tracing one evidence item, validating one workpaper assertion, or detecting one missing support"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_001",
+      "proposed_name": "Assess Material Weakness in Internal Control",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.8472,
+      "reason_codes": [
+        "broad_control_assessment"
+      ],
+      "suggested_abstraction": "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_002",
+      "proposed_name": "Test Operating Effectiveness of Internal Controls",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9202,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_003",
+      "proposed_name": "Evaluate Control Deficiencies and Classify Severity",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9472,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_004",
+      "proposed_name": "Apply COSO Components to Evaluate Control Environment",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.8832,
+      "reason_codes": [
+        "broad_control_assessment",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_005",
+      "proposed_name": "Select Controls for Testing Based on Risk Assessment",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9472,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_006",
+      "proposed_name": "Document Control Testing Procedures and Results",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.832,
+      "reason_codes": [
+        "weak_action_granularity",
+        "broad_control_assessment",
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_audit_doc_completeness",
+      "proposed_name": "Verify audit documentation completeness and clarity",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.7114,
+      "reason_codes": [
+        "weak_action_granularity",
+        "broad_control_assessment",
+        "broad_documentation_deliverable"
+      ],
+      "suggested_abstraction": "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_control_design_assessment",
+      "proposed_name": "Assess control design and operating effectiveness",
+      "previous_status": "candidate",
+      "new_decision": "revise",
+      "total_score": 0.8544,
+      "reason_codes": [
+        "weak_action_granularity",
+        "broad_control_assessment",
+        "broad_documentation_deliverable",
+        "task_level_penalty_reduced_by_atomic_contract"
+      ],
+      "suggested_abstraction": "A narrower control-testing action such as selecting controls, mapping assertions, testing one control attribute, or classifying one deficiency"
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_scoping_controls",
+      "proposed_name": "Scope internal controls for compliance",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9584,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_validate_control_ownership",
+      "proposed_name": "Validate control ownership assignment",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9674,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_identify_remediation_plans",
+      "proposed_name": "Identify and document remediation plans for control gaps",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9944,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    },
+    {
+      "source_path": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction\\extracted_skill_candidates.json",
+      "candidate_id": "skill_candidate_assess_control_objective_alignment",
+      "proposed_name": "Assess alignment of control objectives with financial statement assertions",
+      "previous_status": "candidate",
+      "new_decision": "accept",
+      "total_score": 0.9584,
+      "reason_codes": [],
+      "suggested_abstraction": ""
+    }
+  ],
+  "notes": [
+    "This is report-only and does not update candidates, registry entries, or extraction outputs.",
+    "Use this report to calibrate reviewer thresholds before expanding Pipeline A or sampling for Pipeline B."
+  ]
+}

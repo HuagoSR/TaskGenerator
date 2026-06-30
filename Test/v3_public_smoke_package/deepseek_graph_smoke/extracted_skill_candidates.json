@@ -1,0 +1,396 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "extractor": "deepseek",
+  "candidate_count": 3,
+  "candidates": [
+    {
+      "candidate_id": "skill_candidate_reconcile_gl",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Reconcile Payment Processor Exports to General Ledger",
+      "domain_tags": [
+        "finance",
+        "audit"
+      ],
+      "capability_tags": [
+        "Reconciliation",
+        "Fact"
+      ],
+      "difficulty_tags": [
+        "Robustness"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:ProcessorSettlementRows",
+          "Finance:GeneralLedgerRevenueRows"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "StructuredTable",
+            "subtype": "TransactionTable",
+            "attributes": {
+              "source_system": "payment_processor",
+              "period": "required",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_reconcile_001"
+            ]
+          },
+          {
+            "resource_type": "StructuredTable",
+            "subtype": "TransactionTable",
+            "attributes": {
+              "source_system": "general_ledger",
+              "period": "required",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_reconcile_001"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:ReconciledRevenueTotal"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "ReconciledRevenue",
+            "attributes": {
+              "currency": "USD",
+              "period": "required",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_reconcile_001"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Combines transaction records from multiple payment sources into a single reconciled revenue figure.",
+      "hidden_difficulty": "Handling timing mismatches and fee deductions between processor reports and GL entries.",
+      "common_failure_modes": [
+        "Double-counting transactions",
+        "Ignoring processor fees",
+        "Mismatched period cutoffs"
+      ],
+      "common_deliverables": [
+        "Reconciliation summary",
+        "Variance report"
+      ],
+      "assembly_hints": [
+        "Start with processor exports and GL download",
+        "Match on transaction ID or date and amount",
+        "Flag unmatched items for review"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev_reconcile_001",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0002",
+            "block_0003"
+          ],
+          "evidence_summary": "The task requires reconciling processor exports against the general ledger.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0002",
+              "start_char": 113,
+              "end_char": 164,
+              "quote": "reconcile processor exports against the general ledger",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0003",
+              "start_char": 0,
+              "end_char": 241,
+              "quote": "The source materials include one spreadsheet with processor settlement rows, one spreadsheet with general ledger revenue rows",
+              "note": "Indicates source data for reconciliation."
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "deepseek-v4-flash",
+      "extraction_trace": [
+        "Extracted from public synthetic audit note blocks 2 and 3."
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_dedup_receipts",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Identify Duplicate Donor Receipts",
+      "domain_tags": [
+        "finance",
+        "audit"
+      ],
+      "capability_tags": [
+        "Deduplication",
+        "Fact"
+      ],
+      "difficulty_tags": [
+        "Robustness"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:DonorReceiptRecords"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "StructuredTable",
+            "subtype": "TransactionTable",
+            "attributes": {
+              "entity": "nonprofit",
+              "period": "required",
+              "contains_donor_info": true
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_dedup_001"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:DuplicateReceiptFlag"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "ExceptionRecord",
+            "subtype": "DuplicateReceipt",
+            "attributes": {
+              "severity": "medium",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_dedup_001"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Scans donor receipt records to find duplicates that could inflate revenue.",
+      "hidden_difficulty": "Distinguishing true duplicates from similar legitimate transactions (e.g., recurring donations).",
+      "common_failure_modes": [
+        "False positives from donor name similarity",
+        "Missing duplicates due to date differences"
+      ],
+      "common_deliverables": [
+        "List of duplicate receipts",
+        "Adjustment entries"
+      ],
+      "assembly_hints": [
+        "Group by donor name, amount, and date",
+        "Apply fuzzy matching if needed",
+        "Exclude intentionally recurring payments"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev_dedup_001",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0002",
+            "block_0005"
+          ],
+          "evidence_summary": "The task explicitly requires identifying duplicate donor receipts and common mistake is double-counting.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0002",
+              "start_char": 166,
+              "end_char": 195,
+              "quote": "identify duplicate donor receipts",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0005",
+              "start_char": 0,
+              "end_char": 54,
+              "quote": "Common mistakes include double-counting duplicate donor receipts",
+              "note": ""
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "deepseek-v4-flash",
+      "extraction_trace": [
+        "Extracted from blocks 2 and 5 indicating duplicate detection requirement."
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_refund_exclusion",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Apply Refund Exclusion Policy to Current-Month Revenue",
+      "domain_tags": [
+        "finance",
+        "audit",
+        "compliance"
+      ],
+      "capability_tags": [
+        "PolicyApplication",
+        "Reasoning"
+      ],
+      "difficulty_tags": [
+        "Compliance"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Finance:RefundRecords",
+          "Finance:CurrentMonthRevenuePolicy"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "RefundAmount",
+            "attributes": {
+              "currency": "USD",
+              "period": "current_month",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_refund_001"
+            ]
+          },
+          {
+            "resource_type": "PolicyRule",
+            "subtype": "RevenueRecognition",
+            "attributes": {
+              "jurisdiction": "US",
+              "effective_date": "required"
+            },
+            "domain": "compliance",
+            "evidence_refs": [
+              "ev_refund_001"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Finance:AdjustedDonationRevenue"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "ExcludedRefund",
+            "attributes": {
+              "currency": "USD",
+              "period": "next_month",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_refund_001"
+            ]
+          },
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "AdjustedRevenue",
+            "attributes": {
+              "currency": "USD",
+              "period": "current_month",
+              "entity": "nonprofit"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "ev_refund_001"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Adjusts current-month revenue by excluding refunds that occurred after month-end per policy.",
+      "hidden_difficulty": "Determining whether a refund belongs to current or next month when policy is ambiguous.",
+      "common_failure_modes": [
+        "Including post-month refunds as current revenue",
+        "Misapplying policy to legitimate adjustments"
+      ],
+      "common_deliverables": [
+        "Revenue adjustment note",
+        "Policy compliance memo"
+      ],
+      "assembly_hints": [
+        "Identify all refunds with post-month-end dates",
+        "Apply exclusion rule from policy note",
+        "Recalculate total revenue"
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev_refund_001",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0003",
+            "block_0005"
+          ],
+          "evidence_summary": "Policy note explains refund exclusion; common mistake is treating refunds as current-month revenue.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0003",
+              "start_char": 135,
+              "end_char": 172,
+              "quote": "refunds after month-end should be excluded",
+              "note": "Explicit policy statement."
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0005",
+              "start_char": 54,
+              "end_char": 108,
+              "quote": "treating refunded payments as current-month revenue",
+              "note": "Common mistake."
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "deepseek-v4-flash",
+      "extraction_trace": [
+        "Extracted from blocks 3 and 5 highlighting policy application requirement."
+      ]
+    }
+  ]
+}

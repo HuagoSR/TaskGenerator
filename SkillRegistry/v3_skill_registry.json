@@ -1,6 +1,6 @@
 {
   "registry_version": "v3.0",
-  "entry_count": 44,
+  "entry_count": 66,
   "entries": [
     {
       "skill_id": "skill_e08be4157d",
@@ -23,7 +23,10 @@
           "Confidence level and tolerable error rate"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -31,7 +34,10 @@
         "provides_semantics": [
           "Required sample size",
           "Sample size calculation details"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Computes the minimum sample size needed for statistical audit testing given specified confidence and error tolerance.",
       "hidden_difficulty": "Correct application of statistical formula for sample size determination in audit context.",
@@ -79,14 +85,20 @@
           "Row-wise data"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Quarter-on-quarter variance per row"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Calculates the percentage or absolute variance between two consecutive quarters for audit analysis.",
       "hidden_difficulty": "Correct handling of zero or negative base values.",
@@ -135,7 +147,10 @@
           "Required sample size"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -143,7 +158,10 @@
         "provides_semantics": [
           "Selected sample rows marked with indicator",
           "Coverage of all criteria across selected samples"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Selects a subset of rows from a population for audit testing such that each sample satisfies at least one criterion and all criteria are covered collectively.",
       "hidden_difficulty": "Ensuring coverage of all criteria with minimum sample size, avoiding duplicate coverage, combinatorial optimization.",
@@ -191,7 +209,10 @@
           "Withholding tax rates per country"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -199,7 +220,10 @@
         "provides_semantics": [
           "Net revenue after withholding",
           "Withholding tax amount per country"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Reduces gross revenue by applicable foreign tax withholding rates to compute net revenue, handling multiple countries with different rates.",
       "hidden_difficulty": "Correct application of percentage rates per country and ensuring accurate subtraction.",
@@ -246,14 +270,20 @@
           "Exchange rates (implicit or explicit)"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Revenue amounts converted to USD"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Converts monetary values from various currencies to a single reporting currency (USD) for consistent financial reporting.",
       "hidden_difficulty": "Handling exchange rate source and date applicability.",
@@ -301,7 +331,10 @@
           "Amortization start and end dates"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -310,7 +343,10 @@
           "Monthly amortization schedule",
           "Remaining balance by month",
           "Total amortized amount"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Spreads the cost of a prepaid expense over its useful life on a monthly basis, tracking original amount, monthly expense, and remaining balance.",
       "hidden_difficulty": "Determining amortization period correctly, handling partial months, allocation across multiple invoices.",
@@ -356,7 +392,10 @@
           "Detailed amortization schedules for prepaid expenses and insurance"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -365,7 +404,10 @@
           "Total prepaid expenses YTD",
           "Total amortization YTD",
           "Ending balance as of report date"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Aggregates totals from detailed prepaid schedules into a high-level summary snapshot for reporting.",
       "hidden_difficulty": "Ensuring totals match detailed schedules, correct YTD calculations.",
@@ -415,7 +457,10 @@
           "Current period adjustments"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -423,7 +468,10 @@
         "provides_semantics": [
           "Reconciled financial report line items",
           "Variance explanations"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Verifies that totals from detailed source files match the aggregated amounts in financial report line items, identifying and adjusting discrepancies.",
       "hidden_difficulty": "Handling multiple source files with different formats, ensuring all transactions are captured, proper period cut-off.",
@@ -472,7 +520,10 @@
           "Mapping of accounts"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -480,7 +531,10 @@
         "provides_semantics": [
           "Consolidated financial statements",
           "Supporting schedules"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Combines financial data from disparate source systems (payroll, accruals, general ledger) into a unified financial package for a reporting period.",
       "hidden_difficulty": "Ensuring all sources are incorporated correctly, handling different data structures, maintaining data integrity.",
@@ -528,7 +582,10 @@
           "Previous period accrual balances"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -536,7 +593,10 @@
         "provides_semantics": [
           "Accrual journal entries",
           "Updated accrual schedules"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Calculates accrual amounts (e.g., bonuses, miscellaneous) based on underlying data and updates the financial package accordingly.",
       "hidden_difficulty": "Correctly applying accrual methodology, ensuring consistency with prior periods.",
@@ -584,14 +644,20 @@
           "Strategy:CompetitiveLandscapeData"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Strategy:MarketPositionAssessment"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Analyze a company's current market position relative to competitors, identifying strengths, weaknesses, and strategic imperatives.",
       "hidden_difficulty": "Requires synthesizing qualitative and quantitative competitive dynamics without explicit structured data.",
@@ -635,14 +701,20 @@
           "Strategy:MarketPositionAssessment"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Strategy:ActionableRecommendations"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Translate market analysis into specific, actionable growth strategies and recommendations.",
       "hidden_difficulty": "Must balance ambition with realism, considering local regulations, supply constraints, and user experience.",
@@ -688,14 +760,20 @@
         "optional_semantics": [
           "Finance:AggregateView"
         ],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:AggregatedReportByBranch"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Aggregate financial data by branch or segment, allowing user selection of specific branches or overall company view.",
       "hidden_difficulty": "Implementing dynamic dropdown and ensuring aggregation consistency.",
@@ -741,14 +819,20 @@
           "HR:HeadcountRoster"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:CompensationExpenseByType"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Calculate total compensation expense broken down by compensation type (e.g., base salary, bonuses) using headcount and rate assumptions.",
       "hidden_difficulty": "Multiple compensation types may have different calculation rules (e.g., hourly vs fixed).",
@@ -792,14 +876,20 @@
           "Finance:PeriodData"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:QuarterlySummary"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Aggregate financial data from monthly or periodic data into quarterly summaries.",
       "hidden_difficulty": "Ensuring correct period mapping and handling partial quarters.",
@@ -845,14 +935,20 @@
         "optional_semantics": [
           "Finance:FutureAssumptions"
         ],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:ProjectedResultsWithSensitivity"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Build a model that allows changing input drivers (e.g., rates, terms) to see projected results and growth rates under different scenarios.",
       "hidden_difficulty": "Designing flexible input fields and ensuring calculations update correctly; projecting multiple years.",
@@ -897,7 +993,10 @@
           "Finance:WACC"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -905,7 +1004,10 @@
         "provides_semantics": [
           "Finance:NPV_IRR_Estimate",
           "Finance:InvestmentRecommendation"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Perform high-level financial analysis of investment projects using net present value and internal rate of return estimates, with qualitative justification.",
       "hidden_difficulty": "Dealing with directional estimates rather than exact numbers; balancing quantitative and qualitative factors.",
@@ -949,14 +1051,20 @@
           "Finance:ProjectDetails"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Risk:TopRisks"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Identify the top financial and operational risks associated with a project or investment.",
       "hidden_difficulty": "Requires domain knowledge to foresee and prioritize risks.",
@@ -1000,14 +1108,20 @@
           "Risk:IdentifiedRisks"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Risk:MitigationPlan"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Develop specific strategies to mitigate identified risks and suggest contingency plans.",
       "hidden_difficulty": "Creating actionable and robust contingency plans.",
@@ -1053,14 +1167,20 @@
           "Finance:ContractRateAssumptions"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Payroll:CalculatedAmountsByPerson"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Calculate weekly payroll amounts for each employee based on collective bargaining agreement categories and rates.",
       "hidden_difficulty": "Multiple payroll categories with different calculation rules (e.g., per diem, mileage).",
@@ -1106,7 +1226,10 @@
           "Payroll:InputData"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1114,7 +1237,10 @@
         "provides_semantics": [
           "Compliance:ValidationFlag",
           "Compliance:ConflictReport"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Check payroll inputs against collective bargaining agreement terms to highlight conflicts or violations.",
       "hidden_difficulty": "Interpreting CBA rules and applying them to variable inputs; multiple conditions.",
@@ -1159,14 +1285,20 @@
           "HR:OrchestraConfiguration"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Operations:ConfigurablePayrollModel"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Design a payroll model that can accommodate any orchestra configuration or production run duration, easily updatable for changing rates.",
       "hidden_difficulty": "Building a flexible structure that scales to different ensemble sizes and contract terms.",
@@ -1210,14 +1342,20 @@
           "Finance:SubSectorList"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:NormalizedFinancialMetrics"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to fetch publicly available financial data for a given set of companies and organize it into a structured format.",
       "hidden_difficulty": "Ensuring data completeness and accuracy from multiple public sources.",
@@ -1261,7 +1399,10 @@
           "Finance:EarningsData"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1269,7 +1410,10 @@
         "provides_semantics": [
           "Finance:PEMultiple",
           "Finance:ForwardPEMultiple"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to calculate trailing and forward price-to-earnings multiples from stock price and earnings data.",
       "hidden_difficulty": "Handling different fiscal years and analyst consensus estimates.",
@@ -1313,7 +1457,10 @@
           "Finance:SectorHierarchy"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1321,7 +1468,10 @@
         "provides_semantics": [
           "Finance:WeightedAggregates",
           "Finance:PercentageOfTotal"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to compute weighted averages and percentage contributions for sub-groups within a larger index or portfolio.",
       "hidden_difficulty": "Correct weighting logic and handling firms with multiple sub-sectors.",
@@ -1365,14 +1515,20 @@
           "Finance:MandateObjectives"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:PrivateCompanyProfile"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to research and synthesize key information (description, valuation, funding, investors, customers) for private companies in a sector.",
       "hidden_difficulty": "Finding reliable private company data; non-standard formats.",
@@ -1416,14 +1572,20 @@
           "Finance:TargetValuation"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:ComparableValuationRange"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to identify a set of public comparables and compute valuation multiples (Revenue, EBITDA, PE) for benchmarking.",
       "hidden_difficulty": "Selecting appropriate peers and normalizing financial metrics across companies.",
@@ -1467,7 +1629,10 @@
           "Business:PresentationTemplate"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1475,7 +1640,10 @@
         "provides_semantics": [
           "Business:SlideDeck",
           "Business:PDFAttachment"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to synthesize financial research into executive-ready slide decks with clear narratives and visuals.",
       "hidden_difficulty": "Balancing comprehensiveness with conciseness for senior audiences.",
@@ -1520,7 +1688,10 @@
           "Macro:IndicatorsRequest"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1528,7 +1699,10 @@
         "provides_semantics": [
           "Macro:Overview",
           "Macro:KeyTrends"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to gather and summarize key macro indicators (GDP, inflation, demographics, etc.) for a given region to inform strategy.",
       "hidden_difficulty": "Selecting relevant indicators and providing balanced analysis.",
@@ -1572,7 +1746,10 @@
           "VC:SegmentFocus"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1580,7 +1757,10 @@
         "provides_semantics": [
           "VC:MarketLandscape",
           "VC:Trends"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to research and summarize the state of venture capital activity, technology startups, and investment trends in a region.",
       "hidden_difficulty": "Finding reliable and comparable data across countries.",
@@ -1625,7 +1805,10 @@
           "Finance:InvestmentThesis"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1633,7 +1816,10 @@
         "provides_semantics": [
           "Finance:LandscapeOverview",
           "Finance:OpportunityMap"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to map the fintech ecosystem in a region, including key subsectors, players, regulatory environment, and potential synergies.",
       "hidden_difficulty": "Rapidly changing regulatory and competitive landscape.",
@@ -1678,7 +1864,10 @@
           "Math:PricingMethodology"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1686,7 +1875,10 @@
         "provides_semantics": [
           "Finance:OptionPrice",
           "Math:NumericalSolution"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to develop and code multiple numerical approaches (binomial trees, finite differences, Monte Carlo) for pricing American options.",
       "hidden_difficulty": "Handling early exercise feature and ensuring convergence.",
@@ -1730,7 +1922,10 @@
           "Tech:RuntimeEnvironment"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1738,7 +1933,10 @@
         "provides_semantics": [
           "Tech:RuntimeBenchmark",
           "Tech:AccuracyMetric"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to measure and compare runtime and accuracy of different numerical methods to guide production deployment.",
       "hidden_difficulty": "Accounting for variance in Monte Carlo and ensuring fair comparisons.",
@@ -1782,7 +1980,10 @@
           "Tech:PlottingSpec"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1790,7 +1991,10 @@
         "provides_semantics": [
           "Tech:ConvergencePlot",
           "Tech:ComparisonChart"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to create visualizations that illustrate convergence behavior, pricing differences, and runtime benchmarks for quantitative analysis.",
       "hidden_difficulty": "Choosing informative plot types and axes for clarity.",
@@ -1835,7 +2039,10 @@
           "Business:ResearchQuestion"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1843,7 +2050,10 @@
         "provides_semantics": [
           "Commodity:SupplyDemandBalance",
           "Commodity:PriceDrivers"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to analyze supply-demand dynamics, geopolitical impacts, and price drivers for oil and natural gas markets.",
       "hidden_difficulty": "Integrating multiple data sources and geopolitical analysis.",
@@ -1888,7 +2098,10 @@
           "Finance:AssetReturns"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1896,7 +2109,10 @@
         "provides_semantics": [
           "Finance:PortfolioAllocation",
           "Finance:RiskMetrics"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to allocate assets within defined constraints (sector limits, duration, etc.) to maximize returns over a horizon.",
       "hidden_difficulty": "Handling multiple constraints and non-linear objectives.",
@@ -1941,7 +2157,10 @@
           "Finance:PortfolioConstraints"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -1949,7 +2168,10 @@
         "provides_semantics": [
           "Business:ActionableStrategy",
           "Finance:TradingRecommendations"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Ability to formulate a concrete set of trading and sales actions derived from fundamental market analysis and portfolio objectives.",
       "hidden_difficulty": "Balancing conviction with risk management and regulatory compliance.",
@@ -1995,14 +2217,20 @@
           "Government:RiskManagementFramework"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Government:RiskAssessmentQuestionSet"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Design a structured set of questions to evaluate a grant applicant's financial management and internal control systems, applicable across different applicant types.",
       "hidden_difficulty": "Must cover diverse applicant types (universities, non-profits, local governments) while ensuring all relevant risk areas are addressed without being overly prescriptive.",
@@ -2050,14 +2278,20 @@
           "Finance:AuditScope"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:ComplianceTestQuestionSet"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Convert specific legal provisions into closed-ended (Yes/No/Not Applicable) test questions to verify compliance during audits.",
       "hidden_difficulty": "Must interpret legal text precisely and phrase questions to avoid ambiguity while covering all critical elements of the statute.",
@@ -2105,14 +2339,20 @@
           "Finance:RegulatoryReference"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:ExceptionStatement"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Craft a narrative that explains how a specific failure to comply with a regulatory requirement occurred, suitable for audit reporting.",
       "hidden_difficulty": "Must mirror regulatory tone and clearly articulate the gap between required action and actual behavior, often requiring interpretation of handbook language.",
@@ -2160,7 +2400,10 @@
           "Government:ProjectPeriodTimeline"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -2168,7 +2411,10 @@
         "provides_semantics": [
           "Government:SpendingRatio",
           "Government:ElapsedPeriodRatio"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Calculate the percentage of grant funds spent relative to the percentage of the project period elapsed, to identify spending rate anomalies.",
       "hidden_difficulty": "Requires accurate date math and handling of partial periods; straightforward calculation.",
@@ -2216,14 +2462,20 @@
           "Government:ElapsedPeriodRatio"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Government:SpendingRiskFlag"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Apply predefined thresholds to spending ratios to flag grants that may indicate non-compliance risk due to anomalously fast or slow spending.",
       "hidden_difficulty": "Thresholds are arbitrary; need to consider context (e.g., project type) and avoid false positives.",
@@ -2273,7 +2525,10 @@
           "Finance:EntityRelationship"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
@@ -2281,7 +2536,10 @@
         "provides_semantics": [
           "Finance:SuspiciousActivityIndicators",
           "Finance:EntityLinkAnalysis"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Trace and correlate transactions between linked entities (individuals, businesses) to uncover patterns indicative of money laundering, such as layering or structuring.",
       "hidden_difficulty": "Requires synthesizing diverse data types (account statements, beneficial ownership, transaction history) and identifying non-obvious links.",
@@ -2329,14 +2587,20 @@
           "Finance:AccountTransactions"
         ],
         "optional_semantics": [],
-        "provides_semantics": []
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "output_contract": {
         "requires_semantics": [],
         "optional_semantics": [],
         "provides_semantics": [
           "Finance:OwnershipActivityLink"
-        ]
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
       },
       "business_meaning": "Cross-reference business ownership data with transaction history to identify discrepancies or suspicious patterns (e.g., personal expenses through business accounts).",
       "hidden_difficulty": "Ownership structures may be complex, and transactions can be mislabeled. Requires careful integration of two data sources.",
@@ -2360,6 +2624,1388 @@
       },
       "source_candidate_ids": [
         "source_candidate_6ff4872d10"
+      ]
+    },
+    {
+      "skill_id": "skill_bb94a7eb4f",
+      "canonical_name": "Reconcile Audit Evidence from Multiple Sources",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evidence_evaluation",
+        "reconciliation"
+      ],
+      "difficulty_tags": [
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:EvidenceCollection",
+          "Audit:Procedures"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:ReconciledEvidence"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Reconcile audit evidence obtained from different sources (e.g., inspection, observation, reperformance) to ensure consistency and completeness.",
+      "hidden_difficulty": "Requires understanding of different evidence types and their reliability to identify and resolve inconsistencies.",
+      "failure_modes": [
+        "Assuming source reliability without verification",
+        "Overlooking discrepancies between sources"
+      ],
+      "evidence_refs": [
+        "ev_001"
+      ],
+      "assembly_hints": [
+        "Combine with evidence reliability evaluation skill",
+        "Use when audit evidence came from multiple procedures"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_d25bab170d"
+      ]
+    },
+    {
+      "skill_id": "skill_ee4304ae3f",
+      "canonical_name": "Evaluate Reliability of Audit Evidence",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evidence_evaluation",
+        "judgment"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:EvidenceCollection",
+          "Audit:SourceCharacteristics"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:ReliabilityAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Assess the reliability of audit evidence based on source, nature, and circumstances, as required by auditing standards.",
+      "hidden_difficulty": "Requires professional judgment and understanding of factors affecting reliability such as independence, objectivity, and corroboration.",
+      "failure_modes": [
+        "Ignoring indications of unreliable evidence",
+        "Over-reliance on internally generated evidence"
+      ],
+      "evidence_refs": [
+        "ev_002",
+        "ev_003"
+      ],
+      "assembly_hints": [
+        "Combines with control testing to determine appropriate audit procedures",
+        "Precedes evidence reconciliation"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_13c1b76d0e"
+      ]
+    },
+    {
+      "skill_id": "skill_d7ee699ef7",
+      "canonical_name": "Apply Sampling in Tests of Controls",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "sampling",
+        "statistical_analysis"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:ControlPopulation",
+          "Audit:RiskAssessment"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:SampleResults",
+          "Audit:SamplingConclusion"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Design and implement sampling techniques to test internal controls, including selection, execution, and evaluation of results.",
+      "hidden_difficulty": "Requires understanding of sampling risk, statistical vs. non-statistical sampling, and implications for control reliability.",
+      "failure_modes": [
+        "Biased selection",
+        "Inappropriate sample size",
+        "Misinterpretation of sample exceptions"
+      ],
+      "evidence_refs": [
+        "ev_004",
+        "ev_005"
+      ],
+      "assembly_hints": [
+        "May be combined with reliability evaluation to assess control effectiveness",
+        "Often precedes exception handling and evidence reconciliation"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_5ed32d4e99"
+      ]
+    },
+    {
+      "skill_id": "skill_21b64a3c34",
+      "canonical_name": "Handle Exceptions in Control Testing",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "exception_management",
+        "judgment"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:SampleResults",
+          "Audit:ControlDefinition"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:ExceptionAnalysis",
+          "Audit:DeviationImpact"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Identify, document, and evaluate exceptions found during tests of controls to determine their impact on control effectiveness and audit strategy.",
+      "hidden_difficulty": "Requires judgment to distinguish between isolated incidents and systemic control failures, and to assess materiality.",
+      "failure_modes": [
+        "Inadequate documentation of exceptions",
+        "Misjudging severity of deviation"
+      ],
+      "evidence_refs": [
+        "ev_006"
+      ],
+      "assembly_hints": [
+        "Feeds into overall audit evidence evaluation and reporting",
+        "Follows sample testing"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_f83ed31256"
+      ]
+    },
+    {
+      "skill_id": "skill_0ff735355b",
+      "canonical_name": "Corroborate Audit Evidence from Different Procedures",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "cross_referencing",
+        "evidence_evaluation"
+      ],
+      "difficulty_tags": [
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:EvidenceCollection",
+          "Audit:ProceduresPerformed"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:CorroboratedEvidence"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Corroborate audit evidence obtained from different procedures to increase confidence and support conclusions.",
+      "hidden_difficulty": "Requires understanding of how different procedures complement each other and ability to identify contradictory evidence.",
+      "failure_modes": [
+        "Ignoring contradictory evidence",
+        "Insufficient corroboration leading to weak audit conclusions"
+      ],
+      "evidence_refs": [
+        "ev_007"
+      ],
+      "assembly_hints": [
+        "Increases overall audit evidence quality",
+        "Works alongside evidence reconciliation and reliability evaluation"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_39552a2da8"
+      ]
+    },
+    {
+      "skill_id": "skill_d472618e0c",
+      "canonical_name": "Validate audit evidence sufficiency and appropriateness",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "moderate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "AuditAssertion",
+          "EvidenceSet"
+        ],
+        "optional_semantics": [
+          "RiskAssessment"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "EvidenceSufficiencyAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Evaluates whether collected audit evidence is sufficient and appropriate to support audit conclusions, based on authoritative standards.",
+      "hidden_difficulty": "Requires subjective judgment about the relevance and reliability of different evidence types, balancing professional skepticism with efficiency.",
+      "failure_modes": [
+        "Failing to consider contradictory evidence",
+        "Misjudging reliability of evidence from non-independent sources",
+        "Over-reliance on single evidence type"
+      ],
+      "evidence_refs": [
+        "evidence_001",
+        "evidence_002"
+      ],
+      "assembly_hints": [
+        "Combine with risk assessment skills to tailor evidence sufficiency thresholds",
+        "Use after evidence collection to confirm completeness"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_bc96015747"
+      ]
+    },
+    {
+      "skill_id": "skill_d2d18bb874",
+      "canonical_name": "Document audit procedures and rationale",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "AuditProcedurePerformed"
+        ],
+        "optional_semantics": [
+          "AuditFinding"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "AuditDocumentation"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Captures the procedures performed, results, and rationale in audit workpapers to meet documentation standards and support conclusions.",
+      "hidden_difficulty": "Must reflect the full scope of work without oversimplification; requires clear linkage between risk, procedure, and evidence.",
+      "failure_modes": [
+        "Inconsistent formatting across workpapers",
+        "Insufficient detail to support reperformance",
+        "Omitting rationale for judgment calls"
+      ],
+      "evidence_refs": [
+        "evidence_003"
+      ],
+      "assembly_hints": [
+        "Pair with evidence validation skill to document which evidence was deemed sufficient",
+        "Standardize documentation templates for consistency"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_3cc61b7227"
+      ]
+    },
+    {
+      "skill_id": "skill_85c5fb351d",
+      "canonical_name": "Reperform reconciliation calculations",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "easy"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "ReconciliationStatement"
+        ],
+        "optional_semantics": [
+          "SourceLedgerBalances"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "CalculationReperformanceResult"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Independently recalculates figures in a reconciliation to verify mathematical accuracy and detect errors.",
+      "hidden_difficulty": "Requires careful attention to detail and understanding of the reconciliation formula (e.g., book balance to bank balance).",
+      "failure_modes": [
+        "Assuming prior period figures are correct",
+        "Misapplying rounding rules",
+        "Omitting reconciling items from calculation"
+      ],
+      "evidence_refs": [
+        "evidence_004"
+      ],
+      "assembly_hints": [
+        "Combine with trace skill to support recalculation with source documentation",
+        "Use as an input to evidence sufficiency assessment"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_2556b54727"
+      ]
+    },
+    {
+      "skill_id": "skill_6704e920eb",
+      "canonical_name": "Trace reconciling items to supporting documents",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "fact",
+        "robustness"
+      ],
+      "difficulty_tags": [
+        "moderate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "ReconcilingItemList"
+        ],
+        "optional_semantics": [
+          "SupportingDocumentIndex"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "TracingEvidence"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Follows each reconciling item (e.g., outstanding checks, deposits in transit) back to original source documents to verify existence and accuracy.",
+      "hidden_difficulty": "Some items may lack clear external evidence; requires judgment on alternative procedures (e.g., cutoff tests).",
+      "failure_modes": [
+        "Accepting internal documents as sole evidence",
+        "Failing to obtain third-party confirmations",
+        "Missing stale items that should be investigated"
+      ],
+      "evidence_refs": [
+        "evidence_005"
+      ],
+      "assembly_hints": [
+        "Pairs with investigation skill for unresolved items",
+        "Used after reperformance to confirm items are real"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_9899b597bf"
+      ]
+    },
+    {
+      "skill_id": "skill_f34ec2ad05",
+      "canonical_name": "Investigate reconciling items for exceptions",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "difficulty_tags": [
+        "hard"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "ReconcilingItem"
+        ],
+        "optional_semantics": [
+          "HistoricalPattern"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "InvestigationConclusion"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Analyzes reconciling items that are unusual, aged, or unexplained to determine root cause and appropriate disposition (e.g., adjustment, disclosure).",
+      "hidden_difficulty": "Requires understanding of business context, potential fraud indicators, and regulatory requirements for reporting.",
+      "failure_modes": [
+        "Dismissing large or old items as timing differences without evidence",
+        "Failing to escalate potential misstatements",
+        "Inconsistent application of materiality thresholds"
+      ],
+      "evidence_refs": [
+        "evidence_006"
+      ],
+      "assembly_hints": [
+        "Coordinate with fraud detection skills if indicators arise",
+        "Follow after trace skill to identify items needing investigation"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_ce1bef0cc9"
+      ]
+    },
+    {
+      "skill_id": "skill_7328e98bc1",
+      "canonical_name": "Assess Material Weakness in Internal Control",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "assessment",
+        "evaluation"
+      ],
+      "difficulty_tags": [
+        "expert"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:ControlDesignEvidence",
+          "Audit:ControlOperationEvidence"
+        ],
+        "optional_semantics": [
+          "Audit:ManagementAssessment"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:MaterialWeaknessOpinion"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Reusable capability to evaluate whether a control deficiency or combination of deficiencies constitutes a material weakness in internal control over financial reporting, based on audit evidence.",
+      "hidden_difficulty": "Requires professional judgment to aggregate deficiencies and consider compensating controls; involves probabilistic reasoning about likelihood and magnitude of misstatement.",
+      "failure_modes": [
+        "Failing to aggregate deficiencies",
+        "Inconsistent severity classification",
+        "Overlooking compensating controls"
+      ],
+      "evidence_refs": [
+        "evidence_001"
+      ],
+      "assembly_hints": [
+        "Combine with control testing results",
+        "Integrate with financial statement audit findings",
+        "Reference PCAOB AS5 guidance for definition of material weakness"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_8a394bcf5f"
+      ]
+    },
+    {
+      "skill_id": "skill_89fc50d284",
+      "canonical_name": "Test Operating Effectiveness of Internal Controls",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evaluation",
+        "testing"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:ControlDesignDocumentation",
+          "Audit:ControlExecutionEvidence"
+        ],
+        "optional_semantics": [
+          "Audit:ControlRiskRating"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:OperatingEffectivenessAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Capability to perform tests of controls to determine whether they are operating as designed throughout the period, including inquiry, observation, inspection, and reperformance.",
+      "hidden_difficulty": "Requires designing tests that cover all relevant attributes and timing; sampling risk and reliance on evidence from multiple periods add complexity.",
+      "failure_modes": [
+        "Inappropriate timing of tests",
+        "Insufficient sample size",
+        "Misinterpreting deviation as control failure"
+      ],
+      "evidence_refs": [
+        "evidence_002"
+      ],
+      "assembly_hints": [
+        "Combine with design evaluation",
+        "Consider entity-level controls impact",
+        "Use PCAOB AS5 guidance on nature, timing, and extent of tests"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_68e32e39fe"
+      ]
+    },
+    {
+      "skill_id": "skill_a9a044020b",
+      "canonical_name": "Evaluate Control Deficiencies and Classify Severity",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "classification",
+        "evaluation"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:ControlDeficiencyDescription",
+          "Audit:ControlCompensationEvidence"
+        ],
+        "optional_semantics": [
+          "Audit:MaterialityThresholds"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:DeficiencySeverityClassification"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Reusable skill to assess the severity of a control deficiency (deficiency, significant deficiency, material weakness) considering the likelihood and magnitude of potential misstatement.",
+      "hidden_difficulty": "Requires qualitative and quantitative judgment; need to consider aggregation of multiple deficiencies and existence of mitigating controls.",
+      "failure_modes": [
+        "Ignoring compensating controls",
+        "Inconsistent classification across periods",
+        "Misapplying severity definitions"
+      ],
+      "evidence_refs": [
+        "evidence_003"
+      ],
+      "assembly_hints": [
+        "Consider PCAOB AS5 material weakness definition",
+        "Reference KPMG ICFR Handbook guidance on deficiency evaluation",
+        "Use COSO framework for control criteria"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_440f185596"
+      ]
+    },
+    {
+      "skill_id": "skill_8ed7ad7e51",
+      "canonical_name": "Apply COSO Components to Evaluate Control Environment",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evaluation",
+        "frameworks"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:EntityControlEvidence",
+          "Audit:COSOComponentMapping"
+        ],
+        "optional_semantics": [
+          "Audit:FinancialReportingObjectives"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:ControlEnvironmentAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Capability to use the COSO Internal Control-Integrated Framework (five components: control environment, risk assessment, control activities, information & communication, monitoring) to evaluate the effectiveness of an entity's internal control system.",
+      "hidden_difficulty": "Requires understanding of how components interrelate and how to map entity-level controls to COSO principles; subjective assessment of tone at the top.",
+      "failure_modes": [
+        "Insufficient evidence for component-level conclusions",
+        "Misapplying principles to specific controls",
+        "Overlooking component interactions"
+      ],
+      "evidence_refs": [
+        "evidence_004",
+        "evidence_005"
+      ],
+      "assembly_hints": [
+        "Link to financial reporting objectives",
+        "Start with control environment as foundation",
+        "Use COSO principles for each component"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_205e2108f3"
+      ]
+    },
+    {
+      "skill_id": "skill_5af7ad7112",
+      "canonical_name": "Select Controls for Testing Based on Risk Assessment",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "risk_assessment",
+        "testing"
+      ],
+      "difficulty_tags": [
+        "advanced"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:ControlInventory",
+          "Audit:RiskAssessmentResults"
+        ],
+        "optional_semantics": [
+          "Audit:MaterialityThresholds",
+          "Audit:PreviousAuditFindings"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:ControlsSelectedForTesting"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Reusable capability to prioritize and select controls for testing based on the risk of material misstatement, considering control design, complexity, and reliance on automated vs. manual controls.",
+      "hidden_difficulty": "Requires balancing coverage and efficiency; judgment on whether to test entity-level controls vs. process-level controls; integration with financial statement audit risk assessment.",
+      "failure_modes": [
+        "Ignoring IT general controls dependency",
+        "Over-testing low-risk areas",
+        "Under-testing key controls"
+      ],
+      "evidence_refs": [
+        "evidence_006"
+      ],
+      "assembly_hints": [
+        "Align with PCAOB AS5 requirements",
+        "Consider COSO risk assessment component",
+        "Use KPMG ICFR Handbook guidance on risk-based approaches"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_9def1a8d5b"
+      ]
+    },
+    {
+      "skill_id": "skill_fa2fe698df",
+      "canonical_name": "Document Control Testing Procedures and Results",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance",
+        "documentation"
+      ],
+      "difficulty_tags": [
+        "intermediate"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:TestingPlan",
+          "Audit:TestExecutionResults"
+        ],
+        "optional_semantics": [
+          "Audit:EvidenceAttachments"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:DocumentedTestingWorkpapers"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Reusable skill to prepare clear, complete, and compliant documentation of control testing procedures, evidence obtained, conclusions reached, and any identified deficiencies, supporting the audit opinion.",
+      "hidden_difficulty": "Requires understanding of auditing standards for documentation (e.g., PCAOB AS1215); ensuring sufficiency and objectivity of evidence; integrating with prior year workpapers.",
+      "failure_modes": [
+        "Incomplete documentation",
+        "Inconsistent formatting across workpapers",
+        "Lack of clarity on procedures performed"
+      ],
+      "evidence_refs": [
+        "evidence_007",
+        "evidence_008"
+      ],
+      "assembly_hints": [
+        "Ensure cross-referencing to risk assessment",
+        "Reference PCAOB AS5 and AS1215 documentation requirements",
+        "Use KPMG handbook examples as templates"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_9701a88f6f"
+      ]
+    },
+    {
+      "skill_id": "skill_718105b79d",
+      "canonical_name": "Verify audit documentation completeness and clarity",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance_verification",
+        "documentation_review"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Audit:AuditDocumentation"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Audit:DocumentationCompletenessAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Evaluates whether audit documentation is sufficiently detailed to enable an experienced auditor to understand the procedures, results, and conclusions.",
+      "hidden_difficulty": "Requires applying professional judgment to determine sufficiency of documentation, as standards are principles-based.",
+      "failure_modes": [
+        "Inconsistent application of completeness criteria",
+        "Overlooking missing documentation for significant matters"
+      ],
+      "evidence_refs": [
+        "evidence_audit_doc_01"
+      ],
+      "assembly_hints": [
+        "Combine with 'Assess sufficiency of audit evidence' for comprehensive review",
+        "Use as a quality control step before final report issuance"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_e8c0dcc5a2"
+      ]
+    },
+    {
+      "skill_id": "skill_7755b699b3",
+      "canonical_name": "Assess control design and operating effectiveness",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "compliance_testing",
+        "control_evaluation"
+      ],
+      "difficulty_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Compliance:ControlDocumentation",
+          "Compliance:ControlTestResults"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:ControlEffectivenessAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Evaluates whether a control is designed appropriately to mitigate risks and whether it has operated effectively over time based on test evidence.",
+      "hidden_difficulty": "Requires understanding of control objectives and ability to correlate test results with design intent; may involve sampling and professional judgment.",
+      "failure_modes": [
+        "Failing to identify control deficiencies",
+        "Misinterpreting control operation evidence",
+        "Overreliance on insufficient sample size"
+      ],
+      "evidence_refs": [
+        "evidence_sox_compliance_01",
+        "evidence_sox_readiness_01"
+      ],
+      "assembly_hints": [
+        "Can be integrated with risk assessment tasks",
+        "Precedes remediation planning if deficiencies found"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_e1ac31457e"
+      ]
+    },
+    {
+      "skill_id": "skill_9bbc749c9b",
+      "canonical_name": "Scope internal controls for compliance",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "risk_assessment",
+        "scoping"
+      ],
+      "difficulty_tags": [
+        "fact",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Financial:FinancialStatements",
+          "Business:ProcessFlows"
+        ],
+        "optional_semantics": [
+          "Risk:RiskAssessment"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:ScopedControlsList"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Identifies which controls are relevant to compliance objectives based on financial statements and business processes, considering risk and materiality.",
+      "hidden_difficulty": "Requires understanding of entity-level controls, process flows, and risk assessment to determine which controls are in scope.",
+      "failure_modes": [
+        "Inconsistent scoping across periods",
+        "Omitting key controls due to incomplete process understanding",
+        "Scoping too broadly leading to inefficiency"
+      ],
+      "evidence_refs": [
+        "evidence_sox_readiness_scope_01"
+      ],
+      "assembly_hints": [
+        "Feeds into control documentation and testing",
+        "Should align with materiality thresholds"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_490c9a27c0"
+      ]
+    },
+    {
+      "skill_id": "skill_8713180837",
+      "canonical_name": "Validate control ownership assignment",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "accountability",
+        "documentation_review"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "fact"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Compliance:ControlDocumentation",
+          "Organization:RoleAssignments"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:ControlOwnershipVerification"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Confirms that each control has an assigned owner responsible for its operation and documentation, as required for compliance.",
+      "hidden_difficulty": "Requires checking documentation against organizational structures; ownership may be ambiguous or outdated.",
+      "failure_modes": [
+        "Accepting unclear ownership responsibilities",
+        "Overlooking changes in personnel",
+        "Relying on undocumented ownership assignments"
+      ],
+      "evidence_refs": [
+        "evidence_sox_compliance_ownership_01",
+        "evidence_sox_readiness_ownership_02"
+      ],
+      "assembly_hints": [
+        "Combine with control documentation update",
+        "Facilitates remediation accountability"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_8c59fb5c33"
+      ]
+    },
+    {
+      "skill_id": "skill_a1930957ca",
+      "canonical_name": "Identify and document remediation plans for control gaps",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "issue_management",
+        "remediation_planning"
+      ],
+      "difficulty_tags": [
+        "reasoning",
+        "robustness"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Compliance:ControlDeficiency",
+          "Compliance:IssueLog"
+        ],
+        "optional_semantics": [
+          "Risk:RemediationPriority"
+        ],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:RemediationPlan"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Develops a plan to address control deficiencies, including corrective actions, responsible parties, and timelines.",
+      "hidden_difficulty": "Requires prioritization of deficiencies and coordination with control owners; plans must be realistic and tracked.",
+      "failure_modes": [
+        "Inadequate root cause analysis",
+        "Missing accountability for remediation",
+        "Proposing unrealistic timelines"
+      ],
+      "evidence_refs": [
+        "evidence_sox_compliance_remediation_01",
+        "evidence_sox_readiness_remediation_02"
+      ],
+      "assembly_hints": [
+        "Follows control deficiency identification",
+        "Input to ongoing monitoring"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_33685b812b"
+      ]
+    },
+    {
+      "skill_id": "skill_b3d89d2bfb",
+      "canonical_name": "Assess alignment of control objectives with financial statement assertions",
+      "version": "3.0",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "assertion_verification",
+        "control_evaluation"
+      ],
+      "difficulty_tags": [
+        "compliance",
+        "reasoning"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Compliance:ControlDocumentation",
+          "Financial:FinancialStatementAssertions"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Compliance:AlignmentAssessment"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "business_meaning": "Determines whether control objectives properly address the relevant financial statement assertions (e.g., existence, completeness, valuation).",
+      "hidden_difficulty": "Requires understanding of the link between controls and assertions; may involve mapping and testing for coverage gaps.",
+      "failure_modes": [
+        "Failing to update alignment when assertions change",
+        "Misidentifying relevant assertions",
+        "Overlooking indirect controls"
+      ],
+      "evidence_refs": [
+        "evidence_sox_compliance_alignment_01"
+      ],
+      "assembly_hints": [
+        "Baseline for designing test procedures",
+        "Combines with risk assessment to prioritize controls"
+      ],
+      "stats": {
+        "usage_count": 1,
+        "accepted_task_count": 0,
+        "rejected_task_count": 0,
+        "model_separation_stats": {}
+      },
+      "source_candidate_ids": [
+        "source_candidate_cc27e6b42b"
       ]
     }
   ]

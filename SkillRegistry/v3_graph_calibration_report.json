@@ -1,0 +1,262 @@
+{
+  "calibration_report_version": "v3.graph_calibration_report.2",
+  "extraction_dir_count": 9,
+  "status_counts": {
+    "ok": 9
+  },
+  "artifact_generation_counts": {
+    "graph_calibration": 4,
+    "graph_capable": 2,
+    "pre_graph_or_legacy": 3
+  },
+  "graph_ready_count": 9,
+  "candidate_count": 51,
+  "resource_count": 80,
+  "trace_edge_count": 21,
+  "motif_hint_count": 9,
+  "warning_counts": {
+    "missing_provided_typed_resources": 3,
+    "missing_required_typed_resources": 3,
+    "motif_coverage_below_trace_coverage": 2,
+    "multi_candidate_without_motif_hints": 3,
+    "multi_candidate_without_trace_edges": 4
+  },
+  "warning_severity_counts": {
+    "attention": 2,
+    "warning": 13
+  },
+  "calibration_notes": [
+    "pre_graph_or_legacy outputs are useful baselines, but their missing graph fields should not be treated as current extractor failures.",
+    "attention warnings mark calibration targets for Pipeline A; they do not block Pipeline B experiments by themselves."
+  ],
+  "summaries": [
+    {
+      "extraction_dir": "Test\\v3_public_smoke_package\\deepseek_graph_smoke",
+      "status": "ok",
+      "artifact_generation": "graph_capable",
+      "candidate_count": 3,
+      "resource_count": 9,
+      "trace_edge_count": 0,
+      "motif_hint_count": 1,
+      "trace_candidate_coverage_ratio": 0.0,
+      "motif_candidate_coverage_ratio": 1.0,
+      "warning_codes": [
+        "multi_candidate_without_trace_edges"
+      ],
+      "warning_details": [
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_trace_edges",
+          "message": "Multiple candidates were extracted but no local trace edges were emitted."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_public_smoke_package\\deepseek_graph_smoke_v2",
+      "status": "ok",
+      "artifact_generation": "graph_capable",
+      "candidate_count": 3,
+      "resource_count": 11,
+      "trace_edge_count": 2,
+      "motif_hint_count": 1,
+      "trace_candidate_coverage_ratio": 1.0,
+      "motif_candidate_coverage_ratio": 1.0,
+      "warning_codes": [],
+      "warning_details": [],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_gdpval_prompt_sources\\accountants_10\\deepseek_extraction_graph_calibration",
+      "status": "ok",
+      "artifact_generation": "graph_calibration",
+      "candidate_count": 10,
+      "resource_count": 20,
+      "trace_edge_count": 5,
+      "motif_hint_count": 1,
+      "trace_candidate_coverage_ratio": 0.8,
+      "motif_candidate_coverage_ratio": 0.1,
+      "warning_codes": [
+        "motif_coverage_below_trace_coverage"
+      ],
+      "warning_details": [
+        {
+          "severity": "attention",
+          "code": "motif_coverage_below_trace_coverage",
+          "message": "Trace edges cover most candidates but motif hints cover a much smaller subset."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run\\extraction",
+      "status": "ok",
+      "artifact_generation": "pre_graph_or_legacy",
+      "candidate_count": 5,
+      "resource_count": 0,
+      "trace_edge_count": 0,
+      "motif_hint_count": 0,
+      "trace_candidate_coverage_ratio": 0.0,
+      "motif_candidate_coverage_ratio": 0.0,
+      "warning_codes": [
+        "missing_required_typed_resources",
+        "missing_provided_typed_resources",
+        "multi_candidate_without_trace_edges",
+        "multi_candidate_without_motif_hints"
+      ],
+      "warning_details": [
+        {
+          "severity": "warning",
+          "code": "missing_required_typed_resources",
+          "message": "Some candidates have no input_contract.required_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "missing_provided_typed_resources",
+          "message": "Some candidates have no output_contract.provided_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_trace_edges",
+          "message": "Multiple candidates were extracted but no local trace edges were emitted."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_motif_hints",
+          "message": "Multiple candidates were extracted but no motif hints were emitted."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run\\extraction",
+      "status": "ok",
+      "artifact_generation": "pre_graph_or_legacy",
+      "candidate_count": 6,
+      "resource_count": 0,
+      "trace_edge_count": 0,
+      "motif_hint_count": 0,
+      "trace_candidate_coverage_ratio": 0.0,
+      "motif_candidate_coverage_ratio": 0.0,
+      "warning_codes": [
+        "missing_required_typed_resources",
+        "missing_provided_typed_resources",
+        "multi_candidate_without_trace_edges",
+        "multi_candidate_without_motif_hints"
+      ],
+      "warning_details": [
+        {
+          "severity": "warning",
+          "code": "missing_required_typed_resources",
+          "message": "Some candidates have no input_contract.required_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "missing_provided_typed_resources",
+          "message": "Some candidates have no output_contract.provided_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_trace_edges",
+          "message": "Multiple candidates were extracted but no local trace edges were emitted."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_motif_hints",
+          "message": "Multiple candidates were extracted but no motif hints were emitted."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run\\extraction",
+      "status": "ok",
+      "artifact_generation": "pre_graph_or_legacy",
+      "candidate_count": 6,
+      "resource_count": 0,
+      "trace_edge_count": 0,
+      "motif_hint_count": 0,
+      "trace_candidate_coverage_ratio": 0.0,
+      "motif_candidate_coverage_ratio": 0.0,
+      "warning_codes": [
+        "missing_required_typed_resources",
+        "missing_provided_typed_resources",
+        "multi_candidate_without_trace_edges",
+        "multi_candidate_without_motif_hints"
+      ],
+      "warning_details": [
+        {
+          "severity": "warning",
+          "code": "missing_required_typed_resources",
+          "message": "Some candidates have no input_contract.required_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "missing_provided_typed_resources",
+          "message": "Some candidates have no output_contract.provided_resources."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_trace_edges",
+          "message": "Multiple candidates were extracted but no local trace edges were emitted."
+        },
+        {
+          "severity": "warning",
+          "code": "multi_candidate_without_motif_hints",
+          "message": "Multiple candidates were extracted but no motif hints were emitted."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\extraction",
+      "status": "ok",
+      "artifact_generation": "graph_calibration",
+      "candidate_count": 5,
+      "resource_count": 10,
+      "trace_edge_count": 3,
+      "motif_hint_count": 2,
+      "trace_candidate_coverage_ratio": 0.8,
+      "motif_candidate_coverage_ratio": 0.8,
+      "warning_codes": [],
+      "warning_details": [],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\extraction",
+      "status": "ok",
+      "artifact_generation": "graph_calibration",
+      "candidate_count": 8,
+      "resource_count": 16,
+      "trace_edge_count": 7,
+      "motif_hint_count": 2,
+      "trace_candidate_coverage_ratio": 1.0,
+      "motif_candidate_coverage_ratio": 0.375,
+      "warning_codes": [
+        "motif_coverage_below_trace_coverage"
+      ],
+      "warning_details": [
+        {
+          "severity": "attention",
+          "code": "motif_coverage_below_trace_coverage",
+          "message": "Trace edges cover most candidates but motif hints cover a much smaller subset."
+        }
+      ],
+      "is_graph_ready": true
+    },
+    {
+      "extraction_dir": "Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\extraction",
+      "status": "ok",
+      "artifact_generation": "graph_calibration",
+      "candidate_count": 5,
+      "resource_count": 14,
+      "trace_edge_count": 4,
+      "motif_hint_count": 2,
+      "trace_candidate_coverage_ratio": 1.0,
+      "motif_candidate_coverage_ratio": 1.0,
+      "warning_codes": [],
+      "warning_details": [],
+      "is_graph_ready": true
+    }
+  ]
+}

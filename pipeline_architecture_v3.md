@@ -233,6 +233,94 @@ Minimum fields:
 
 The registry is the bridge between source mining and task generation.
 
+### 5. Composable Skill Graph
+
+Responsibility:
+
+- make registry skills usable by Pipeline B as composable subgraphs rather than isolated nodes
+- represent soft successor likelihoods without hardcoding large static successor lists inside each skill
+- preserve the old port intuition while avoiding brittle string-equality port matching
+
+Current implementation direction:
+
+- keep `input_contract` and `output_contract`, while adding typed semantic resources with attributes
+- model task construction through a skill-resource bipartite graph:
+  - a skill requires semantic resources
+  - a skill provides semantic resources
+  - downstream compatibility is judged through resource type, attributes, domain context, and readiness signals
+- store transition evidence outside `SkillRegistryEntry`, currently as report-only graph artifacts
+- initialize transition priors from local source traces:
+  - if a source naturally yields `A -> B -> C`, then `A -> B` and `B -> C` receive positive prior evidence
+  - avoid all-pairs LLM successor generation across the full registry
+- let later Pipeline B quality feedback update edge weights:
+  - successful tasks increase related transition or motif weights
+  - failed tasks decrease them or mark them for review
+- use bandit-style exploration only after filtering by readiness and semantic compatibility
+
+Important distinction:
+
+- a generated task need not be a single chain of skills
+- realistic tasks can be trees, DAG-like structures, or constraint graphs with undirected cycles
+- the executable solving plan should still be representable as staged dependencies without impossible directed cycles
+
+Initial task graph motifs to prioritize:
+
+- `fan_in_reconciliation`: multiple sources or calculations converge into one reconciliation conclusion
+- `policy_application`: policy or rule evidence is extracted, then applied to concrete data
+- `exception_escalation`: detect an exception, classify severity, and propose or document response
+- `cross_check_validation`: independent evidence paths validate the same conclusion
+- `evidence_to_deliverable`: extracted facts and judgments are synthesized into a report, memo, workbook, or checklist
+
+Current graph-layer artifacts:
+
+- `SemanticResource` records `resource_type`, `subtype`, `attributes`, `domain`, and `evidence_refs`
+- `SemanticContract` keeps the legacy string fields and adds `required_resources`, `optional_resources`, and `provided_resources`
+- `SkillTraceEdge` records local source/package relations such as local order, validation, fan-in, fan-out, and cross-check signals
+- `SkillMotifHint` records motif evidence such as reconciliation, policy application, exception escalation, cross-check validation, and evidence-to-deliverable synthesis
+- `v3_skill_graph_diagnostics.py` checks whether extraction outputs are graph-ready by reporting typed resource coverage, trace-edge coverage, motif coverage, and invalid references
+- `v3_skill_transition_graph.py` builds report-only edge priors from local traces, resource compatibility, readiness signals, and motif co-occurrence
+- `Test/run_v3_skill_graph_diagnostics.py` writes `graph_extraction_diagnostics.json` for any extraction directory
+- `Test/run_v3_skill_transition_graph.py` writes `SkillRegistry/v3_skill_transition_graph_report.json` and `SkillRegistry/v3_composition_readiness_report.json`
+- GDPVal and web-source batch runners accept `--build-transition-graph` to generate graph summaries after extraction and review
+- web-source runners now also accept `--skip-registry-update` and `--calibration-only`; calibration-only runs extraction, review, graph diagnostics, and transition reports without writing accepted candidates into the persistent registry
+
+Current verified graph-layer smoke results:
+
+- GDPVal accountants offline graph smoke produced 7 transition edges and 1 motif hint, with 2 usable, 3 caution, and 2 blocked edges
+- web-source reuse batch with `--build-transition-graph` produced 9 transition edges and 3 motif hints, with 2 usable and 7 blocked edges
+- both checks were non-destructive; persistent registry entry_count remained 66 in reuse mode
+- first DeepSeek graph smoke before prompt tightening produced typed resources and motif hints but no trace edges; diagnostics flagged `multi_candidate_without_trace_edges`
+- after prompt tightening, DeepSeek graph smoke produced 3 candidates, 11 typed resources, 2 trace edges, 1 motif hint, no diagnostics warnings, and a transition graph with 1 usable and 1 caution edge
+- existing web-source batch outputs still warn about missing graph extraction fields because they were generated before the graph prompt existed; this is a calibration signal, not a registry mutation
+- `Test/run_v3_graph_calibration_report.py` aggregates diagnostics across extraction directories; current aggregate over 2 public DeepSeek smoke runs, 1 GDPVal prompt-only graph calibration run, 3 older web-source batches, and 3 new web-source graph calibration outputs reports 51 candidates, 80 typed resources, 21 trace edges, 9 motif hints, with warnings concentrated in old graph-less outputs
+- after explicit user approval, GDPVal `Accountants and Auditors` prompt-only graph calibration with DeepSeek official succeeded:
+  - 10 candidates
+  - 20 typed resources
+  - 5 trace edges
+  - 1 motif hint
+  - no graph diagnostics warnings
+  - reviewer accepted 8 and revised 2
+  - transition graph produced 5 edges: 2 caution and 3 blocked
+- new web-source graph calibration with `--calibration-only --max-candidates 8` succeeded across all 3 default topics without registry mutation:
+  - `audit_evidence_reconciliation`: 5 candidates, 10 typed resources, 3 trace edges, 2 motif hints, no diagnostics warnings
+  - `internal_control_testing`: 8 candidates, 16 typed resources, 7 trace edges, 2 motif hints, no diagnostics warnings
+  - `compliance_documentation_review`: 5 candidates, 14 typed resources, 4 trace edges, 2 motif hints, no diagnostics warnings
+  - every run reported `registry_update_skipped=true`, `registry_entry_delta_this_run=0`, and registry entry_count 66
+- transition graph reports now distinguish `edge_scope=registry_mapped` from `edge_scope=candidate_local`; candidate-local edges are expected in calibration-only outputs because accepted candidates have not been persisted into the registry
+- the transition graph now treats source-local `resource_compatible` trace evidence as a weak unverified compatibility signal, so an accepted source-supported edge can become `caution` even if deterministic resource matching is incomplete
+- the extractor prompt now asks motif hints to cover the relevant local workflow candidate subset, after one web-source calibration run showed full trace coverage but narrower motif coverage
+- the next decision point is whether selected accepted calibration candidates should be allowed to enter `SkillRegistry/v3_skill_registry.json`, or remain experiment-only until a persistent transition-prior store is designed
+- `Test/run_v3_pipeline_b_seed_set.py` now writes `SkillRegistry/v3_pipeline_b_seed_set_report.json`, a conservative first Pipeline B sampling slice from registry and readiness reports:
+  - selected count: 20
+  - selected readiness: 20 `sample_ready`
+  - selected motif counts: 12 `policy_application`, 8 `evidence_to_deliverable`, 7 `cross_check_validation`, 5 `fan_in_reconciliation`
+- `Test/run_v3_calibration_registry_admission.py` now writes `SkillRegistry/v3_calibration_registry_admission_report.json`, a report-only review of graph calibration accepted candidates:
+  - 15 accepted candidates reviewed
+  - 14 `recommend_admit`
+  - 1 `merge_existing`
+  - no registry update is performed
+- Pipeline A to B handoff is documented in `PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
+
 ## Pipeline B: Skill-To-Task Design
 
 ### 1. SkillSampler
@@ -383,13 +471,12 @@ They should not lead to endless manual polishing of the same finance task.
 
 ### Missing in Pipeline A
 
-- `RawSource` schema
-- `NormalizedSource` schema
-- `ExtractedSkill` schema with evidence spans
-- source collection runner using stirrup
-- source normalization runner
-- skill extraction runner
-- skill deduplication and registry update logic
+- typed semantic resource ports beyond the current natural-language `input_contract` and `output_contract`
+- source-trace extraction that records local skill order, parallel branches, fan-in, fan-out, and validation relationships
+- transition prior storage outside individual skill nodes
+- compatibility scoring that combines semantic resources, domain context, readiness, and local transition evidence
+- motif discovery and motif readiness reports for common GDPVal-style task structures
+- feedback hooks from future Pipeline B quality results back into transition and motif weights
 
 ### Missing in Pipeline B
 
@@ -479,12 +566,15 @@ Current implementation status:
   - normalizes the collection into a `SkillExtractionPromptPackage`
   - calls external LLM extraction only with explicit `--allow-external-upload`
   - runs deterministic review and updates the persistent registry from accepted candidates only
+  - supports `--skip-registry-update` for report-only calibration runs
+  - supports `--calibration-only`, equivalent to skipping registry update and building transition graph reports
   - emits `web_source_pipeline_a_report.json`
 - `Test/run_v3_web_source_pipeline_a_batch.py` runs Pipeline A across multiple web-source topics or existing collection directories:
   - calls SourceCollector for new topics
   - reuses existing collection and extraction outputs with `--reuse-existing`
   - writes an aggregate source-quality and registry-growth report
   - keeps collection, extraction, review, and registry update as separate per-topic artifacts
+  - forwards `--skip-registry-update` and `--calibration-only` so graph calibration can run without persistent registry growth
 - `Test/run_v3_local_source_to_skill.py` provides a local no-network prototype:
   - reads `.txt` and `.md` files
   - creates `RawSource` records
@@ -556,6 +646,11 @@ What is intentionally not done yet:
 - external testing on private workspace source packages should remain blocked unless the source package is explicitly approved for upload
 - no semantic embedding or LLM-based registry deduplication
 - accepted/rejected skill review loop exists and feeds a persistent unified registry
+- current Pipeline A completion estimate:
+  - node-level Pipeline A MVP: about 85%
+  - scalable registry governance: about 65-70%
+  - composable skill-graph layer: about 45%
+  - overall Pipeline A as a substrate for Pipeline B: about 70%
 - current persistent registry status:
   - path: `SkillRegistry/v3_skill_registry.json`
   - sources: accepted candidates from GDPVal prompt-only batches and Serper web-source finance/audit/compliance batches
@@ -622,7 +717,9 @@ What is intentionally not done yet:
   - readiness is report-only; it does not add registry status fields, delete entries, or quarantine entries in-place
   - `single_source_support` is treated as a sampling-weight signal rather than a blocking quality failure
 
-The immediate Pipeline A-to-B bridge is now available: future Pipeline B should read the sampling readiness report before selecting skills. The expected progress unit should remain a batch: new source materials enter Pipeline A, accepted atomic skills update the registry, rejected/revised skills produce reason codes, and the readiness report decides which registry entries are safe enough to sample.
+The immediate Pipeline A-to-B bridge is now available at the node level: future Pipeline B should read the sampling readiness report before selecting skills. The next Pipeline A target is graph-level composability: new source materials should produce not only accepted atomic skills, but also semantic resource ports, local transition traces, and motif hints that can support tree/DAG-style task assembly.
+
+The graph-level bridge is now strong enough for a minimal Pipeline B prototype, but not yet for broad Pipeline B task generation. Web-source graph calibration remains experiment-only until an explicit registry-entry decision is made.
 
 ### Phase 3: Batch Skill-To-Task Prototype
 
@@ -669,16 +766,16 @@ Deliverables:
 
 ## Immediate Next Step
 
-The next implementation step should be Pipeline A, not another finance task.
+Pipeline A has reached a handoff point. The next implementation step should be a minimal Pipeline B prototype that consumes the Pipeline A seed set and reports back which Pipeline A signals are useful or missing.
 
-Recommended first code task:
+Recommended next code tasks:
 
-- use `SkillRegistry/v3_registry_sampling_readiness_report.json` as the first input filter for Pipeline B sampling
-- keep reviewer calibration reproducible on extracted candidate files before expanding web-source collection
-- compare GDPVal-derived and web-derived skills using coverage, possible duplicates, and reviewer/audit reason codes
-- keep stale/quarantine handling report-only unless a later schema migration explicitly adds registry status fields
-- keep the current batch default at `max_candidates=15` unless the LLM JSON truncation issue is solved
-- implement a minimal `SkillSampler` that samples only from `sample_ready` entries by default and records any `sample_with_caution` override explicitly
+- build a minimal `SkillSampler` that reads `SkillRegistry/v3_pipeline_b_seed_set_report.json`
+- sample a small motif-constrained skill-resource subgraph, not an arbitrary flat skill list
+- emit a draft `TaskBlueprint` or equivalent report-only prototype before full rw-task export
+- record missing Pipeline A fields discovered during assembly
+- keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
+- continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
 
 This will reconnect the project to the original two-pipeline design:
 

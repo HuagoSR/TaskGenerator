@@ -1,0 +1,443 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "extractor": "mock_rule_based_v0",
+  "candidate_count": 3,
+  "candidates": [
+    {
+      "candidate_id": "skill_candidate_acd7fecc74",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Extract Evidence-Backed Semantic Skill",
+      "domain_tags": [
+        "audit",
+        "finance",
+        "public_synthetic"
+      ],
+      "capability_tags": [
+        "skill_extraction",
+        "evidence_grounding"
+      ],
+      "difficulty_tags": [
+        "semantic_abstraction",
+        "source_grounding"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Source:NaturalLanguageMaterial",
+          "Source:EvidenceSpan"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "Source",
+            "subtype": "NaturalLanguageMaterial",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_8aac98ecf6"
+            ]
+          },
+          {
+            "resource_type": "Source",
+            "subtype": "EvidenceSpan",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_8aac98ecf6"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Skill:SemanticCapability",
+          "Skill:EvidenceReference"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "Skill",
+            "subtype": "SemanticCapability",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_8aac98ecf6"
+            ]
+          },
+          {
+            "resource_type": "Skill",
+            "subtype": "EvidenceReference",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_8aac98ecf6"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Identify reusable task capabilities from source material while preserving evidence references.",
+      "hidden_difficulty": "The extractor must avoid copying one-off task details as if they were reusable skills.",
+      "common_failure_modes": [
+        "overfits a single example into a narrow skill",
+        "drops source evidence needed for later review",
+        "mixes task assembly details into skill extraction"
+      ],
+      "common_deliverables": [
+        "skill registry entry",
+        "skill extraction report"
+      ],
+      "assembly_hints": [
+        "Keep extracted skills execution-agnostic.",
+        "Attach block-level evidence spans to every candidate skill."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence_8aac98ecf6",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0003",
+            "block_0005",
+            "block_0006"
+          ],
+          "evidence_summary": "Matched source blocks for reusable capability: Extract Evidence-Backed Semantic Skill.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0003",
+              "start_char": 341,
+              "end_char": 581,
+              "quote": "The source materials include one spreadsheet with processor settlement rows, one spreadsheet with general ledger revenue rows, and a policy note explaining that refunds after month-end should be excluded from current-month donation revenue.",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0005",
+              "start_char": 799,
+              "end_char": 1028,
+              "quote": "Common mistakes include double-counting duplicate donor receipts, treating refunded payments as current-month revenue, ignoring processor fees, and producing a polished workbook whose totals do not tie back to the source exports.",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0006",
+              "start_char": 1030,
+              "end_char": 1280,
+              "quote": "Useful evaluation criteria include whether the final revenue total ties to the reconciled source data, whether excluded refunds are documented, whether duplicate receipts are isolated, and whether the final workbook is readable for a finance manager.",
+              "note": ""
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "mock_rule_based_v0",
+      "extraction_trace": [
+        "Generated by deterministic keyword matching.",
+        "Use this output for pipeline testing, not as final research-quality extraction."
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_37229413d1",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Assemble Skills Into Real-World Task Blueprint",
+      "domain_tags": [
+        "audit",
+        "finance",
+        "public_synthetic"
+      ],
+      "capability_tags": [
+        "task_assembly",
+        "scenario_construction"
+      ],
+      "difficulty_tags": [
+        "multi_skill_composition",
+        "business_realism"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Skill:SemanticCapability",
+          "Task:DomainConstraint"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "Skill",
+            "subtype": "SemanticCapability",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_b7e735cd32"
+            ]
+          },
+          {
+            "resource_type": "Task",
+            "subtype": "DomainConstraint",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_b7e735cd32"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Task:Blueprint",
+          "Task:CandidatePrompt"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "Task",
+            "subtype": "Blueprint",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_b7e735cd32"
+            ]
+          },
+          {
+            "resource_type": "Task",
+            "subtype": "CandidatePrompt",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_b7e735cd32"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Compose reusable skills into a concrete real-world task with a plausible role, evidence package, and deliverable.",
+      "hidden_difficulty": "The assembler must create realistic task dependencies without leaking hidden traps.",
+      "common_failure_modes": [
+        "combines unrelated skills",
+        "creates a prompt that reveals the intended trap",
+        "creates a scenario without realistic evidence files"
+      ],
+      "common_deliverables": [
+        "task blueprint",
+        "candidate prompt"
+      ],
+      "assembly_hints": [
+        "Prefer skill combinations with clear dependency order.",
+        "Separate candidate-visible instructions from teacher-only hints."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence_b7e735cd32",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0004"
+          ],
+          "evidence_summary": "Matched source blocks for reusable capability: Assemble Skills Into Real-World Task Blueprint.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0004",
+              "start_char": 583,
+              "end_char": 797,
+              "quote": "The intended task is not to copy rows into a template. The analyst must create a new workbook with a clean reconciliation summary, a list of exceptions, and a management-ready explanation of unresolved differences.",
+              "note": ""
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "mock_rule_based_v0",
+      "extraction_trace": [
+        "Generated by deterministic keyword matching.",
+        "Use this output for pipeline testing, not as final research-quality extraction."
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_f15ca14f56",
+      "source_ids": [
+        "public_src_nonprofit_reconciliation"
+      ],
+      "proposed_name": "Generate Verifiable Reference Files",
+      "domain_tags": [
+        "audit",
+        "finance",
+        "public_synthetic"
+      ],
+      "capability_tags": [
+        "reference_generation",
+        "data_provenance"
+      ],
+      "difficulty_tags": [
+        "structured_generation",
+        "traceability"
+      ],
+      "input_contract": {
+        "requires_semantics": [
+          "Task:Blueprint",
+          "Data:SourceSchema"
+        ],
+        "optional_semantics": [],
+        "provides_semantics": [],
+        "required_resources": [
+          {
+            "resource_type": "Task",
+            "subtype": "Blueprint",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_9ae2320ac5"
+            ]
+          },
+          {
+            "resource_type": "Data",
+            "subtype": "SourceSchema",
+            "attributes": {
+              "role": "required"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_9ae2320ac5"
+            ]
+          }
+        ],
+        "optional_resources": [],
+        "provided_resources": []
+      },
+      "output_contract": {
+        "requires_semantics": [],
+        "optional_semantics": [],
+        "provides_semantics": [
+          "Data:ReferenceFile",
+          "Data:ProvenanceMap"
+        ],
+        "required_resources": [],
+        "optional_resources": [],
+        "provided_resources": [
+          {
+            "resource_type": "Data",
+            "subtype": "ReferenceFile",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_9ae2320ac5"
+            ]
+          },
+          {
+            "resource_type": "Data",
+            "subtype": "ProvenanceMap",
+            "attributes": {
+              "role": "provided"
+            },
+            "domain": "audit",
+            "evidence_refs": [
+              "evidence_9ae2320ac5"
+            ]
+          }
+        ]
+      },
+      "business_meaning": "Create realistic evidence files whose values can be traced into teacher answers and rubric anchors.",
+      "hidden_difficulty": "Generated data must look realistic without losing deterministic supervision.",
+      "common_failure_modes": [
+        "generates plausible but unverifiable numbers",
+        "loses provenance from source values to grading targets",
+        "creates files that do not match the blueprint"
+      ],
+      "common_deliverables": [
+        "reference spreadsheet",
+        "source manifest",
+        "provenance map"
+      ],
+      "assembly_hints": [
+        "Use code-led numeric generation when exact grading is required.",
+        "Use LLMs mainly for realistic wording and context variation."
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evidence_9ae2320ac5",
+          "source_id": "public_src_nonprofit_reconciliation",
+          "normalized_source_id": "public_norm_nonprofit_reconciliation",
+          "block_ids": [
+            "block_0003",
+            "block_0004",
+            "block_0005",
+            "block_0006"
+          ],
+          "evidence_summary": "Matched source blocks for reusable capability: Generate Verifiable Reference Files.",
+          "supporting_spans": [
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0003",
+              "start_char": 341,
+              "end_char": 581,
+              "quote": "The source materials include one spreadsheet with processor settlement rows, one spreadsheet with general ledger revenue rows, and a policy note explaining that refunds after month-end should be excluded from current-month donation revenue.",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0004",
+              "start_char": 583,
+              "end_char": 797,
+              "quote": "The intended task is not to copy rows into a template. The analyst must create a new workbook with a clean reconciliation summary, a list of exceptions, and a management-ready explanation of unresolved differences.",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0005",
+              "start_char": 799,
+              "end_char": 1028,
+              "quote": "Common mistakes include double-counting duplicate donor receipts, treating refunded payments as current-month revenue, ignoring processor fees, and producing a polished workbook whose totals do not tie back to the source exports.",
+              "note": ""
+            },
+            {
+              "source_id": "public_src_nonprofit_reconciliation",
+              "block_id": "block_0006",
+              "start_char": 1030,
+              "end_char": 1280,
+              "quote": "Useful evaluation criteria include whether the final revenue total ties to the reconciled source data, whether excluded refunds are documented, whether duplicate receipts are isolated, and whether the final workbook is readable for a finance manager.",
+              "note": ""
+            }
+          ]
+        }
+      ],
+      "extraction_status": "candidate",
+      "extractor_model": "mock_rule_based_v0",
+      "extraction_trace": [
+        "Generated by deterministic keyword matching.",
+        "Use this output for pipeline testing, not as final research-quality extraction."
+      ]
+    }
+  ]
+}

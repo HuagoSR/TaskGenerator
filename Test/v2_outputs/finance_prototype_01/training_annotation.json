@@ -1,6 +1,6 @@
 {
-  "annotation_id": "ann_bp_financial_audit_4cb3c039",
-  "blueprint_id": "bp_financial_audit_4cb3c039",
+  "annotation_id": "ann_bp_financial_audit_db8f1aa5",
+  "blueprint_id": "bp_financial_audit_db8f1aa5",
   "capability_profile": {
     "primary_capabilities": [
       "multi_source_ingestion",
@@ -32,12 +32,12 @@
       {
         "target_id": "final_pnl_totals",
         "target_type": "exact_or_tolerance_check",
-        "description": "Validate final source-level and total P&L figures against the golden run."
+        "description": "Validate final workbook totals against the golden run."
       },
       {
         "target_id": "deliverable_presence",
         "target_type": "binary_check",
-        "description": "Check that the required workbook and summary file are produced with correct names."
+        "description": "Check that the required workbook is produced with the correct name."
       }
     ],
     "intermediate_outcomes": [
@@ -78,7 +78,7 @@
   ],
   "rubric_projection": {
     "fact_checks": [
-      "Final source-level and overall P&L totals match the golden run."
+      "Final workbook totals match the golden run."
     ],
     "reasoning_checks": [
       "The model correctly infers implicit currencies from business context.",
@@ -88,7 +88,7 @@
       "The missing tax-rate omission does not break downstream calculations."
     ],
     "compliance_checks": [
-      "Required deliverables exist and satisfy naming and format requirements."
+      "Required workbook exists and satisfies naming and structural requirements."
     ]
   }
 }

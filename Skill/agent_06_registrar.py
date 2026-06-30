@@ -158,15 +158,10 @@ def run_agent_6_registrar(finalized_nodes: list, enable_deduplication: bool = Fa
             if enable_deduplication:
                 print(f"查重通过！准许放行。({decision.get('reason')})")
 
-            # --- 展平 Ports 并落盘 ---
-            safe_kwargs = perfect_node.copy()
-            if "ports" in safe_kwargs:
-                ports = safe_kwargs.pop("ports")
-                safe_kwargs["requires"] = ports.get("requires", [])
-                safe_kwargs["provides"] = ports.get("provides", [])
-
             try:
-                execute_tool_with_log("create_skill", safe_kwargs)
+                # 核心修复：不要再展平 Ports，直接把完整的声明式节点透传给底层工具
+                execute_tool_with_log("create_skill", perfect_node.copy())
+
                 registered_nodes.append(perfect_node)
                 print(f"[{skill_id}] 已成功存入数据库。Schema 完整无损。")
             except Exception as e:

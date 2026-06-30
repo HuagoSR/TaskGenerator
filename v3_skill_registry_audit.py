@@ -6,7 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 
 from v3_skill_registry import SkillRegistryBuilder
 from v3_skill_reviewer import SkillCandidateReviewer
-from v3_source_schema import SkillRegistryEntry, load_json_file
+from v3_source_schema import SkillRegistryEntry, load_json_file, load_skill_candidates
 
 
 class SkillRegistryAuditor:
@@ -47,18 +47,36 @@ class SkillRegistryAuditor:
         registry_path: str | Path,
         update_report_path: Optional[str | Path] = None,
         include_all: bool = False,
+        candidate_files: Optional[List[str | Path]] = None,
+        source_candidate_prefix: str = "",
     ) -> Dict[str, Any]:
         entries = self.registry_builder.load_registry(registry_path)
         unmatched_ids: Set[str] = set()
+        candidate_refs = self._candidate_refs_from_files(candidate_files or [])
         if update_report_path is not None and Path(update_report_path).exists():
             unmatched_ids = self.load_unmatched_skill_ids(update_report_path)
-        elif not include_all:
+        elif not include_all and not candidate_refs and not source_candidate_prefix:
             raise FileNotFoundError(
                 "Auditing only unmatched entries requires an update report with unmatched_existing_entries."
             )
 
-        target_entries = entries if include_all else [entry for entry in entries if entry.skill_id in unmatched_ids]
-        records = [self.audit_entry(entry, is_unmatched=entry.skill_id in unmatched_ids) for entry in target_entries]
+        target_entries = self._target_entries(
+            entries=entries,
+            include_all=include_all,
+            unmatched_ids=unmatched_ids,
+            candidate_refs=candidate_refs,
+            source_candidate_prefix=source_candidate_prefix,
+        )
+        records = [
+            self.audit_entry(
+                entry,
+                is_unmatched=entry.skill_id in unmatched_ids,
+                web_source_governance_attention=self._matches_candidate_scope(
+                    entry, candidate_refs, source_candidate_prefix
+                ),
+            )
+            for entry in target_entries
+        ]
         decision_counts = Counter(record["audit_decision"] for record in records)
         reason_counts = Counter(reason for record in records for reason in record["reason_codes"])
         return {
@@ -66,6 +84,8 @@ class SkillRegistryAuditor:
             "registry_path": str(registry_path),
             "update_report_path": str(update_report_path) if update_report_path is not None else None,
             "include_all": include_all,
+            "candidate_files": [str(path) for path in (candidate_files or [])],
+            "source_candidate_prefix": source_candidate_prefix,
             "registry_entry_count": len(entries),
             "audited_entry_count": len(records),
             "unmatched_entry_count": len(unmatched_ids),
@@ -78,12 +98,19 @@ class SkillRegistryAuditor:
             ],
         }
 
-    def audit_entry(self, entry: SkillRegistryEntry, is_unmatched: bool) -> Dict[str, Any]:
+    def audit_entry(
+        self,
+        entry: SkillRegistryEntry,
+        is_unmatched: bool,
+        web_source_governance_attention: bool = False,
+    ) -> Dict[str, Any]:
         text = self._entry_text(entry)
         reason_codes: List[str] = []
 
         if is_unmatched:
             reason_codes.append("stale_due_to_reviewer_calibration")
+        if web_source_governance_attention:
+            reason_codes.append("web_source_batch_governance_attention")
         if self.reviewer.source_collection_pattern.search(text):
             reason_codes.append("source_collection_leakage")
         if (
@@ -108,6 +135,45 @@ class SkillRegistryAuditor:
             "suggested_abstraction": self._suggested_abstraction(entry, reason_codes),
             "evidence_summary": self._evidence_summary(entry),
         }
+
+    def _candidate_refs_from_files(self, candidate_files: List[str | Path]) -> Set[str]:
+        refs: Set[str] = set()
+        for path in candidate_files:
+            for candidate in load_skill_candidates(str(path)):
+                refs.add(self.registry_builder._candidate_ref(candidate))
+        return refs
+
+    def _target_entries(
+        self,
+        entries: List[SkillRegistryEntry],
+        include_all: bool,
+        unmatched_ids: Set[str],
+        candidate_refs: Set[str],
+        source_candidate_prefix: str,
+    ) -> List[SkillRegistryEntry]:
+        if include_all:
+            return entries
+        return [
+            entry
+            for entry in entries
+            if entry.skill_id in unmatched_ids
+            or self._matches_candidate_scope(entry, candidate_refs, source_candidate_prefix)
+        ]
+
+    def _matches_candidate_scope(
+        self,
+        entry: SkillRegistryEntry,
+        candidate_refs: Set[str],
+        source_candidate_prefix: str,
+    ) -> bool:
+        for ref in entry.source_candidate_ids:
+            if ref in candidate_refs:
+                return True
+            if source_candidate_prefix and ref.startswith(source_candidate_prefix):
+                return True
+            if "@" in ref and ref.split("@", 1)[0] in candidate_refs:
+                return True
+        return False
 
     def _entry_text(self, entry: SkillRegistryEntry) -> str:
         parts: Iterable[str] = [
@@ -162,6 +228,8 @@ class SkillRegistryAuditor:
             return "Keep for historical trace only; decompose into smaller semantic input-output skills before sampling."
         if "weak_atomic_action" in reason_set:
             return "Manually inspect and rename or decompose before using as a registry sampling unit."
+        if "web_source_batch_governance_attention" in reason_set:
+            return "Inspect before sampling for Pipeline B because this entry came from a web-source batch affected by reviewer calibration warnings."
         return "Manual review needed before treating this entry as registry-ready."
 
     def _suggested_abstraction(self, entry: SkillRegistryEntry, reason_codes: List[str]) -> str:

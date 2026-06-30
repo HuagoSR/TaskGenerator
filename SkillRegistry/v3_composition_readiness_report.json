@@ -1,0 +1,229 @@
+{
+  "composition_readiness_version": "v3.composition_readiness.1",
+  "candidate_count": 12,
+  "registry_entry_count": 66,
+  "role_counts": {
+    "fan_in": 11,
+    "starter": 1,
+    "synthesis": 4,
+    "transform": 8
+  },
+  "edge_decision_counts": {
+    "blocked": 2,
+    "caution": 3,
+    "usable": 2
+  },
+  "motif_counts": {
+    "fan_in_reconciliation": 1
+  },
+  "records": [
+    {
+      "candidate_id": "skill_candidate_001",
+      "skill_id": "skill_e08be4157d",
+      "proposed_name": "Calculate Audit Sample Size",
+      "graph_role_hints": [
+        "fan_in",
+        "transform"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_002",
+      "skill_id": "skill_5332cf7fe8",
+      "proposed_name": "Compute Quarter-on-Quarter Variance",
+      "graph_role_hints": [
+        "fan_in"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 1,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_003",
+      "skill_id": "skill_9e84beae17",
+      "proposed_name": "Select Audit Sample with Criteria Coverage",
+      "graph_role_hints": [
+        "fan_in",
+        "transform"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 3,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_004",
+      "skill_id": "",
+      "proposed_name": "Build Structured Profit and Loss Report from Multiple Sources",
+      "graph_role_hints": [
+        "fan_in",
+        "synthesis",
+        "transform"
+      ],
+      "readiness_decision": "unknown",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 3,
+      "provided_resource_count": 3,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_005",
+      "skill_id": "skill_e1c4dedc31",
+      "proposed_name": "Apply Foreign Tax Withholding to Revenue",
+      "graph_role_hints": [
+        "fan_in",
+        "transform"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 1,
+      "required_resource_count": 2,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_006",
+      "skill_id": "skill_ce9d7b7f1c",
+      "proposed_name": "Convert Foreign Currency to USD for Reporting",
+      "graph_role_hints": [
+        "fan_in",
+        "synthesis",
+        "transform"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 1,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 1,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_007",
+      "skill_id": "skill_2d59452de5",
+      "proposed_name": "Amortize Prepaid Expenses Over Period",
+      "graph_role_hints": [
+        "fan_in",
+        "transform"
+      ],
+      "readiness_decision": "exclude_until_revised",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 3,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_008",
+      "skill_id": "skill_cd63ad49e2",
+      "proposed_name": "Summarize Prepaid Account Balances",
+      "graph_role_hints": [
+        "starter",
+        "synthesis",
+        "transform"
+      ],
+      "readiness_decision": "exclude_until_revised",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 1,
+      "provided_resource_count": 3,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_009",
+      "skill_id": "",
+      "proposed_name": "Map Tax Documents to IRS Form Fields",
+      "graph_role_hints": [
+        "fan_in"
+      ],
+      "readiness_decision": "unknown",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 3,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_010",
+      "skill_id": "skill_9149d84703",
+      "proposed_name": "Reconcile Source Totals to Report Line Items",
+      "graph_role_hints": [
+        "fan_in",
+        "synthesis",
+        "transform"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 3,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_011",
+      "skill_id": "skill_03116f26d2",
+      "proposed_name": "Consolidate Period Financial Data from Multiple Sources",
+      "graph_role_hints": [
+        "fan_in"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 1,
+      "required_resource_count": 3,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    },
+    {
+      "candidate_id": "skill_candidate_012",
+      "skill_id": "skill_61eca3e9f0",
+      "proposed_name": "Compute Accrual Entries from Supporting Schedules",
+      "graph_role_hints": [
+        "fan_in"
+      ],
+      "readiness_decision": "sample_ready",
+      "incoming_usable_edge_count": 1,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 2,
+      "reason_codes": [
+        "typed_resources_inferred_from_legacy_semantics"
+      ]
+    }
+  ],
+  "notes": [
+    "This is a report-only graph-role readiness layer for future Pipeline B sampling.",
+    "Graph roles are heuristic hints, not final task assembly decisions."
+  ]
+}

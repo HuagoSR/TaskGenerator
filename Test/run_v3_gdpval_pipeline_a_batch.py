@@ -28,6 +28,17 @@ from v3_skill_extractor import (  # noqa: E402
 )
 from v3_skill_registry import SkillRegistryBuilder  # noqa: E402
 from v3_skill_reviewer import SkillCandidateReviewer  # noqa: E402
+from v3_skill_graph_diagnostics import (  # noqa: E402
+    build_graph_extraction_diagnostics,
+    write_graph_extraction_diagnostics,
+)
+from v3_skill_transition_graph import (  # noqa: E402
+    SkillTransitionGraphBuilder,
+    load_optional_json,
+    load_optional_motif_hints,
+    load_optional_trace_edges,
+    write_graph_report,
+)
 from v3_source_schema import (  # noqa: E402
     ExtractedSkillCandidate,
     NormalizedSource,
@@ -41,6 +52,7 @@ DEFAULT_OUTPUT_ROOT = ROOT / "Test" / "v3_gdpval_prompt_sources" / "pipeline_a_b
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
 DEFAULT_BATCH_REPORT_PATH = ROOT / "SkillRegistry" / "v3_pipeline_a_batch_report.json"
 DEFAULT_AUDIT_REPORT_PATH = ROOT / "SkillRegistry" / "v3_skill_registry_audit_report.json"
+DEFAULT_READINESS_REPORT_PATH = ROOT / "SkillRegistry" / "v3_registry_sampling_readiness_report.json"
 DEFAULT_ENV_PATH = ROOT / ".env"
 DEFAULT_DEEPSEEK_KEY_PATH = ROOT / "deepseek-key.txt"
 DEFAULT_OCCUPATIONS = [
@@ -157,7 +169,11 @@ def write_extraction_outputs(
     provider_name: str,
     candidates: List[ExtractedSkillCandidate],
     attempts: List[ProviderAttempt],
+    trace_edges: List[object] | None = None,
+    motif_hints: List[object] | None = None,
 ) -> None:
+    trace_edges = trace_edges or []
+    motif_hints = motif_hints or []
     write_json(
         output_dir / "extracted_skill_candidates.json",
         {
@@ -173,6 +189,8 @@ def write_extraction_outputs(
             "request_id": package.request_id,
             "normalized_source_count": len(package.normalized_sources),
             "candidate_count": len(candidates),
+            "trace_edge_count": len(trace_edges),
+            "motif_hint_count": len(motif_hints),
             "candidate_names": [candidate.proposed_name for candidate in candidates],
             "provider_used": provider_name,
         },
@@ -184,12 +202,54 @@ def write_extraction_outputs(
             "attempts": [attempt.to_report() for attempt in attempts],
         },
     )
+    write_json(
+        output_dir / "skill_trace_edges.json",
+        {
+            "request_id": package.request_id,
+            "trace_edge_count": len(trace_edges),
+            "trace_edges": [edge.model_dump(mode="json") for edge in trace_edges],
+        },
+    )
+    write_json(
+        output_dir / "skill_motif_hints.json",
+        {
+            "request_id": package.request_id,
+            "motif_hint_count": len(motif_hints),
+            "motif_hints": [hint.model_dump(mode="json") for hint in motif_hints],
+        },
+    )
+    write_graph_extraction_diagnostics(
+        build_graph_extraction_diagnostics(
+            candidates=candidates,
+            trace_edges=trace_edges,
+            motif_hints=motif_hints,
+            package=package,
+        ),
+        output_dir / "graph_extraction_diagnostics.json",
+    )
+
+
+def ensure_graph_extraction_diagnostics(
+    output_dir: Path,
+    package: SkillExtractionPromptPackage,
+    candidates: List[ExtractedSkillCandidate],
+) -> Dict[str, object]:
+    diagnostics = build_graph_extraction_diagnostics(
+        candidates=candidates,
+        trace_edges=load_optional_trace_edges(output_dir / "skill_trace_edges.json"),
+        motif_hints=load_optional_motif_hints(output_dir / "skill_motif_hints.json"),
+        package=package,
+    )
+    write_graph_extraction_diagnostics(diagnostics, output_dir / "graph_extraction_diagnostics.json")
+    return diagnostics
 
 
 def run_extraction(args: argparse.Namespace, package: SkillExtractionPromptPackage, output_dir: Path) -> List[ExtractedSkillCandidate]:
     candidate_path = output_dir / "extracted_skill_candidates.json"
     if args.reuse_existing and candidate_path.exists():
-        return load_skill_candidates(str(candidate_path))
+        candidates = load_skill_candidates(str(candidate_path))
+        ensure_graph_extraction_diagnostics(output_dir, package, candidates)
+        return candidates
 
     if not args.allow_external_upload:
         raise RuntimeError("External LLM extraction requires --allow-external-upload for approved GDPVal prompt-only batches.")
@@ -197,7 +257,15 @@ def run_extraction(args: argparse.Namespace, package: SkillExtractionPromptPacka
     extractor = build_external_extractor(args)
     candidates = extractor.extract(package, max_candidates=args.max_candidates)
     provider_used = next((attempt.provider_name for attempt in extractor.attempts if attempt.success), "unknown")
-    write_extraction_outputs(output_dir, package, provider_used, candidates, extractor.attempts)
+    write_extraction_outputs(
+        output_dir,
+        package,
+        provider_used,
+        candidates,
+        extractor.attempts,
+        trace_edges=extractor.last_trace_edges,
+        motif_hints=extractor.last_motif_hints,
+    )
     return candidates
 
 
@@ -254,6 +322,42 @@ def update_registry(
     report["registry_path"] = str(registry_path)
     write_json(output_dir / "registry_update_report.json", report)
     return report
+
+
+def build_transition_graph_reports(
+    args: argparse.Namespace,
+    candidates: List[ExtractedSkillCandidate],
+    accepted_candidates: List[ExtractedSkillCandidate],
+    extraction_dir: Path,
+    output_dir: Path,
+) -> Dict[str, object]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    registry_entries = SkillRegistryBuilder().load_registry(args.registry_path)
+    transition_report, composition_report = SkillTransitionGraphBuilder().build_reports(
+        candidates=candidates,
+        accepted_candidates=accepted_candidates,
+        registry_entries=registry_entries,
+        trace_edges=load_optional_trace_edges(extraction_dir / "skill_trace_edges.json"),
+        motif_hints=load_optional_motif_hints(extraction_dir / "skill_motif_hints.json"),
+        readiness_report=load_optional_json(args.readiness_report_path),
+    )
+    transition_path = output_dir / "skill_transition_graph_report.json"
+    composition_path = output_dir / "composition_readiness_report.json"
+    write_graph_report(transition_path, transition_report)
+    write_graph_report(composition_path, composition_report)
+    return {
+        "transition_graph_report_path": str(transition_path),
+        "composition_readiness_report_path": str(composition_path),
+        "edge_count": transition_report["edge_count"],
+        "motif_count": transition_report["motif_count"],
+        "usable_edge_count": transition_report["edge_decision_counts"].get("usable", 0),
+        "blocked_edge_count": transition_report["edge_decision_counts"].get("blocked", 0),
+        "top_motifs": sorted(
+            transition_report["motif_counts"].items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:5],
+        "role_counts": composition_report["role_counts"],
+    }
 
 
 def diagnose_review_report(report: Dict[str, object], occupation: str) -> Dict[str, object]:
@@ -344,12 +448,50 @@ def aggregate_diagnostics(batch_summaries: List[Dict[str, object]]) -> Dict[str,
     }
 
 
+def summarize_graph_extraction_diagnostics(report: Dict[str, object]) -> Dict[str, object]:
+    return {
+        "path": "",
+        "resource_count": report["typed_resource_summary"]["resource_count"],
+        "trace_edge_count": report["trace_edge_summary"]["trace_edge_count"],
+        "motif_hint_count": report["motif_hint_summary"]["motif_hint_count"],
+        "warning_codes": [warning["code"] for warning in report["warnings"]],
+        "is_graph_ready": report["is_graph_ready"],
+    }
+
+
+def aggregate_graph_extraction(batch_summaries: List[Dict[str, object]]) -> Dict[str, object]:
+    warning_counts: Counter[str] = Counter()
+    total_resources = 0
+    total_trace_edges = 0
+    total_motif_hints = 0
+    graph_ready_count = 0
+    for batch in batch_summaries:
+        diagnostics = batch.get("graph_extraction_diagnostics") or {}
+        total_resources += int(diagnostics.get("resource_count") or 0)
+        total_trace_edges += int(diagnostics.get("trace_edge_count") or 0)
+        total_motif_hints += int(diagnostics.get("motif_hint_count") or 0)
+        if diagnostics.get("is_graph_ready"):
+            graph_ready_count += 1
+        warning_counts.update(diagnostics.get("warning_codes", []))
+    return {
+        "batch_count": len(batch_summaries),
+        "graph_ready_count": graph_ready_count,
+        "resource_count": total_resources,
+        "trace_edge_count": total_trace_edges,
+        "motif_hint_count": total_motif_hints,
+        "warning_counts": dict(sorted(warning_counts.items())),
+    }
+
+
 def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupation: str) -> Dict[str, object]:
     batch_slug = slugify(occupation)
     batch_dir = args.output_root / batch_slug
     selected_rows = rows_for_batch(rows, occupation, args.limit)
     package = write_prompt_package(batch_dir, selected_rows, include_public_upload_note=True)
     candidates = run_extraction(args, package, batch_dir / "extraction")
+    graph_extraction_diagnostics = ensure_graph_extraction_diagnostics(batch_dir / "extraction", package, candidates)
+    graph_extraction_summary = summarize_graph_extraction_diagnostics(graph_extraction_diagnostics)
+    graph_extraction_summary["path"] = str(batch_dir / "extraction" / "graph_extraction_diagnostics.json")
     review_result = run_review(candidates, batch_dir / "review")
     diagnostics = diagnose_review_report(review_result["report"], occupation)
     registry_report = update_registry(
@@ -357,6 +499,15 @@ def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupatio
         review_result["accepted_candidates"],
         batch_dir / "registry_update",
     )
+    graph_summary = {}
+    if args.build_transition_graph:
+        graph_summary = build_transition_graph_reports(
+            args,
+            candidates,
+            review_result["accepted_candidates"],
+            batch_dir / "extraction",
+            batch_dir / "transition_graph",
+        )
     return {
         "batch_id": batch_slug,
         "occupation": occupation,
@@ -374,6 +525,8 @@ def run_batch(args: argparse.Namespace, rows: List[Dict[str, object]], occupatio
         "possible_duplicate_count": len(registry_report["possible_duplicates"]),
         "accepted_candidates_path": review_result["accepted_candidates_path"],
         "diagnostics": diagnostics,
+        "graph_extraction_diagnostics": graph_extraction_summary,
+        "graph_summary": graph_summary,
     }
 
 
@@ -385,6 +538,7 @@ def main() -> None:
     parser.add_argument("--registry-path", type=Path, default=DEFAULT_REGISTRY_PATH)
     parser.add_argument("--batch-report-path", type=Path, default=DEFAULT_BATCH_REPORT_PATH)
     parser.add_argument("--audit-report-path", type=Path, default=DEFAULT_AUDIT_REPORT_PATH)
+    parser.add_argument("--readiness-report-path", type=Path, default=DEFAULT_READINESS_REPORT_PATH)
     parser.add_argument("--provider", choices=["auto", "tuzi", "deepseek"], default="deepseek")
     parser.add_argument("--model", default=None, help="Override .env OPENAI_MODEL for Tuzi/OpenAI-compatible provider.")
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash")
@@ -397,6 +551,7 @@ def main() -> None:
     parser.add_argument("--cache-arrow", type=Path, default=DEFAULT_GDPVAL_ARROW)
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
     parser.add_argument("--deepseek-key-path", type=Path, default=DEFAULT_DEEPSEEK_KEY_PATH)
+    parser.add_argument("--build-transition-graph", action="store_true", help="Build report-only transition graph and composition readiness artifacts after registry update.")
     args = parser.parse_args()
 
     occupations = args.occupation or DEFAULT_OCCUPATIONS
@@ -420,6 +575,14 @@ def main() -> None:
         "timeout_seconds": args.timeout_seconds,
         "reuse_existing": args.reuse_existing,
         "diagnostics": aggregate_diagnostics(batch_summaries),
+        "graph_extraction_summary": aggregate_graph_extraction(batch_summaries),
+        "graph_summary": {
+            "enabled": args.build_transition_graph,
+            "edge_count": sum(int(batch.get("graph_summary", {}).get("edge_count") or 0) for batch in batch_summaries),
+            "motif_count": sum(int(batch.get("graph_summary", {}).get("motif_count") or 0) for batch in batch_summaries),
+            "usable_edge_count": sum(int(batch.get("graph_summary", {}).get("usable_edge_count") or 0) for batch in batch_summaries),
+            "blocked_edge_count": sum(int(batch.get("graph_summary", {}).get("blocked_edge_count") or 0) for batch in batch_summaries),
+        },
         "registry_audit_report": {
             "path": str(args.audit_report_path),
             "exists": args.audit_report_path.exists(),

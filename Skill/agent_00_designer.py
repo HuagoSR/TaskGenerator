@@ -12,44 +12,68 @@ client = OpenAI(
 model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), "skills_config.json")
 
-
-# 2. 获取系统中所有的“陷阱”
+# 2. 获取系统中所有的“陷阱” (降级为灵感参考，不再是强制约束)
 def get_available_traps() -> str:
     if not os.path.exists(DATABASE_PATH):
-        return "当前系统暂无可用陷阱。"
-    with open(DATABASE_PATH, "r", encoding="utf-8") as f:
-        db = json.load(f)
+        return "No existing traps."
 
-    traps = []
-    for s_id, config in db.items():
-        if config.get("node_type") == "trap":
-            desc = config.get("semantics", {}).get("rubrics", [""])[0]
-            traps.append(f"- ID: {s_id} | Name: {config.get('skill_name')} | Desc: {desc}")
-    return "\n".join(traps)
+    try:
+        with open(DATABASE_PATH, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+            # 如果文件是完全空的，直接返回没有陷阱
+            if not content:
+                return "No existing traps."
+            db = json.loads(content)
+
+        traps = []
+        for s_id, config in db.items():
+            if config.get("node_type") == "trap":
+                # 兼容旧版本和新版本的格式
+                anchor = config.get("semantics", {}).get("evaluation_anchor", {})
+                desc = anchor.get("assertion_logic", "") if isinstance(anchor, dict) else \
+                config.get("semantics", {}).get("rubrics", [""])[0]
+                traps.append(f"- {config.get('skill_name')}: {desc}")
+
+        if not traps:
+            return "No existing traps."
+        return "\n".join(traps)
+
+    except json.JSONDecodeError as e:
+        print(f"[警告] skills_config.json 格式损坏或为空，已作为空题库处理。错误: {e}")
+        return "No existing traps."
+    except Exception as e:
+        print(f"[警告] 读取陷阱库时发生未知错误: {e}")
+        return "No existing traps."
 
 
-# 3. Agent 0 的系统指令 (针对现有文本的陷阱显形)
+# 3. Agent 0 的全新系统指令 (开放式对抗生成)
 SYSTEM_PROMPT_AGENT_0 = """
-You are an elite "Data Analysis Exam Review and Trap Injection Expert."
-You will receive a [Raw Real-world Natural Language Task/Exam] and a library of available [Trap Skills].
+You are an elite "Data Quality Engineer" and Exam Designer.
+Your mission is to take a clean, raw business task and inject highly realistic, context-aware data anomalies (Traps) to test an AI candidate's robustness.
 
-# Your Workflow:
-1. Carefully read the raw task.
-2. Evaluate the trap library: Can this trap's logic be reasonably integrated into the current task?
-3. Check the raw task: If the raw task already explicitly handles the trap (e.g., it explicitly states "Please handle null values"), SKIP the trap to avoid redundancy.
-4. Text Rewrite (Trap Manifestation): If a suitable trap is found and not already in the raw task, rewrite the original natural language text. Seamlessly blend the trap logic into the business description with a natural, coherent tone.
-5. Hidden Marker: At the very end of the rewritten text, explicitly mark ALL traps (both pre-existing and newly injected) using the exact format `[Internal Prompt Directive: Inject Trap <Trap_ID>]`. This is crucial for downstream parsers.
+# Your Workflow (Chain of Thought):
+1. **Context Analysis**: Deeply analyze the industry, role, and data pipelines mentioned in the raw task (e.g., Financial Audit, Supply Chain).
+2. **Brainstorming Anomalies**: Invent 2 to 3 highly realistic data traps that naturally occur in this specific business context. 
+   - *Do not just use simple "missing values".* Think about currency mismatches, inconsistent date formats, implicit duplicates, legacy system artifacts, or corrupted foreign keys.
+   - You can use the provided [Trap Inspiration Library] for ideas, but you are ENCOURAGED to invent entirely new ones.
+3. **Implicit Injection**: Rewrite the original natural language text. Weave the existence of these anomalies seamlessly into the background lore or data descriptions. DO NOT explicitly tell the candidate to "clean" or "fix" them. The candidate must discover them during execution.
+4. **Hidden Directives**: At the very end of your output, you MUST append a machine-readable directive block for our backend compiler, detailing the exact traps you invented.
 
-# Output Specification:
-Directly output the rewritten, coherent natural language text, appending the internal directives at the end. DO NOT output any extra explanations or conversational filler.
+# Output Format (Strictly Follow):
+[Rewritten Business Task (with integrated trap lore)]
+
+---
+[Backend Directives]
+[Inject Trap: <Trap_Name_1> | Intent: <Detailed description of the physical data disruption you envision>]
+[Inject Trap: <Trap_Name_2> | Intent: <Detailed description of the physical data disruption you envision>]
 """
 
-
 def run_trap_injector_agent(original_text: str) -> str:
-    print(f"Agent 0 [陷阱显形] 正在扫描原题并匹配陷阱... (Model: {model_name})")
+    print(f"Agent 0 [对抗陷阱生成] 正在分析业务上下文并埋设动态陷阱... (Model: {model_name})")
 
-    available_traps = get_available_traps()
-    user_content = f"【当前可用陷阱库】:\n{available_traps}\n\n【原始自然语言题目】:\n{original_text}"
+    # 现有的陷阱只作为“灵感库”传进去
+    trap_inspirations = get_available_traps()
+    user_content = f"【Trap Inspiration Library】:\n{trap_inspirations}\n\n【Raw Business Task】:\n{original_text}"
 
     try:
         response = client.chat.completions.create(
@@ -58,13 +82,18 @@ def run_trap_injector_agent(original_text: str) -> str:
                 {"role": "system", "content": SYSTEM_PROMPT_AGENT_0},
                 {"role": "user", "content": user_content}
             ],
-            temperature=0.3  # 保持较低温度，确保重写逻辑的严密性
+            # 温度稍微调高到 0.5，赋予它发明新陷阱的创造力
+            temperature=0.5
         )
+
+        if isinstance(response, str):
+            print(f"\n[致命警告] 中转站返回了非标准响应 (通常是报错信息):\n{response}\n")
+            return []  # Agent 1 返回空列表，Agent 0 返回 original_text
+
         return response.choices[0].message.content
     except Exception as e:
         print(f"API 请求失败: {e}")
         return original_text
-
 
 # ==================== 测试 ====================
 if __name__ == "__main__":
@@ -104,5 +133,5 @@ Using the data in the ‘Population’ spreadsheet, complete the following:
     print("-" * 50)
 
     enhanced_text = run_trap_injector_agent(clean_original_text)
-    print("\nAgent 0 注入陷阱并重写后的文本：\n")
+    print("\nAgent 0 动态对抗注入后的文本：\n")
     print(enhanced_text)

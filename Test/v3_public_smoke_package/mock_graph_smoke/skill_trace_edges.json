@@ -1,0 +1,36 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "trace_edge_count": 2,
+  "trace_edges": [
+    {
+      "from_candidate_id": "skill_candidate_acd7fecc74",
+      "to_candidate_id": "skill_candidate_37229413d1",
+      "relation_type": "local_order",
+      "evidence_block_ids": [
+        "block_0003",
+        "block_0004",
+        "block_0005",
+        "block_0006"
+      ],
+      "reason_codes": [
+        "mock_local_candidate_order"
+      ],
+      "weight_hint": 0.5
+    },
+    {
+      "from_candidate_id": "skill_candidate_37229413d1",
+      "to_candidate_id": "skill_candidate_f15ca14f56",
+      "relation_type": "local_order",
+      "evidence_block_ids": [
+        "block_0003",
+        "block_0004",
+        "block_0005",
+        "block_0006"
+      ],
+      "reason_codes": [
+        "mock_local_candidate_order"
+      ],
+      "weight_hint": 0.5
+    }
+  ]
+}

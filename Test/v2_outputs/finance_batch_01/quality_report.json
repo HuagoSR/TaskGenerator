@@ -1,65 +1,112 @@
 [
   {
-    "task_id": "TASK_87D21D91",
-    "total_score": 75.51,
+    "task_id": "TASK_374E0FBA",
+    "total_score": 83.75,
     "component_scores": {
-      "structural_complexity": 80.43333333333334,
-      "reasoning_depth": 76.5,
-      "result_supervision": 62.599999999999994,
-      "prompt_realism": 78.0,
+      "structural_complexity": 82.25833333333334,
+      "reasoning_depth": 79.5,
+      "result_supervision": 85.0,
+      "prompt_realism": 92.0,
       "challenge_balance": 80.0
     },
     "diagnostics": {
       "trap_count": 2,
-      "rubric_item_count": 15,
+      "rubric_item_count": 35,
       "hidden_requirement_count": 5,
       "source_count": 2,
-      "net_margin_ratio": 0.0547,
-      "top_component": "structural_complexity",
-      "weakest_component": "result_supervision"
+      "executable_verification_target_count": 8,
+      "net_margin_ratio": 0.0802,
+      "top_component": "prompt_realism",
+      "weakest_component": "reasoning_depth"
     },
-    "recommendation": "keep_in_training_pool"
+    "recommendation": "prioritize_for_rw_task_eval"
   },
   {
-    "task_id": "TASK_B467A4A9",
-    "total_score": 71.51,
+    "task_id": "TASK_96D44902",
+    "total_score": 83.75,
     "component_scores": {
-      "structural_complexity": 80.43333333333334,
-      "reasoning_depth": 76.5,
-      "result_supervision": 62.599999999999994,
-      "prompt_realism": 78.0,
-      "challenge_balance": 60.0
+      "structural_complexity": 82.25833333333334,
+      "reasoning_depth": 79.5,
+      "result_supervision": 85.0,
+      "prompt_realism": 92.0,
+      "challenge_balance": 80.0
     },
     "diagnostics": {
       "trap_count": 2,
-      "rubric_item_count": 15,
+      "rubric_item_count": 36,
       "hidden_requirement_count": 5,
       "source_count": 2,
-      "net_margin_ratio": 0.0834,
-      "top_component": "structural_complexity",
-      "weakest_component": "challenge_balance"
+      "executable_verification_target_count": 8,
+      "net_margin_ratio": 0.1,
+      "top_component": "prompt_realism",
+      "weakest_component": "reasoning_depth"
     },
-    "recommendation": "revise_financial_balance_before_eval"
+    "recommendation": "prioritize_for_rw_task_eval"
   },
   {
-    "task_id": "TASK_E578547E",
-    "total_score": 71.51,
+    "task_id": "TASK_B2FBADF0",
+    "total_score": 83.75,
     "component_scores": {
-      "structural_complexity": 80.43333333333334,
-      "reasoning_depth": 76.5,
-      "result_supervision": 62.599999999999994,
-      "prompt_realism": 78.0,
-      "challenge_balance": 60.0
+      "structural_complexity": 82.25833333333334,
+      "reasoning_depth": 79.5,
+      "result_supervision": 85.0,
+      "prompt_realism": 92.0,
+      "challenge_balance": 80.0
     },
     "diagnostics": {
       "trap_count": 2,
-      "rubric_item_count": 15,
+      "rubric_item_count": 35,
       "hidden_requirement_count": 5,
       "source_count": 2,
-      "net_margin_ratio": 0.0519,
-      "top_component": "structural_complexity",
-      "weakest_component": "challenge_balance"
+      "executable_verification_target_count": 8,
+      "net_margin_ratio": 0.1056,
+      "top_component": "prompt_realism",
+      "weakest_component": "reasoning_depth"
     },
-    "recommendation": "revise_financial_balance_before_eval"
+    "recommendation": "prioritize_for_rw_task_eval"
+  },
+  {
+    "task_id": "TASK_BBABEAB4",
+    "total_score": 83.75,
+    "component_scores": {
+      "structural_complexity": 82.25833333333334,
+      "reasoning_depth": 79.5,
+      "result_supervision": 85.0,
+      "prompt_realism": 92.0,
+      "challenge_balance": 80.0
+    },
+    "diagnostics": {
+      "trap_count": 2,
+      "rubric_item_count": 36,
+      "hidden_requirement_count": 5,
+      "source_count": 2,
+      "executable_verification_target_count": 8,
+      "net_margin_ratio": 0.1,
+      "top_component": "prompt_realism",
+      "weakest_component": "reasoning_depth"
+    },
+    "recommendation": "prioritize_for_rw_task_eval"
+  },
+  {
+    "task_id": "TASK_E3D0ABC1",
+    "total_score": 83.75,
+    "component_scores": {
+      "structural_complexity": 82.25833333333334,
+      "reasoning_depth": 79.5,
+      "result_supervision": 85.0,
+      "prompt_realism": 92.0,
+      "challenge_balance": 80.0
+    },
+    "diagnostics": {
+      "trap_count": 2,
+      "rubric_item_count": 35,
+      "hidden_requirement_count": 5,
+      "source_count": 2,
+      "executable_verification_target_count": 8,
+      "net_margin_ratio": 0.0833,
+      "top_component": "prompt_realism",
+      "weakest_component": "reasoning_depth"
+    },
+    "recommendation": "prioritize_for_rw_task_eval"
   }
 ]

@@ -1,0 +1,25 @@
+{
+  "request_id": "public_skill_extract_nonprofit_reconciliation",
+  "motif_hint_count": 1,
+  "motif_hints": [
+    {
+      "motif_type": "fan_in_reconciliation",
+      "candidate_ids": [
+        "skill_candidate_acd7fecc74",
+        "skill_candidate_37229413d1",
+        "skill_candidate_f15ca14f56"
+      ],
+      "evidence_block_ids": [
+        "block_0003",
+        "block_0004",
+        "block_0005",
+        "block_0006"
+      ],
+      "confidence": 0.35,
+      "reason_codes": [
+        "mock_batch_motif_hint"
+      ],
+      "summary": "Deterministic mock motif hint based on extracted candidate order."
+    }
+  ]
+}

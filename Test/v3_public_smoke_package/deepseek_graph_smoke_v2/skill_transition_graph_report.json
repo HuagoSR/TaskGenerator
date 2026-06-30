@@ -1,0 +1,90 @@
+{
+  "transition_graph_version": "v3.transition_graph.1",
+  "candidate_count": 3,
+  "accepted_candidate_count": 3,
+  "registry_entry_count": 66,
+  "edge_count": 2,
+  "edge_decision_counts": {
+    "caution": 1,
+    "usable": 1
+  },
+  "motif_count": 1,
+  "motif_counts": {
+    "fan_in_reconciliation": 1
+  },
+  "edges": [
+    {
+      "edge_id": "skill_edge_d559a2ebd1",
+      "from_candidate_id": "skill_apply_refund_exclusion",
+      "to_candidate_id": "skill_reconcile_processor_gl",
+      "from_skill_id": "",
+      "to_skill_id": "",
+      "relation_type": "local_order",
+      "edge_decision": "usable",
+      "edge_score": 0.57,
+      "compatibility_score": 0.25,
+      "transition_prior": 0.9,
+      "evidence_block_ids": [
+        "block_0003",
+        "block_0002"
+      ],
+      "reason_codes": [
+        "missing_readiness_signal",
+        "motif_fan_in_reconciliation",
+        "required_resource_attributes_satisfied",
+        "resource_compatible",
+        "resource_domain_match",
+        "same_source_order"
+      ],
+      "success_count": 0,
+      "failure_count": 0
+    },
+    {
+      "edge_id": "skill_edge_754af838b0",
+      "from_candidate_id": "skill_identify_duplicate_receipts",
+      "to_candidate_id": "skill_reconcile_processor_gl",
+      "from_skill_id": "",
+      "to_skill_id": "",
+      "relation_type": "cross_check",
+      "edge_decision": "caution",
+      "edge_score": 0.4,
+      "compatibility_score": 0.0,
+      "transition_prior": 0.7,
+      "evidence_block_ids": [
+        "block_0005"
+      ],
+      "reason_codes": [
+        "common_failure_coupling",
+        "missing_readiness_signal",
+        "motif_fan_in_reconciliation",
+        "resource_mismatch"
+      ],
+      "success_count": 0,
+      "failure_count": 0
+    }
+  ],
+  "motif_hints": [
+    {
+      "motif_type": "fan_in_reconciliation",
+      "candidate_ids": [
+        "skill_apply_refund_exclusion",
+        "skill_identify_duplicate_receipts",
+        "skill_reconcile_processor_gl"
+      ],
+      "evidence_block_ids": [
+        "block_0002",
+        "block_0003",
+        "block_0005"
+      ],
+      "confidence": 0.8,
+      "reason_codes": [
+        "source_implies_multiple_data_sources_and_quality_checks"
+      ],
+      "summary": "Multiple data sources (processor, GL, duplicates, refunds) converge into a reconciliation and exception reporting workflow."
+    }
+  ],
+  "notes": [
+    "This report is non-destructive and does not update SkillRegistryEntry.",
+    "Edges come from local source traces or deterministic adjacent-candidate fallback, not all-pairs LLM successor judging."
+  ]
+}

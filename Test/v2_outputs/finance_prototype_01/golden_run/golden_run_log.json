@@ -1,24 +1,23 @@
 {
-  "golden_run_id": "gold_bp_financial_audit_4cb3c039",
-  "blueprint_id": "bp_financial_audit_4cb3c039",
+  "golden_run_id": "gold_bp_financial_audit_db8f1aa5",
+  "blueprint_id": "bp_financial_audit_db8f1aa5",
   "reference_files_read": [
-    "tour_manager_data.xlsx",
-    "production_ledger.xlsx",
-    "tax_rates.xlsx"
+    "fall_music_tour_ref_file.xlsx",
+    "production_company_costs.xlsx"
   ],
   "assumptions": [
-    "GBP rows are converted to USD using 1.27.",
-    "EUR rows are converted to USD using 1.09.",
-    "Missing country tax rates are restored from the canonical teacher reference table."
+    "UK rows are converted to USD using 1.27.",
+    "France, Germany, Spain, and Netherlands rows are converted to USD using 1.09.",
+    "Missing withholding tax assumptions are restored from the canonical teacher tax table."
   ],
   "trap_handling": [
     {
       "trap_type": "implicit_currency",
-      "resolution": "Country-aware locale parsing and FX normalization applied before aggregation."
+      "resolution": "Jurisdiction-aware numeric parsing is applied before final workbook totals are computed."
     },
     {
       "trap_type": "reference_omission",
-      "resolution": "Missing tax rates restored explicitly and logged in tax_rate_resolution."
+      "resolution": "Missing withholding tax assumptions are restored explicitly before tax-adjusted totals are produced."
     }
   ],
   "generated_teacher_artifacts": [

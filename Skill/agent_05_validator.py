@@ -14,51 +14,58 @@ client = OpenAI(
 model_name = os.getenv("OPENAI_MODEL", "gemini-3-pro-preview")
 
 # ==========================================
-# 2. Agent 5 系统指令 (专注对齐与写 Rubric)
+# 2. Agent 5 系统指令 (专注定义高维核验锚点)
 # ==========================================
 SYSTEM_PROMPT = """
-You are a Senior Audit Manager designing the grading rubric for a complex financial data assessment task.
-Your task is to review the proposed workflow steps and generate natural language grading rubrics  that verify if the candidate has successfully completed the task.
-Your rubrics must be written in clear, professional, verifiable ENGLISH sentences, exactly like a grading sheet for a human auditor.
-Your rubrics must comply with industry standards. In particular, when “node_type” is set to “trap,” you must ensure that your rubric strictly adheres to actual industry standards. If you find it difficult to determine specific data processing methods based on the existing context, you may provide a more general, non-specific rubric; however, you must explicitly state in the generated rubric that it should follow “industry standards” or similar wording.
+You are a Senior Audit Manager and Sandbox Evaluation Designer.
+Your task is to review proposed workflow nodes (which contain `sandbox_role` and `data_profile`) and generate an `evaluation_anchor` for each node.
 
-You must evaluate the FINAL deliverable artifact (e.g., the final CSV/Excel). Generate rubrics across these 4 categories:
+Since the actual physical data and baseline answers will be generated dynamically later in a Sandbox (the "Golden Run"), you CANNOT hardcode specific numerical answers or static checking rules. Instead, you must define WHAT needs to be checked against the Golden Run result.
 
-1. **Formatting & Structure**:
-   - Verify the existence of required columns, specific sheet names, or correct output file names.
-   - Example: "The final deliverable contains a column named '{new_col}'."
+# The Evaluation Anchor Categories
+You MUST classify each node into one of these 4 categories and write the corresponding `assertion_logic`:
 
-2. **Mathematical Accuracy & Formulas**:
-   - Describe the exact mathematical relationship expected in the final result.
-   - Example: "The variance rate in '{new_col}' is correctly computed as the difference between '{col_q3}' and '{col_q2}', divided by '{col_q2}'."
+1. **Fact (事实维度)**: 
+   - Used for nodes calculating specific metrics. 
+   - Logic: Compare the examinee's final number against the Golden Run.
+   - Example: "Verify that the final calculated metric matches the exact numerical result produced by the Golden Solver."
 
-3. **Data Cleaning & Edge Cases**:
-   - Verify how dirty data was handled in the final output.
-   - Example: "All negative values in '{col_q2}' and '{col_q3}' have been converted to their absolute values."
-   - Example: "Rows where '{col_q2}' is zero are handled gracefully without producing #DIV/0! or infinite errors."
+2. **Reasoning (推理维度)**:
+   - Used for nodes where business logic (like tax deduction order or currency conversion) is implicitly required but not explicitly given in the prompt.
+   - Example: "Check if the model correctly deduced the local tax deduction order, matching the Golden Run's intermediate column values."
 
-4. **Conditional Sampling (OR-Logic)**:
-   - For filtering/sampling tasks, use "at least one" or "if present" logic. Do NOT demand that the entire file only contains specific rows.
-   - Example: "If there are rows belonging to '{entity_1}', at least one such row is correctly flagged in the final sample."
+3. **Robustness (鲁棒性维度)**:
+   - MUST be used for "trap" nodes (where dirty data is injected).
+   - Logic: Ensure the pipeline doesn't crash and anomalies are handled.
+   - Example: "Verify that downstream aggregations do not propagate #DIV/0! or NaN, gracefully handling the injected null values while preserving valid rows."
+
+4. **Compliance (合规/全局约束)**:
+   - Used for "global" or "export" nodes regarding file formats and naming.
+   - Example: "Assert file_exists('{deliverable_file}') in the final submission."
 
 # OUTPUT FORMAT
-- You must return the original JSON array exactly as provided, preserving ALL fields (`skill_id`, `ports`, `data_params`, `operator_class`, etc.).
-- You will only ADD or MODIFY the `"rubrics"` array inside the `"semantics"` object of each node.
-- Each string inside the `"rubrics"` array must be a professional English sentence following the guidelines above. 
-- 🚫 **STRICT PARAMETERIZATION RULE**: You MUST NOT hardcode concrete business values (e.g., file names, specific column names, country names, multipliers) in the rubrics. You MUST use the exact `{placeholder}` keys found in the `data_params` (and `{deliverables}` for file names) to refer to these values.
-  - BAD: "The final deliverable is named 'Tour_Financial_Report.xlsx'."
-  - GOOD: "The final deliverable is named {deliverables}."
-  - BAD: "Verify that the 'CompliantAmount' column..."
-  - GOOD: "Verify that the '{new_col}' column..."
+- You must return the original JSON array exactly as provided, preserving ALL fields (`skill_id`, `ports`, `sandbox_role`, `data_profile`, etc.).
+- You will ADD an `"evaluation_anchor"` object inside the `"semantics"` object of each node. DO NOT output legacy `"rubrics"` arrays.
+- The `"evaluation_anchor"` MUST have two keys: `"category"` (from the 4 above) and `"assertion_logic"` (a professional English string).
+- **STRICT PARAMETERIZATION RULE**: Do NOT hardcode specific table names or column names if they are parameterized. Use placeholders `{}` that match the keys in the node's `data_profile`.
+
+Example insertion inside the node:
+"semantics": {
+  "intents": ["..."],
+  "evaluation_anchor": {
+    "category": "Robustness",
+    "assertion_logic": "The Golden Solver handles the {trap_count} null anomalies gracefully..."
+  }
+}
 """
 
 
 def run_agent_5_validator(upgraded_nodes: list) -> list:
-    print(f"Agent 5 启动 (奖励设计与校验师) | 引擎: {model_name}")
+    print(f"Agent 5 启动 (高维核验锚点设计师) | 引擎: {model_name}")
     print("-" * 50)
 
-    # 转换为字符串喂给大模型
-    user_content = f"Please align placeholders and generate RL rubrics for these nodes:\n{json.dumps(upgraded_nodes, indent=2)}"
+    # 转换为字符串喂给大模型 (修改了提示语)
+    user_content = f"Please process these nodes. Keep all original fields (like data_profile and sandbox_role) and inject the 'evaluation_anchor' into the semantics object:\n{json.dumps(upgraded_nodes, indent=2)}"
 
     try:
         response = client.chat.completions.create(
@@ -72,7 +79,7 @@ def run_agent_5_validator(upgraded_nodes: list) -> list:
         )
 
         content = response.choices[0].message.content
-        print("\nAgent 5 校验与奖励设计完成！输出可入库 JSON：\n")
+        print("\nAgent 5 核验锚点设计完成！输出可入库 JSON：\n")
         print(content)
 
         # 清理并解析 JSON
@@ -86,10 +93,8 @@ def run_agent_5_validator(upgraded_nodes: list) -> list:
 
         # ====== 防呆加固核心逻辑 ======
         if isinstance(json_data, list):
-            # 如果大模型直接返回了纯数组，直接透传
             return json_data
         elif isinstance(json_data, dict):
-            # 如果大模型听话地返回了包裹对象，安全使用 .get()
             return json_data.get("proposed_nodes", [])
         else:
             return []
@@ -99,12 +104,10 @@ def run_agent_5_validator(upgraded_nodes: list) -> list:
         print(f"\nAPI 请求或解析报错: {e}")
         return []
 
-
 # ==========================================
 # 运行测试
 # ==========================================
 if __name__ == "__main__":
-    # 模拟输入：Agent 4 刚才生成的带有 operator 的 JSON
     agent_4_output = [
     {
       "skill_id": "load_festival_transactions",

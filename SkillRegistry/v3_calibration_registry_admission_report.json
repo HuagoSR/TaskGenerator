@@ -1,0 +1,620 @@
+{
+  "admission_report_version": "v3.calibration_registry_admission.1",
+  "registry_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\SkillRegistry\\v3_skill_registry.json",
+  "accepted_candidate_paths": [
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+    "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json"
+  ],
+  "candidate_count": 15,
+  "admission_decision_counts": {
+    "merge_existing": 1,
+    "recommend_admit": 14
+  },
+  "reason_code_counts": {
+    "matches_existing_registry_entry": 1
+  },
+  "records": [
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_recalc",
+      "proposed_name": "Recalculate Financial Figures",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "reperformance",
+        "verification"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9562,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "MonetaryAmount"
+        ]
+      },
+      "common_deliverables": [
+        "recalculation workpaper",
+        "audit schedule"
+      ],
+      "assembly_hints": [
+        "Combine with source document extraction",
+        "Use for verifying account balances"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_trace",
+      "proposed_name": "Trace Transactions to Supporting Documents",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "verification",
+        "evidence_gathering"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.936,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ComplianceRequirement",
+          "SourceDocument"
+        ]
+      },
+      "common_deliverables": [
+        "supporting schedule",
+        "exception report"
+      ],
+      "assembly_hints": [
+        "Precedes investigation of reconciling items"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_investigate",
+      "proposed_name": "Investigate Reconciling Items",
+      "domain_tags": [
+        "audit",
+        "finance"
+      ],
+      "capability_tags": [
+        "analysis",
+        "problem_solving"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.936,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ExceptionRecord",
+          "ReconciliationDifference"
+        ]
+      },
+      "common_deliverables": [
+        "reconciliation workpaper with explanations",
+        "adjusting journal entries"
+      ],
+      "assembly_hints": [
+        "Usually follows tracing transactions",
+        "Leads to documentation"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\audit_evidence_reconciliation\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_assess_evidence",
+      "proposed_name": "Assess Sufficiency and Appropriateness of Audit Evidence",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "evaluation",
+        "judgment"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9474,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ComplianceRequirement",
+          "ControlEvidence"
+        ]
+      },
+      "common_deliverables": [
+        "evidence evaluation memo",
+        "audit conclusion"
+      ],
+      "assembly_hints": [
+        "Often follows evidence gathering procedures"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_001",
+      "proposed_name": "Define Scope of ICFR Audit Engagement",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Planning",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9202,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ComplianceRequirement",
+          "Jurisdiction"
+        ]
+      },
+      "common_deliverables": [
+        "Audit planning memorandum",
+        "Scoping documentation"
+      ],
+      "assembly_hints": [
+        "Combine with risk assessment skills",
+        "Use materiality thresholds from entity-level controls"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_003",
+      "proposed_name": "Test Operating Effectiveness of Controls",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Fact",
+        "Robustness"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9202,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ControlEvidence"
+        ]
+      },
+      "common_deliverables": [
+        "Test of controls workpaper",
+        "Sample selection documentation"
+      ],
+      "assembly_hints": [
+        "Preceded by design assessment",
+        "Often integrated with substantive testing"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_004",
+      "proposed_name": "Evaluate Control Deficiencies and Classify Severity",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Reasoning",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9562,
+      "admission_decision": "merge_existing",
+      "admission_action": "merge_as_additional_evidence",
+      "reason_codes": [
+        "matches_existing_registry_entry"
+      ],
+      "duplicate_match": {
+        "skill_id": "skill_a9a044020b",
+        "canonical_name": "Evaluate Control Deficiencies and Classify Severity",
+        "match_reason": "exact_name",
+        "match_score": 1.0
+      },
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "AuditFinding",
+          "ExceptionRecord"
+        ]
+      },
+      "common_deliverables": [
+        "Deficiency evaluation memo",
+        "Material weakness summary"
+      ],
+      "assembly_hints": [
+        "Input from multiple control tests",
+        "Feeds into audit opinion"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_005",
+      "proposed_name": "Report on ICFR Opinion",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.888,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ComplianceRequirement",
+          "DeliverableSection"
+        ]
+      },
+      "common_deliverables": [
+        "Audit report on ICFR"
+      ],
+      "assembly_hints": [
+        "Output of deficiency evaluation",
+        "Must be integrated with financial statement audit report"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_006",
+      "proposed_name": "Select Controls for Testing in ICFR Audit",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Reasoning"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.888,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ControlEvidence"
+        ]
+      },
+      "common_deliverables": [
+        "Controls testing plan",
+        "Sample selection documentation"
+      ],
+      "assembly_hints": [
+        "Precedes testing execution",
+        "May involve multiple sources"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_007",
+      "proposed_name": "Apply Sampling Methods for Control Testing",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Fact",
+        "Robustness"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9472,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "AuditSample"
+        ]
+      },
+      "common_deliverables": [
+        "Sample selection documentation",
+        "Sampling memo"
+      ],
+      "assembly_hints": [
+        "Often reused across multiple controls",
+        "Follows control selection"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\internal_control_testing\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_cand_008",
+      "proposed_name": "Map Control Objectives to COSO Components",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Fact",
+        "Reasoning"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9832,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ComplianceRequirement"
+        ]
+      },
+      "common_deliverables": [
+        "Control matrix with COSO mapping",
+        "Gap analysis"
+      ],
+      "assembly_hints": [
+        "Foundation for designing control testing",
+        "Complements other skills"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_sox_ownership",
+      "proposed_name": "Verify control ownership and frequency in SOX documentation",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Fact",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9472,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 1,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ControlEvidence",
+          "MonetaryAmount",
+          "PolicyRule"
+        ]
+      },
+      "common_deliverables": [
+        "Control ownership verification log",
+        "Frequency audit report"
+      ],
+      "assembly_hints": [
+        "Preceded by control objective mapping to ensure each control has an objective",
+        "Often combined with evidence sufficiency review"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_control_objective_mapping",
+      "proposed_name": "Map control objectives to control evidence in SOX compliance",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Reasoning",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.936,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 0,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ControlEvidence",
+          "PolicyRule"
+        ]
+      },
+      "common_deliverables": [
+        "Control objective-to-evidence trace matrix",
+        "Gap analysis report"
+      ],
+      "assembly_hints": [
+        "Should be performed before evidence sufficiency review",
+        "Helps identify missing documentation for specific assertions"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_walkthrough",
+      "proposed_name": "Perform design assessment walkthroughs for internal controls",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Fact",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9202,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 1,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ControlEvidence",
+          "Entity",
+          "PolicyRule"
+        ]
+      },
+      "common_deliverables": [
+        "Walkthrough documentation",
+        "Design assessment findings"
+      ],
+      "assembly_hints": [
+        "Usually precedes testing of operating effectiveness",
+        "Output feeds into deficiency identification"
+      ]
+    },
+    {
+      "status": "reviewed",
+      "source_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\Test\\v3_web_source_collections\\pipeline_a_batches\\compliance_documentation_review\\pipeline_a_run_graph_calibration\\review\\accepted_skill_candidates.json",
+      "candidate_id": "skill_candidate_deficiency_tracking",
+      "proposed_name": "Identify and prioritize control deficiencies for remediation tracking",
+      "domain_tags": [
+        "audit",
+        "compliance",
+        "finance"
+      ],
+      "capability_tags": [
+        "Reasoning",
+        "Compliance"
+      ],
+      "review_decision": "accept",
+      "review_total_score": 0.9202,
+      "admission_decision": "recommend_admit",
+      "admission_action": "selected_registry_update_candidate",
+      "reason_codes": [],
+      "duplicate_match": null,
+      "resource_summary": {
+        "required_resource_count": 1,
+        "optional_resource_count": 1,
+        "provided_resource_count": 1,
+        "has_required_resources": true,
+        "has_provided_resources": true,
+        "resource_types": [
+          "ExceptionRecord",
+          "FinancialMetric"
+        ]
+      },
+      "common_deliverables": [
+        "Deficiency log",
+        "Prioritized remediation roadmap"
+      ],
+      "assembly_hints": [
+        "Follows walkthrough and testing activities",
+        "Feeds into issue log and management reporting"
+      ]
+    }
+  ],
+  "notes": [
+    "This report is non-destructive and does not update SkillRegistry/v3_skill_registry.json.",
+    "recommend_admit means the candidate looks suitable for a later selected registry update, not that it has been persisted.",
+    "merge_existing candidates may still be useful as additional evidence, but should not be counted as new registry growth."
+  ]
+}

@@ -1,12 +1,12 @@
 {
-  "blueprint_id": "bp_financial_audit_4cb3c039",
-  "template_family": "cross_border_pnl",
+  "blueprint_id": "bp_financial_audit_db8f1aa5",
+  "template_family": "financial_workbook_rollforward",
   "task_metadata": {
     "sector": "Financial Audit",
     "occupation": "Senior Auditor",
     "scenario_title": "2024 Fall Music Tour Reconciliation",
     "task_goal": "Produce a consolidated cross-source profit and loss report for executive review.",
-    "difficulty_level": "medium-high"
+    "difficulty_level": "medium"
   },
   "selected_skills": [
     "load_multi_source_financials",
@@ -17,25 +17,25 @@
   ],
   "scenario_spec": {
     "role": "You are the finance lead supporting a post-period audit review.",
-    "business_context": "The client operated an international music tour with revenues and costs captured by different teams, ledgers, and operating systems.",
+    "business_context": "The client operated an international music tour and prepared a partially structured audit workbook with separate tabs for tour-manager revenue, withholding-tax assumptions, and production-company costs.",
     "time_context": "Reporting is being completed in January 2025 for an as-of date of December 31, 2024.",
     "tone": "professional, business-realistic, non-tutorial"
   },
   "data_spec": {
     "reference_files": [
       {
-        "file_name": "tour_manager_data.xlsx",
+        "file_name": "fall_music_tour_ref_file.xlsx",
         "file_role": "source_data",
         "sheet_specs": [
           {
-            "sheet_name": "Transactions",
+            "sheet_name": "Inc_Costs_Tracked_by_Tour_Mgr",
             "columns": [
               {
-                "name": "Receipt_ID",
-                "semantic_type": "identifier"
+                "name": "Line_Type",
+                "semantic_type": "free_text_description"
               },
               {
-                "name": "Transaction_Date",
+                "name": "Tour_Date",
                 "semantic_type": "date"
               },
               {
@@ -44,90 +44,52 @@
               },
               {
                 "name": "Country",
-                "semantic_type": "location_country"
-              },
-              {
-                "name": "Description",
-                "semantic_type": "free_text_description"
+                "semantic_type": "location_country_compact"
               },
               {
                 "name": "Gross_Revenue",
                 "semantic_type": "localized_amount"
-              },
-              {
-                "name": "Expense_Amount",
-                "semantic_type": "localized_amount"
-              },
-              {
-                "name": "Source",
-                "semantic_type": "source_system"
               }
             ],
-            "row_count_target": 150
-          }
-        ]
-      },
-      {
-        "file_name": "production_ledger.xlsx",
-        "file_role": "source_data",
-        "sheet_specs": [
+            "row_count_target": 7
+          },
           {
-            "sheet_name": "Ledger",
-            "columns": [
-              {
-                "name": "Ledger_Entry_ID",
-                "semantic_type": "identifier"
-              },
-              {
-                "name": "Posting_Date",
-                "semantic_type": "date"
-              },
-              {
-                "name": "Account_Name",
-                "semantic_type": "account_name"
-              },
-              {
-                "name": "Activity_Description",
-                "semantic_type": "free_text_description"
-              },
-              {
-                "name": "Debit_Amount",
-                "semantic_type": "amount"
-              },
-              {
-                "name": "Credit_Amount",
-                "semantic_type": "amount"
-              },
-              {
-                "name": "Source",
-                "semantic_type": "source_system"
-              }
-            ],
-            "row_count_target": 400
-          }
-        ]
-      },
-      {
-        "file_name": "tax_rates.xlsx",
-        "file_role": "reference_table",
-        "sheet_specs": [
-          {
-            "sheet_name": "Rates",
+            "sheet_name": "Assump_Withholding_Tax",
             "columns": [
               {
                 "name": "Country",
-                "semantic_type": "location_country"
-              },
-              {
-                "name": "City",
-                "semantic_type": "location_city"
+                "semantic_type": "location_country_compact"
               },
               {
                 "name": "Withholding_Tax_Rate",
                 "semantic_type": "tax_rate"
               }
             ],
-            "row_count_target": 12
+            "row_count_target": 6
+          }
+        ]
+      },
+      {
+        "file_name": "production_company_costs.xlsx",
+        "file_role": "source_data",
+        "sheet_specs": [
+          {
+            "sheet_name": "Costs_Tracked_by_Production_Co",
+            "columns": [
+              {
+                "name": "Cost_Category",
+                "semantic_type": "account_name"
+              },
+              {
+                "name": "Cost_Item",
+                "semantic_type": "free_text_description"
+              },
+              {
+                "name": "Amount_USD",
+                "semantic_type": "amount"
+              }
+            ],
+            "row_count_target": 14
           }
         ]
       }
@@ -135,8 +97,8 @@
     "data_relationships": [
       {
         "relation_type": "lookup",
-        "left": "tour_manager_data.xlsx:Transactions.Country",
-        "right": "tax_rates.xlsx:Rates.Country"
+        "left": "fall_music_tour_ref_file.xlsx:Inc_Costs_Tracked_by_Tour_Mgr.Country",
+        "right": "fall_music_tour_ref_file.xlsx:Assump_Withholding_Tax.Country"
       }
     ]
   },
@@ -146,17 +108,16 @@
       "source_skill_id": "infer_implicit_currency",
       "trap_type": "implicit_currency",
       "injection_target": {
-        "file_name": "tour_manager_data.xlsx",
-        "sheet_name": "Transactions",
+        "file_name": "fall_music_tour_ref_file.xlsx",
+        "sheet_name": "Inc_Costs_Tracked_by_Tour_Mgr",
         "columns": [
-          "Gross_Revenue",
-          "Expense_Amount"
+          "Gross_Revenue"
         ]
       },
       "injection_policy": {
         "pattern": "mixed_local_currency_without_header_signal",
         "severity": "medium",
-        "affected_row_count": 20,
+        "affected_row_count": 3,
         "affected_entities": []
       },
       "expected_solver_behavior": "Infer currency from geographic context and avoid reporting mixed-currency totals."
@@ -166,8 +127,8 @@
       "source_skill_id": "handle_missing_tax_rate",
       "trap_type": "reference_omission",
       "injection_target": {
-        "file_name": "tax_rates.xlsx",
-        "sheet_name": "Rates",
+        "file_name": "fall_music_tour_ref_file.xlsx",
+        "sheet_name": "Assump_Withholding_Tax",
         "columns": [
           "Withholding_Tax_Rate"
         ]
@@ -177,8 +138,7 @@
         "severity": "medium",
         "affected_row_count": null,
         "affected_entities": [
-          "Amsterdam",
-          "Netherlands"
+          "Germany"
         ]
       },
       "expected_solver_behavior": "Detect the missing reference and resolve it using business logic or defensible assumptions."
@@ -186,29 +146,21 @@
   ],
   "deliverable_spec": [
     {
-      "file_name": "profit_and_loss_report.xlsx",
+      "file_name": "fall_music_tour_output.xlsx",
       "file_role": "final_deliverable",
       "requirements": [
         "must include header 'As of 12/31/2024'",
-        "must present source-level totals",
-        "must normalize revenue to USD"
-      ]
-    },
-    {
-      "file_name": "task_summary.pdf",
-      "file_role": "final_deliverable",
-      "requirements": [
-        "must summarize reconciliation approach",
-        "must mention any assumptions or anomalies"
+        "must present Tour Manager, Production Company, and Total columns",
+        "must compute gross revenue, withholding tax, total costs, and net income"
       ]
     }
   ],
   "prompt_spec": {
     "visible_requirements": [
-      "prepare a structured P&L report",
+      "complete a structured P&L workbook",
       "use the attached files",
       "report all revenues in USD",
-      "provide an executive-ready workbook"
+      "produce an executive-ready output workbook"
     ],
     "hidden_requirements": [
       "The candidate should infer how the sources complement each other rather than being told the exact join procedure.",

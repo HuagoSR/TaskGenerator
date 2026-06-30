@@ -1,0 +1,44 @@
+{
+  "diagnostics_version": "v3.graph_extraction_diagnostics.1",
+  "candidate_count": 3,
+  "typed_resource_summary": {
+    "resource_count": 9,
+    "resource_type_counts": {
+      "ExceptionRecord": 1,
+      "MonetaryAmount": 4,
+      "PolicyRule": 1,
+      "StructuredTable": 3
+    },
+    "candidates_with_required_resources": 3,
+    "candidates_with_provided_resources": 3,
+    "missing_required_resource_candidate_ids": [],
+    "missing_provided_resource_candidate_ids": [],
+    "unknown_resource_evidence_refs": []
+  },
+  "trace_edge_summary": {
+    "trace_edge_count": 0,
+    "relation_type_counts": {},
+    "candidate_coverage_count": 0,
+    "candidate_coverage_ratio": 0.0,
+    "unknown_candidate_refs": [],
+    "unknown_block_refs": []
+  },
+  "motif_hint_summary": {
+    "motif_hint_count": 1,
+    "motif_type_counts": {
+      "fan_in_reconciliation": 1
+    },
+    "candidate_coverage_count": 3,
+    "candidate_coverage_ratio": 1.0,
+    "unknown_candidate_refs": [],
+    "unknown_block_refs": []
+  },
+  "warnings": [
+    {
+      "severity": "warning",
+      "code": "multi_candidate_without_trace_edges",
+      "message": "Multiple candidates were extracted but no local trace edges were emitted."
+    }
+  ],
+  "is_graph_ready": true
+}

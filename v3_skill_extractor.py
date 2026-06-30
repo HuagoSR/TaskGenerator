@@ -9,8 +9,11 @@ from v3_source_schema import (
     ExtractedSkillCandidate,
     NormalizedSource,
     SemanticContract,
+    SemanticResource,
     SkillEvidence,
     SkillExtractionPromptPackage,
+    SkillMotifHint,
+    SkillTraceEdge,
     SourceBlock,
 )
 
@@ -160,6 +163,9 @@ SKILL_PATTERNS = [
 
 
 class BaseSkillExtractor:
+    last_trace_edges: List[SkillTraceEdge] = []
+    last_motif_hints: List[SkillMotifHint] = []
+
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
         raise NotImplementedError
 
@@ -176,6 +182,8 @@ class MockSkillExtractor(BaseSkillExtractor):
             candidates.append(self._build_candidate(pattern, package, evidence_blocks))
             if len(candidates) >= max_candidates:
                 break
+        self.last_trace_edges = self._build_trace_edges(candidates)
+        self.last_motif_hints = self._build_motif_hints(candidates)
         return candidates
 
     def _find_evidence_blocks(
@@ -222,8 +230,20 @@ class MockSkillExtractor(BaseSkillExtractor):
             domain_tags=domain_tags,
             capability_tags=pattern.capability_tags,
             difficulty_tags=pattern.difficulty_tags,
-            input_contract=SemanticContract(requires_semantics=pattern.requires_semantics),
-            output_contract=SemanticContract(provides_semantics=pattern.provides_semantics),
+            input_contract=SemanticContract(
+                requires_semantics=pattern.requires_semantics,
+                required_resources=[
+                    self._semantic_resource(item, "required", evidence_id, domain_tags)
+                    for item in pattern.requires_semantics
+                ],
+            ),
+            output_contract=SemanticContract(
+                provides_semantics=pattern.provides_semantics,
+                provided_resources=[
+                    self._semantic_resource(item, "provided", evidence_id, domain_tags)
+                    for item in pattern.provides_semantics
+                ],
+            ),
             business_meaning=pattern.business_meaning,
             hidden_difficulty=pattern.hidden_difficulty,
             common_failure_modes=pattern.common_failure_modes,
@@ -236,6 +256,75 @@ class MockSkillExtractor(BaseSkillExtractor):
                 "Use this output for pipeline testing, not as final research-quality extraction.",
             ],
         )
+
+    def _semantic_resource(
+        self,
+        semantic_name: str,
+        role: str,
+        evidence_id: str,
+        domain_tags: List[str],
+    ) -> SemanticResource:
+        if ":" in semantic_name:
+            resource_type, subtype = semantic_name.split(":", 1)
+        else:
+            resource_type, subtype = semantic_name, ""
+        return SemanticResource(
+            resource_type=resource_type,
+            subtype=subtype,
+            attributes={"role": role},
+            domain=domain_tags[0] if domain_tags else "",
+            evidence_refs=[evidence_id],
+        )
+
+    def _build_trace_edges(self, candidates: List[ExtractedSkillCandidate]) -> List[SkillTraceEdge]:
+        edges = []
+        for left, right in zip(candidates, candidates[1:]):
+            edge_id_blocks = sorted(
+                {
+                    block_id
+                    for candidate in (left, right)
+                    for evidence in candidate.evidence
+                    for block_id in evidence.block_ids
+                }
+            )
+            edges.append(
+                SkillTraceEdge(
+                    from_candidate_id=left.candidate_id,
+                    to_candidate_id=right.candidate_id,
+                    relation_type="local_order",
+                    evidence_block_ids=edge_id_blocks,
+                    reason_codes=["mock_local_candidate_order"],
+                    weight_hint=0.5,
+                )
+            )
+        return edges
+
+    def _build_motif_hints(self, candidates: List[ExtractedSkillCandidate]) -> List[SkillMotifHint]:
+        if len(candidates) < 2:
+            return []
+        names = " ".join(candidate.proposed_name.lower() for candidate in candidates)
+        motif_type = "evidence_to_deliverable"
+        if "reconcile" in names or "reference" in names:
+            motif_type = "fan_in_reconciliation"
+        elif "quality" in names or "validation" in names:
+            motif_type = "cross_check_validation"
+        return [
+            SkillMotifHint(
+                motif_type=motif_type,
+                candidate_ids=[candidate.candidate_id for candidate in candidates[:4]],
+                evidence_block_ids=sorted(
+                    {
+                        block_id
+                        for candidate in candidates[:4]
+                        for evidence in candidate.evidence
+                        for block_id in evidence.block_ids
+                    }
+                ),
+                confidence=0.35,
+                reason_codes=["mock_batch_motif_hint"],
+                summary="Deterministic mock motif hint based on extracted candidate order.",
+            )
+        ]
 
 
 @dataclass
@@ -281,6 +370,8 @@ class LLMSkillExtractor(BaseSkillExtractor):
         self.config = config
         self.prompt_block_limit = prompt_block_limit
         self.prompt_char_limit = prompt_char_limit
+        self.last_trace_edges: List[SkillTraceEdge] = []
+        self.last_motif_hints: List[SkillMotifHint] = []
 
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
         response_text = self._call_model(package, max_candidates)
@@ -299,7 +390,58 @@ class LLMSkillExtractor(BaseSkillExtractor):
             candidates.append(candidate)
         if not candidates:
             raise SkillExtractionError("LLM returned zero valid candidates.")
+        self.last_trace_edges = self._parse_trace_edges(payload, candidates, valid_block_ids)
+        self.last_motif_hints = self._parse_motif_hints(payload, candidates, valid_block_ids)
         return candidates
+
+    def _parse_trace_edges(
+        self,
+        payload: Dict[str, Any],
+        candidates: List[ExtractedSkillCandidate],
+        valid_block_ids: set[tuple[str, str]],
+    ) -> List[SkillTraceEdge]:
+        raw_edges = payload.get("trace_edges", [])
+        if raw_edges is None:
+            raw_edges = []
+        if not isinstance(raw_edges, list):
+            raise SkillExtractionError("trace_edges must be an array when provided.")
+        valid_candidate_ids = {candidate.candidate_id for candidate in candidates}
+        valid_block_names = {block_id for _, block_id in valid_block_ids}
+        edges = []
+        for raw_edge in raw_edges:
+            edge = SkillTraceEdge.model_validate(raw_edge)
+            if edge.from_candidate_id not in valid_candidate_ids or edge.to_candidate_id not in valid_candidate_ids:
+                raise SkillExtractionError("trace_edges must reference candidate IDs returned in candidates.")
+            unknown_blocks = [block_id for block_id in edge.evidence_block_ids if block_id not in valid_block_names]
+            if unknown_blocks:
+                raise SkillExtractionError(f"trace_edges reference unknown block IDs: {unknown_blocks[:5]}")
+            edges.append(edge)
+        return edges
+
+    def _parse_motif_hints(
+        self,
+        payload: Dict[str, Any],
+        candidates: List[ExtractedSkillCandidate],
+        valid_block_ids: set[tuple[str, str]],
+    ) -> List[SkillMotifHint]:
+        raw_hints = payload.get("motif_hints", [])
+        if raw_hints is None:
+            raw_hints = []
+        if not isinstance(raw_hints, list):
+            raise SkillExtractionError("motif_hints must be an array when provided.")
+        valid_candidate_ids = {candidate.candidate_id for candidate in candidates}
+        valid_block_names = {block_id for _, block_id in valid_block_ids}
+        hints = []
+        for raw_hint in raw_hints:
+            hint = SkillMotifHint.model_validate(raw_hint)
+            unknown_candidates = [candidate_id for candidate_id in hint.candidate_ids if candidate_id not in valid_candidate_ids]
+            if unknown_candidates:
+                raise SkillExtractionError(f"motif_hints reference unknown candidate IDs: {unknown_candidates[:5]}")
+            unknown_blocks = [block_id for block_id in hint.evidence_block_ids if block_id not in valid_block_names]
+            if unknown_blocks:
+                raise SkillExtractionError(f"motif_hints reference unknown block IDs: {unknown_blocks[:5]}")
+            hints.append(hint)
+        return hints
 
     def _call_model(self, package: SkillExtractionPromptPackage, max_candidates: int) -> str:
         try:
@@ -339,6 +481,13 @@ class LLMSkillExtractor(BaseSkillExtractor):
 
     def _build_prompt(self, package: SkillExtractionPromptPackage, max_candidates: int) -> str:
         compact_sources = self._compact_sources(package)
+        resource_hint = {
+            "resource_type": "MonetaryAmount",
+            "subtype": "NetProfit",
+            "attributes": {"currency": "unknown_or_explicit", "period": "required", "entity": "required"},
+            "domain": "finance",
+            "evidence_refs": ["evidence_short_unique_id"],
+        }
         schema_hint = {
             "candidates": [
                 {
@@ -352,11 +501,17 @@ class LLMSkillExtractor(BaseSkillExtractor):
                         "requires_semantics": ["Domain:InputSemantic"],
                         "optional_semantics": [],
                         "provides_semantics": [],
+                        "required_resources": [resource_hint],
+                        "optional_resources": [],
+                        "provided_resources": [],
                     },
                     "output_contract": {
                         "requires_semantics": [],
                         "optional_semantics": [],
                         "provides_semantics": ["Domain:OutputSemantic"],
+                        "required_resources": [],
+                        "optional_resources": [],
+                        "provided_resources": [resource_hint],
                     },
                     "business_meaning": "What reusable business capability this skill represents.",
                     "hidden_difficulty": "What makes the task non-trivial.",
@@ -386,15 +541,41 @@ class LLMSkillExtractor(BaseSkillExtractor):
                     "extractor_model": self.config.model,
                     "extraction_trace": ["Extracted by LLM from evidence-backed source blocks."],
                 }
-            ]
+            ],
+            "trace_edges": [
+                {
+                    "from_candidate_id": "skill_candidate_a",
+                    "to_candidate_id": "skill_candidate_b",
+                    "relation_type": "local_order",
+                    "evidence_block_ids": ["block_0001", "block_0002"],
+                    "reason_codes": ["same_source_order", "resource_compatible"],
+                    "weight_hint": 0.8,
+                }
+            ],
+            "motif_hints": [
+                {
+                    "motif_type": "fan_in_reconciliation",
+                    "candidate_ids": ["skill_candidate_a", "skill_candidate_b"],
+                    "evidence_block_ids": ["block_0001"],
+                    "confidence": 0.7,
+                    "reason_codes": ["source_implies_reconciliation_workflow"],
+                    "summary": "Short explanation of the task graph pattern observed in the source.",
+                }
+            ],
         }
         return (
-            "Return JSON only. The top-level JSON object must be {\"candidates\": [...]}.\n"
+            "Return JSON only. The top-level JSON object must be {\"candidates\": [...], \"trace_edges\": [...], \"motif_hints\": [...]}.\n"
+            "trace_edges and motif_hints are allowed to be empty only when there is exactly one candidate or no source-supported local relationship.\n"
+            "If you return two or more candidates from the same source or block, strongly prefer at least one trace_edge unless the candidates are truly unrelated.\n"
             f"Return at most {max_candidates} ExtractedSkillCandidate objects.\n\n"
             "Project context:\n"
             "- This project previously used a multi-agent skill extraction pipeline with semantic ports, business intents, data-profile-like context, and evaluation dimensions.\n"
             "- Preserve that useful abstraction style, but do not bring back operator-heavy generation details.\n"
             "- Treat input_contract.requires_semantics and output_contract.provides_semantics as the V3 equivalent of old ports.requires/provides.\n"
+            "- Also fill typed semantic resources in required_resources, optional_resources, and provided_resources.\n"
+            "- Use resource_type values from a small vocabulary when possible: SourceDocument, StructuredTable, FinancialMetric, MonetaryAmount, TimePeriod, Entity, Jurisdiction, PolicyRule, ComplianceRequirement, ControlEvidence, AuditSample, ExceptionRecord, AuditFinding, ReconciliationDifference, DeliverableSection.\n"
+            "- Use subtype for specific but reusable concepts such as NetProfit, SourceCurrency, ControlOwner, ExceptionSeverity, or SupportingDocument.\n"
+            "- Use attributes for required semantic qualifiers such as currency, period, entity, jurisdiction, source_system, or evidence_strength.\n"
             "- Put reusable business context and task-family hints in business_meaning, common_deliverables, and assembly_hints.\n"
             "- Use Fact, Reasoning, Robustness, and Compliance ideas as capability or difficulty tags when they are relevant.\n\n"
             "Atomicity requirement:\n"
@@ -411,6 +592,14 @@ class LLMSkillExtractor(BaseSkillExtractor):
             "- Prefer diverse skills that cover different reusable capabilities, not near-duplicates of the same prompt detail.\n"
             "- Prefer reusable skills that could appear in many future tasks with different domains, files, and data values.\n"
             "- Do not output operator_class, data_params, generator_type, exact spreadsheet operators, or implementation-specific pipeline nodes.\n"
+            "- After writing candidates, inspect them pairwise within the same source/block and output local trace_edges for source-supported order, dependency, fan-in, fan-out, validation, or cross-check relationships.\n"
+            "- For a sequential workflow, output adjacent edges such as A->B and B->C with relation_type='local_order'.\n"
+            "- For validation or cross-check relationships, use relation_type='validation' or 'cross_check' and explain with reason_codes.\n"
+            "- Every trace_edge must reference candidate_id values that appear in candidates and block IDs that appear in the normalized sources.\n"
+            "- If the source suggests a task graph pattern, output motif_hints using one of: fan_in_reconciliation, policy_application, exception_escalation, cross_check_validation, evidence_to_deliverable.\n"
+            "- Motif hints should cover the relevant candidate subset for that pattern, not just one isolated pair. When a motif describes a local workflow, include every candidate_id participating in that workflow.\n"
+            "- If trace_edges cover most candidates but motif_hints cover only a small subset, add a broader source-supported motif hint for the shared pattern.\n"
+            "- Do not infer global successors across the whole registry. Only report local source-supported trace edges and motif hints.\n"
             "- Use concise English identifiers and tags.\n"
             "- Include the word json in your reasoning only internally; output JSON only.\n\n"
             f"Expected JSON shape:\n{json.dumps(schema_hint, ensure_ascii=False, indent=2)}\n\n"
@@ -492,6 +681,8 @@ class FallbackSkillExtractor(BaseSkillExtractor):
         self.extractors = extractors
         self.allow_mock_fallback = allow_mock_fallback
         self.attempts: List[ProviderAttempt] = []
+        self.last_trace_edges: List[SkillTraceEdge] = []
+        self.last_motif_hints: List[SkillMotifHint] = []
 
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
         self.attempts = []
@@ -510,6 +701,8 @@ class FallbackSkillExtractor(BaseSkillExtractor):
                         candidate_count=len(candidates),
                     )
                 )
+                self.last_trace_edges = list(getattr(extractor, "last_trace_edges", []))
+                self.last_motif_hints = list(getattr(extractor, "last_motif_hints", []))
                 return candidates
             except Exception as exc:
                 last_error = exc

@@ -24,6 +24,23 @@ SourceBlockType = Literal[
     "metadata",
 ]
 ExtractionStatus = Literal["candidate", "accepted", "rejected", "revise", "merged"]
+SkillTraceRelationType = Literal[
+    "local_order",
+    "same_context",
+    "fan_in",
+    "fan_out",
+    "cross_check",
+    "validation",
+    "motif_cooccurrence",
+]
+SkillMotifType = Literal[
+    "fan_in_reconciliation",
+    "policy_application",
+    "exception_escalation",
+    "cross_check_validation",
+    "evidence_to_deliverable",
+    "unknown",
+]
 
 
 class SourceArtifact(BaseModel):
@@ -86,10 +103,39 @@ class SkillEvidence(BaseModel):
     supporting_spans: List[SourceSpan] = Field(default_factory=list)
 
 
+class SemanticResource(BaseModel):
+    resource_type: str
+    subtype: str = ""
+    attributes: Dict[str, Any] = Field(default_factory=dict)
+    domain: str = ""
+    evidence_refs: List[str] = Field(default_factory=list)
+
+
 class SemanticContract(BaseModel):
     requires_semantics: List[str] = Field(default_factory=list)
     optional_semantics: List[str] = Field(default_factory=list)
     provides_semantics: List[str] = Field(default_factory=list)
+    required_resources: List[SemanticResource] = Field(default_factory=list)
+    optional_resources: List[SemanticResource] = Field(default_factory=list)
+    provided_resources: List[SemanticResource] = Field(default_factory=list)
+
+
+class SkillTraceEdge(BaseModel):
+    from_candidate_id: str
+    to_candidate_id: str
+    relation_type: SkillTraceRelationType = "local_order"
+    evidence_block_ids: List[str] = Field(default_factory=list)
+    reason_codes: List[str] = Field(default_factory=list)
+    weight_hint: float = 1.0
+
+
+class SkillMotifHint(BaseModel):
+    motif_type: SkillMotifType = "unknown"
+    candidate_ids: List[str] = Field(default_factory=list)
+    evidence_block_ids: List[str] = Field(default_factory=list)
+    confidence: float = 0.5
+    reason_codes: List[str] = Field(default_factory=list)
+    summary: str = ""
 
 
 class ExtractedSkillCandidate(BaseModel):
@@ -174,3 +220,21 @@ def load_skill_candidates(path: str) -> List[ExtractedSkillCandidate]:
     if isinstance(payload, dict) and "candidates" in payload:
         payload = payload["candidates"]
     return [ExtractedSkillCandidate.model_validate(item) for item in payload]
+
+
+def load_skill_trace_edges(path: str) -> List[SkillTraceEdge]:
+    payload = load_json_file(path)
+    if isinstance(payload, dict) and "trace_edges" in payload:
+        payload = payload["trace_edges"]
+    if payload is None:
+        payload = []
+    return [SkillTraceEdge.model_validate(item) for item in payload]
+
+
+def load_skill_motif_hints(path: str) -> List[SkillMotifHint]:
+    payload = load_json_file(path)
+    if isinstance(payload, dict) and "motif_hints" in payload:
+        payload = payload["motif_hints"]
+    if payload is None:
+        payload = []
+    return [SkillMotifHint.model_validate(item) for item in payload]

@@ -63,7 +63,7 @@ def extract_json_payload(value: Any) -> Dict[str, Any]:
         value = vars(value)
 
     if isinstance(value, dict):
-        for key in ("sources", "manifest", "result", "json", "payload", "answer", "content", "text"):
+        for key in ("sources", "manifest", "result", "json", "payload", "answer", "content", "text", "reason"):
             if key in value:
                 nested = value[key]
                 if key == "sources":

@@ -1,0 +1,72 @@
+{
+  "composition_readiness_version": "v3.composition_readiness.1",
+  "candidate_count": 3,
+  "registry_entry_count": 66,
+  "role_counts": {
+    "fan_in": 2,
+    "starter": 1,
+    "synthesis": 1,
+    "transform": 3,
+    "validator": 1
+  },
+  "edge_decision_counts": {
+    "caution": 1,
+    "usable": 1
+  },
+  "motif_counts": {
+    "fan_in_reconciliation": 1
+  },
+  "records": [
+    {
+      "candidate_id": "skill_reconcile_processor_gl",
+      "skill_id": "",
+      "proposed_name": "Reconcile Processor Settlement to General Ledger",
+      "graph_role_hints": [
+        "fan_in",
+        "synthesis",
+        "transform"
+      ],
+      "readiness_decision": "unknown",
+      "incoming_usable_edge_count": 1,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 2,
+      "provided_resource_count": 2,
+      "reason_codes": []
+    },
+    {
+      "candidate_id": "skill_identify_duplicate_receipts",
+      "skill_id": "",
+      "proposed_name": "Identify Duplicate Donor Receipts",
+      "graph_role_hints": [
+        "starter",
+        "transform",
+        "validator"
+      ],
+      "readiness_decision": "unknown",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 0,
+      "required_resource_count": 1,
+      "provided_resource_count": 1,
+      "reason_codes": []
+    },
+    {
+      "candidate_id": "skill_apply_refund_exclusion",
+      "skill_id": "",
+      "proposed_name": "Apply Refund Exclusion Policy to Donation Revenue",
+      "graph_role_hints": [
+        "fan_in",
+        "transform"
+      ],
+      "readiness_decision": "unknown",
+      "incoming_usable_edge_count": 0,
+      "outgoing_usable_edge_count": 1,
+      "required_resource_count": 2,
+      "provided_resource_count": 2,
+      "reason_codes": []
+    }
+  ],
+  "notes": [
+    "This is a report-only graph-role readiness layer for future Pipeline B sampling.",
+    "Graph roles are heuristic hints, not final task assembly decisions."
+  ]
+}
