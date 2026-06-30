@@ -36,6 +36,16 @@ Completed slices:
    - Subgraph mode preserves `subgraph_id`, `subgraph_confidence`, and `subgraph_missing_signals` in the prototype report.
    - The draft blueprint includes subgraph-derived selected skills, resource hints, prompt constraints, and GoldenRun skeleton diagnostics.
 
+3. Reference-file planning layer.
+   - Module: `src/task_generator/v3_reference_file_planner.py`
+   - CLI: `Test/run_v3_reference_file_planner.py`
+   - Input: a draft `TaskBlueprint`, optionally plus `pipeline_b_subgraph_report.json`
+   - Output: `reference_file_plan.json`
+   - The plan assigns stable file IDs, table IDs, text-section IDs, column IDs, and evidence IDs.
+   - The plan separates candidate-visible evidence anchors from future teacher-only notes.
+   - The plan carries forward subgraph confidence, missing Pipeline A signals, unresolved gaps, typed/fallback resource counts, and planner warnings.
+   - Current smoke result plans 2 reference files, 1 table, 4 text sections, and 9 evidence anchors.
+
 Current validation commands:
 
 ```powershell
@@ -43,17 +53,20 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipelin
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_planner.py Test\run_v3_reference_file_planner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Add a reference-file planning layer before generating real files.
-2. Convert blueprint `reference_file_specs` plus subgraph resource nodes into a structured `ReferenceFilePlan`.
-3. Emit a candidate-visible evidence manifest and stable evidence IDs, but do not yet create `.xlsx` or `.docx` content.
-4. Keep low-confidence resource fallback visible in the plan so Pipeline A knows which typed resources need backfill.
-5. Only after the plan shape is stable, implement deterministic table-first reference file generation.
+1. Add deterministic table-first reference file generation.
+2. Consume `reference_file_plan.json`.
+3. Generate concrete candidate-visible `.xlsx`, `.csv`, or `.json` files for planned table specs.
+4. Write a generated-file manifest that maps each physical file/sheet/column/range back to planned evidence IDs.
+5. Validate row counts, required columns, evidence IDs, and file readability.
+6. Leave prose-heavy `.docx` generation for a later template-design slice.
 
 ## Final System Objective
 
@@ -301,6 +314,13 @@ Acceptance checks:
 
 ## Phase 3: General Reference File Generator
 
+Status:
+
+- The planning layer is implemented in `src/task_generator/v3_reference_file_planner.py`.
+- CLI `Test/run_v3_reference_file_planner.py` emits `reference_file_plan.json`.
+- No concrete reference files are generated yet.
+- The next implementation step should consume the plan and create deterministic table-first files.
+
 Goal:
 
 Turn blueprint file specs into concrete candidate-visible files.
@@ -308,6 +328,7 @@ Turn blueprint file specs into concrete candidate-visible files.
 New module:
 
 - `src/task_generator/v3_reference_file_generator.py`
+- existing planning module: `src/task_generator/v3_reference_file_planner.py`
 
 Initial scope:
 
@@ -610,19 +631,18 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The next code change should implement a reference-file planning layer.
+The next code change should implement deterministic table-first reference file generation from `reference_file_plan.json`.
 
 Minimal scope:
 
-- Read a draft `TaskBlueprint`.
-- Optionally read the source `pipeline_b_subgraph_report.json`.
-- Convert blueprint reference-file specs and subgraph resource nodes into a structured file plan.
-- Assign stable file IDs, evidence IDs, sheet/table IDs, and provenance references.
-- Distinguish candidate-visible evidence from teacher-only notes.
-- Preserve low-confidence resource fallback in the plan diagnostics.
-- Write `reference_file_plan.json` under `artifacts/pipeline_b/scratch/`.
+- Read `reference_file_plan.json`.
+- Generate only table-first candidate-visible files at first, especially `.xlsx`, `.csv`, and `.json`.
+- For unsupported prose-heavy files such as `.docx`, write an explicit skipped/needs-template status in the generated-file manifest.
+- Populate deterministic placeholder rows that satisfy planned columns, row counts, evidence IDs, and basic semantic types.
+- Write `generated_file_manifest.json` with physical file paths, table/sheet locations, evidence ID mappings, and validation status.
+- Run readability and structural validators on generated files.
 
-This slice should still be diagnostic. It should define the contract that future `.xlsx`, `.csv`, `.json`, `.md`, and `.txt` generators must satisfy before Pipeline B starts producing full files and teacher solutions.
+This slice should still be conservative. It should prove that Pipeline B can create inspectable candidate-visible evidence files before introducing LLM-written prose references or TeacherRunner.
 
 ## Test Plan For The Current Next Slice
 
@@ -633,6 +653,8 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py 
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_planner.py Test\run_v3_reference_file_planner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_generator.py Test\run_v3_reference_file_generator.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke
 ```
 
 Expected results:
@@ -640,9 +662,11 @@ Expected results:
 - The sampler emits a report-only subgraph.
 - The prototype emits a draft blueprint from that subgraph.
 - The planner emits `reference_file_plan.json`.
+- The generator emits concrete table files where supported and a `generated_file_manifest.json`.
 - No registry files are modified.
 - The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
 - If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
+- Unsupported prose-heavy files are reported explicitly instead of silently skipped.
 
 ## Open Design Questions
 

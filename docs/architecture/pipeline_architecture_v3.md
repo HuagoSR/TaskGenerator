@@ -414,6 +414,13 @@ Recommended strategy:
 - LLM assistance for realistic wording, notes, emails, memos, and contextual documents
 - no unverified LLM-generated numeric backbone unless another validator can check it
 
+Current implementation:
+
+- `src/task_generator/v3_reference_file_planner.py` implements a planning layer before file generation.
+- `Test/run_v3_reference_file_planner.py` consumes a draft `TaskBlueprint`, optionally plus `pipeline_b_subgraph_report.json`.
+- The planner emits `reference_file_plan.json` with stable file IDs, table IDs, text-section IDs, column IDs, evidence IDs, provenance hooks, and carried-forward subgraph diagnostics.
+- It does not yet generate concrete `.xlsx`, `.csv`, `.json`, `.md`, `.txt`, or `.docx` files.
+
 ### 4. TeacherRunner / GoldenRun
 
 Responsibility:
@@ -534,7 +541,7 @@ They should not lead to endless manual polishing of the same finance task.
 
 - persistent/probabilistic skill sampler beyond the current deterministic subgraph sampler
 - full generic blueprint assembler beyond the current report-first subgraph-to-blueprint prototype
-- reference-file planning and generation
+- concrete reference-file generation beyond the current planning layer
 - LLM teacher runner
 - rubric builder that consumes teacher outputs
 - provenance checks from rubric anchors back to source files
@@ -819,15 +826,17 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working at the subgraph/blueprint level. The next implementation step should move from "draft blueprint" to "file-generation contract" by adding a reference-file planning layer.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, and reference-file planning. The next implementation step should move from "file-generation contract" to deterministic table-first reference file generation.
 
 Recommended next code tasks:
 
 - keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
-- add a `ReferenceFilePlan` layer that turns blueprint specs and subgraph resources into stable file IDs, evidence IDs, table/sheet plans, and provenance hooks
-- emit `reference_file_plan.json` before generating real `.xlsx`, `.csv`, `.json`, `.md`, or `.txt` files
-- carry missing Pipeline A fields and low-confidence fallback diagnostics into the file plan
+- keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
+- add a deterministic `v3_reference_file_generator.py` that consumes the plan and creates supported table-first files
+- start with `.xlsx`, `.csv`, and `.json`; mark prose-heavy `.docx` references as `needs_template_design` until a separate document-generation slice exists
+- emit `generated_file_manifest.json` with physical file paths, evidence ID mappings, readability checks, and unsupported-file statuses
+- carry missing Pipeline A fields and low-confidence fallback diagnostics into the generated-file manifest
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
 - continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
 
