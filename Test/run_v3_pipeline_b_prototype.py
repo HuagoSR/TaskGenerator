@@ -23,18 +23,25 @@ def main() -> None:
     )
     parser.add_argument("--registry-path", type=Path, default=DEFAULT_REGISTRY_PATH)
     parser.add_argument("--seed-report", type=Path, default=DEFAULT_SEED_REPORT_PATH)
+    parser.add_argument("--subgraph-report", type=Path, default=None)
     parser.add_argument("--motif", default=None)
     parser.add_argument("--skill-count", type=int, default=4)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
 
     builder = PipelineBPrototypeBuilder()
-    report = builder.build_report(
-        registry_path=args.registry_path,
-        seed_report_path=args.seed_report,
-        motif=args.motif,
-        skill_count=args.skill_count,
-    )
+    if args.subgraph_report:
+        report = builder.build_report_from_subgraph_report(
+            subgraph_report_path=args.subgraph_report,
+            registry_path=args.registry_path,
+        )
+    else:
+        report = builder.build_report(
+            registry_path=args.registry_path,
+            seed_report_path=args.seed_report,
+            motif=args.motif,
+            skill_count=args.skill_count,
+        )
     outputs = builder.write_outputs(report, args.output_dir)
     print(
         json.dumps(
@@ -42,6 +49,9 @@ def main() -> None:
                 **outputs,
                 "motif": report["motif"],
                 "selected_skill_count": report["selected_skill_count"],
+                "assembly_source": report.get("assembly_source", "seed_report"),
+                "subgraph_id": report.get("subgraph_id"),
+                "subgraph_confidence": report.get("subgraph_confidence"),
                 "prototype_confidence": report["assembly_diagnostics"]["prototype_confidence"],
                 "missing_or_weak_pipeline_a_signals": report["assembly_diagnostics"][
                     "missing_or_weak_pipeline_a_signals"

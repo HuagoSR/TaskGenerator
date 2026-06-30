@@ -186,7 +186,9 @@ Near-term implementation rule:
 - do not write static `possible_successors` into each skill entry
 - do not run all-pairs LLM successor judging across the registry
 - do not claim UCB/bandit behavior before quality feedback exists
-- first implement a resource-aware Pipeline B subgraph sampler and feedback report
+- keep the current resource-aware Pipeline B subgraph sampler report-first and registry-non-mutating
+- keep the current subgraph-to-blueprint prototype backward compatible with the older seed-report path
+- next implement a reference-file planning layer before generating real reference files
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -229,6 +231,10 @@ Current Pipeline A starting files:
 - `Test/run_v3_skill_graph_diagnostics.py`: CLI for writing `graph_extraction_diagnostics.json` from any extraction output directory
 - `src/task_generator/v3_pipeline_b_seed_set.py`: report-only selector for the first Pipeline B seed skill slice from registry/readiness outputs
 - `Test/run_v3_pipeline_b_seed_set.py`: CLI for writing `SkillRegistry/v3_pipeline_b_seed_set_report.json`
+- `src/task_generator/v3_pipeline_b_sampler.py`: report-first Pipeline B sampler that turns the seed set and registry into a `PipelineBSubgraph`
+- `Test/run_v3_pipeline_b_subgraph_sampler.py`: CLI for writing `pipeline_b_subgraph_report.json` and `pipeline_a_feedback.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_pipeline_b_prototype.py`: draft blueprint builder; supports both legacy seed-report mode and `PipelineBSubgraph` mode
+- `Test/run_v3_pipeline_b_prototype.py`: CLI for writing `pipeline_b_prototype_report.json` and `draft_task_blueprint.json`; use `--subgraph-report` to consume sampler output
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -405,6 +411,25 @@ Current Pipeline A status:
   - selected seed motif counts: 12 `policy_application`, 8 `evidence_to_deliverable`, 7 `cross_check_validation`, 5 `fan_in_reconciliation`
   - calibration admission report: `SkillRegistry/v3_calibration_registry_admission_report.json`
   - current calibration admission result: 15 candidates reviewed, 14 `recommend_admit`, 1 `merge_existing`; this is report-only and does not update the persistent registry
+- Pipeline B first implementation slices now exist:
+  - sampler module: `src/task_generator/v3_pipeline_b_sampler.py`
+  - sampler CLI: `Test/run_v3_pipeline_b_subgraph_sampler.py`
+  - prototype module: `src/task_generator/v3_pipeline_b_prototype.py`
+  - prototype CLI: `Test/run_v3_pipeline_b_prototype.py`
+  - sampler smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke`
+  - subgraph blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke`
+  - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
+  - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
+  - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
+  - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
+  - no registry mutation is performed by the sampler or prototype
+- next Pipeline B implementation slice:
+  - create a reference-file planning layer before generating real files
+  - likely module: `src/task_generator/v3_reference_file_planner.py`
+  - likely CLI: `Test/run_v3_reference_file_planner.py`
+  - input should be a draft `TaskBlueprint`, optionally plus `pipeline_b_subgraph_report.json`
+  - output should be `reference_file_plan.json` with stable file IDs, evidence IDs, table/sheet plans, candidate-visible vs teacher-only separation, provenance hooks, and carried-forward resource-confidence diagnostics
+  - do not generate `.xlsx` or `.docx` yet in this next slice; first stabilize the file-generation contract
 - current architecture discussion has refined the next Pipeline A goal:
   - tasks should not be modeled only as a linear skill chain
   - realistic tasks may be trees or DAG-like skill-resource graphs with fan-in, fan-out, cross-checks, and validation constraints

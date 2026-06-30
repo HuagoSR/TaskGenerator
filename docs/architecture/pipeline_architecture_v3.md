@@ -347,7 +347,7 @@ Current verified graph-layer smoke results:
 Remaining closed-loop gaps:
 
 - no persistent `SkillTransitionPriorStore` exists yet; transition edges are still per-run or aggregate reports
-- no true probabilistic sampler exists yet; readiness, motif, role, and edge scores are static ranking signals
+- no true probabilistic sampler exists yet; the current Pipeline B sampler is deterministic and report-first, while readiness, motif, role, and edge scores remain static ranking signals
 - no UCB1 or bandit update exists yet; there is no reliable reward history until Pipeline B generates and grades tasks
 - no Pipeline B feedback updater exists yet; task-generation failures do not yet change skill, edge, or motif weights
 - these gaps should be treated as the macro reason for Pipeline B work, not as optional polish
@@ -371,7 +371,7 @@ Examples:
 
 Near-term sampler target:
 
-- first implement a resource-aware, report-first subgraph sampler
+- maintain the current resource-aware, report-first subgraph sampler
 - record selected skills, resource nodes, compatibility edges, motif assumptions, and missing Pipeline A signals
 - do not claim learned probability or UCB behavior in this first sampler
 - preserve enough identifiers for a future prior updater to connect task outcomes back to skills, edges, and motifs
@@ -387,12 +387,19 @@ Long-term sampler target:
 
 Responsibility:
 
-- turn selected semantic skills into a concrete task plan
+- turn selected semantic skills or a sampled `PipelineBSubgraph` into a concrete task plan
 - define role, scenario, evidence package, traps, deliverable, and GoldenRun plan
 
 This is a good place for LLM assistance because business realism matters.
 
 The assembler must output structured JSON, not only a prompt.
+
+Current implementation:
+
+- `src/task_generator/v3_pipeline_b_prototype.py` still supports the legacy seed-report path.
+- `Test/run_v3_pipeline_b_prototype.py --subgraph-report <pipeline_b_subgraph_report.json>` now consumes a sampled subgraph directly.
+- The prototype report preserves `subgraph_id`, `subgraph_confidence`, and `subgraph_missing_signals`.
+- The output is still a draft `TaskBlueprint`; reference files, GoldenRun, rubrics, and exports remain future steps.
 
 ### 3. ReferenceFileGenerator
 
@@ -525,8 +532,9 @@ They should not lead to endless manual polishing of the same finance task.
 
 ### Missing in Pipeline B
 
-- generic skill sampler
-- generic blueprint assembler
+- persistent/probabilistic skill sampler beyond the current deterministic subgraph sampler
+- full generic blueprint assembler beyond the current report-first subgraph-to-blueprint prototype
+- reference-file planning and generation
 - LLM teacher runner
 - rubric builder that consumes teacher outputs
 - provenance checks from rubric anchors back to source files
@@ -811,15 +819,15 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point. The next implementation step should be a minimal Pipeline B prototype that consumes the Pipeline A seed set and reports back which Pipeline A signals are useful or missing.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working at the subgraph/blueprint level. The next implementation step should move from "draft blueprint" to "file-generation contract" by adding a reference-file planning layer.
 
 Recommended next code tasks:
 
-- build a minimal `SkillSampler` that reads `SkillRegistry/v3_pipeline_b_seed_set_report.json`
-- sample a small motif-constrained skill-resource subgraph, not an arbitrary flat skill list
-- emit a structured Pipeline B feedback report from the first sampler/blueprint run, even before full GoldenRun or rubric exists
-- emit a draft `TaskBlueprint` or equivalent report-only prototype before full rw-task export
-- record missing Pipeline A fields discovered during assembly
+- keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
+- keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
+- add a `ReferenceFilePlan` layer that turns blueprint specs and subgraph resources into stable file IDs, evidence IDs, table/sheet plans, and provenance hooks
+- emit `reference_file_plan.json` before generating real `.xlsx`, `.csv`, `.json`, `.md`, or `.txt` files
+- carry missing Pipeline A fields and low-confidence fallback diagnostics into the file plan
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
 - continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
 

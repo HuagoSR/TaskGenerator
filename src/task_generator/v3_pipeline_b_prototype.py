@@ -144,6 +144,52 @@ class PipelineBPrototypeBuilder:
             ],
         }
 
+    def build_report_from_subgraph_report(
+        self,
+        subgraph_report_path: str | Path,
+        registry_path: Optional[str | Path] = None,
+    ) -> Dict[str, Any]:
+        from task_generator.v3_pipeline_b_sampler import PipelineBSubgraph
+
+        subgraph_payload = load_json_file(str(subgraph_report_path))
+        subgraph = PipelineBSubgraph.model_validate(subgraph_payload)
+        effective_registry_path = registry_path or subgraph.request.registry_path
+        entries = self.registry_builder.load_registry(effective_registry_path)
+        entry_by_id = {entry.skill_id: entry for entry in entries}
+        selected_records = self._records_from_subgraph(subgraph, entry_by_id)
+        selected_entries = [
+            entry_by_id[record["skill_id"]]
+            for record in selected_records
+            if record.get("skill_id") in entry_by_id
+        ]
+        blueprint = self._build_blueprint(subgraph.selected_motif, selected_records, selected_entries)
+        self._apply_subgraph_context(blueprint, subgraph)
+        diagnostics = self._diagnose_subgraph_signals(subgraph, selected_records)
+
+        return {
+            "pipeline_b_prototype_version": "v3.pipeline_b_prototype.2",
+            "run_mode": "report_only",
+            "assembly_source": "pipeline_b_subgraph",
+            "registry_path": str(effective_registry_path),
+            "seed_report_path": subgraph.request.seed_report_path,
+            "subgraph_report_path": str(subgraph_report_path),
+            "subgraph_id": subgraph.subgraph_id,
+            "subgraph_confidence": subgraph.diagnostics.confidence,
+            "subgraph_missing_signals": subgraph.diagnostics.missing_or_weak_pipeline_a_signals,
+            "motif": subgraph.selected_motif,
+            "requested_skill_count": subgraph.request.skill_count,
+            "selected_skill_count": len(selected_records),
+            "selected_skills": selected_records,
+            "draft_task_blueprint": blueprint.model_dump(),
+            "assembly_diagnostics": diagnostics,
+            "next_pipeline_a_feedback": self._feedback_items(diagnostics),
+            "notes": [
+                "This prototype consumes a report-only PipelineBSubgraph and does not mutate registry files.",
+                "The draft blueprint is intentionally pre-GoldenRun and pre-rw-task export.",
+                "Subgraph confidence and missing signals are preserved for downstream generators.",
+            ],
+        }
+
     def write_outputs(self, report: Dict[str, Any], output_dir: str | Path) -> Dict[str, str]:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -157,6 +203,104 @@ class PipelineBPrototypeBuilder:
         return {
             "report_path": str(report_path),
             "blueprint_path": str(blueprint_path),
+        }
+
+    def _records_from_subgraph(self, subgraph, entry_by_id: Dict[str, SkillRegistryEntry]) -> List[Dict[str, Any]]:
+        records = []
+        for skill in subgraph.selected_skills:
+            entry = entry_by_id.get(skill.skill_id)
+            records.append(
+                {
+                    "skill_id": skill.skill_id,
+                    "canonical_name": skill.canonical_name,
+                    "readiness_decision": skill.readiness_decision,
+                    "sampling_weight": skill.sampling_weight,
+                    "seed_score": skill.seed_score,
+                    "seed_tier": "subgraph_selected",
+                    "domain_tags": skill.domain_tags,
+                    "capability_tags": skill.capability_tags,
+                    "difficulty_tags": entry.difficulty_tags if entry else [],
+                    "resource_types": sorted(
+                        {
+                            node.resource_type
+                            for node in subgraph.resource_nodes
+                            if node.skill_id == skill.skill_id and node.resource_type
+                        }
+                    ),
+                    "required_resource_count": sum(
+                        1
+                        for node in subgraph.resource_nodes
+                        if node.skill_id == skill.skill_id and node.direction == "required"
+                    ),
+                    "provided_resource_count": sum(
+                        1
+                        for node in subgraph.resource_nodes
+                        if node.skill_id == skill.skill_id and node.direction == "provided"
+                    ),
+                    "motif_hints": skill.motif_hints,
+                    "graph_role_hints": skill.graph_role_hints,
+                    "reason_codes": skill.reason_codes,
+                    "selection_rationale": skill.selection_reason,
+                    "risk_notes": self._subgraph_skill_risk_notes(skill, subgraph),
+                }
+            )
+        return records
+
+    def _subgraph_skill_risk_notes(self, skill, subgraph) -> List[str]:
+        notes = []
+        if "single_source_support" in skill.reason_codes:
+            notes.append("Single-source support; keep source provenance visible.")
+        if subgraph.diagnostics.confidence == "low_due_to_resource_fallback":
+            notes.append("Subgraph uses fallback resource inference; typed resources are missing or incomplete.")
+        if not any(node.skill_id == skill.skill_id and node.evidence_mode == "typed" for node in subgraph.resource_nodes):
+            notes.append("No typed SemanticResource nodes found for this selected skill.")
+        return notes
+
+    def _apply_subgraph_context(self, blueprint: TaskBlueprint, subgraph) -> None:
+        resource_types = sorted({node.resource_type for node in subgraph.resource_nodes if node.resource_type})
+        edge_modes = sorted({edge.evidence_mode for edge in subgraph.subgraph_edges})
+        if resource_types:
+            blueprint.prompt_spec.visible_requirements.append(
+                "The task should exercise evidence/resource types: " + ", ".join(resource_types[:8]) + "."
+            )
+        if subgraph.diagnostics.confidence == "low_due_to_resource_fallback":
+            blueprint.prompt_spec.hidden_requirements.append(
+                "Treat current resource compatibility as provisional because it was inferred from legacy semantics."
+            )
+        if subgraph.diagnostics.unresolved_gaps:
+            blueprint.golden_plan.required_intermediate_states.append("pipeline_a_signal_gap_review")
+        if edge_modes:
+            blueprint.golden_plan.required_intermediate_states.append(
+                "subgraph_edge_evidence_review:" + ",".join(edge_modes[:5])
+            )
+
+    def _diagnose_subgraph_signals(self, subgraph, selected_records: List[Dict[str, Any]]) -> Dict[str, Any]:
+        reason_counts = Counter(reason for record in selected_records for reason in record.get("reason_codes", []))
+        resource_types = sorted({node.resource_type for node in subgraph.resource_nodes if node.resource_type})
+        typed_counts = Counter(node.direction for node in subgraph.resource_nodes if node.evidence_mode == "typed")
+        legacy_counts = Counter(node.direction for node in subgraph.resource_nodes if node.evidence_mode == "legacy_inferred")
+        return {
+            "selected_motif": subgraph.selected_motif,
+            "readiness_counts": subgraph.diagnostics.readiness_counts,
+            "selected_motif_counts": subgraph.diagnostics.motif_coverage,
+            "graph_role_counts": subgraph.diagnostics.role_coverage,
+            "reason_code_counts": dict(sorted(reason_counts.items())),
+            "typed_resource_counts": {
+                "required": typed_counts.get("required", 0),
+                "optional": typed_counts.get("optional", 0),
+                "provided": typed_counts.get("provided", 0),
+            },
+            "legacy_inferred_resource_counts": {
+                "required": legacy_counts.get("required", 0),
+                "optional": legacy_counts.get("optional", 0),
+                "provided": legacy_counts.get("provided", 0),
+            },
+            "inferred_legacy_resource_types": resource_types,
+            "edge_counts": subgraph.diagnostics.edge_counts,
+            "fallback_evidence": subgraph.diagnostics.fallback_evidence,
+            "unresolved_gaps": subgraph.diagnostics.unresolved_gaps,
+            "missing_or_weak_pipeline_a_signals": subgraph.diagnostics.missing_or_weak_pipeline_a_signals,
+            "prototype_confidence": subgraph.diagnostics.confidence,
         }
 
     def _choose_motif(self, seed_report: Dict[str, Any]) -> str:

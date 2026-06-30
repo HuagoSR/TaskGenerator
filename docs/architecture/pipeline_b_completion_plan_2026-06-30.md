@@ -9,10 +9,51 @@ Pipeline B should become a batch-capable Skill-To-Task factory. Its job is not o
 Current baseline:
 
 - Pipeline A has a persistent skill registry and readiness reports.
-- Pipeline B has a minimal prototype that can read the seed set, select skills by motif, and emit a draft `TaskBlueprint`.
+- Pipeline B has a report-first resource-aware sampler that can read the seed set and registry, build a `PipelineBSubgraph`, and emit Pipeline A feedback.
+- Pipeline B prototype can still read the seed set directly, and can now also consume a sampler `pipeline_b_subgraph_report.json` to emit a draft `TaskBlueprint`.
 - The current prototype is report-only and pre-GoldenRun, pre-rubric, pre-reference-file-generation, and pre-rw-task export.
 
 The next work should convert Pipeline B from "draft blueprint prototype" into "complete task package generator".
+
+## Implementation Progress - 2026-07-01
+
+Completed slices:
+
+1. Resource-aware subgraph sampler.
+   - Module: `src/task_generator/v3_pipeline_b_sampler.py`
+   - CLI: `Test/run_v3_pipeline_b_subgraph_sampler.py`
+   - Default inputs: `SkillRegistry/v3_pipeline_b_seed_set_report.json` and `SkillRegistry/v3_skill_registry.json`
+   - Default output: `artifacts/pipeline_b/scratch/subgraph_sampler_smoke/`
+   - Current smoke result selects 4 `sample_ready` skills for `evidence_to_deliverable`.
+   - Current confidence is `low_due_to_resource_fallback` because selected persistent registry entries still lack typed `SemanticResource` coverage.
+   - The sampler emits `pipeline_b_subgraph_report.json` and `pipeline_a_feedback.json` without mutating registry files.
+
+2. Blueprint Assembler V2 entrypoint.
+   - Module: `src/task_generator/v3_pipeline_b_prototype.py`
+   - CLI: `Test/run_v3_pipeline_b_prototype.py`
+   - New argument: `--subgraph-report`
+   - Old seed-report mode remains supported.
+   - Subgraph mode preserves `subgraph_id`, `subgraph_confidence`, and `subgraph_missing_signals` in the prototype report.
+   - The draft blueprint includes subgraph-derived selected skills, resource hints, prompt constraints, and GoldenRun skeleton diagnostics.
+
+Current validation commands:
+
+```powershell
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_sampler.py src\task_generator\v3_pipeline_b_prototype.py Test\run_v3_pipeline_b_subgraph_sampler.py Test\run_v3_pipeline_b_prototype.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke
+```
+
+Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
+
+Next implementation slice:
+
+1. Add a reference-file planning layer before generating real files.
+2. Convert blueprint `reference_file_specs` plus subgraph resource nodes into a structured `ReferenceFilePlan`.
+3. Emit a candidate-visible evidence manifest and stable evidence IDs, but do not yet create `.xlsx` or `.docx` content.
+4. Keep low-confidence resource fallback visible in the plan so Pipeline A knows which typed resources need backfill.
+5. Only after the plan shape is stable, implement deterministic table-first reference file generation.
 
 ## Final System Objective
 
@@ -137,6 +178,13 @@ Acceptance checks:
 
 ## Phase 1: Resource-Aware Skill/Subgraph Sampler
 
+Status:
+
+- Implemented in `src/task_generator/v3_pipeline_b_sampler.py`.
+- CLI implemented in `Test/run_v3_pipeline_b_subgraph_sampler.py`.
+- Current behavior is deterministic, report-first, and registry-non-mutating.
+- Current smoke reports `low_due_to_resource_fallback`, which is expected until Pipeline A typed resources are backfilled into the persistent registry.
+
 Goal:
 
 Upgrade Pipeline B from "choose several related skills" to "assemble a small executable skill-resource subgraph".
@@ -214,6 +262,13 @@ Acceptance checks:
 - Sampler can run in report-only mode without changing registry files.
 
 ## Phase 2: Blueprint Assembler V2
+
+Status:
+
+- Initial subgraph-consuming entrypoint implemented in `src/task_generator/v3_pipeline_b_prototype.py`.
+- CLI `Test/run_v3_pipeline_b_prototype.py` now supports `--subgraph-report`.
+- Legacy seed-report mode remains supported for backward compatibility.
+- Current output is still a draft `TaskBlueprint`; it does not generate files, run teacher mode, build rubrics, or export rw-task packages.
 
 Goal:
 
@@ -553,38 +608,41 @@ Future prior-update rule:
 14. Run late-stage model-separation evaluation only on filtered outputs.
 15. Consider UCB1 or another bandit policy only after there are enough prior-update records to support exploration/exploitation.
 
-## First Concrete Slice
+## Current Next Slice
 
-The next code change should implement the resource-aware sampler.
+The next code change should implement a reference-file planning layer.
 
 Minimal scope:
 
-- Read `SkillRegistry/v3_pipeline_b_seed_set_report.json`.
-- Read `SkillRegistry/v3_skill_registry.json`.
-- Select only `sample_ready` seeds by default.
-- Choose one motif.
-- Build a `PipelineBSubgraph` with selected skill nodes, inferred resource nodes, and compatibility edges.
-- Produce diagnostics when typed resources are missing and legacy fallback is used.
-- Write `pipeline_b_subgraph_report.json` under `artifacts/pipeline_b/scratch/`.
+- Read a draft `TaskBlueprint`.
+- Optionally read the source `pipeline_b_subgraph_report.json`.
+- Convert blueprint reference-file specs and subgraph resource nodes into a structured file plan.
+- Assign stable file IDs, evidence IDs, sheet/table IDs, and provenance references.
+- Distinguish candidate-visible evidence from teacher-only notes.
+- Preserve low-confidence resource fallback in the plan diagnostics.
+- Write `reference_file_plan.json` under `artifacts/pipeline_b/scratch/`.
 
-This first slice should be intentionally diagnostic. It should make Pipeline A shortcomings visible before Pipeline B starts generating full files and teacher solutions.
+This slice should still be diagnostic. It should define the contract that future `.xlsx`, `.csv`, `.json`, `.md`, and `.txt` generators must satisfy before Pipeline B starts producing full files and teacher solutions.
 
-## Test Plan For The First Slice
+## Test Plan For The Current Next Slice
 
 Commands:
 
 ```powershell
-D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_sampler.py Test\run_v3_pipeline_b_subgraph_sampler.py
-D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_seed_set.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_planner.py Test\run_v3_reference_file_planner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
 ```
 
 Expected results:
 
 - The sampler emits a report-only subgraph.
+- The prototype emits a draft blueprint from that subgraph.
+- The planner emits `reference_file_plan.json`.
 - No registry files are modified.
-- The report records selected skills, resource coverage, unresolved gaps, and Pipeline A feedback.
-- If the current registry lacks typed resources for selected skills, the report says so explicitly and lowers confidence.
+- The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
+- If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
 
 ## Open Design Questions
 
