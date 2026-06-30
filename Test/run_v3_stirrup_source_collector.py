@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import asyncio
 import json
 import os
@@ -8,10 +8,11 @@ from typing import Any, Dict, List
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from v3_source_collector import (  # noqa: E402
+from task_generator.v3_source_collector import (  # noqa: E402
     build_collection_prompt,
     build_collection_request,
     records_from_payload,
@@ -19,8 +20,8 @@ from v3_source_collector import (  # noqa: E402
     utc_now,
     write_collected_sources,
 )
-from v3_source_search_tools import SerperWebToolProvider  # noqa: E402
-from v3_source_schema import dump_json_file  # noqa: E402
+from task_generator.v3_source_search_tools import SerperWebToolProvider  # noqa: E402
+from task_generator.v3_source_schema import dump_json_file  # noqa: E402
 
 
 RW_TASK_ROOT = ROOT.parent / "rw-task"
@@ -232,3 +233,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

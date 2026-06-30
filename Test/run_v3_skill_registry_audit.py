@@ -1,14 +1,15 @@
-import argparse
+﻿import argparse
 import json
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from v3_skill_registry_audit import SkillRegistryAuditor, write_audit_report  # noqa: E402
+from task_generator.v3_skill_registry_audit import SkillRegistryAuditor, write_audit_report  # noqa: E402
 
 
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
@@ -43,3 +44,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

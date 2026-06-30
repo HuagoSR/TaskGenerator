@@ -1,14 +1,15 @@
-import sys
+﻿import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from FileGenerator.v2_blueprint_generator import V2BlueprintFileGenerator
-from rw_task_adapter import RwTaskCaseExporter
-from v2_golden_run import FinanceAuditGoldenRunExecutor
-from v2_task_compiler import FinanceAuditTaskCompiler
+from task_generator.FileGenerator.v2_blueprint_generator import V2BlueprintFileGenerator
+from task_generator.rw_task_adapter import RwTaskCaseExporter
+from task_generator.v2_golden_run import FinanceAuditGoldenRunExecutor
+from task_generator.v2_task_compiler import FinanceAuditTaskCompiler
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "v2_outputs" / "finance_prototype_01"
@@ -89,3 +90,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

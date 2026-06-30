@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import json
 import shutil
 import subprocess
@@ -7,8 +7,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 
 DEFAULT_BATCH_DIR = ROOT / "Test" / "v2_outputs" / "rw_task_batch_finance_01"
@@ -107,3 +108,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

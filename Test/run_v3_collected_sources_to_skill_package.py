@@ -1,3 +1,11 @@
+﻿from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
 import argparse
 import json
 import sys
@@ -12,7 +20,7 @@ for path in (ROOT, TEST_DIR):
         sys.path.insert(0, str(path))
 
 from run_v3_local_source_to_skill import build_prompt_package, normalize_source  # noqa: E402
-from v3_source_schema import NormalizedSource, RawSource, dump_json_file, load_raw_source  # noqa: E402
+from task_generator.v3_source_schema import NormalizedSource, RawSource, dump_json_file, load_raw_source  # noqa: E402
 
 
 def write_json(path: Path, payload: object) -> None:
@@ -74,3 +82,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+

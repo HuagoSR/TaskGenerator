@@ -45,15 +45,16 @@ The historical reports are useful for understanding why the project moved away f
 
 Code-facing documents and artifacts:
 
-- `v2_schema.py`: current V2 structured objects
+- `src/task_generator/v2_schema.py`: current V2 structured objects
 - `v2_semantic_skills_finance.json`: finance seed skill examples
 - `v2_semantic_skills_migrated.json`: migrated historical skill examples
-- `v2_quality_gate.py`: current structural acceptance gate
-- `v2_task_quality.py`: current static quality scorer
+- `src/task_generator/v2_quality_gate.py`: current structural acceptance gate
+- `src/task_generator/v2_task_quality.py`: current static quality scorer
 
 Repository layout convention:
 
-- Keep active V2/V3 modules at repository root until the planned `src/` package migration is done.
+- Keep active V2/V3 implementation modules under `src/task_generator/`.
+- Keep `Test/` as the current CLI/smoke-runner directory; runners should add repository `src/` to `sys.path` before importing `task_generator`.
 - Keep architecture and schema docs under `docs/architecture/`.
 - Keep dated handoffs under `docs/handoffs/`.
 - Keep stage reports and report images under `docs/reports/`.
@@ -285,8 +286,8 @@ Current graph-layer artifacts:
 - `SemanticContract` keeps the legacy string fields and adds `required_resources`, `optional_resources`, and `provided_resources`
 - `SkillTraceEdge` records local source/package relations such as local order, validation, fan-in, fan-out, and cross-check signals
 - `SkillMotifHint` records motif evidence such as reconciliation, policy application, exception escalation, cross-check validation, and evidence-to-deliverable synthesis
-- `v3_skill_graph_diagnostics.py` checks whether extraction outputs are graph-ready by reporting typed resource coverage, trace-edge coverage, motif coverage, and invalid references
-- `v3_skill_transition_graph.py` builds report-only edge priors from local traces, resource compatibility, readiness signals, and motif co-occurrence
+- `src/task_generator/v3_skill_graph_diagnostics.py` checks whether extraction outputs are graph-ready by reporting typed resource coverage, trace-edge coverage, motif coverage, and invalid references
+- `src/task_generator/v3_skill_transition_graph.py` builds report-only edge priors from local traces, resource compatibility, readiness signals, and motif co-occurrence
 - `Test/run_v3_skill_graph_diagnostics.py` writes `graph_extraction_diagnostics.json` for any extraction directory
 - `Test/run_v3_skill_transition_graph.py` writes `SkillRegistry/v3_skill_transition_graph_report.json` and `SkillRegistry/v3_composition_readiness_report.json`
 - GDPVal and web-source batch runners accept `--build-transition-graph` to generate graph summaries after extraction and review
@@ -498,13 +499,13 @@ They should not lead to endless manual polishing of the same finance task.
 
 ### Existing Assets To Reuse
 
-- `v2_schema.py`
-- `v2_task_compiler.py`
-- `FileGenerator/v2_blueprint_generator.py`
-- `v2_golden_run.py`
-- `v2_quality_gate.py`
-- `v2_task_quality.py`
-- `rw_task_adapter.py`
+- `src/task_generator/v2_schema.py`
+- `src/task_generator/v2_task_compiler.py`
+- `src/task_generator/FileGenerator/v2_blueprint_generator.py`
+- `src/task_generator/v2_golden_run.py`
+- `src/task_generator/v2_quality_gate.py`
+- `src/task_generator/v2_task_quality.py`
+- `src/task_generator/rw_task_adapter.py`
 - `Test/run_v2_batch_funnel.py`
 - `Test/run_v2_finance_optimization_playbook.py`
 
@@ -533,7 +534,7 @@ Goal:
 
 Deliverables:
 
-- `v3_source_schema.py`
+- `src/task_generator/v3_source_schema.py`
 - `SourceCollector` runner
 - `SourceNormalizer` runner
 - `SkillExtractor` runner
@@ -541,7 +542,7 @@ Deliverables:
 
 Current implementation status:
 
-- `v3_source_schema.py` defines the first source-to-skill schema layer:
+- `src/task_generator/v3_source_schema.py` defines the first source-to-skill schema layer:
   - `RawSource`
   - `NormalizedSource`
   - `SourceBlock`
@@ -550,14 +551,14 @@ Current implementation status:
   - `ExtractedSkillCandidate`
   - `SkillRegistryEntry`
   - `SkillExtractionPromptPackage`
-- `v3_source_collector.py` implements the first SourceCollector contract layer:
+- `src/task_generator/v3_source_collector.py` implements the first SourceCollector contract layer:
   - `SourceCollectionRequest`
   - `CollectedSourceRecord`
   - `SourceCollectionReport`
   - source collection prompt builder
   - manifest validator
   - RawSource writer
-- `v3_source_search_tools.py` provides a Serper-backed Stirrup-compatible search/fetch provider:
+- `src/task_generator/v3_source_search_tools.py` provides a Serper-backed Stirrup-compatible search/fetch provider:
   - default search backend is now `serper`
   - `SERPER_API_KEY` is read from the `rw-task` env file
   - Brave remains an optional compatibility backend, but is not required for the default path
@@ -588,11 +589,11 @@ Current implementation status:
   - creates `RawSource` records
   - splits text into normalized blocks
   - emits a skill-extraction prompt package for a later LLM step
-- `v3_skill_extractor.py` provides a deterministic mock extractor:
+- `src/task_generator/v3_skill_extractor.py` provides a deterministic mock extractor:
   - consumes `SkillExtractionPromptPackage`
   - emits `ExtractedSkillCandidate` objects
   - is intended for pipeline testing, not final research-quality extraction
-- `v3_skill_extractor.py` also provides an LLM-backed extractor interface:
+- `src/task_generator/v3_skill_extractor.py` also provides an LLM-backed extractor interface:
   - `BaseSkillExtractor`
   - `LLMSkillExtractor`
   - `FallbackSkillExtractor`
@@ -617,13 +618,13 @@ Current implementation status:
   - runs deterministic review
   - updates the persistent registry
   - emits an aggregate batch report
-- `v3_skill_reviewer.py` provides a deterministic first-pass candidate reviewer:
+- `src/task_generator/v3_skill_reviewer.py` provides a deterministic first-pass candidate reviewer:
   - scores reusability, diversity, semantic clarity, evidence grounding, and assembly usefulness
   - penalizes operator leakage and single-instance overfit
   - now also scores atomicity and penalizes task-level overbreadth, form-specific candidates, and jurisdiction-bound candidates
   - emits `suggested_abstraction` for candidates that should be revised into smaller reusable capabilities
 - `Test/run_v3_skill_candidate_reviewer.py` emits reviewed candidates, accepted candidates, and review reports
-- `v3_skill_registry.py` provides a deterministic registry builder and persistent registry updater:
+- `src/task_generator/v3_skill_registry.py` provides a deterministic registry builder and persistent registry updater:
   - converts candidates into `SkillRegistryEntry` records
   - performs deterministic exact-name, near-name, and semantic-fingerprint deduplication
   - updates the persistent JSON registry at `SkillRegistry/v3_skill_registry.json`
@@ -681,7 +682,7 @@ What is intentionally not done yet:
   - the latest report has 1 suspicious accepted candidate: `Write Exception Statements for Regulatory Non-Compliance Findings`
   - the registry update report now lists 6 unmatched existing entries that remain in the persistent registry but are not touched by the stricter accepted-candidate rerun
 - current registry audit status:
-  - `v3_skill_registry_audit.py` implements a non-destructive deterministic audit helper
+  - `src/task_generator/v3_skill_registry_audit.py` implements a non-destructive deterministic audit helper
   - `Test/run_v3_skill_registry_audit.py` writes `SkillRegistry/v3_skill_registry_audit_report.json`
   - the audit reads `SkillRegistry/v3_skill_registry.json` and the latest update report, but does not change the registry
   - default audit scope is the 6 `unmatched_existing_entries`; `--include-all` audits the full registry
@@ -719,7 +720,7 @@ What is intentionally not done yet:
   - web-source candidate-file audit writes `SkillRegistry/v3_web_source_registry_audit_report.json`
   - candidate-file audit uses deterministic registry candidate refs and avoids broad matching on non-unique raw candidate IDs
   - audit marks web-derived entries with `web_source_batch_governance_attention` but does not modify registry entries
-  - `v3_registry_sampling_readiness.py` and `Test/run_v3_registry_sampling_readiness.py` now turn registry, audit, and calibration signals into a pre-sampling report
+  - `src/task_generator/v3_registry_sampling_readiness.py` and `Test/run_v3_registry_sampling_readiness.py` now turn registry, audit, and calibration signals into a pre-sampling report
   - readiness report path: `SkillRegistry/v3_registry_sampling_readiness_report.json`
   - current readiness result on 66 registry entries: 30 `sample_ready`, 7 `sample_with_caution`, 29 `exclude_until_revised`
   - readiness is report-only; it does not add registry status fields, delete entries, or quarantine entries in-place
@@ -789,4 +790,5 @@ This will reconnect the project to the original two-pipeline design:
 
 - natural language to semantic skill library
 - semantic skill library to batch real-world tasks
+
 

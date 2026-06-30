@@ -98,7 +98,7 @@ The important shift is that Pipeline A is no longer just an atomic skill registr
 
 File:
 
-- `v3_source_schema.py`
+- `src/task_generator/v3_source_schema.py`
 
 Important objects:
 
@@ -151,8 +151,8 @@ Backward compatibility:
 
 Files:
 
-- `v3_source_collector.py`
-- `v3_source_search_tools.py`
+- `src/task_generator/v3_source_collector.py`
+- `src/task_generator/v3_source_search_tools.py`
 - `Test/run_v3_stirrup_source_collector.py`
 - `Test/run_v3_collected_sources_to_skill_package.py`
 
@@ -188,7 +188,7 @@ If network/API permissions fail, stop and ask the user. Do not use mock collecti
 
 Files:
 
-- `v3_skill_extractor.py`
+- `src/task_generator/v3_skill_extractor.py`
 - `Test/run_v3_llm_skill_extractor.py`
 - `Test/run_v3_mock_skill_extractor.py`
 
@@ -232,7 +232,7 @@ Important prompt update:
 
 Files:
 
-- `v3_skill_reviewer.py`
+- `src/task_generator/v3_skill_reviewer.py`
 - `Test/run_v3_skill_candidate_reviewer.py`
 - `Test/run_v3_skill_reviewer_calibration.py`
 
@@ -264,7 +264,7 @@ Important behavior:
 
 Files:
 
-- `v3_skill_registry.py`
+- `src/task_generator/v3_skill_registry.py`
 - `Test/run_v3_skill_registry_update.py`
 - `SkillRegistry/v3_skill_registry.json`
 
@@ -285,9 +285,9 @@ Important boundary:
 
 Files:
 
-- `v3_skill_registry_audit.py`
+- `src/task_generator/v3_skill_registry_audit.py`
 - `Test/run_v3_skill_registry_audit.py`
-- `v3_registry_sampling_readiness.py`
+- `src/task_generator/v3_registry_sampling_readiness.py`
 - `Test/run_v3_registry_sampling_readiness.py`
 
 Reports:
@@ -308,7 +308,7 @@ Readiness remains report-only. It does not add a `status`, `inactive`, or `quara
 
 Files:
 
-- `v3_skill_transition_graph.py`
+- `src/task_generator/v3_skill_transition_graph.py`
 - `Test/run_v3_skill_transition_graph.py`
 
 Reports:
@@ -341,7 +341,7 @@ Recent transition graph calibration:
 
 Files:
 
-- `v3_skill_graph_diagnostics.py`
+- `src/task_generator/v3_skill_graph_diagnostics.py`
 - `Test/run_v3_skill_graph_diagnostics.py`
 - `Test/run_v3_graph_calibration_report.py`
 
@@ -617,10 +617,10 @@ Known relevant files changed or added during the recent Pipeline A graph work in
 - `AGENTS.md`
 - `docs/architecture/pipeline_architecture_v3.md`
 - `docs/architecture/schema_design_v2.md`
-- `v3_source_schema.py`
-- `v3_skill_extractor.py`
-- `v3_skill_graph_diagnostics.py`
-- `v3_skill_transition_graph.py`
+- `src/task_generator/v3_source_schema.py`
+- `src/task_generator/v3_skill_extractor.py`
+- `src/task_generator/v3_skill_graph_diagnostics.py`
+- `src/task_generator/v3_skill_transition_graph.py`
 - `Test/run_v3_skill_graph_diagnostics.py`
 - `Test/run_v3_graph_calibration_report.py`
 - `Test/run_v3_skill_transition_graph.py`
@@ -783,4 +783,5 @@ Do not generate full tasks until Pipeline A graph signals are stable enough.
 ## 10. One-Sentence Handoff Summary
 
 Pipeline A now has source collection, LLM semantic extraction, reviewer, persistent registry, audit/readiness, typed resource ports, trace edges, motif hints, graph diagnostics, and report-only transition graph; the next best step is to add a calibration-only mode for web-source Pipeline A and rerun one small web-source batch with the tightened graph prompt without updating the persistent registry.
+
 

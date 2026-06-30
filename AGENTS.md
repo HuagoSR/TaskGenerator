@@ -92,8 +92,9 @@ Keep the repository organized by separating active code, authoritative docs, dur
 
 Root directory:
 
-- Keep only active top-level Python modules, project coordination files, and stable top-level package directories here.
-- Current root-level Python modules such as `v2_*.py`, `v3_*.py`, `rw_task_adapter.py`, and `task_schemma.py` remain in root until a deliberate `src/` package migration is completed.
+- Keep only project coordination files and stable top-level directories here.
+- Active implementation code now lives under `src/task_generator/`.
+- Do not add new root-level implementation modules. New reusable modules should be package modules under `src/task_generator/`.
 - Do not add new stage reports, screenshots, experiment dumps, notebooks, one-off prompts, or generated outputs to the root directory.
 
 Documentation:
@@ -115,10 +116,11 @@ Artifacts and generated outputs:
 
 Code and runner placement:
 
-- Keep reusable implementation modules in root for now, matching the existing import style.
-- Keep command-line runners under `Test/` until the later `src/` package migration creates a cleaner CLI/module layout.
-- Keep legacy operator-heavy code under `Skill/`; do not mix new Pipeline A/B modules into `Skill/` unless the work is explicitly about that legacy path.
-- Keep reference-file generator code under `FileGenerator/` and prompt assembly utilities under `Prompt/`.
+- Keep reusable implementation modules under `src/task_generator/`, using imports like `from task_generator.v3_source_schema import ...`.
+- Keep command-line runners under `Test/` for now. Runners should prepend the repository `src/` directory to `sys.path` before importing `task_generator`.
+- Keep legacy operator-heavy code under `src/task_generator/Skill/`; do not mix new Pipeline A/B modules into `src/task_generator/Skill/` unless the work is explicitly about that legacy path.
+- Keep reference-file generator code under `src/task_generator/FileGenerator/` and prompt assembly utilities under `src/task_generator/Prompt/`.
+- Preserve obsolete or research-evidence code under `artifacts/archive/` instead of leaving it beside active package code.
 
 Cleanliness rules:
 
@@ -131,15 +133,15 @@ Cleanliness rules:
 
 Useful existing assets:
 
-- `v2_schema.py`: current V2 structured objects
+- `src/task_generator/v2_schema.py`: current V2 structured objects
 - `v2_semantic_skills_finance.json`: finance seed skills
 - `v2_semantic_skills_migrated.json`: migrated historical skills
-- `v2_task_compiler.py`: finance-specific skill-to-task compiler prototype
-- `FileGenerator/v2_blueprint_generator.py`: finance-specific reference file generator
-- `v2_golden_run.py`: deterministic finance GoldenRun prototype
-- `v2_quality_gate.py`: structural acceptance gate
-- `v2_task_quality.py`: static quality scorer
-- `rw_task_adapter.py`: rw-task export adapter
+- `src/task_generator/v2_task_compiler.py`: finance-specific skill-to-task compiler prototype
+- `src/task_generator/FileGenerator/v2_blueprint_generator.py`: finance-specific reference file generator
+- `src/task_generator/v2_golden_run.py`: deterministic finance GoldenRun prototype
+- `src/task_generator/v2_quality_gate.py`: structural acceptance gate
+- `src/task_generator/v2_task_quality.py`: static quality scorer
+- `src/task_generator/rw_task_adapter.py`: rw-task export adapter
 - `Test/run_v2_batch_funnel.py`: batch funnel runner
 - `Test/run_v2_finance_optimization_playbook.py`: finance optimization report runner
 
@@ -180,37 +182,37 @@ New Pipeline A target:
 
 Current Pipeline A starting files:
 
-- `v3_source_schema.py`: source-to-skill schema objects
-- `v3_source_collector.py`: Stirrup/E2B-backed SourceCollector contracts, prompt builder, manifest validator, and RawSource writer
-- `v3_source_search_tools.py`: Serper-backed Stirrup-compatible web search/fetch tool provider
+- `src/task_generator/v3_source_schema.py`: source-to-skill schema objects
+- `src/task_generator/v3_source_collector.py`: Stirrup/E2B-backed SourceCollector contracts, prompt builder, manifest validator, and RawSource writer
+- `src/task_generator/v3_source_search_tools.py`: Serper-backed Stirrup-compatible web search/fetch tool provider
 - `Test/run_v3_stirrup_source_collector.py`: CLI for collecting public web source materials; requires explicit `--allow-web-collection`
 - `Test/run_v3_collected_sources_to_skill_package.py`: connector CLI for turning collected `RawSource` records into normalized sources and a skill-extraction prompt package
 - `Test/run_v3_web_source_pipeline_a.py`: one-command runner for existing collected web sources -> normalization -> LLM extraction -> review -> persistent registry update
 - `Test/run_v3_web_source_pipeline_a_batch.py`: batch runner for multiple web-source topics or existing collection dirs -> collection/reuse -> Pipeline A -> aggregate quality report
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
-- `v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
+- `src/task_generator/v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
 - `Test/run_v3_llm_skill_extractor.py`: CLI for Tuzi/OpenAI-compatible, DeepSeek official, and mock fallback extraction
 - `Test/build_v3_public_smoke_package.py`: builds a public synthetic source package safe for external LLM smoke tests
 - `Test/v3_public_smoke_package`: tracked public synthetic smoke input; generated extraction/registry output dirs are ignored
 - `Test/build_v3_gdpval_prompt_sources.py`: builds GDPVal prompt-only source packages from task_id, sector, occupation, and prompt only
 - `Test/run_v3_gdpval_pipeline_a_batch.py`: one-command GDPVal prompt-only Pipeline A batch runner
-- `v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, atomicity, operator leakage, single-instance overfit, and task-level overbreadth
+- `src/task_generator/v3_skill_reviewer.py`: deterministic first-pass reviewer for reusability, diversity, semantic clarity, evidence grounding, assembly usefulness, atomicity, operator leakage, single-instance overfit, and task-level overbreadth
 - `Test/run_v3_skill_candidate_reviewer.py`: CLI for reviewed/accepted candidate outputs
-- `v3_skill_registry.py`: first-pass registry builder plus persistent registry updater that turns accepted candidates into `SkillRegistryEntry` records
+- `src/task_generator/v3_skill_registry.py`: first-pass registry builder plus persistent registry updater that turns accepted candidates into `SkillRegistryEntry` records
 - `Test/run_v3_skill_registry_builder.py`: CLI for building `skill_registry.json`
 - `Test/run_v3_skill_registry_update.py`: CLI for updating the persistent registry at `SkillRegistry/v3_skill_registry.json`
-- `v3_skill_registry_audit.py`: non-destructive deterministic audit helper for stale or suspicious persistent registry entries
+- `src/task_generator/v3_skill_registry_audit.py`: non-destructive deterministic audit helper for stale or suspicious persistent registry entries
 - `Test/run_v3_skill_registry_audit.py`: CLI for writing `SkillRegistry/v3_skill_registry_audit_report.json` without changing the registry
-- `v3_registry_sampling_readiness.py`: report-only sampler readiness assessor that combines registry, audit, and reviewer calibration signals
+- `src/task_generator/v3_registry_sampling_readiness.py`: report-only sampler readiness assessor that combines registry, audit, and reviewer calibration signals
 - `Test/run_v3_registry_sampling_readiness.py`: CLI for writing `SkillRegistry/v3_registry_sampling_readiness_report.json`
-- `v3_skill_transition_graph.py`: report-only transition graph and composition readiness builder for typed resource compatibility, local trace priors, motif hints, and graph-role labels
+- `src/task_generator/v3_skill_transition_graph.py`: report-only transition graph and composition readiness builder for typed resource compatibility, local trace priors, motif hints, and graph-role labels
 - `Test/run_v3_skill_transition_graph.py`: CLI for writing `SkillRegistry/v3_skill_transition_graph_report.json` and `SkillRegistry/v3_composition_readiness_report.json`
-- `v3_skill_graph_diagnostics.py`: report-only diagnostics for typed resource coverage, trace-edge coverage, motif coverage, and invalid graph references
+- `src/task_generator/v3_skill_graph_diagnostics.py`: report-only diagnostics for typed resource coverage, trace-edge coverage, motif coverage, and invalid graph references
 - `Test/run_v3_skill_graph_diagnostics.py`: CLI for writing `graph_extraction_diagnostics.json` from any extraction output directory
-- `v3_pipeline_b_seed_set.py`: report-only selector for the first Pipeline B seed skill slice from registry/readiness outputs
+- `src/task_generator/v3_pipeline_b_seed_set.py`: report-only selector for the first Pipeline B seed skill slice from registry/readiness outputs
 - `Test/run_v3_pipeline_b_seed_set.py`: CLI for writing `SkillRegistry/v3_pipeline_b_seed_set_report.json`
-- `v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
+- `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
@@ -445,4 +447,5 @@ When continuing this project:
 - Keep source provenance explicit.
 - Keep Pipeline A and Pipeline B modular.
 - Use the finance prototype to validate architecture, not as the center of the research.
+
 

@@ -1,14 +1,15 @@
-import argparse
+﻿import argparse
 import json
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from v3_registry_sampling_readiness import (  # noqa: E402
+from task_generator.v3_registry_sampling_readiness import (  # noqa: E402
     RegistrySamplingReadinessAssessor,
     default_existing_reports,
     write_sampling_readiness_report,
@@ -65,3 +66,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

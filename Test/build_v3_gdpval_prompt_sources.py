@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import hashlib
 import json
 import os
@@ -11,10 +11,11 @@ from datasets import Dataset, DownloadConfig, load_dataset
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from v3_source_schema import (  # noqa: E402
+from task_generator.v3_source_schema import (  # noqa: E402
     NormalizedSource,
     SkillExtractionPromptPackage,
     SourceBlock,
@@ -200,3 +201,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

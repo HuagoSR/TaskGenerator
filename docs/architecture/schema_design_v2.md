@@ -104,7 +104,7 @@ Current GDPVal prompt-only validation:
   - `Compliance Officers`: 8 candidates, 6 accepted, 2 revise
 - after the first web-source smoke and the 3-topic web-source batch, the persistent registry has 66 entries; the older GDPVal update report still lists 6 unmatched existing entries that should be audited rather than silently deleted
 - a non-destructive persistent registry audit now exists:
-  - module: `v3_skill_registry_audit.py`
+  - module: `src/task_generator/v3_skill_registry_audit.py`
   - CLI: `Test/run_v3_skill_registry_audit.py`
   - default output: `SkillRegistry/v3_skill_registry_audit_report.json`
   - default scope: `unmatched_existing_entries` from the latest registry update report
@@ -114,8 +114,8 @@ Current GDPVal prompt-only validation:
   - this is report-only; no `SkillRegistryEntry` schema migration, deletion, inactive flag, or automatic quarantine has been introduced
   - audit decisions are deterministic governance hints for future sampling, not ground-truth labels
 - the first SourceCollector MVP now exists:
-  - module: `v3_source_collector.py`
-  - search tools: `v3_source_search_tools.py`
+  - module: `src/task_generator/v3_source_collector.py`
+  - search tools: `src/task_generator/v3_source_search_tools.py`
   - web collection CLI: `Test/run_v3_stirrup_source_collector.py`
   - connector CLI: `Test/run_v3_collected_sources_to_skill_package.py`
   - web-source Pipeline A runner: `Test/run_v3_web_source_pipeline_a.py`
@@ -144,7 +144,7 @@ Current GDPVal prompt-only validation:
   - no new schema was introduced for web-source batch mode; it reuses `RawSource`, `NormalizedSource`, `ExtractedSkillCandidate`, and `SkillRegistryEntry`
   - this preserves the boundary between source gathering and semantic skill extraction
 - a non-destructive sampling readiness layer now exists:
-  - module: `v3_registry_sampling_readiness.py`
+  - module: `src/task_generator/v3_registry_sampling_readiness.py`
   - CLI: `Test/run_v3_registry_sampling_readiness.py`
   - default output: `SkillRegistry/v3_registry_sampling_readiness_report.json`
   - it combines persistent registry entries, registry audit records, and reviewer calibration records
@@ -249,7 +249,7 @@ The future transition artifact should probably be separate from `SkillRegistryEn
 
 The first implementation is now report-only rather than a persistent transition database:
 
-- module: `v3_skill_transition_graph.py`
+- module: `src/task_generator/v3_skill_transition_graph.py`
 - CLI: `Test/run_v3_skill_transition_graph.py`
 - default transition report: `SkillRegistry/v3_skill_transition_graph_report.json`
 - default composition readiness report: `SkillRegistry/v3_composition_readiness_report.json`
@@ -288,7 +288,7 @@ Current motif implementation:
 - LLM extraction prompt now asks for top-level JSON with `candidates`, `trace_edges`, and `motif_hints`
 - old candidate-only outputs remain valid; trace and motif lists default to empty
 - mock extraction emits deterministic typed resources and simple local trace/motif hints for smoke testing
-- `v3_skill_graph_diagnostics.py` emits `graph_extraction_diagnostics.json` to check typed resource coverage, trace edge coverage, motif coverage, and invalid graph references
+- `src/task_generator/v3_skill_graph_diagnostics.py` emits `graph_extraction_diagnostics.json` to check typed resource coverage, trace edge coverage, motif coverage, and invalid graph references
 - diagnostics are written automatically by extractor CLIs and batch runners, and can be regenerated with `Test/run_v3_skill_graph_diagnostics.py`
 - calibration summaries across multiple extraction directories can be generated with `Test/run_v3_graph_calibration_report.py`
 - current GDPVal accountants offline graph smoke produced 7 transition edges and 1 motif hint
@@ -928,7 +928,7 @@ Current required checks are:
 
 This checklist is now implemented as a first-pass quality gate in:
 
-- `v2_quality_gate.py`
+- `src/task_generator/v2_quality_gate.py`
 - `Test/run_v2_quality_gate.py`
 
 For batch-level use, the current finance prototype also has a funnel runner:
@@ -1095,7 +1095,7 @@ The first version of the finance optimization playbook has now been implemented.
 
 Files:
 
-- `v2_finance_optimization.py`
+- `src/task_generator/v2_finance_optimization.py`
 - `Test/run_v2_finance_optimization_playbook.py`
 
 Inputs:
@@ -1347,4 +1347,5 @@ The V2 schema is designed so that:
 - task construction becomes richer and more flexible
 - supervision is explicit and result-grounded
 - the final dataset is suitable for training, not only benchmarking
+
 

@@ -1,3 +1,11 @@
+﻿from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
 import argparse
 import json
 import sys
@@ -14,27 +22,27 @@ for path in (ROOT, TEST_DIR):
 
 from run_v3_collected_sources_to_skill_package import load_raw_sources  # noqa: E402
 from run_v3_local_source_to_skill import build_prompt_package, normalize_source  # noqa: E402
-from v3_skill_extractor import (  # noqa: E402
+from task_generator.v3_skill_extractor import (  # noqa: E402
     FallbackSkillExtractor,
     LLMSkillExtractor,
     ProviderAttempt,
     build_deepseek_config,
     build_tuzi_config,
 )
-from v3_skill_registry import SkillRegistryBuilder  # noqa: E402
-from v3_skill_reviewer import SkillCandidateReviewer  # noqa: E402
-from v3_skill_graph_diagnostics import (  # noqa: E402
+from task_generator.v3_skill_registry import SkillRegistryBuilder  # noqa: E402
+from task_generator.v3_skill_reviewer import SkillCandidateReviewer  # noqa: E402
+from task_generator.v3_skill_graph_diagnostics import (  # noqa: E402
     build_graph_extraction_diagnostics,
     write_graph_extraction_diagnostics,
 )
-from v3_skill_transition_graph import (  # noqa: E402
+from task_generator.v3_skill_transition_graph import (  # noqa: E402
     SkillTransitionGraphBuilder,
     load_optional_json,
     load_optional_motif_hints,
     load_optional_trace_edges,
     write_graph_report,
 )
-from v3_source_schema import (  # noqa: E402
+from task_generator.v3_source_schema import (  # noqa: E402
     ExtractedSkillCandidate,
     NormalizedSource,
     RawSource,
@@ -605,3 +613,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+

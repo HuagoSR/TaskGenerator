@@ -1,3 +1,11 @@
+﻿from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
 import argparse
 import json
 import subprocess
@@ -14,8 +22,8 @@ for path in (ROOT, TEST_DIR):
         sys.path.insert(0, str(path))
 
 from run_v3_web_source_pipeline_a import run_pipeline as run_web_source_pipeline  # noqa: E402
-from v3_skill_registry import SkillRegistryBuilder  # noqa: E402
-from v3_source_collector import slugify  # noqa: E402
+from task_generator.v3_skill_registry import SkillRegistryBuilder  # noqa: E402
+from task_generator.v3_source_collector import slugify  # noqa: E402
 
 
 DEFAULT_TOPICS = [
@@ -474,3 +482,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+

@@ -1,13 +1,14 @@
-import argparse
+﻿import argparse
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from v2_quality_gate import V2SampleQualityGate
+from task_generator.v2_quality_gate import V2SampleQualityGate
 
 
 DEFAULT_CASE_DIR = ROOT / "Test" / "v2_outputs" / "finance_batch_01" / "TASK_11C0BEA2"
@@ -30,3 +31,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
