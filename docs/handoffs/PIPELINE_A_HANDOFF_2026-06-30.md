@@ -1,4 +1,4 @@
-# Pipeline A Handoff - 2026-06-30
+﻿# Pipeline A Handoff - 2026-06-30
 
 This file is a handoff note for continuing TaskGenerator Pipeline A in a fresh conversation.
 
@@ -615,8 +615,8 @@ The worktree contains many unrelated dirty files from older experiments. Do not 
 Known relevant files changed or added during the recent Pipeline A graph work include:
 
 - `AGENTS.md`
-- `pipeline_architecture_v3.md`
-- `schema_design_v2.md`
+- `docs/architecture/pipeline_architecture_v3.md`
+- `docs/architecture/schema_design_v2.md`
 - `v3_source_schema.py`
 - `v3_skill_extractor.py`
 - `v3_skill_graph_diagnostics.py`
@@ -783,3 +783,4 @@ Do not generate full tasks until Pipeline A graph signals are stable enough.
 ## 10. One-Sentence Handoff Summary
 
 Pipeline A now has source collection, LLM semantic extraction, reviewer, persistent registry, audit/readiness, typed resource ports, trace edges, motif hints, graph diagnostics, and report-only transition graph; the next best step is to add a calibration-only mode for web-source Pipeline A and rerun one small web-source batch with the tightened graph prompt without updating the persistent registry.
+

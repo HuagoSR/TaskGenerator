@@ -1,4 +1,4 @@
-# TaskGenerator V3 Pipeline Roadmap
+﻿# TaskGenerator V3 Pipeline Roadmap
 
 ## Purpose
 
@@ -22,12 +22,12 @@ The finance task is now best understood as a prototype used to validate the pipe
 
 Current authoritative documents:
 
-- `pipeline_architecture_v3.md`
+- `docs/architecture/pipeline_architecture_v3.md`
   - macro architecture
   - two-pipeline plan
   - batch automation roadmap
   - near-term engineering priorities
-- `schema_design_v2.md`
+- `docs/architecture/schema_design_v2.md`
   - V2 object definitions
   - finance prototype history
   - quality-gate lessons
@@ -53,8 +53,8 @@ Code-facing documents and artifacts:
 
 Document maintenance rule:
 
-- put schema changes in `schema_design_v2.md`
-- put project roadmap changes in `pipeline_architecture_v3.md`
+- put schema changes in `docs/architecture/schema_design_v2.md`
+- put project roadmap changes in `docs/architecture/pipeline_architecture_v3.md`
 - put experiment results near the relevant prototype section, but convert reusable lessons into pipeline rules
 
 ## Core Architecture
@@ -319,7 +319,7 @@ Current verified graph-layer smoke results:
   - 14 `recommend_admit`
   - 1 `merge_existing`
   - no registry update is performed
-- Pipeline A to B handoff is documented in `PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
+- Pipeline A to B handoff is documented in `docs/handoffs/PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
 
 ## Pipeline B: Skill-To-Task Design
 
@@ -781,3 +781,4 @@ This will reconnect the project to the original two-pipeline design:
 
 - natural language to semantic skill library
 - semantic skill library to batch real-world tasks
+

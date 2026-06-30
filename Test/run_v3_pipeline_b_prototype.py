@@ -13,7 +13,7 @@ from v3_pipeline_b_prototype import PipelineBPrototypeBuilder  # noqa: E402
 
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
 DEFAULT_SEED_REPORT_PATH = ROOT / "SkillRegistry" / "v3_pipeline_b_seed_set_report.json"
-DEFAULT_OUTPUT_DIR = ROOT / "Test" / "v3_pipeline_b_outputs" / "prototype_01"
+DEFAULT_OUTPUT_DIR = ROOT / "artifacts" / "pipeline_b" / "prototype_01"
 
 
 def main() -> None:

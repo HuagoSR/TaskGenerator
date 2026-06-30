@@ -2,6 +2,12 @@
 deepseek-key.txt
 __pycache__/
 *.pyc
+.idea/
+Skill/*.log
+Skill/agent_logs/
+Skill/debate_logs/
+artifacts/tmp/
+artifacts/pipeline_b/scratch/
 Test/v2_outputs/
 Test/v3_source_demo_inputs/
 Test/v3_public_smoke_package/*_extraction/

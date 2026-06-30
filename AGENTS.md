@@ -1,4 +1,4 @@
-# TaskGenerator Project Notes For Future Agents
+﻿# TaskGenerator Project Notes For Future Agents
 
 ## Project Goal
 
@@ -81,10 +81,10 @@ This pipeline should be hybrid. LLMs are useful for scenario construction and te
 
 Read these first:
 
-- `pipeline_architecture_v3.md`: current macro roadmap and future plan
-- `schema_design_v2.md`: V2 schema details, finance prototype history, and evaluation lessons
+- `docs/architecture/pipeline_architecture_v3.md`: current macro roadmap and future plan
+- `docs/architecture/schema_design_v2.md`: V2 schema details, finance prototype history, and evaluation lessons
 
-Older stage reports are useful history, especially for why the project moved away from operator-heavy skill extraction, but they are not the current plan unless restated in `pipeline_architecture_v3.md`.
+Older stage reports are useful history, especially for why the project moved away from operator-heavy skill extraction, but they are not the current plan unless restated in `docs/architecture/pipeline_architecture_v3.md`.
 
 ## Current Code State
 
@@ -339,7 +339,7 @@ Current Pipeline A status:
   - web-source graph calibration should use a new output directory plus `--calibration-only` so old graph-poor outputs can be compared against tightened-prompt outputs without growing or mutating the persistent registry
   - the extractor prompt now asks motif hints to cover the full relevant candidate subset, after `internal_control_testing` showed strong trace coverage but narrower motif coverage
 - Pipeline A to B handoff now exists:
-  - handoff document: `PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
+  - handoff document: `docs/handoffs/PIPELINE_A_TO_B_HANDOFF_2026-06-30.md`
   - seed set report: `SkillRegistry/v3_pipeline_b_seed_set_report.json`
   - current seed set: 20 selected skills, all `sample_ready`
   - selected seed motif counts: 12 `policy_application`, 8 `evidence_to_deliverable`, 7 `cross_check_validation`, 5 `fan_in_reconciliation`
@@ -404,3 +404,4 @@ When continuing this project:
 - Keep source provenance explicit.
 - Keep Pipeline A and Pipeline B modular.
 - Use the finance prototype to validate architecture, not as the center of the research.
+

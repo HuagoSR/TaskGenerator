@@ -1,4 +1,4 @@
-# Pipeline A To Pipeline B Handoff - 2026-06-30
+﻿# Pipeline A To Pipeline B Handoff - 2026-06-30
 
 ## Purpose
 
@@ -154,3 +154,4 @@ This first Pipeline B slice should be feedback-oriented. Its purpose is to disco
 - Feedback hooks from Pipeline B task quality back into graph/motif weights.
 
 These should be driven by Pipeline B failures rather than continued Pipeline A polishing in isolation.
+
