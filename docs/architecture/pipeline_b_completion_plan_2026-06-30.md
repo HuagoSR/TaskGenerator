@@ -11,7 +11,8 @@ Current baseline:
 - Pipeline A has a persistent skill registry and readiness reports.
 - Pipeline B has a report-first resource-aware sampler that can read the seed set and registry, build a `PipelineBSubgraph`, and emit Pipeline A feedback.
 - Pipeline B prototype can still read the seed set directly, and can now also consume a sampler `pipeline_b_subgraph_report.json` to emit a draft `TaskBlueprint`.
-- The current prototype is report-only and pre-GoldenRun, pre-rubric, pre-reference-file-generation, and pre-rw-task export.
+- Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, and a package-level Quality Gate V1.
+- The current chain is still pre-rw-task export, pre-model-separation evaluation, and intentionally partial while `policy_reference.docx` remains deferred.
 
 The next work should convert Pipeline B from "draft blueprint prototype" into "complete task package generator".
 
@@ -90,6 +91,15 @@ Completed slices:
    - The builder converts supervision items, failure modes, rubric projection summaries, and unresolved gaps into four structured sections: `fact_checks`, `reasoning_checks`, `robustness_checks`, and `compliance_checks`.
    - Current smoke result is `partial_ready`, with 4 sections, 44 criteria, and 39 criteria marked `partial`.
 
+9. Pipeline B Quality Gate V1.
+   - Module: `src/task_generator/v3_pipeline_b_quality_gate.py`
+   - CLI: `Test/run_v3_pipeline_b_quality_gate.py`
+   - Inputs: `generated_file_manifest.json`, `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, and `rubric_report.json`
+   - Output: `pipeline_b_quality_report.json`
+   - The gate is deterministic, JSON-only, and does not call LLMs or external APIs.
+   - Decision space is fixed to `reject`, `revise`, and `candidate_ready`.
+   - Current smoke result is `revise`, with reason codes including `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain`.
+
 Current validation commands:
 
 ```powershell
@@ -109,17 +119,25 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_trainin
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py Test\run_v3_rubric_builder.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_quality_gate.py Test\run_v3_pipeline_b_quality_gate.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --output-dir artifacts\pipeline_b\scratch\quality_gate_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Build `Pipeline B quality gate` on top of blueprint, generation, teacher, annotation, and rubric reports.
-2. Or, if export validation becomes more urgent, wire `rw-task export adapter` to the current structured artifacts.
-3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, and `rubric_report.json` as readiness gates for downstream package assembly.
-4. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
-5. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
+1. Wire `rw-task export adapter` to the current structured artifacts, or introduce a package directory assembler if export needs a clearer staging contract first.
+2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, and `pipeline_b_quality_report.json` as readiness gates for downstream package assembly.
+3. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
+4. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
+
+LLM timing policy:
+
+- Current Quality Gate V1 does not call LLMs.
+- LLM teacher mode should run after quality gating, or under an explicit later exploration mode that records partial readiness honestly.
+- LLM output should be stored as teacher proposals, scenario/prose drafts, or reference-document drafts.
+- LLM output must not become grading truth unless validated against candidate-visible evidence or explicitly marked as teacher-only supervision.
 
 ## Final System Objective
 

@@ -192,7 +192,8 @@ Near-term implementation rule:
 - keep the current deterministic table-first reference-file generator focused on manifestable, verifiable structured files
 - keep the current teacher-input builder as the pre-TeacherRunner contract layer
 - keep the current TeacherRunner deterministic and report-first while the reference-doc layer is still incomplete
-- next implement training annotation and rubric slices on top of `golden_run.json`
+- keep the current training annotation and rubric layers JSON-only and explicit about partial readiness
+- keep the current Pipeline B quality gate deterministic; it should decide whether the current package is `reject`, `revise`, or `candidate_ready` before any LLM teacher/prose step is scheduled
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -251,6 +252,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_training_annotation_builder.py`: CLI for writing `training_annotation.json` and `training_annotation_report.json`
 - `src/task_generator/v3_rubric_builder.py`: deterministic JSON-only rubric builder that turns teacher and training artifacts into a structured scoring contract
 - `Test/run_v3_rubric_builder.py`: CLI for writing `rubric.json` and `rubric_report.json`
+- `src/task_generator/v3_pipeline_b_quality_gate.py`: deterministic package-level quality gate that reads generated-file, teacher, annotation, and rubric reports and emits a conservative `reject` / `revise` / `candidate_ready` decision
+- `Test/run_v3_pipeline_b_quality_gate.py`: CLI for writing `pipeline_b_quality_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -444,6 +447,7 @@ Current Pipeline A status:
   - teacher-runner smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke`
   - training-annotation smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke`
   - rubric smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke`
+  - quality-gate smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --output-dir artifacts\pipeline_b\scratch\quality_gate_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -457,11 +461,12 @@ Current Pipeline A status:
   - current training annotation contains 13 supervision items, 6 failure modes, 9 hidden traps, a richer V3 supervision structure, and an embedded V2-compatible `TrainingAnnotation` projection
   - current rubric smoke emits `rubric.json` and `rubric_report.json` with readiness `partial_ready`
   - current rubric contains 4 sections and 44 criteria; `deferred_policy_reference` and `relationship:policy_lookup` remain explicitly visible instead of being flattened away
+  - current quality-gate smoke emits `pipeline_b_quality_report.json` with decision `revise`
+  - current quality-gate reason codes include `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, or rubric builder
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, or quality gate
 - next Pipeline B implementation slice:
-  - build `Pipeline B quality gate` on top of blueprint, generation, teacher, annotation, and rubric reports
-  - or, if export validation becomes more urgent, wire `rw-task export adapter` to the current structured artifacts
+  - wire `rw-task export adapter` to the current structured artifacts, or build a package directory assembler if export needs a clearer staging area first
   - extend reference-file generation toward policy/reference documents so `policy_reference.docx` no longer forces partial teacher readiness
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:
@@ -500,6 +505,13 @@ Needed direction:
 LLM teacher mode should use more information than the candidate, such as revealed traps, expected intermediate states, source provenance, and teacher-only checklists.
 
 However, exact grading targets should still be traceable to visible source evidence unless explicitly marked as teacher-only.
+
+Current LLM timing policy:
+
+- Pipeline B Quality Gate V1 does not call LLMs or external APIs.
+- LLM teacher mode should be scheduled after the quality gate has made package readiness explicit, or under an explicit partial-teacher exploration flag in a later slice.
+- LLM outputs should be stored as teacher proposals or prose/reference-document drafts, not as grading truth by themselves.
+- Grading truth must remain grounded in candidate-visible evidence or be explicitly labeled as teacher-only supervision.
 
 ## Environment Notes
 

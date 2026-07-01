@@ -429,6 +429,8 @@ Current implementation:
 - `Test/run_v3_training_annotation_builder.py` emits `training_annotation.json` and `training_annotation_report.json`, including a richer V3 supervision artifact plus an embedded V2-compatible annotation projection.
 - `src/task_generator/v3_rubric_builder.py` now consumes the training annotation and teacher outputs and emits a JSON-only `rubric.json`.
 - `Test/run_v3_rubric_builder.py` emits `rubric.json` and `rubric_report.json`, preserving `partial_ready`, unresolved gaps, and warning codes instead of flattening them away.
+- `src/task_generator/v3_pipeline_b_quality_gate.py` now consumes generated-file, teacher-input, teacher-runner, training-annotation, and rubric reports.
+- `Test/run_v3_pipeline_b_quality_gate.py` emits `pipeline_b_quality_report.json`; the current smoke decision is `revise`, not `candidate_ready`, because deferred policy references, policy-lookup warnings, low subgraph confidence, single-source support, and the partial-ready chain remain visible.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -453,6 +455,7 @@ Current implementation:
 - `src/task_generator/v3_training_annotation_builder.py` now turns those teacher artifacts into supervision items, failure modes, hidden traps, unresolved gaps, and a V2-compatible `TrainingAnnotation` projection.
 - `src/task_generator/v3_rubric_builder.py` now turns supervision items, failure modes, rubric projections, and unresolved gaps into structured fact, reasoning, robustness, and compliance sections.
 - The current rubric is a structured-ready contract, not an executable grader.
+- `src/task_generator/v3_pipeline_b_quality_gate.py` now turns the current deterministic artifact reports into a package-level decision before any export or LLM teacher/prose step.
 
 LLM teacher mode should use more information than the candidate:
 
@@ -464,6 +467,13 @@ LLM teacher mode should use more information than the candidate:
 
 But exact grading targets should still be traceable to candidate-visible evidence unless they are explicitly marked as teacher-only supervision.
 
+Current LLM timing policy:
+
+- Quality Gate V1 does not call LLMs or external APIs.
+- LLM teacher mode should be scheduled after package readiness is explicit, or under a later explicit partial-teacher exploration mode.
+- LLM output is a teacher proposal or prose/reference-document draft; it is not grading truth by itself.
+- Grading truth must be validated against candidate-visible evidence or explicitly labeled teacher-only.
+
 ### 5. RubricBuilder
 
 Responsibility:
@@ -474,7 +484,22 @@ Responsibility:
 
 Rubrics should not be only prose. They should include machine-readable anchors.
 
-### 6. ExportAdapter
+### 6. QualityGate
+
+Responsibility:
+
+- read deterministic Pipeline B reports
+- decide whether the current package should be `reject`, `revise`, or `candidate_ready`
+- preserve high-signal reason codes for later batch filtering and feedback updates
+- prevent downstream export or expensive model calls from hiding partial readiness
+
+Current implementation:
+
+- `src/task_generator/v3_pipeline_b_quality_gate.py` implements the first deterministic quality gate.
+- `Test/run_v3_pipeline_b_quality_gate.py` writes `pipeline_b_quality_report.json`.
+- The current smoke package is expected to be `revise`, with `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain` still visible.
+
+### 7. ExportAdapter
 
 Responsibility:
 
@@ -844,7 +869,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, and a structured rubric layer. The next implementation step should build a package-level quality gate or export layer on top of those artifacts.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, and a package-level quality gate. The next implementation step should build export/package assembly on top of those artifacts.
 
 Recommended next code tasks:
 
@@ -856,7 +881,8 @@ Recommended next code tasks:
 - keep using `Test/run_v3_teacher_runner.py` to produce `golden_run.json` and `teacher_runner_report.json`
 - keep using `Test/run_v3_training_annotation_builder.py` to produce `training_annotation.json` and `training_annotation_report.json`
 - keep using `Test/run_v3_rubric_builder.py` to produce `rubric.json` and `rubric_report.json`
-- build a `Pipeline B quality gate` from generation, teacher, annotation, and rubric reports before attempting polished final memo rendering or broad export
+- keep using `Test/run_v3_pipeline_b_quality_gate.py` to produce `pipeline_b_quality_report.json`
+- build a package assembler or `rw-task` export adapter from the gated artifacts before attempting polished final memo rendering
 - continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
