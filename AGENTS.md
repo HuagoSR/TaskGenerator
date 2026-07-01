@@ -247,6 +247,10 @@ Current Pipeline A starting files:
 - `Test/run_v3_teacher_input_builder.py`: CLI for writing `teacher_input_manifest.json` and `teacher_input_validation_report.json`
 - `src/task_generator/v3_teacher_runner.py`: deterministic TeacherRunner V1 that turns teacher input artifacts into a partial-but-auditable `golden_run.json`
 - `Test/run_v3_teacher_runner.py`: CLI for writing `golden_run.json` and `teacher_runner_report.json`
+- `src/task_generator/v3_training_annotation_builder.py`: builder that turns deterministic teacher artifacts into training supervision plus a V2-compatible annotation projection
+- `Test/run_v3_training_annotation_builder.py`: CLI for writing `training_annotation.json` and `training_annotation_report.json`
+- `src/task_generator/v3_rubric_builder.py`: deterministic JSON-only rubric builder that turns teacher and training artifacts into a structured scoring contract
+- `Test/run_v3_rubric_builder.py`: CLI for writing `rubric.json` and `rubric_report.json`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -438,6 +442,8 @@ Current Pipeline A status:
   - reference-file generator smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke`
   - teacher-input smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke`
   - teacher-runner smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke`
+  - training-annotation smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke`
+  - rubric smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -447,11 +453,15 @@ Current Pipeline A status:
   - current teacher-input contract separates `candidate_view` from `teacher_view`, carries 4 skill intentions, 5 evidence-contract items, and flags `relationship:policy_lookup` as a warning because `policy_reference.docx` is still deferred
   - current teacher-runner smoke emits `golden_run.json` and `teacher_runner_report.json` with readiness `partial_ready`
   - current teacher-runner creates 6 intermediate states, 4 skill-linked golden steps, and 3 final checks; all 4 steps are intentionally `partial` because policy-reference generation, stronger typed resources, and stronger support evidence are still missing
+  - current training-annotation smoke emits `training_annotation.json` and `training_annotation_report.json` with readiness `partial_ready`
+  - current training annotation contains 13 supervision items, 6 failure modes, 9 hidden traps, a richer V3 supervision structure, and an embedded V2-compatible `TrainingAnnotation` projection
+  - current rubric smoke emits `rubric.json` and `rubric_report.json` with readiness `partial_ready`
+  - current rubric contains 4 sections and 44 criteria; `deferred_policy_reference` and `relationship:policy_lookup` remain explicitly visible instead of being flattened away
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, or teacher-runner
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, or rubric builder
 - next Pipeline B implementation slice:
-  - build `TrainingAnnotationBuilder V1` on top of `golden_run.json`
-  - build `RubricBuilder V1` on top of teacher intermediate states and final checks
+  - build `Pipeline B quality gate` on top of blueprint, generation, teacher, annotation, and rubric reports
+  - or, if export validation becomes more urgent, wire `rw-task export adapter` to the current structured artifacts
   - extend reference-file generation toward policy/reference documents so `policy_reference.docx` no longer forces partial teacher readiness
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:

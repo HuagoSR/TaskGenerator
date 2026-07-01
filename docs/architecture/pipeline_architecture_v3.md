@@ -425,6 +425,10 @@ Current implementation:
 - `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`, separating candidate-visible artifacts from teacher-visible supervision and marking current readiness as `partial_ready`.
 - `src/task_generator/v3_teacher_runner.py` now consumes the teacher input artifacts and deterministically emits `golden_run.json`.
 - `Test/run_v3_teacher_runner.py` emits `golden_run.json` and `teacher_runner_report.json`; current smoke stays `partial_ready` and makes missing policy references explicit instead of hiding them.
+- `src/task_generator/v3_training_annotation_builder.py` now consumes `golden_run.json`, `teacher_runner_report.json`, and `teacher_input_manifest.json`.
+- `Test/run_v3_training_annotation_builder.py` emits `training_annotation.json` and `training_annotation_report.json`, including a richer V3 supervision artifact plus an embedded V2-compatible annotation projection.
+- `src/task_generator/v3_rubric_builder.py` now consumes the training annotation and teacher outputs and emits a JSON-only `rubric.json`.
+- `Test/run_v3_rubric_builder.py` emits `rubric.json` and `rubric_report.json`, preserving `partial_ready`, unresolved gaps, and warning codes instead of flattening them away.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -446,6 +450,9 @@ Current implementation:
 - `src/task_generator/v3_teacher_runner.py` implements the first deterministic TeacherRunner scaffold.
 - It turns teacher intentions, required intermediate states, evidence contracts, and validation warnings into teacher-visible intermediate states, skill-linked golden steps, and final checks.
 - The current runner is intentionally honest about partial readiness: when `policy_reference.docx` is deferred or sampled subgraph confidence is low, steps remain `partial` instead of inventing full teacher truth.
+- `src/task_generator/v3_training_annotation_builder.py` now turns those teacher artifacts into supervision items, failure modes, hidden traps, unresolved gaps, and a V2-compatible `TrainingAnnotation` projection.
+- `src/task_generator/v3_rubric_builder.py` now turns supervision items, failure modes, rubric projections, and unresolved gaps into structured fact, reasoning, robustness, and compliance sections.
+- The current rubric is a structured-ready contract, not an executable grader.
 
 LLM teacher mode should use more information than the candidate:
 
@@ -837,7 +844,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, and a deterministic TeacherRunner. The next implementation step should build training annotation and rubric layers on top of those teacher outputs.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, and a structured rubric layer. The next implementation step should build a package-level quality gate or export layer on top of those artifacts.
 
 Recommended next code tasks:
 
@@ -847,8 +854,9 @@ Recommended next code tasks:
 - keep using `Test/run_v3_reference_file_generator.py` to produce `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
 - keep using `Test/run_v3_teacher_input_builder.py` to produce `teacher_input_manifest.json` and `teacher_input_validation_report.json`
 - keep using `Test/run_v3_teacher_runner.py` to produce `golden_run.json` and `teacher_runner_report.json`
-- build `TrainingAnnotationBuilder V1` from teacher intermediate states, final checks, and unresolved-gap reporting
-- build `RubricBuilder V1` from evidence-linked teacher outputs before attempting polished final memo rendering
+- keep using `Test/run_v3_training_annotation_builder.py` to produce `training_annotation.json` and `training_annotation_report.json`
+- keep using `Test/run_v3_rubric_builder.py` to produce `rubric.json` and `rubric_report.json`
+- build a `Pipeline B quality gate` from generation, teacher, annotation, and rubric reports before attempting polished final memo rendering or broad export
 - continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry

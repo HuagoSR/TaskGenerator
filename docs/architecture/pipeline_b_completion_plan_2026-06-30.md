@@ -72,6 +72,24 @@ Completed slices:
    - Current smoke result is `partial_ready`, with 6 intermediate states, 4 golden steps, 3 final checks, and no blocked steps.
    - All current steps are intentionally `partial` because `policy_reference.docx` is still deferred and the sampled subgraph still carries fallback-confidence warnings.
 
+7. TrainingAnnotationBuilder V1.
+   - Module: `src/task_generator/v3_training_annotation_builder.py`
+   - CLI: `Test/run_v3_training_annotation_builder.py`
+   - Inputs: `golden_run.json`, `teacher_runner_report.json`, and `teacher_input_manifest.json`
+   - Outputs: `training_annotation.json` and `training_annotation_report.json`
+   - The builder converts teacher intermediate states, golden steps, final checks, unresolved gaps, and warning codes into training supervision objects.
+   - The artifact also embeds a V2-compatible `TrainingAnnotation` projection for older downstream consumers.
+   - Current smoke result is `partial_ready`, with 13 supervision items, 6 failure modes, 9 hidden traps, and 14 unresolved gaps carried forward explicitly.
+
+8. RubricBuilder V1.
+   - Module: `src/task_generator/v3_rubric_builder.py`
+   - CLI: `Test/run_v3_rubric_builder.py`
+   - Inputs: `training_annotation.json`, `training_annotation_report.json`, `golden_run.json`, and `teacher_runner_report.json`
+   - Outputs: `rubric.json` and `rubric_report.json`
+   - The rubric is JSON-only in this slice; no Markdown summary is emitted.
+   - The builder converts supervision items, failure modes, rubric projection summaries, and unresolved gaps into four structured sections: `fact_checks`, `reasoning_checks`, `robustness_checks`, and `compliance_checks`.
+   - Current smoke result is `partial_ready`, with 4 sections, 44 criteria, and 39 criteria marked `partial`.
+
 Current validation commands:
 
 ```powershell
@@ -87,18 +105,21 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher_runner.py Test\run_v3_teacher_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_training_annotation_builder.py Test\run_v3_training_annotation_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py Test\run_v3_rubric_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Build `TrainingAnnotationBuilder V1` on top of `golden_run.json`.
-2. Build `RubricBuilder V1` on top of teacher intermediate states and final checks.
-3. Reuse `required_intermediate_states`, `evidence_contract`, `skill_intentions`, and deferred-asset warnings from the current teacher artifacts instead of rebuilding that contract again.
-4. Keep `teacher_input_validation_report.json` and `teacher_runner_report.json` as readiness gates for downstream package assembly.
-5. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
-6. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
+1. Build `Pipeline B quality gate` on top of blueprint, generation, teacher, annotation, and rubric reports.
+2. Or, if export validation becomes more urgent, wire `rw-task export adapter` to the current structured artifacts.
+3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, and `rubric_report.json` as readiness gates for downstream package assembly.
+4. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
+5. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
 
 ## Final System Objective
 
@@ -674,14 +695,13 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The next code change should build the first training-annotation and rubric layers on top of the current deterministic TeacherRunner outputs.
+The next code change should build the first Pipeline B quality gate on top of the current deterministic blueprint, generation, teacher, annotation, and rubric outputs.
 
 Minimal scope:
 
-- Read `golden_run.json`, `teacher_runner_report.json`, and the upstream teacher-input artifacts.
-- Turn teacher intermediate states and final checks into training-oriented supervision objects.
+- Read `generated_file_manifest.json`, `teacher_runner_report.json`, `training_annotation_report.json`, and `rubric_report.json`.
+- Convert current readiness states and warning codes into a single package-level acceptance or rejection decision with explicit reason codes.
 - Preserve `partial_ready` and unresolved-gap reporting instead of pretending the task is fully solved.
-- Continue requiring evidence citations or evidence-location references in each teacher-visible supervision artifact.
 - Keep policy/reference-doc gaps explicit until richer reference-file generation lands.
 
 This slice should stay conservative. It should prove that Pipeline B can hand a structured, honest teacher packet to the next stage without pretending deferred assets or weak Pipeline A signals have disappeared.
@@ -701,6 +721,10 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher_runner.py Test\run_v3_teacher_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_training_annotation_builder.py Test\run_v3_training_annotation_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py Test\run_v3_rubric_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
 ```
 
 Expected results:
@@ -711,6 +735,8 @@ Expected results:
 - The generator emits concrete table files where supported and a `generated_file_manifest.json`.
 - The teacher-input builder emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`.
 - The teacher-runner emits `golden_run.json` and `teacher_runner_report.json`.
+- The training-annotation builder emits `training_annotation.json` and `training_annotation_report.json`.
+- The rubric builder emits `rubric.json` and `rubric_report.json`.
 - The current teacher run stays `partial_ready` rather than hiding missing policy-reference coverage.
 - No registry files are modified.
 - The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
