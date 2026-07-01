@@ -98,6 +98,12 @@ def main() -> None:
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH, help="Path to .env file containing AGENT_API_KEY/AGENT_BASE_URL.")
     parser.add_argument("--timeout", type=float, default=60.0, help="Per-model timeout in seconds.")
     parser.add_argument("--model", action="append", dest="models", help="Model id to test. Repeatable.")
+    parser.add_argument(
+        "--key-source",
+        choices=["auto", "primary", "backup"],
+        default="auto",
+        help="Use OPENAI_API_KEY, OPENAI_API_KEY_BACKUP, or normal auto provider key order.",
+    )
     parser.add_argument("--json", action="store_true", help="Print full JSON results.")
     args = parser.parse_args()
 
@@ -105,12 +111,20 @@ def main() -> None:
         raise FileNotFoundError(f".env file not found: {args.env_path}")
 
     env_values = load_env_file(args.env_path)
-    api_key = (
-        env_values.get("AGENT_API_KEY")
-        or env_values.get("STIRRUP_OPENAI_API_KEY")
-        or env_values.get("OPENAI_API_KEY")
-        or ""
-    )
+    if args.key_source == "backup":
+        api_key = env_values.get("OPENAI_API_KEY_BACKUP") or ""
+        key_source = "OPENAI_API_KEY_BACKUP"
+    elif args.key_source == "primary":
+        api_key = env_values.get("OPENAI_API_KEY") or ""
+        key_source = "OPENAI_API_KEY"
+    else:
+        key_candidates = [
+            ("AGENT_API_KEY", env_values.get("AGENT_API_KEY")),
+            ("STIRRUP_OPENAI_API_KEY", env_values.get("STIRRUP_OPENAI_API_KEY")),
+            ("OPENAI_API_KEY", env_values.get("OPENAI_API_KEY")),
+            ("OPENAI_API_KEY_BACKUP", env_values.get("OPENAI_API_KEY_BACKUP")),
+        ]
+        key_source, api_key = next(((name, value) for name, value in key_candidates if value), ("", ""))
     base_url = (
         env_values.get("AGENT_BASE_URL")
         or env_values.get("STIRRUP_OPENAI_BASE_URL")
@@ -118,7 +132,10 @@ def main() -> None:
         or DEFAULT_BASE_URL
     )
     if not api_key:
-        raise RuntimeError("No AGENT_API_KEY/STIRRUP_OPENAI_API_KEY/OPENAI_API_KEY found in env file.")
+        raise RuntimeError(
+            "No usable API key found in env file. Expected AGENT_API_KEY, STIRRUP_OPENAI_API_KEY, "
+            "OPENAI_API_KEY, or OPENAI_API_KEY_BACKUP."
+        )
 
     models = args.models or DEFAULT_MODELS
     results = [probe_model(base_url, api_key, model, args.timeout) for model in models]
@@ -129,6 +146,7 @@ def main() -> None:
 
     print(f"Base URL: {base_url}")
     print(f"Env file: {args.env_path}")
+    print(f"Key source: {key_source}")
     print()
     for item in results:
         status = "OK" if item["ok"] else "FAIL"
@@ -145,6 +163,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
 

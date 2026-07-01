@@ -45,7 +45,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
                 raise RuntimeError("Tuzi provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("tuzi", LLMSkillExtractor(tuzi_config)))
         elif args.provider == "tuzi":
-            raise RuntimeError("Tuzi provider requested, but .env OPENAI_API_KEY/OPENAI_BASE_URL/OPENAI_MODEL are incomplete.")
+            raise RuntimeError("Tuzi provider requested, but .env OPENAI_API_KEY or OPENAI_API_KEY_BACKUP, OPENAI_BASE_URL, and OPENAI_MODEL are incomplete.")
         else:
             setup_attempts.append(
                 ProviderAttempt(
@@ -53,7 +53,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
                     model=args.model or "unknown",
                     success=False,
                     error_type="ProviderNotConfigured",
-                    error_message=".env OPENAI_API_KEY/OPENAI_BASE_URL/OPENAI_MODEL are incomplete.",
+                    error_message=".env OPENAI_API_KEY or OPENAI_API_KEY_BACKUP, OPENAI_BASE_URL, and OPENAI_MODEL are incomplete.",
                 )
             )
 
@@ -197,6 +197,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
 

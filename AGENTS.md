@@ -485,6 +485,20 @@ Known useful interpreters:
 
 The `real-world-task` environment is used for rw-task evaluation. The `gdpval` environment has been useful for generation and pandas/openpyxl work.
 
+Tuzi/OpenAI-compatible provider notes:
+
+- Repo `.env` currently contains `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_API_KEY`, and `OPENAI_API_KEY_BACKUP`.
+- `src/task_generator/v3_skill_extractor.py` now accepts `OPENAI_API_KEY_BACKUP` as a fallback when `OPENAI_API_KEY` is absent.
+- `Test/probe_tuzi_models.py` supports `--key-source primary`, `--key-source backup`, and `--key-source auto` for explicit smoke testing.
+- Tuzi docs describe OpenAI-compatible chat at `/v1/chat/completions` and responses at `/v1/responses`; the configured repo base URL is `https://api.tu-zi.com/v1`.
+- Smoke tests on 2026-07-01:
+  - `D:\miniconda3\envs\gdpval\python.exe Test\probe_tuzi_models.py --env-path .env --key-source backup --model gpt-5.4 --timeout 90` returned HTTP 200, but the chat message content was empty.
+  - `D:\miniconda3\envs\gdpval\python.exe Test\probe_tuzi_models.py --env-path .env --key-source backup --model gpt-5.4-pro --timeout 90` returned HTTP 200 with `pong`.
+  - `D:\miniconda3\envs\gdpval\python.exe Test\probe_tuzi_models.py --env-path .env --key-source primary --model gpt-5.4-pro --timeout 90` also returned HTTP 200 with `pong`.
+- Practical conclusion: use `gpt-5.4-pro` for the next Tuzi smoke tests. The primary key is currently usable; `OPENAI_API_KEY_BACKUP` is validated and can be used manually if the primary key fails or automatically when the primary key is absent.
+- Current Pipeline B table-first reference-file generation should be deterministic local code and does not require E2B/Stirrup or LLM calls. Use E2B/Stirrup and Tuzi model calls later for sandboxed agent workflows, prose-heavy reference documents, scenario variation, and TeacherRunner/GoldenRun.
+- Do not print API keys in logs or reports. Only record key source names such as `OPENAI_API_KEY` or `OPENAI_API_KEY_BACKUP`.
+
 The worktree may contain unrelated dirty files and generated outputs. Do not revert user or unrelated changes.
 
 ## Working Style
@@ -496,5 +510,4 @@ When continuing this project:
 - Keep source provenance explicit.
 - Keep Pipeline A and Pipeline B modular.
 - Use the finance prototype to validate architecture, not as the center of the research.
-
 

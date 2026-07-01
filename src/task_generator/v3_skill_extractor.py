@@ -742,7 +742,12 @@ def load_env_file(path: str | Path) -> Dict[str, str]:
 
 def build_tuzi_config(env_path: str | Path, model_override: Optional[str], timeout_seconds: int) -> Optional[ProviderConfig]:
     env_values = load_env_file(env_path)
-    api_key = env_values.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    api_key = (
+        env_values.get("OPENAI_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or env_values.get("OPENAI_API_KEY_BACKUP")
+        or os.environ.get("OPENAI_API_KEY_BACKUP")
+    )
     base_url = env_values.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_BASE_URL")
     model = model_override or env_values.get("OPENAI_MODEL") or os.environ.get("OPENAI_MODEL")
     if not api_key or not base_url or not model:
@@ -770,4 +775,3 @@ def build_deepseek_config(key_path: str | Path, model: str, timeout_seconds: int
         model=model,
         timeout_seconds=timeout_seconds,
     )
-
