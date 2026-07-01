@@ -194,6 +194,7 @@ Near-term implementation rule:
 - keep the current TeacherRunner deterministic and report-first while the reference-doc layer is still incomplete
 - keep the current training annotation and rubric layers JSON-only and explicit about partial readiness
 - keep the current Pipeline B quality gate deterministic; it should decide whether the current package is `reject`, `revise`, or `candidate_ready` before any LLM teacher/prose step is scheduled
+- keep the current V3 rw-task exporter structural and conservative; it should block formal export below `candidate_ready`, and only allow `revise_only` draft export when explicitly requested
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -256,6 +257,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_pipeline_b_quality_gate.py`: CLI for writing `pipeline_b_quality_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_pipeline_b_package_assembler.py`: staging-layer assembler that collects gated Pipeline B artifacts, generated reference files, and a draft dataset row into a package directory
 - `Test/run_v3_pipeline_b_package_assembler.py`: CLI for writing `package_manifest.json` and `dataset_row_draft.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_rw_task_exporter.py`: structural export layer that converts a staged package into an rw-task-style case directory while preserving blocked, draft, and final-export semantics
+- `Test/run_v3_rw_task_exporter.py`: CLI for writing `dataset_row.json`, `reference_files/`, `deliverable_files/`, `artifacts/`, and `rw_task_export_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -451,6 +454,8 @@ Current Pipeline A status:
   - rubric smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke`
   - quality-gate smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --output-dir artifacts\pipeline_b\scratch\quality_gate_smoke`
   - package-assembler smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py --output-dir artifacts\pipeline_b\scratch\package_assembler_smoke`
+  - blocked export smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --output-dir artifacts\pipeline_b\scratch\rw_task_export_blocked_smoke`
+  - draft export smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -469,10 +474,13 @@ Current Pipeline A status:
   - current quality-gate reason codes now focus on `low_subgraph_confidence`, `single_source_support`, `partial_intermediate_state`, `pipeline_a_signal_gaps`, and `partial_ready_chain`
   - current package-assembler smoke emits `package_manifest.json` and `dataset_row_draft.json` with `package_readiness=revise_only`
   - current package assembler copies 2 generated reference files and keeps only the quality-gate `revise` decision as the remaining export blocker
+  - current default rw-task export smoke is intentionally blocked on `package_readiness:revise_only`
+  - current explicit `--allow-revise-only` export smoke emits a draft case with 2 candidate-visible reference files and marks `dataset_row.json.extra.not_final_training_data=true`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, or package assembler
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, or V3 rw-task exporter
 - next Pipeline B implementation slice:
-  - wire `rw-task export adapter` to the staged package directory once `package_readiness` is `candidate_ready`, or allow explicit draft export for inspection only
+  - optionally connect the V3 export output to a real `rw-task` smoke evaluation path while keeping blocked vs draft vs final export semantics explicit
+  - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:

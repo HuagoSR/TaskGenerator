@@ -63,6 +63,7 @@ Repository layout convention:
 - Keep dated handoffs under `docs/handoffs/`.
 - Keep stage reports and report images under `docs/reports/`.
 - Keep retained run outputs and logs under `artifacts/`, while leaving `SkillRegistry/` as the active registry/report directory for current runners.
+- Keep staged package outputs and rw-task draft exports under `artifacts/pipeline_b/scratch/` unless a package is intentionally promoted.
 
 Document maintenance rule:
 
@@ -133,6 +134,15 @@ Output:
 - rw-task-compatible case
 
 This pipeline should be hybrid. LLMs are useful for scenario construction, business realism, and teacher solving. Deterministic code is still needed for validation, provenance, packaging, and quality gates.
+
+Current bridge status:
+
+- Pipeline B can now run `seed set -> sampled subgraph -> draft blueprint -> reference-file plan -> generated reference files -> teacher input -> deterministic GoldenRun -> training annotation -> rubric -> quality gate -> staged package -> rw-task-style draft export`.
+- The export layer is still structural and conservative.
+- `candidate_ready` packages can be formally exported.
+- `revise_only` packages are blocked by default and only export as inspection-only drafts when explicitly allowed.
+- blocked vs draft vs final export must remain visible in `dataset_row.extra` and the export report.
+- the current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness and partial teacher/readiness chains.
 
 ## Pipeline A: Source-To-Skill Design
 
