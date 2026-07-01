@@ -54,6 +54,15 @@ Completed slices:
    - Current smoke result generates `source_evidence.xlsx`, skips `policy_reference.docx` as `needs_template_design`, and writes 5 evidence mappings.
    - Generated workbook validation currently checks file existence, sheet existence, row counts, and exact column lists.
 
+5. Teacher input contract.
+   - Module: `src/task_generator/v3_teacher_input_builder.py`
+   - CLI: `Test/run_v3_teacher_input_builder.py`
+   - Inputs: `draft_task_blueprint.json`, `pipeline_b_subgraph_report.json`, `reference_file_plan.json`, `generated_file_manifest.json`, and optional `pipeline_a_feedback.json`
+   - Outputs: `teacher_input_manifest.json` and `teacher_input_validation_report.json`
+   - The manifest explicitly separates `candidate_view` from `teacher_view`.
+   - The teacher view carries skill intentions, hidden requirements, deferred assets, evidence contracts, and Pipeline A uncertainty.
+   - Current smoke result is `partial_ready`, with 1 generated candidate-visible file, 1 deferred file, 5 evidence-contract items, and 2 structural relationship checks.
+
 Current validation commands:
 
 ```powershell
@@ -65,18 +74,20 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_referen
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_generator.py Test\run_v3_reference_file_generator.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher_input_builder.py Test\run_v3_teacher_input_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Improve deterministic generation beyond one source workbook.
-2. Add support for `.csv` and `.json` smoke cases from planned tables, not only `.xlsx`.
-3. Add deterministic text-reference generation for `.md`/`.txt` plans where appropriate.
-4. Introduce a docx/template-design branch for `policy_reference.docx` and later memo-style reference files.
-5. Start enforcing relationship-aware validation, not only row-count and schema checks.
-6. Feed generated-file manifest and evidence index into the first GoldenRun/TeacherRunner contract.
+1. Implement the first TeacherRunner from `teacher_input_manifest.json`.
+2. Generate teacher intermediate states before tackling a polished final memo renderer.
+3. Reuse `required_intermediate_states`, `evidence_contract`, `skill_intentions`, and deferred-asset warnings from the teacher input contract.
+4. Let `teacher_input_validation_report.json` gate whether a sample is `not_ready`, `partial_ready`, or ready enough for teacher mode.
+5. Keep `.docx` generation deferred; teacher mode can still proceed with structured files plus explicit missing-asset warnings.
+6. Only after teacher mode stabilizes, broaden `.csv/.json/.md` generation and richer reference docs further.
 
 ## Final System Objective
 
@@ -371,6 +382,12 @@ Acceptance checks:
 
 ## Phase 4: TeacherRunner / GoldenRun
 
+Status:
+
+- The pre-TeacherRunner contract now exists in `src/task_generator/v3_teacher_input_builder.py`.
+- CLI `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`.
+- Current teacher readiness is `partial_ready`, mainly because `policy_reference.docx` is still deferred and subgraph confidence remains low due to resource fallback.
+
 Goal:
 
 Generate a teacher-mode solution with intermediate states, evidence citations, final outputs, and grading anchors.
@@ -643,18 +660,18 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The next code change should broaden the deterministic generator and start building the bridge into teacher-mode solving.
+The next code change should implement the first TeacherRunner that consumes `teacher_input_manifest.json`.
 
 Minimal scope:
 
-- Keep consuming `reference_file_plan.json` and `generated_file_manifest.json`.
-- Add additional supported table formats in smoke-tested paths, especially `.csv` and `.json`.
-- Add a simple deterministic text-reference path for `.md`/`.txt` where a plan is marked as generator-ready.
-- Preserve explicit deferred statuses for `.docx` instead of faking generation.
-- Expand validators from schema-only checks toward relationship-aware checks and evidence-manifest consistency.
-- Define the first data handoff contract that GoldenRun/TeacherRunner will consume from the generated files.
+- Read `teacher_input_manifest.json` and `teacher_input_validation_report.json`.
+- If readiness is `not_ready`, stop with a structured report; if `partial_ready`, proceed with explicit warnings.
+- Generate teacher intermediate states first, even before a polished final deliverable renderer exists.
+- Require evidence citations or evidence-location references in each teacher intermediate artifact.
+- Record which hidden hints, skill intentions, and deferred assets the teacher run relied on.
+- Write `golden_run.json` plus a lightweight teacher trace report, while leaving rubric generation to the following slice.
 
-This slice should still be conservative. It should prove that Pipeline B can create inspectable candidate-visible evidence files before introducing LLM-written prose references or TeacherRunner.
+This slice should stay conservative. It should prove that Pipeline B can hand a structured, honest teacher packet to the next stage without pretending deferred assets or weak Pipeline A signals have disappeared.
 
 ## Test Plan For The Current Next Slice
 
@@ -667,6 +684,8 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_referen
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_generator.py Test\run_v3_reference_file_generator.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher_input_builder.py Test\run_v3_teacher_input_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke
 ```
 
 Expected results:
@@ -675,10 +694,12 @@ Expected results:
 - The prototype emits a draft blueprint from that subgraph.
 - The planner emits `reference_file_plan.json`.
 - The generator emits concrete table files where supported and a `generated_file_manifest.json`.
+- The teacher-input builder emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`.
 - No registry files are modified.
 - The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
 - If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
 - Unsupported prose-heavy files are reported explicitly instead of silently skipped.
+- Teacher readiness can remain `partial_ready` when candidate-visible files exist but teacher-critical reference assets are still deferred.
 
 ## Open Design Questions
 

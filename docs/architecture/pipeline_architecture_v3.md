@@ -421,6 +421,8 @@ Current implementation:
 - The planner emits `reference_file_plan.json` with stable file IDs, table IDs, text-section IDs, column IDs, evidence IDs, provenance hooks, and carried-forward subgraph diagnostics.
 - `src/task_generator/v3_reference_file_generator.py` now consumes that plan and generates deterministic table-first files where supported.
 - `Test/run_v3_reference_file_generator.py` currently generates `source_evidence.xlsx`, writes `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`, and explicitly marks `.docx` references as deferred template work.
+- `src/task_generator/v3_teacher_input_builder.py` now consumes the blueprint, subgraph report, plan, generated-file manifest, and Pipeline A feedback.
+- `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`, separating candidate-visible artifacts from teacher-visible supervision and marking current readiness as `partial_ready`.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -543,7 +545,7 @@ They should not lead to endless manual polishing of the same finance task.
 - persistent/probabilistic skill sampler beyond the current deterministic subgraph sampler
 - full generic blueprint assembler beyond the current report-first subgraph-to-blueprint prototype
 - broader reference-file generation beyond the current table-first deterministic slice
-- LLM teacher runner
+- actual teacher-mode execution beyond the current pre-TeacherRunner contract
 - rubric builder that consumes teacher outputs
 - provenance checks from rubric anchors back to source files
 - batch orchestration CLI
@@ -827,7 +829,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, and one deterministic workbook generation slice. The next implementation step should broaden file support and connect generated-file artifacts into the first teacher-mode contract.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, and a teacher-input contract. The next implementation step should turn that contract into the first TeacherRunner.
 
 Recommended next code tasks:
 
@@ -835,11 +837,11 @@ Recommended next code tasks:
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
 - keep using `Test/run_v3_reference_file_generator.py` to produce `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
-- extend the deterministic generator to cover additional table-first formats such as `.csv` and `.json` in smoke-tested cases
-- add a simple deterministic branch for `.md`/`.txt` references where the plan is marked generator-ready
+- keep using `Test/run_v3_teacher_input_builder.py` to produce `teacher_input_manifest.json` and `teacher_input_validation_report.json`
+- implement the first `v3_teacher_runner.py` on top of that contract
+- start with intermediate-state generation and evidence-citation discipline before a polished final memo renderer
 - continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
-- carry missing Pipeline A fields and low-confidence fallback diagnostics into the generated-file manifest
-- start defining the exact generated-file contract that GoldenRun and TeacherRunner will consume next
+- carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
 - continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
 
@@ -852,4 +854,3 @@ This will reconnect the project to the original two-pipeline design:
 
 - natural language to semantic skill library
 - semantic skill library to batch real-world tasks
-
