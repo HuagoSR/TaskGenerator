@@ -423,6 +423,8 @@ Current implementation:
 - `Test/run_v3_reference_file_generator.py` currently generates `source_evidence.xlsx`, writes `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`, and explicitly marks `.docx` references as deferred template work.
 - `src/task_generator/v3_teacher_input_builder.py` now consumes the blueprint, subgraph report, plan, generated-file manifest, and Pipeline A feedback.
 - `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`, separating candidate-visible artifacts from teacher-visible supervision and marking current readiness as `partial_ready`.
+- `src/task_generator/v3_teacher_runner.py` now consumes the teacher input artifacts and deterministically emits `golden_run.json`.
+- `Test/run_v3_teacher_runner.py` emits `golden_run.json` and `teacher_runner_report.json`; current smoke stays `partial_ready` and makes missing policy references explicit instead of hiding them.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -438,6 +440,12 @@ There should be two GoldenRun modes:
 
 - deterministic oracle mode for templates where code can solve the task
 - LLM teacher mode for open-ended tasks
+
+Current implementation:
+
+- `src/task_generator/v3_teacher_runner.py` implements the first deterministic TeacherRunner scaffold.
+- It turns teacher intentions, required intermediate states, evidence contracts, and validation warnings into teacher-visible intermediate states, skill-linked golden steps, and final checks.
+- The current runner is intentionally honest about partial readiness: when `policy_reference.docx` is deferred or sampled subgraph confidence is low, steps remain `partial` instead of inventing full teacher truth.
 
 LLM teacher mode should use more information than the candidate:
 
@@ -829,7 +837,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, and a teacher-input contract. The next implementation step should turn that contract into the first TeacherRunner.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, and a deterministic TeacherRunner. The next implementation step should build training annotation and rubric layers on top of those teacher outputs.
 
 Recommended next code tasks:
 
@@ -838,8 +846,9 @@ Recommended next code tasks:
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
 - keep using `Test/run_v3_reference_file_generator.py` to produce `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
 - keep using `Test/run_v3_teacher_input_builder.py` to produce `teacher_input_manifest.json` and `teacher_input_validation_report.json`
-- implement the first `v3_teacher_runner.py` on top of that contract
-- start with intermediate-state generation and evidence-citation discipline before a polished final memo renderer
+- keep using `Test/run_v3_teacher_runner.py` to produce `golden_run.json` and `teacher_runner_report.json`
+- build `TrainingAnnotationBuilder V1` from teacher intermediate states, final checks, and unresolved-gap reporting
+- build `RubricBuilder V1` from evidence-linked teacher outputs before attempting polished final memo rendering
 - continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry

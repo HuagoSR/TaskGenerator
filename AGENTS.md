@@ -191,7 +191,8 @@ Near-term implementation rule:
 - keep the current reference-file planner as the file-generation contract layer
 - keep the current deterministic table-first reference-file generator focused on manifestable, verifiable structured files
 - keep the current teacher-input builder as the pre-TeacherRunner contract layer
-- next implement the first TeacherRunner on top of `teacher_input_manifest.json`
+- keep the current TeacherRunner deterministic and report-first while the reference-doc layer is still incomplete
+- next implement training annotation and rubric slices on top of `golden_run.json`
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -244,6 +245,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_reference_file_generator.py`: CLI for writing `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
 - `src/task_generator/v3_teacher_input_builder.py`: builder that converts current Pipeline B artifacts into a teacher-mode input contract
 - `Test/run_v3_teacher_input_builder.py`: CLI for writing `teacher_input_manifest.json` and `teacher_input_validation_report.json`
+- `src/task_generator/v3_teacher_runner.py`: deterministic TeacherRunner V1 that turns teacher input artifacts into a partial-but-auditable `golden_run.json`
+- `Test/run_v3_teacher_runner.py`: CLI for writing `golden_run.json` and `teacher_runner_report.json`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -434,6 +437,7 @@ Current Pipeline A status:
   - reference-file planner smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke`
   - reference-file generator smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke`
   - teacher-input smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke`
+  - teacher-runner smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -441,14 +445,15 @@ Current Pipeline A status:
   - current reference-file generator smoke generates `reference_files/source_evidence.xlsx`, skips `policy_reference.docx` as deferred template work, and writes 5 evidence mappings into `evidence_index.json`
   - current teacher-input smoke emits `teacher_input_manifest.json` and `teacher_input_validation_report.json` with readiness `partial_ready`
   - current teacher-input contract separates `candidate_view` from `teacher_view`, carries 4 skill intentions, 5 evidence-contract items, and flags `relationship:policy_lookup` as a warning because `policy_reference.docx` is still deferred
+  - current teacher-runner smoke emits `golden_run.json` and `teacher_runner_report.json` with readiness `partial_ready`
+  - current teacher-runner creates 6 intermediate states, 4 skill-linked golden steps, and 3 final checks; all 4 steps are intentionally `partial` because policy-reference generation, stronger typed resources, and stronger support evidence are still missing
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, or teacher-input builder
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, or teacher-runner
 - next Pipeline B implementation slice:
-  - implement the first TeacherRunner from `teacher_input_manifest.json`
-  - generate intermediate teacher states before a polished final memo renderer exists
-  - require evidence citations or evidence-location references in each teacher intermediate artifact
-  - let `teacher_input_validation_report.json` gate whether a sample is `not_ready`, `partial_ready`, or ready enough for teacher mode
-  - keep `.docx` generation deferred while teacher mode learns to proceed with explicit missing-asset warnings
+  - build `TrainingAnnotationBuilder V1` on top of `golden_run.json`
+  - build `RubricBuilder V1` on top of teacher intermediate states and final checks
+  - extend reference-file generation toward policy/reference documents so `policy_reference.docx` no longer forces partial teacher readiness
+  - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:
   - tasks should not be modeled only as a linear skill chain
   - realistic tasks may be trees or DAG-like skill-resource graphs with fan-in, fan-out, cross-checks, and validation constraints
@@ -508,7 +513,7 @@ Tuzi/OpenAI-compatible provider notes:
   - `D:\miniconda3\envs\gdpval\python.exe Test\probe_tuzi_models.py --env-path .env --key-source backup --model gpt-5.4-pro --timeout 90` returned HTTP 200 with `pong`.
   - `D:\miniconda3\envs\gdpval\python.exe Test\probe_tuzi_models.py --env-path .env --key-source primary --model gpt-5.4-pro --timeout 90` also returned HTTP 200 with `pong`.
 - Practical conclusion: use `gpt-5.4-pro` for the next Tuzi smoke tests. The primary key is currently usable; `OPENAI_API_KEY_BACKUP` is validated and can be used manually if the primary key fails or automatically when the primary key is absent.
-- Current Pipeline B table-first reference-file generation should be deterministic local code and does not require E2B/Stirrup or LLM calls. Use E2B/Stirrup and Tuzi model calls later for sandboxed agent workflows, prose-heavy reference documents, scenario variation, and TeacherRunner/GoldenRun.
+- Current Pipeline B table-first reference-file generation, teacher-input contract building, and TeacherRunner V1 should all remain deterministic local code and do not require E2B/Stirrup or LLM calls yet. Use E2B/Stirrup and Tuzi model calls later for sandboxed agent workflows, prose-heavy reference documents, scenario variation, and future LLM teacher mode.
 - Do not print API keys in logs or reports. Only record key source names such as `OPENAI_API_KEY` or `OPENAI_API_KEY_BACKUP`.
 
 The worktree may contain unrelated dirty files and generated outputs. Do not revert user or unrelated changes.
