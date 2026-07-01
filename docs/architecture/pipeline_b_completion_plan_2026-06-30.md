@@ -100,6 +100,14 @@ Completed slices:
    - Decision space is fixed to `reject`, `revise`, and `candidate_ready`.
    - Current smoke result is `revise`, with reason codes including `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain`.
 
+10. Pipeline B Package Assembler V1.
+   - Module: `src/task_generator/v3_pipeline_b_package_assembler.py`
+   - CLI: `Test/run_v3_pipeline_b_package_assembler.py`
+   - Inputs: the current blueprint, generated-file manifest, teacher-input artifacts, GoldenRun, training annotation, rubric, and quality report
+   - Outputs: `package_manifest.json`, `dataset_row_draft.json`, copied JSON artifacts, and copied generated reference files
+   - This is a staging layer before final `rw-task` export, not the final evaluator-facing export.
+   - Current smoke result is `package_readiness=revise_only`, copies 1 generated reference file, preserves 1 deferred reference-file blocker, and records export blockers from the quality gate.
+
 Current validation commands:
 
 ```powershell
@@ -121,16 +129,19 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_quality_gate.py Test\run_v3_pipeline_b_quality_gate.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --output-dir artifacts\pipeline_b\scratch\quality_gate_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_package_assembler.py Test\run_v3_pipeline_b_package_assembler.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py --output-dir artifacts\pipeline_b\scratch\package_assembler_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Wire `rw-task export adapter` to the current structured artifacts, or introduce a package directory assembler if export needs a clearer staging contract first.
-2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, and `pipeline_b_quality_report.json` as readiness gates for downstream package assembly.
-3. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
-4. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
+1. Wire `rw-task export adapter` to the staged package directory, with `package_readiness=candidate_ready` as the default export condition.
+2. Optionally allow draft export for inspection only when `package_readiness=revise_only`, but never present that as final training data.
+3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream package assembly.
+4. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
+5. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
 
 LLM timing policy:
 

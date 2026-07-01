@@ -431,6 +431,8 @@ Current implementation:
 - `Test/run_v3_rubric_builder.py` emits `rubric.json` and `rubric_report.json`, preserving `partial_ready`, unresolved gaps, and warning codes instead of flattening them away.
 - `src/task_generator/v3_pipeline_b_quality_gate.py` now consumes generated-file, teacher-input, teacher-runner, training-annotation, and rubric reports.
 - `Test/run_v3_pipeline_b_quality_gate.py` emits `pipeline_b_quality_report.json`; the current smoke decision is `revise`, not `candidate_ready`, because deferred policy references, policy-lookup warnings, low subgraph confidence, single-source support, and the partial-ready chain remain visible.
+- `src/task_generator/v3_pipeline_b_package_assembler.py` now stages gated artifacts into a package directory.
+- `Test/run_v3_pipeline_b_package_assembler.py` emits `package_manifest.json` and `dataset_row_draft.json`; the current smoke package is `revise_only`, copies the generated workbook, and preserves the deferred policy document blocker.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -499,7 +501,22 @@ Current implementation:
 - `Test/run_v3_pipeline_b_quality_gate.py` writes `pipeline_b_quality_report.json`.
 - The current smoke package is expected to be `revise`, with `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain` still visible.
 
-### 7. ExportAdapter
+### 7. PackageAssembler
+
+Responsibility:
+
+- collect the gated artifacts into a stable package directory
+- copy generated candidate-visible reference files
+- preserve deferred or missing reference files as package blockers
+- emit a draft dataset row for export inspection without claiming final rw-task readiness
+
+Current implementation:
+
+- `src/task_generator/v3_pipeline_b_package_assembler.py` implements the first staging layer.
+- `Test/run_v3_pipeline_b_package_assembler.py` writes `package_manifest.json` and `dataset_row_draft.json`.
+- The current smoke package is `revise_only`, because the quality gate still returns `revise` and `policy_reference.docx` is deferred.
+
+### 8. ExportAdapter
 
 Responsibility:
 
@@ -869,7 +886,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, and a package-level quality gate. The next implementation step should build export/package assembly on top of those artifacts.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, and a staged package assembler. The next implementation step should either wire `rw-task` export to this package format or resolve the deferred policy/reference document gap that keeps the package in `revise_only`.
 
 Recommended next code tasks:
 
@@ -882,7 +899,8 @@ Recommended next code tasks:
 - keep using `Test/run_v3_training_annotation_builder.py` to produce `training_annotation.json` and `training_annotation_report.json`
 - keep using `Test/run_v3_rubric_builder.py` to produce `rubric.json` and `rubric_report.json`
 - keep using `Test/run_v3_pipeline_b_quality_gate.py` to produce `pipeline_b_quality_report.json`
-- build a package assembler or `rw-task` export adapter from the gated artifacts before attempting polished final memo rendering
+- keep using `Test/run_v3_pipeline_b_package_assembler.py` to produce `package_manifest.json` and `dataset_row_draft.json`
+- wire a `rw-task` export adapter to the staged package, gated by package readiness
 - continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry

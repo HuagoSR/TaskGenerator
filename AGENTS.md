@@ -254,6 +254,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_rubric_builder.py`: CLI for writing `rubric.json` and `rubric_report.json`
 - `src/task_generator/v3_pipeline_b_quality_gate.py`: deterministic package-level quality gate that reads generated-file, teacher, annotation, and rubric reports and emits a conservative `reject` / `revise` / `candidate_ready` decision
 - `Test/run_v3_pipeline_b_quality_gate.py`: CLI for writing `pipeline_b_quality_report.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_pipeline_b_package_assembler.py`: staging-layer assembler that collects gated Pipeline B artifacts, generated reference files, and a draft dataset row into a package directory
+- `Test/run_v3_pipeline_b_package_assembler.py`: CLI for writing `package_manifest.json` and `dataset_row_draft.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -448,6 +450,7 @@ Current Pipeline A status:
   - training-annotation smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke`
   - rubric smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke`
   - quality-gate smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --output-dir artifacts\pipeline_b\scratch\quality_gate_smoke`
+  - package-assembler smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py --output-dir artifacts\pipeline_b\scratch\package_assembler_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -463,10 +466,12 @@ Current Pipeline A status:
   - current rubric contains 4 sections and 44 criteria; `deferred_policy_reference` and `relationship:policy_lookup` remain explicitly visible instead of being flattened away
   - current quality-gate smoke emits `pipeline_b_quality_report.json` with decision `revise`
   - current quality-gate reason codes include `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain`
+  - current package-assembler smoke emits `package_manifest.json` and `dataset_row_draft.json` with `package_readiness=revise_only`
+  - current package assembler copies 1 generated reference file and preserves 1 deferred reference-file blocker for `policy_reference.docx`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, or quality gate
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, or package assembler
 - next Pipeline B implementation slice:
-  - wire `rw-task export adapter` to the current structured artifacts, or build a package directory assembler if export needs a clearer staging area first
+  - wire `rw-task export adapter` to the staged package directory once `package_readiness` is `candidate_ready`, or allow explicit draft export for inspection only
   - extend reference-file generation toward policy/reference documents so `policy_reference.docx` no longer forces partial teacher readiness
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:
