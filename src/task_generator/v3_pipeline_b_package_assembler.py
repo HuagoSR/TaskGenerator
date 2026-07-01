@@ -268,6 +268,21 @@ class PipelineBPackageAssembler:
                     copied=True,
                 )
             )
+            for support_path in file_record.support_artifacts:
+                support_source = Path(manifest.output_dir) / support_path
+                support_target = reference_dir / Path(support_path).name
+                if support_source.exists():
+                    shutil.copy2(support_source, support_target)
+                    records.append(
+                        PackageArtifactRecord(
+                            artifact_id=self._stable_id("pkg_ref_support", [file_record.file_id, str(support_source)]),
+                            role="reference_file",
+                            source_path=str(support_source),
+                            package_path=str(Path("reference_files") / Path(support_path).name),
+                            copied=True,
+                            notes=[f"Support artifact for {file_record.file_name}."],
+                        )
+                    )
         return records
 
     def _dataset_row_draft(
@@ -282,7 +297,9 @@ class PipelineBPackageAssembler:
         package_readiness: PackageReadiness,
     ) -> Dict[str, Any]:
         copied_references = [
-            record.package_path for record in reference_records if record.copied
+            record.package_path
+            for record in reference_records
+            if record.copied and not self._is_support_reference_record(record)
         ]
         deliverable_files = [
             str(Path("deliverable_files") / item.file_name)
@@ -371,18 +388,34 @@ class PipelineBPackageAssembler:
         export_blockers = []
         if package_readiness != "candidate_ready":
             export_blockers.append(f"quality_gate_decision:{quality_report.decision.decision}")
-        if any(record.role == "reference_file" and not record.copied for record in reference_records):
+        if any(
+            record.role == "reference_file"
+            and not record.copied
+            and not self._is_support_reference_record(record)
+            for record in reference_records
+        ):
             export_blockers.append("deferred_or_missing_reference_files")
         return PipelineBPackageDiagnostics(
             quality_decision=quality_report.decision.decision,
             package_readiness=package_readiness,
             reference_file_count=len(generated_manifest.generated_files),
-            copied_reference_file_count=sum(1 for record in reference_records if record.copied),
-            deferred_reference_file_count=sum(1 for record in reference_records if not record.copied),
+            copied_reference_file_count=sum(
+                1
+                for record in reference_records
+                if record.copied and not self._is_support_reference_record(record)
+            ),
+            deferred_reference_file_count=sum(
+                1
+                for record in reference_records
+                if not record.copied and not self._is_support_reference_record(record)
+            ),
             artifact_count=len(artifact_records),
             warning_reason_codes=warning_reason_codes,
             export_blockers=export_blockers,
         )
+
+    def _is_support_reference_record(self, record: PackageArtifactRecord) -> bool:
+        return any("Support artifact" in note for note in record.notes)
 
     def _teacher_validation_warning_codes(
         self, report: TeacherInputValidationReport

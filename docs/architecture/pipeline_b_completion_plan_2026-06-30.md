@@ -12,7 +12,7 @@ Current baseline:
 - Pipeline B has a report-first resource-aware sampler that can read the seed set and registry, build a `PipelineBSubgraph`, and emit Pipeline A feedback.
 - Pipeline B prototype can still read the seed set directly, and can now also consume a sampler `pipeline_b_subgraph_report.json` to emit a draft `TaskBlueprint`.
 - Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, and a package-level Quality Gate V1.
-- The current chain is still pre-rw-task export, pre-model-separation evaluation, and intentionally partial while `policy_reference.docx` remains deferred.
+- The current chain is still pre-rw-task export and pre-model-separation evaluation, but the deterministic policy-reference document path now exists and removes the earlier deferred-file blocker.
 
 The next work should convert Pipeline B from "draft blueprint prototype" into "complete task package generator".
 
@@ -43,6 +43,7 @@ Completed slices:
    - Input: a draft `TaskBlueprint`, optionally plus `pipeline_b_subgraph_report.json`
    - Output: `reference_file_plan.json`
    - The plan assigns stable file IDs, table IDs, text-section IDs, column IDs, and evidence IDs.
+   - Planned files now also record `preferred_generation_strategy`, `supported_generation_strategies`, and `validation_contract`.
    - The plan separates candidate-visible evidence anchors from future teacher-only notes.
    - The plan carries forward subgraph confidence, missing Pipeline A signals, unresolved gaps, typed/fallback resource counts, and planner warnings.
    - Current smoke result plans 2 reference files, 1 table, 4 text sections, and 9 evidence anchors.
@@ -51,9 +52,10 @@ Completed slices:
    - Module: `src/task_generator/v3_reference_file_generator.py`
    - CLI: `Test/run_v3_reference_file_generator.py`
    - Input: `reference_file_plan.json`
-   - Output: generated candidate-visible files under `reference_files/`, plus `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
-   - Current smoke result generates `source_evidence.xlsx`, skips `policy_reference.docx` as `needs_template_design`, and writes 5 evidence mappings.
-   - Generated workbook validation currently checks file existence, sheet existence, row counts, and exact column lists.
+   - Output: generated candidate-visible files under `reference_files/`, plus `generated_file_manifest.json`, `evidence_index.json`, `evidence_index_proposal.json`, and `generation_trace.json`
+   - Generated files now record `generation_strategy`, `trust_level`, `validator_status`, and `evidence_mapping_status`.
+   - Current smoke result generates `source_evidence.xlsx` and `policy_reference.docx`, writes a `policy_reference_clause_map.json` sidecar, and emits 9 finalized evidence mappings.
+   - Generated workbook validation checks file existence, sheet existence, row counts, and exact column lists; the policy doc path checks visible clause IDs and required sections.
 
 5. Teacher input contract.
    - Module: `src/task_generator/v3_teacher_input_builder.py`
@@ -62,7 +64,7 @@ Completed slices:
    - Outputs: `teacher_input_manifest.json` and `teacher_input_validation_report.json`
    - The manifest explicitly separates `candidate_view` from `teacher_view`.
    - The teacher view carries skill intentions, hidden requirements, deferred assets, evidence contracts, and Pipeline A uncertainty.
-   - Current smoke result is `partial_ready`, with 1 generated candidate-visible file, 1 deferred file, 5 evidence-contract items, and 2 structural relationship checks.
+   - Current smoke result is `partial_ready`, with 2 generated candidate-visible files, 0 deferred files, 9 evidence-contract items, and 2 structural relationship checks.
 
 6. TeacherRunner V1.
    - Module: `src/task_generator/v3_teacher_runner.py`
@@ -71,7 +73,7 @@ Completed slices:
    - Outputs: `golden_run.json` and `teacher_runner_report.json`
    - The runner deterministically builds teacher-visible intermediate states, skill-linked golden steps, final checks, and unresolved-gap reporting.
    - Current smoke result is `partial_ready`, with 6 intermediate states, 4 golden steps, 3 final checks, and no blocked steps.
-   - All current steps are intentionally `partial` because `policy_reference.docx` is still deferred and the sampled subgraph still carries fallback-confidence warnings.
+   - All current steps remain intentionally `partial` because the sampled subgraph still carries fallback-confidence and support-evidence warnings.
 
 7. TrainingAnnotationBuilder V1.
    - Module: `src/task_generator/v3_training_annotation_builder.py`
@@ -80,7 +82,7 @@ Completed slices:
    - Outputs: `training_annotation.json` and `training_annotation_report.json`
    - The builder converts teacher intermediate states, golden steps, final checks, unresolved gaps, and warning codes into training supervision objects.
    - The artifact also embeds a V2-compatible `TrainingAnnotation` projection for older downstream consumers.
-   - Current smoke result is `partial_ready`, with 13 supervision items, 6 failure modes, 9 hidden traps, and 14 unresolved gaps carried forward explicitly.
+   - Current smoke result is `partial_ready`, with 13 supervision items, 4 failure modes, 8 hidden traps, and 10 unresolved gaps carried forward explicitly.
 
 8. RubricBuilder V1.
    - Module: `src/task_generator/v3_rubric_builder.py`
@@ -89,7 +91,7 @@ Completed slices:
    - Outputs: `rubric.json` and `rubric_report.json`
    - The rubric is JSON-only in this slice; no Markdown summary is emitted.
    - The builder converts supervision items, failure modes, rubric projection summaries, and unresolved gaps into four structured sections: `fact_checks`, `reasoning_checks`, `robustness_checks`, and `compliance_checks`.
-   - Current smoke result is `partial_ready`, with 4 sections, 44 criteria, and 39 criteria marked `partial`.
+   - Current smoke result is `partial_ready`, with 4 sections, 37 criteria, and 30 criteria marked `partial`.
 
 9. Pipeline B Quality Gate V1.
    - Module: `src/task_generator/v3_pipeline_b_quality_gate.py`
@@ -98,7 +100,7 @@ Completed slices:
    - Output: `pipeline_b_quality_report.json`
    - The gate is deterministic, JSON-only, and does not call LLMs or external APIs.
    - Decision space is fixed to `reject`, `revise`, and `candidate_ready`.
-   - Current smoke result is `revise`, with reason codes including `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain`.
+   - Current smoke result is `revise`, with reason codes now focused on `low_subgraph_confidence`, `single_source_support`, `partial_intermediate_state`, `pipeline_a_signal_gaps`, and `partial_ready_chain`.
 
 10. Pipeline B Package Assembler V1.
    - Module: `src/task_generator/v3_pipeline_b_package_assembler.py`
@@ -106,7 +108,7 @@ Completed slices:
    - Inputs: the current blueprint, generated-file manifest, teacher-input artifacts, GoldenRun, training annotation, rubric, and quality report
    - Outputs: `package_manifest.json`, `dataset_row_draft.json`, copied JSON artifacts, and copied generated reference files
    - This is a staging layer before final `rw-task` export, not the final evaluator-facing export.
-   - Current smoke result is `package_readiness=revise_only`, copies 1 generated reference file, preserves 1 deferred reference-file blocker, and records export blockers from the quality gate.
+   - Current smoke result is `package_readiness=revise_only`, copies 2 generated reference files, preserves the policy clause-map sidecar, and records only the quality-gate `revise` decision as an export blocker.
 
 Current validation commands:
 
@@ -140,8 +142,8 @@ Next implementation slice:
 1. Wire `rw-task export adapter` to the staged package directory, with `package_readiness=candidate_ready` as the default export condition.
 2. Optionally allow draft export for inspection only when `package_readiness=revise_only`, but never present that as final training data.
 3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream package assembly.
-4. Extend reference-file generation toward policy/reference documents so `.docx` gaps no longer force `partial_ready`.
-5. Only after those layers stabilize, broaden `.csv/.json/.md` generation and richer reference docs further.
+4. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
+5. After that, decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
 
 LLM timing policy:
 

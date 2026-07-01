@@ -37,6 +37,7 @@ def main() -> None:
             {
                 "manifest_path": str(args.output_dir / "generated_file_manifest.json"),
                 "evidence_index_path": str(args.output_dir / "evidence_index.json"),
+                "evidence_index_proposal_path": str(args.output_dir / "evidence_index_proposal.json"),
                 "generation_trace_path": str(args.output_dir / "generation_trace.json"),
                 "generated_file_count": diagnostics["generated_file_count"],
                 "skipped_file_count": diagnostics["skipped_file_count"],

@@ -453,7 +453,7 @@ Current implementation:
 
 - `src/task_generator/v3_teacher_runner.py` implements the first deterministic TeacherRunner scaffold.
 - It turns teacher intentions, required intermediate states, evidence contracts, and validation warnings into teacher-visible intermediate states, skill-linked golden steps, and final checks.
-- The current runner is intentionally honest about partial readiness: when `policy_reference.docx` is deferred or sampled subgraph confidence is low, steps remain `partial` instead of inventing full teacher truth.
+- The current runner is intentionally honest about partial readiness: even after the deterministic `policy_reference.docx` path is generated, low-confidence sampled subgraphs and support-evidence limits still keep steps `partial` instead of inventing full teacher truth.
 - `src/task_generator/v3_training_annotation_builder.py` now turns those teacher artifacts into supervision items, failure modes, hidden traps, unresolved gaps, and a V2-compatible `TrainingAnnotation` projection.
 - `src/task_generator/v3_rubric_builder.py` now turns supervision items, failure modes, rubric projections, and unresolved gaps into structured fact, reasoning, robustness, and compliance sections.
 - The current rubric is a structured-ready contract, not an executable grader.
@@ -499,7 +499,7 @@ Current implementation:
 
 - `src/task_generator/v3_pipeline_b_quality_gate.py` implements the first deterministic quality gate.
 - `Test/run_v3_pipeline_b_quality_gate.py` writes `pipeline_b_quality_report.json`.
-- The current smoke package is expected to be `revise`, with `deferred_policy_reference`, `relationship:policy_lookup`, `low_subgraph_confidence`, `single_source_support`, and `partial_ready_chain` still visible.
+- The current smoke package is expected to be `revise`, now driven by `low_subgraph_confidence`, `single_source_support`, `partial_intermediate_state`, `pipeline_a_signal_gaps`, and `partial_ready_chain`.
 
 ### 7. PackageAssembler
 
@@ -514,7 +514,7 @@ Current implementation:
 
 - `src/task_generator/v3_pipeline_b_package_assembler.py` implements the first staging layer.
 - `Test/run_v3_pipeline_b_package_assembler.py` writes `package_manifest.json` and `dataset_row_draft.json`.
-- The current smoke package is `revise_only`, because the quality gate still returns `revise` and `policy_reference.docx` is deferred.
+- The current smoke package is `revise_only`, because the quality gate still returns `revise`; the deterministic policy document now exists, and the remaining blockers come from Pipeline A signal weakness rather than a missing reference file.
 
 ### 8. ExportAdapter
 
@@ -886,7 +886,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, and a staged package assembler. The next implementation step should either wire `rw-task` export to this package format or resolve the deferred policy/reference document gap that keeps the package in `revise_only`.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, and a staged package assembler. The next implementation step should either wire `rw-task` export to this package format or broaden the generation contract toward more file types and future LLM/Stirrup strategies.
 
 Recommended next code tasks:
 
@@ -894,6 +894,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
 - keep using `Test/run_v3_reference_file_generator.py` to produce `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
+- keep the reference-file manifest contract extensible so deterministic, LLM, Stirrup, and imported file generators can all report through the same artifact shape
 - keep using `Test/run_v3_teacher_input_builder.py` to produce `teacher_input_manifest.json` and `teacher_input_validation_report.json`
 - keep using `Test/run_v3_teacher_runner.py` to produce `golden_run.json` and `teacher_runner_report.json`
 - keep using `Test/run_v3_training_annotation_builder.py` to produce `training_annotation.json` and `training_annotation_report.json`

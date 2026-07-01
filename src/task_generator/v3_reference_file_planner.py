@@ -13,6 +13,12 @@ from task_generator.v3_source_schema import load_json_file
 
 EvidenceVisibility = Literal["candidate_visible", "teacher_only"]
 GeneratorStatus = Literal["planned_only", "ready_for_deterministic_generation", "needs_template_design"]
+GenerationStrategy = Literal[
+    "deterministic_structured",
+    "llm_structured_prose",
+    "stirrup_agentic_file",
+    "external_or_imported",
+]
 
 
 class ReferenceFilePlanRequest(BaseModel):
@@ -42,9 +48,17 @@ class PlannedTextSection(BaseModel):
     section_id: str
     heading: str
     evidence_role: str
+    clause_id: Optional[str] = None
     candidate_visible: bool = True
     linked_resource_ids: List[str] = Field(default_factory=list)
     generator_notes: List[str] = Field(default_factory=list)
+
+
+class ValidationContract(BaseModel):
+    required_checks: List[str] = Field(default_factory=list)
+    requires_evidence_mapping: bool = True
+    locator_scheme: str = "file_heading_or_column"
+    proposal_allowed: bool = False
 
 
 class EvidenceAnchor(BaseModel):
@@ -64,6 +78,9 @@ class PlannedReferenceFile(BaseModel):
     file_role: str
     file_format: str
     generator_status: GeneratorStatus
+    preferred_generation_strategy: GenerationStrategy = "deterministic_structured"
+    supported_generation_strategies: List[GenerationStrategy] = Field(default_factory=list)
+    validation_contract: ValidationContract = Field(default_factory=ValidationContract)
     tables: List[PlannedTable] = Field(default_factory=list)
     text_sections: List[PlannedTextSection] = Field(default_factory=list)
     evidence_anchors: List[EvidenceAnchor] = Field(default_factory=list)
@@ -193,7 +210,7 @@ class ReferenceFilePlanner:
                 EvidenceAnchor(
                     evidence_id=self._stable_id("ev", [file_id, section.section_id]),
                     file_id=file_id,
-                    locator=f"{file_spec.file_name}:{section.heading}",
+                    locator=self._text_anchor_locator(file_spec.file_name, section),
                     visibility="candidate_visible",
                     semantic_type=section.evidence_role,
                     linked_skill_ids=blueprint.selected_skills,
@@ -208,6 +225,9 @@ class ReferenceFilePlanner:
             file_role=file_spec.file_role,
             file_format=file_format,
             generator_status=self._generator_status(file_format, file_spec.sheet_specs),
+            preferred_generation_strategy=self._preferred_generation_strategy(file_spec, file_format),
+            supported_generation_strategies=self._supported_generation_strategies(file_spec, file_format),
+            validation_contract=self._validation_contract(file_spec, file_format),
             tables=tables,
             text_sections=text_sections,
             evidence_anchors=anchors,
@@ -250,6 +270,29 @@ class ReferenceFilePlanner:
 
     def _text_sections(self, file_id: str, file_spec: FileSpec, linked_resources: List[Any]) -> List[PlannedTextSection]:
         resource_ids = [resource.resource_id for resource in linked_resources]
+        if file_spec.file_name.lower() == "policy_reference.docx":
+            clause_specs = [
+                ("POL-001", "Applicable Requirements", "policy_rule"),
+                ("POL-002", "Evidence Interpretation Rules", "policy_rule"),
+                ("POL-003", "Decision Rules", "decision_rule"),
+                ("POL-004", "Exception Escalation", "contextual_reference"),
+            ]
+            return [
+                PlannedTextSection(
+                    section_id=self._stable_id("section", [file_id, clause_id]),
+                    heading=heading,
+                    evidence_role=evidence_role,
+                    clause_id=clause_id,
+                    candidate_visible=True,
+                    linked_resource_ids=resource_ids,
+                    generator_notes=[
+                        "Write this section as a stable policy clause with deterministic wording.",
+                        "Keep the clause ID visible in the rendered document.",
+                    ],
+                )
+                for clause_id, heading, evidence_role in clause_specs
+            ]
+
         headings = ["Purpose", "Applicable Guidance", "Evidence Interpretation"]
         if file_spec.file_role == "reference_table":
             headings.append("Decision Rules")
@@ -363,6 +406,14 @@ class ReferenceFilePlanner:
             constraints.append("Generated rows must match each sheet's declared columns and target row counts.")
         else:
             constraints.append("Generated prose must expose policy or guidance anchors without revealing answers.")
+        if file_spec.file_name.lower() == "policy_reference.docx":
+            constraints.extend(
+                [
+                    "Render stable visible clause IDs such as POL-001 and POL-002.",
+                    "Expose at least one applicable-requirement clause for policy lookup.",
+                    "Keep the policy document candidate-visible and suitable for evidence citation.",
+                ]
+            )
         if subgraph and subgraph.diagnostics.confidence == "low_due_to_resource_fallback":
             constraints.append("Resource coverage is provisional because compatibility was inferred from legacy text.")
         return constraints
@@ -375,9 +426,58 @@ class ReferenceFilePlanner:
     def _generator_status(self, file_format: str, sheet_specs: List[SheetSpec]) -> GeneratorStatus:
         if file_format in {"xlsx", "csv", "json"} and sheet_specs:
             return "ready_for_deterministic_generation"
-        if file_format in {"md", "txt"}:
+        if file_format in {"md", "txt", "docx"}:
             return "ready_for_deterministic_generation"
         return "needs_template_design"
+
+    def _preferred_generation_strategy(self, file_spec: FileSpec, file_format: str) -> GenerationStrategy:
+        if file_format in {"xlsx", "csv", "json"}:
+            return "deterministic_structured"
+        if file_spec.file_name.lower() == "policy_reference.docx":
+            return "deterministic_structured"
+        if file_format in {"md", "txt", "docx"}:
+            return "llm_structured_prose"
+        return "stirrup_agentic_file"
+
+    def _supported_generation_strategies(
+        self,
+        file_spec: FileSpec,
+        file_format: str,
+    ) -> List[GenerationStrategy]:
+        if file_format in {"xlsx", "csv", "json"}:
+            return ["deterministic_structured", "external_or_imported"]
+        if file_spec.file_name.lower() == "policy_reference.docx":
+            return ["deterministic_structured", "llm_structured_prose", "stirrup_agentic_file"]
+        if file_format in {"md", "txt", "docx"}:
+            return ["deterministic_structured", "llm_structured_prose", "stirrup_agentic_file"]
+        return ["stirrup_agentic_file", "external_or_imported"]
+
+    def _validation_contract(self, file_spec: FileSpec, file_format: str) -> ValidationContract:
+        if file_format in {"xlsx", "csv", "json"}:
+            return ValidationContract(
+                required_checks=["file_exists", "table_shape", "evidence_mapping_nonempty"],
+                requires_evidence_mapping=True,
+                locator_scheme="table_column_locator",
+                proposal_allowed=True,
+            )
+        if file_spec.file_name.lower() == "policy_reference.docx":
+            return ValidationContract(
+                required_checks=[
+                    "file_exists",
+                    "clause_ids_present",
+                    "required_sections_present",
+                    "evidence_mapping_nonempty",
+                ],
+                requires_evidence_mapping=True,
+                locator_scheme="clause_locator",
+                proposal_allowed=True,
+            )
+        return ValidationContract(
+            required_checks=["file_exists", "section_presence", "evidence_mapping_nonempty"],
+            requires_evidence_mapping=True,
+            locator_scheme="section_locator",
+            proposal_allowed=True,
+        )
 
     def _file_format(self, file_name: str) -> str:
         suffix = Path(file_name).suffix.lower().lstrip(".")
@@ -400,6 +500,11 @@ class ReferenceFilePlanner:
         if "decision" in text:
             return "decision_rule"
         return "contextual_reference"
+
+    def _text_anchor_locator(self, file_name: str, section: PlannedTextSection) -> str:
+        if section.clause_id:
+            return f"{file_name}:{section.clause_id}"
+        return f"{file_name}:{section.heading}"
 
     def _tokens(self, text: str) -> set[str]:
         return {token for token in "".join(char.lower() if char.isalnum() else " " for char in text).split() if token}

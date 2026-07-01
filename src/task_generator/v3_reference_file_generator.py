@@ -1,6 +1,9 @@
 import json
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
+from xml.sax.saxutils import escape
 
 import pandas as pd
 from pydantic import BaseModel, Field
@@ -9,12 +12,22 @@ from task_generator.v3_reference_file_planner import (
     EvidenceAnchor,
     PlannedReferenceFile,
     PlannedTable,
+    PlannedTextSection,
     ReferenceFilePlan,
 )
 from task_generator.v3_source_schema import load_json_file
 
 
 GenerationStatus = Literal["generated", "skipped", "failed"]
+GenerationStrategy = Literal[
+    "deterministic_structured",
+    "llm_structured_prose",
+    "stirrup_agentic_file",
+    "external_or_imported",
+]
+TrustLevel = Literal["deterministic_verified", "deterministic_partial", "llm_proposal", "external_unverified"]
+ValidatorStatus = Literal["passed", "partial", "failed", "not_run"]
+EvidenceMappingStatus = Literal["finalized", "proposal_only", "missing"]
 
 SOURCE_LABELS = [
     "ERP Export",
@@ -55,6 +68,7 @@ class GeneratedEvidenceMapping(BaseModel):
     locator: str
     physical_location: str
     semantic_type: str
+    mapping_source: str = "generator_finalized"
 
 
 class GeneratedFileRecord(BaseModel):
@@ -64,9 +78,14 @@ class GeneratedFileRecord(BaseModel):
     status: GenerationStatus
     relative_path: Optional[str] = None
     generation_mode: str
+    generation_strategy: GenerationStrategy = "deterministic_structured"
+    trust_level: TrustLevel = "deterministic_verified"
+    validator_status: ValidatorStatus = "not_run"
+    evidence_mapping_status: EvidenceMappingStatus = "missing"
     row_count_by_table: Dict[str, int] = Field(default_factory=dict)
     validation_checks: List[ValidationCheck] = Field(default_factory=list)
     skipped_reason: Optional[str] = None
+    support_artifacts: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 
@@ -78,6 +97,7 @@ class GeneratedFileManifest(BaseModel):
     output_dir: str
     generated_files: List[GeneratedFileRecord] = Field(default_factory=list)
     evidence_index: List[GeneratedEvidenceMapping] = Field(default_factory=list)
+    evidence_index_proposal: List[GeneratedEvidenceMapping] = Field(default_factory=list)
     diagnostics: Dict[str, Any] = Field(default_factory=dict)
     notes: List[str] = Field(default_factory=list)
 
@@ -136,6 +156,10 @@ class ReferenceFileGenerator:
                     file_format=planned_file.file_format,
                     status="skipped",
                     generation_mode="unsupported_or_deferred",
+                    generation_strategy=planned_file.preferred_generation_strategy,
+                    trust_level="deterministic_partial",
+                    validator_status="not_run",
+                    evidence_mapping_status="missing",
                     skipped_reason=f"planner_status:{planned_file.generator_status}",
                     warnings=["File type or template is deferred to a later slice."],
                 ),
@@ -171,6 +195,10 @@ class ReferenceFileGenerator:
                 self._write_text_reference(target_path, planned_file)
                 mappings = self._text_evidence_mappings(planned_file)
                 record = self._validate_text_file(planned_file, target_path)
+            elif file_format == "docx":
+                support_artifacts = self._write_docx_reference(target_path, planned_file)
+                mappings = self._text_evidence_mappings(planned_file)
+                record = self._validate_docx_file(planned_file, target_path, support_artifacts)
             else:
                 return (
                     GeneratedFileRecord(
@@ -179,6 +207,10 @@ class ReferenceFileGenerator:
                         file_format=planned_file.file_format,
                         status="skipped",
                         generation_mode="unsupported_or_deferred",
+                        generation_strategy=planned_file.preferred_generation_strategy,
+                        trust_level="deterministic_partial",
+                        validator_status="not_run",
+                        evidence_mapping_status="missing",
                         skipped_reason=f"unsupported_format:{planned_file.file_format}",
                         warnings=["No deterministic generator exists yet for this file format."],
                     ),
@@ -198,6 +230,10 @@ class ReferenceFileGenerator:
                     file_format=planned_file.file_format,
                     status="failed",
                     generation_mode="deterministic_table_first",
+                    generation_strategy=planned_file.preferred_generation_strategy,
+                    trust_level="deterministic_partial",
+                    validator_status="failed",
+                    evidence_mapping_status="missing",
                     skipped_reason=type(exc).__name__,
                     warnings=[str(exc)],
                 ),
@@ -216,7 +252,9 @@ class ReferenceFileGenerator:
             "file_name": planned_file.file_name,
             "status": "generated",
             "generation_mode": record.generation_mode,
+            "generation_strategy": record.generation_strategy,
             "row_count_by_table": record.row_count_by_table,
+            "support_artifacts": record.support_artifacts,
             "warnings": record.warnings,
         }
         return record, mappings, trace
@@ -289,10 +327,49 @@ class ReferenceFileGenerator:
     def _write_text_reference(self, target_path: Path, planned_file: PlannedReferenceFile) -> None:
         lines = [f"# {planned_file.file_name}", ""]
         for section in planned_file.text_sections:
-            lines.append(section.heading)
-            lines.append(f"This section is planned deterministically for {section.evidence_role}.")
+            if section.clause_id:
+                lines.append(f"## {section.clause_id} {section.heading}")
+                lines.append(self._policy_clause_body(section))
+            else:
+                lines.append(section.heading)
+                lines.append(f"This section is planned deterministically for {section.evidence_role}.")
             lines.append("")
         target_path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+
+    def _write_docx_reference(
+        self,
+        target_path: Path,
+        planned_file: PlannedReferenceFile,
+    ) -> List[str]:
+        paragraphs = [planned_file.file_name]
+        for section in planned_file.text_sections:
+            title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
+            paragraphs.append(title)
+            if section.clause_id:
+                paragraphs.append(self._policy_clause_body(section))
+            else:
+                paragraphs.append(f"This section is planned deterministically for {section.evidence_role}.")
+
+        self._write_minimal_docx(target_path, paragraphs)
+        clause_map_name = f"{Path(planned_file.file_name).stem}_clause_map.json"
+        clause_map_path = target_path.parent / clause_map_name
+        clause_map_payload = {
+            "file_name": planned_file.file_name,
+            "clauses": [
+                {
+                    "clause_id": section.clause_id,
+                    "heading": section.heading,
+                    "evidence_role": section.evidence_role,
+                    "locator": f"{planned_file.file_name}:{section.clause_id or section.heading}",
+                }
+                for section in planned_file.text_sections
+            ],
+        }
+        clause_map_path.write_text(
+            json.dumps(clause_map_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return [str(Path("reference_files") / clause_map_name)]
 
     def _validate_generated_file(
         self,
@@ -340,8 +417,13 @@ class ReferenceFileGenerator:
             status=status,
             relative_path=str(Path("reference_files") / planned_file.file_name),
             generation_mode="deterministic_table_first",
+            generation_strategy=planned_file.preferred_generation_strategy,
+            trust_level="deterministic_verified" if status == "generated" else "deterministic_partial",
+            validator_status="passed" if status == "generated" else "failed",
+            evidence_mapping_status="finalized",
             row_count_by_table=row_count_by_table,
             validation_checks=checks,
+            support_artifacts=[],
             warnings=[],
         )
 
@@ -363,7 +445,52 @@ class ReferenceFileGenerator:
             status=status,
             relative_path=str(Path("reference_files") / planned_file.file_name),
             generation_mode="deterministic_text_reference",
+            generation_strategy=planned_file.preferred_generation_strategy,
+            trust_level="deterministic_verified" if status == "generated" else "deterministic_partial",
+            validator_status="passed" if status == "generated" else "failed",
+            evidence_mapping_status="finalized",
             validation_checks=checks,
+            support_artifacts=[],
+            warnings=[],
+        )
+
+    def _validate_docx_file(
+        self,
+        planned_file: PlannedReferenceFile,
+        target_path: Path,
+        support_artifacts: List[str],
+    ) -> GeneratedFileRecord:
+        checks = [ValidationCheck(check_name="file_exists", passed=target_path.exists(), details=str(target_path))]
+        xml_text = self._read_docx_document_xml(target_path) if target_path.exists() else ""
+        for section in planned_file.text_sections:
+            title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
+            checks.append(
+                ValidationCheck(
+                    check_name=f"section_present:{title}",
+                    passed=title in xml_text,
+                )
+            )
+            if section.clause_id:
+                checks.append(
+                    ValidationCheck(
+                        check_name=f"clause_present:{section.clause_id}",
+                        passed=section.clause_id in xml_text,
+                    )
+                )
+        status: GenerationStatus = "generated" if all(check.passed for check in checks) else "failed"
+        return GeneratedFileRecord(
+            file_id=planned_file.file_id,
+            file_name=planned_file.file_name,
+            file_format=planned_file.file_format,
+            status=status,
+            relative_path=str(Path("reference_files") / planned_file.file_name),
+            generation_mode="deterministic_policy_reference",
+            generation_strategy=planned_file.preferred_generation_strategy,
+            trust_level="deterministic_verified" if status == "generated" else "deterministic_partial",
+            validator_status="passed" if status == "generated" else "failed",
+            evidence_mapping_status="finalized",
+            validation_checks=checks,
+            support_artifacts=support_artifacts,
             warnings=[],
         )
 
@@ -453,13 +580,16 @@ class ReferenceFileGenerator:
     def _text_evidence_mappings(self, planned_file: PlannedReferenceFile) -> List[GeneratedEvidenceMapping]:
         mappings: List[GeneratedEvidenceMapping] = []
         for anchor in planned_file.evidence_anchors:
+            physical_location = anchor.locator.split(":", 1)[-1]
+            if planned_file.file_format.lower() == "docx" and ":" in anchor.locator:
+                physical_location = f"clause:{anchor.locator.split(':', 1)[1]}"
             mappings.append(
                 GeneratedEvidenceMapping(
                     evidence_id=anchor.evidence_id,
                     file_id=planned_file.file_id,
                     file_name=planned_file.file_name,
                     locator=anchor.locator,
-                    physical_location=anchor.locator.split(":", 1)[-1],
+                    physical_location=physical_location,
                     semantic_type=anchor.semantic_type,
                 )
             )
@@ -489,6 +619,95 @@ class ReferenceFileGenerator:
             result = chr(65 + remainder) + result
         return result
 
+    def _policy_clause_body(self, section: PlannedTextSection) -> str:
+        clause_id = section.clause_id or "POL-000"
+        if clause_id == "POL-001":
+            return (
+                "Use the source evidence workbook as the primary record for identifying relevant items, "
+                "and match each material conclusion to one or more cited evidence identifiers."
+            )
+        if clause_id == "POL-002":
+            return (
+                "When the evidence package contains unresolved discrepancies or missing support, "
+                "describe them separately from confirmed exceptions and avoid unsupported resolution."
+            )
+        if clause_id == "POL-003":
+            return (
+                "A conclusion may be treated as review-ready only when the cited evidence and the stated rationale "
+                "are both visible in the candidate reference package."
+            )
+        if clause_id == "POL-004":
+            return (
+                "If policy alignment or evidence sufficiency cannot be confirmed from the provided files, "
+                "escalate the issue as unresolved rather than inferring a final answer."
+            )
+        return f"This clause provides deterministic guidance for {section.heading.lower()}."
+
+    def _write_minimal_docx(self, target_path: Path, paragraphs: List[str]) -> None:
+        content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>
+"""
+        relationships = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>
+"""
+        document_rels = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>
+"""
+        created = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        core_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>{escape(target_path.stem)}</dc:title>
+  <dc:creator>TaskGenerator</dc:creator>
+  <cp:lastModifiedBy>TaskGenerator</cp:lastModifiedBy>
+  <dcterms:created xsi:type="dcterms:W3CDTF">{created}</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">{created}</dcterms:modified>
+</cp:coreProperties>
+"""
+        app_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Application>TaskGenerator</Application>
+</Properties>
+"""
+        document_xml = self._document_xml(paragraphs)
+        with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("[Content_Types].xml", content_types)
+            archive.writestr("_rels/.rels", relationships)
+            archive.writestr("word/document.xml", document_xml)
+            archive.writestr("word/_rels/document.xml.rels", document_rels)
+            archive.writestr("docProps/core.xml", core_xml)
+            archive.writestr("docProps/app.xml", app_xml)
+
+    def _document_xml(self, paragraphs: List[str]) -> str:
+        body = []
+        for paragraph in paragraphs:
+            body.append(
+                "<w:p><w:r><w:t xml:space=\"preserve\">"
+                + escape(paragraph)
+                + "</w:t></w:r></w:p>"
+            )
+        body.append("<w:sectPr/>")
+        return (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+            "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+            "<w:body>"
+            + "".join(body)
+            + "</w:body></w:document>"
+        )
+
+    def _read_docx_document_xml(self, target_path: Path) -> str:
+        with zipfile.ZipFile(target_path, "r") as archive:
+            return archive.read("word/document.xml").decode("utf-8", errors="ignore")
+
     def _diagnostics(
         self,
         plan: ReferenceFilePlan,
@@ -498,12 +717,19 @@ class ReferenceFileGenerator:
         generated_count = sum(1 for record in generated_files if record.status == "generated")
         skipped_count = sum(1 for record in generated_files if record.status == "skipped")
         failed_count = sum(1 for record in generated_files if record.status == "failed")
+        strategy_counts: Dict[str, int] = {}
+        validator_counts: Dict[str, int] = {}
+        for record in generated_files:
+            strategy_counts[record.generation_strategy] = strategy_counts.get(record.generation_strategy, 0) + 1
+            validator_counts[record.validator_status] = validator_counts.get(record.validator_status, 0) + 1
         return {
             "planned_file_count": len(plan.planned_files),
             "generated_file_count": generated_count,
             "skipped_file_count": skipped_count,
             "failed_file_count": failed_count,
             "evidence_mapping_count": len(evidence_index),
+            "generation_strategy_counts": dict(sorted(strategy_counts.items())),
+            "validator_status_counts": dict(sorted(validator_counts.items())),
             "subgraph_confidence": plan.diagnostics.subgraph_confidence,
             "carried_forward_warnings": plan.diagnostics.planner_warnings,
         }
@@ -520,6 +746,14 @@ class ReferenceFileGenerator:
         )
         (output_dir / "evidence_index.json").write_text(
             json.dumps([mapping.model_dump() for mapping in manifest.evidence_index], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        (output_dir / "evidence_index_proposal.json").write_text(
+            json.dumps(
+                [mapping.model_dump() for mapping in manifest.evidence_index_proposal],
+                ensure_ascii=False,
+                indent=2,
+            ),
             encoding="utf-8",
         )
         (output_dir / "generation_trace.json").write_text(
