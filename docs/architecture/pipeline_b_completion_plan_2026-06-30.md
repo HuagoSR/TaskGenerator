@@ -46,6 +46,14 @@ Completed slices:
    - The plan carries forward subgraph confidence, missing Pipeline A signals, unresolved gaps, typed/fallback resource counts, and planner warnings.
    - Current smoke result plans 2 reference files, 1 table, 4 text sections, and 9 evidence anchors.
 
+4. Deterministic table-first reference-file generation.
+   - Module: `src/task_generator/v3_reference_file_generator.py`
+   - CLI: `Test/run_v3_reference_file_generator.py`
+   - Input: `reference_file_plan.json`
+   - Output: generated candidate-visible files under `reference_files/`, plus `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
+   - Current smoke result generates `source_evidence.xlsx`, skips `policy_reference.docx` as `needs_template_design`, and writes 5 evidence mappings.
+   - Generated workbook validation currently checks file existence, sheet existence, row counts, and exact column lists.
+
 Current validation commands:
 
 ```powershell
@@ -55,18 +63,20 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgr
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_planner.py Test\run_v3_reference_file_planner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_generator.py Test\run_v3_reference_file_generator.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Add deterministic table-first reference file generation.
-2. Consume `reference_file_plan.json`.
-3. Generate concrete candidate-visible `.xlsx`, `.csv`, or `.json` files for planned table specs.
-4. Write a generated-file manifest that maps each physical file/sheet/column/range back to planned evidence IDs.
-5. Validate row counts, required columns, evidence IDs, and file readability.
-6. Leave prose-heavy `.docx` generation for a later template-design slice.
+1. Improve deterministic generation beyond one source workbook.
+2. Add support for `.csv` and `.json` smoke cases from planned tables, not only `.xlsx`.
+3. Add deterministic text-reference generation for `.md`/`.txt` plans where appropriate.
+4. Introduce a docx/template-design branch for `policy_reference.docx` and later memo-style reference files.
+5. Start enforcing relationship-aware validation, not only row-count and schema checks.
+6. Feed generated-file manifest and evidence index into the first GoldenRun/TeacherRunner contract.
 
 ## Final System Objective
 
@@ -318,8 +328,10 @@ Status:
 
 - The planning layer is implemented in `src/task_generator/v3_reference_file_planner.py`.
 - CLI `Test/run_v3_reference_file_planner.py` emits `reference_file_plan.json`.
-- No concrete reference files are generated yet.
-- The next implementation step should consume the plan and create deterministic table-first files.
+- Deterministic table-first generation is now implemented in `src/task_generator/v3_reference_file_generator.py`.
+- CLI `Test/run_v3_reference_file_generator.py` emits concrete files plus manifest/index/trace artifacts.
+- Current smoke generates `source_evidence.xlsx` and explicitly skips `policy_reference.docx` as deferred template work.
+- The next implementation step should broaden supported file types and deepen validation.
 
 Goal:
 
@@ -631,16 +643,16 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The next code change should implement deterministic table-first reference file generation from `reference_file_plan.json`.
+The next code change should broaden the deterministic generator and start building the bridge into teacher-mode solving.
 
 Minimal scope:
 
-- Read `reference_file_plan.json`.
-- Generate only table-first candidate-visible files at first, especially `.xlsx`, `.csv`, and `.json`.
-- For unsupported prose-heavy files such as `.docx`, write an explicit skipped/needs-template status in the generated-file manifest.
-- Populate deterministic placeholder rows that satisfy planned columns, row counts, evidence IDs, and basic semantic types.
-- Write `generated_file_manifest.json` with physical file paths, table/sheet locations, evidence ID mappings, and validation status.
-- Run readability and structural validators on generated files.
+- Keep consuming `reference_file_plan.json` and `generated_file_manifest.json`.
+- Add additional supported table formats in smoke-tested paths, especially `.csv` and `.json`.
+- Add a simple deterministic text-reference path for `.md`/`.txt` where a plan is marked as generator-ready.
+- Preserve explicit deferred statuses for `.docx` instead of faking generation.
+- Expand validators from schema-only checks toward relationship-aware checks and evidence-manifest consistency.
+- Define the first data handoff contract that GoldenRun/TeacherRunner will consume from the generated files.
 
 This slice should still be conservative. It should prove that Pipeline B can create inspectable candidate-visible evidence files before introducing LLM-written prose references or TeacherRunner.
 

@@ -189,7 +189,8 @@ Near-term implementation rule:
 - keep the current resource-aware Pipeline B subgraph sampler report-first and registry-non-mutating
 - keep the current subgraph-to-blueprint prototype backward compatible with the older seed-report path
 - keep the current reference-file planner as the file-generation contract layer
-- next implement deterministic table-first reference-file generation from `reference_file_plan.json`
+- keep the current deterministic table-first reference-file generator focused on manifestable, verifiable structured files
+- next broaden supported file types and connect generated-file artifacts into the first GoldenRun/TeacherRunner contract
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -238,6 +239,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_pipeline_b_prototype.py`: CLI for writing `pipeline_b_prototype_report.json` and `draft_task_blueprint.json`; use `--subgraph-report` to consume sampler output
 - `src/task_generator/v3_reference_file_planner.py`: report-first planner that turns a draft `TaskBlueprint` plus optional `PipelineBSubgraph` into `reference_file_plan.json`
 - `Test/run_v3_reference_file_planner.py`: CLI for writing `reference_file_plan.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_reference_file_generator.py`: deterministic table-first file generator that consumes `reference_file_plan.json`
+- `Test/run_v3_reference_file_generator.py`: CLI for writing `reference_files/`, `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -421,22 +424,25 @@ Current Pipeline A status:
   - prototype CLI: `Test/run_v3_pipeline_b_prototype.py`
   - reference-file planner module: `src/task_generator/v3_reference_file_planner.py`
   - reference-file planner CLI: `Test/run_v3_reference_file_planner.py`
+  - reference-file generator module: `src/task_generator/v3_reference_file_generator.py`
+  - reference-file generator CLI: `Test/run_v3_reference_file_generator.py`
   - sampler smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke`
   - subgraph blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke`
   - reference-file planner smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_smoke`
+  - reference-file generator smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
   - current reference-file planner smoke emits 2 planned files, 1 table, 4 text sections, and 9 evidence anchors
+  - current reference-file generator smoke generates `reference_files/source_evidence.xlsx`, skips `policy_reference.docx` as deferred template work, and writes 5 evidence mappings into `evidence_index.json`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler or prototype
+  - no registry mutation is performed by the sampler, prototype, planner, or generator
 - next Pipeline B implementation slice:
-  - create deterministic table-first reference files from `reference_file_plan.json`
-  - likely module: `src/task_generator/v3_reference_file_generator.py`
-  - likely CLI: `Test/run_v3_reference_file_generator.py`
-  - output should include generated candidate-visible files plus `generated_file_manifest.json`
-  - start with `.xlsx`, `.csv`, and `.json`; mark prose-heavy `.docx` references as `needs_template_design`
-  - validate file readability, row counts, required columns, evidence IDs, and provenance mappings
+  - broaden deterministic generation beyond the current workbook smoke path
+  - add smoke-tested `.csv` and `.json` generation cases
+  - add a simple generator-ready branch for `.md`/`.txt` references where appropriate
+  - preserve explicit deferred status for `.docx` until a template/document slice exists
+  - connect generated-file manifest and evidence index into the first GoldenRun/TeacherRunner input contract
 - current architecture discussion has refined the next Pipeline A goal:
   - tasks should not be modeled only as a linear skill chain
   - realistic tasks may be trees or DAG-like skill-resource graphs with fan-in, fan-out, cross-checks, and validation constraints
@@ -510,4 +516,3 @@ When continuing this project:
 - Keep source provenance explicit.
 - Keep Pipeline A and Pipeline B modular.
 - Use the finance prototype to validate architecture, not as the center of the research.
-
