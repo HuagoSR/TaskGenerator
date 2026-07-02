@@ -912,6 +912,13 @@ Deliverables:
 
 Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, staged package assembly, V3 rw-task draft export, export validation, eval-input prep, and guarded eval-runner dry-run metadata. The current package remains `revise_only`, so it is structurally inspectable but not final training data.
 
+Current toolchain smoke evidence:
+
+- the explicit local draft-only rw-task smoke reached `bench_standalone.stirrup_batch`, so the V3 export and eval-prep bridge is structurally usable by the rw-task CLI
+- the first local run failed because `E2B_API_KEY` was not present in the process environment
+- after loading `E2B_API_KEY` and `AGENT_*` from `E:\THU\2026Spring\SRT\rw-task\.env`, the run reached E2B sandbox creation and then failed with `All connection attempts failed` under the current Codex sandbox/network boundary
+- the follow-on `grade_deliverables` failure was downstream of that failed batch run, not the first blocker
+
 Recommended next code tasks:
 
 - keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
@@ -927,7 +934,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_pipeline_b_package_assembler.py` to produce `package_manifest.json` and `dataset_row_draft.json`
 - keep using `Test/run_v3_rw_task_exporter.py` and `Test/run_v3_rw_task_export_validator.py` for structural rw-task draft export checks
 - keep using `Test/run_v3_rw_task_eval_prep.py` to prepare batch-style eval input and command previews
-- keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata; only use `--run-eval --allow-draft-eval` when deliberately smoke-testing the toolchain
+- keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata; use `--run-eval --allow-draft-eval` only when deliberately smoke-testing the toolchain in an environment that allows outbound E2B/model-provider access
 - treat draft eval execution as toolchain evidence only, not task-quality or model-separation evidence
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them

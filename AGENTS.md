@@ -488,10 +488,13 @@ Current Pipeline A status:
   - current export validation smoke emits `rw_task_export_validation_report.json` with `validation_status=draft_compatible`
   - current eval-prep smoke emits `rw_task_eval_prep_report.json` with `prep_status=prepared` and `evaluation_mode=draft_inspection_only`
   - current eval-runner dry-run smoke emits `rw_task_eval_run_report.json` with `run_status=dry_run_ready` and `commands_executed=false`
+  - current explicit local rw-task smoke reaches `stirrup_batch`, but the first attempt fails without `E2B_API_KEY` in the process environment
+  - when `E2B_API_KEY` and `AGENT_*` are loaded from `E:\THU\2026Spring\SRT\rw-task\.env`, the local smoke reaches E2B sandbox creation and then fails with `All connection attempts failed` under the current Codex sandbox/network boundary
+  - after the failed batch run, `grade_deliverables` also fails because no top-level `dataset_row.json` is produced in the results directory; this is a downstream consequence of the failed task run, not the first blocker
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
   - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, or V3 rw-task eval runner
 - next Pipeline B implementation choices:
-  - optionally run one explicit draft-only rw-task toolchain smoke with `--run-eval --allow-draft-eval` to verify command compatibility; this is not model-separation evidence
+  - rerun the explicit draft-only rw-task toolchain smoke in an environment that allows outbound E2B/model-provider access; this is still only toolchain evidence, not model-separation evidence
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
@@ -554,7 +557,7 @@ The first real smoke should answer whether the V3 package can pass through the r
 
 Recommended next choices:
 
-- run the explicit draft toolchain smoke once, if API/network/runtime availability is ready
+- run the explicit draft toolchain smoke outside the current Codex sandbox, with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env`, if outbound E2B/model-provider access is allowed
 - or improve Pipeline A typed resources, transition evidence, and support diversity so the current package can move from `revise_only` toward `candidate_ready`
 
 Current LLM timing policy:
@@ -574,6 +577,14 @@ Known useful interpreters:
 - `D:\miniconda3\envs\real-world-task\python.exe`
 
 The `real-world-task` environment is used for rw-task evaluation. The `gdpval` environment has been useful for generation and pandas/openpyxl work.
+
+rw-task smoke note:
+
+- the current Codex environment can validate export, eval prep, and runner dry-run locally
+- explicit `--run-eval --allow-draft-eval` locally showed two runtime boundaries:
+- missing `E2B_API_KEY` if the process environment is not populated from `E:\THU\2026Spring\SRT\rw-task\.env`
+- `All connection attempts failed` when the current sandbox blocks outbound E2B connectivity even after the runtime env is loaded
+- treat these as environment/toolchain findings, not task-quality findings
 
 Tuzi/OpenAI-compatible provider notes:
 

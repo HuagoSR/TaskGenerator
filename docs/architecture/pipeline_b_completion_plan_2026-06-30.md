@@ -142,7 +142,8 @@ Completed slices:
    - Output: `rw_task_eval_run_report.json`
    - Default behavior is dry-run metadata only: verify the prep report, keep warning codes visible, and do not call `bench_standalone.stirrup_batch`, `grade_deliverables`, external APIs, or model providers.
    - Explicit execution requires `--run-eval`; the current `draft_inspection_only` sample additionally requires `--allow-draft-eval`.
-   - Current dry-run smoke result is expected to be `run_status=dry_run_ready` and `commands_executed=false`.
+   - Current dry-run smoke result is `run_status=dry_run_ready` and `commands_executed=false`.
+   - Current explicit local smoke evidence: the first run failed without `E2B_API_KEY` in the process environment; after loading `E2B_API_KEY` and `AGENT_*` from `E:\THU\2026Spring\SRT\rw-task\.env`, the run reached E2B sandbox creation and then failed with `All connection attempts failed` under the current Codex sandbox/network boundary.
 
 Current validation commands:
 
@@ -182,7 +183,7 @@ Both subgraph-mode and legacy seed-mode draft blueprints should validate with `T
 
 Next implementation choices:
 
-1. Run one explicit draft-only rw-task toolchain smoke with `--run-eval --allow-draft-eval` if API, network, and runtime availability are ready; treat the result as toolchain evidence only.
+1. Rerun the explicit draft-only rw-task toolchain smoke outside the current Codex sandbox, with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env`, if outbound E2B/model-provider access is allowed; treat the result as toolchain evidence only.
 2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 3. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
 4. Decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
@@ -199,6 +200,7 @@ Draft evaluation policy:
 
 - A `draft_inspection_only` package may be used to smoke-test the rw-task toolchain, but this is not task-quality evidence.
 - Real smoke execution must record command lines, model name, output dirs, exit codes, failure reasons, and whether grading ran.
+- Current local evidence shows that successful dry-run and eval-prep are not enough by themselves; real smoke also depends on runtime env injection and outbound E2B connectivity.
 - Formal model-separation evidence should wait for `candidate_ready` packages.
 - The smoke runner must not update the registry, transition priors, or any feedback store as a side effect.
 
@@ -830,6 +832,7 @@ Expected results:
 - If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
 - The eval runner dry-run emits `run_status=dry_run_ready` and `commands_executed=false`.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
+- A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 
 ## Open Design Questions
 
