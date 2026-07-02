@@ -11,8 +11,9 @@ Current baseline:
 - Pipeline A has a persistent skill registry and readiness reports.
 - Pipeline B has a report-first resource-aware sampler that can read the seed set and registry, build a `PipelineBSubgraph`, and emit Pipeline A feedback.
 - Pipeline B prototype can still read the seed set directly, and can now also consume a sampler `pipeline_b_subgraph_report.json` to emit a draft `TaskBlueprint`.
-- Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, a package-level Quality Gate V1, staged package assembly, V3 rw-task draft export, export validation, eval input prep, and a guarded eval runner.
-- The current chain now reaches rw-task command dry-run metadata. It is still pre-formal model-separation evaluation because the sample package remains `revise_only`.
+- Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, a package-level Quality Gate V1, staged package assembly, V3 rw-task draft export, export validation, eval input prep, a guarded eval runner, eval summarization, and eval-feedback analysis.
+- The current chain now reaches an authorized real rw-task draft smoke. It is still pre-formal model-separation evaluation because the sample package remains `revise_only`.
+- The current rubric contract separates complete internal diagnostics from grader-facing rw-task criteria: full `rubric.json` can keep candidate criteria, teacher diagnostics, and Pipeline A feedback criteria, while exported `rubric_json` includes only candidate-visible, candidate-actionable criteria.
 
 The next work should convert Pipeline B from "draft blueprint prototype" into "complete task package generator".
 
@@ -198,6 +199,29 @@ Completed slices:
      - grader model is now `gpt-5.4-pro`
      - latest summary is `draft_quality_observation` with total score `59 / 81` and score ratio `0.7283950617283951`
      - latest eval feedback reports 13 low-scoring criteria, 2 Pipeline B actions, and 3 Pipeline A feedback items
+
+19. Feedback-Driven Rubric Audience Split.
+   - Updated modules:
+     - `src/task_generator/v3_rubric_builder.py`
+     - `src/task_generator/v3_pipeline_b_package_assembler.py`
+     - `src/task_generator/v3_rw_task_exporter.py`
+   - Purpose: prevent Pipeline A/teacher/generator diagnostics from being graded as if they were candidate-solvable task requirements.
+   - Current changes:
+     - each `RubricCriterion` now records `audience` and `export_to_rw_task`
+     - `RubricDiagnostics` records candidate, diagnostic, and rw-task-exportable criterion counts
+     - package draft rubric text includes only rw-task-exportable criteria
+     - V3 rw-task export filters `rubric_json` to candidate-visible criteria and records how many diagnostic criteria were retained outside the grader-facing contract
+   - Current filter smoke result:
+     - full rubric: 43 criteria
+     - candidate/exportable criteria: 28
+     - teacher/Pipeline-A diagnostic criteria: 15
+     - exported rw-task draft case remains `draft_exported`
+     - export validator remains `draft_compatible`
+     - exported `dataset_row.json` keeps `extra.rw_task_rubric_filter` with the dropped diagnostic counts and reason codes
+     - authorized filtered draft rw-task smoke completed both `stirrup_batch` and `grade_deliverables`
+     - filtered draft score is `53 / 62` (`0.8548387096774194`), compared with the previous strengthened baseline `59 / 81` (`0.7283950617283951`)
+     - low-scoring criteria dropped from 13 to 5 after removing grader-facing Pipeline A diagnostics
+     - remaining low-score feedback is now concentrated on teacher-step operationalization and policy-reference prompting
 
 Current validation commands:
 
@@ -854,20 +878,21 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is the guarded V3 rw-task eval runner on top of `rw_task_eval_prep_report.json`.
+The current code change is a feedback-driven rubric/export split on top of the latest draft rw-task smoke.
 
 Minimal scope:
 
-- Read the prepared eval input report.
-- Verify `prep_status=prepared`.
-- Default to `dry_run_ready` and write `rw_task_eval_run_report.json` without calling models, APIs, Stirrup, or rw-task evaluation.
-- Require explicit `--run-eval` for real execution.
-- Require both `--run-eval` and `--allow-draft-eval` for the current `draft_inspection_only` sample.
-- Record model name, python executable, rw-task root, command list, output dirs, start/end times, exit codes, stdout/stderr log paths, and failure reasons if commands are executed.
-- Preserve `not_final_training_data`, revise-only warnings, and `evaluation_mode=draft_inspection_only`.
+- Preserve the full structured `rubric.json` as a diagnostic contract.
+- Mark each criterion with `audience` and `export_to_rw_task`.
+- Keep Pipeline A graph-signal gaps, low subgraph confidence, and other generator/readiness diagnostics visible in reports.
+- Exclude non-candidate diagnostic criteria from the rw-task-facing `rubric_json`.
+- Record exported vs diagnostic criterion counts in the export report and `dataset_row.extra.rw_task_rubric_filter`.
+- Keep the package `revise_only`; do not upgrade readiness because the grader-facing rubric is cleaner.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice should answer whether the V3 package has a safe bridge to the rw-task toolchain. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
+This slice should answer whether the V3 package can stop grading candidate models for Pipeline A substrate weaknesses while preserving those weaknesses for quality and feedback analysis. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
+
+The next likely implementation slice should target the remaining candidate-facing failures without weakening the task: make evidence inventory, deliverable outline, intermediate-state reasoning, and policy-clause-to-evidence mapping more explicit in the prompt/teacher contract.
 
 ## Test Plan For The Current Next Slice
 
@@ -886,10 +911,13 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_teacher
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_training_annotation_builder.py Test\run_v3_training_annotation_builder.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
-D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py Test\run_v3_rubric_builder.py
-D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
-D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py Test\run_v3_rw_task_eval_runner.py
-D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py src\task_generator\v3_pipeline_b_package_assembler.py src\task_generator\v3_rw_task_exporter.py Test\run_v3_rubric_builder.py Test\run_v3_pipeline_b_package_assembler.py Test\run_v3_rw_task_exporter.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_filter_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_quality_gate.py --rubric-report artifacts\pipeline_b\scratch\rubric_filter_smoke\rubric_report.json --output-dir artifacts\pipeline_b\scratch\quality_gate_filter_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py --rubric artifacts\pipeline_b\scratch\rubric_filter_smoke\rubric.json --rubric-report artifacts\pipeline_b\scratch\rubric_filter_smoke\rubric_report.json --quality-report artifacts\pipeline_b\scratch\quality_gate_filter_smoke\pipeline_b_quality_report.json --output-dir artifacts\pipeline_b\scratch\package_assembler_filter_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --package-manifest artifacts\pipeline_b\scratch\package_assembler_filter_smoke\package_manifest.json --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_filter_smoke --overwrite
 ```
 
 Expected results:
@@ -902,11 +930,17 @@ Expected results:
 - The teacher-runner emits `golden_run.json` and `teacher_runner_report.json`.
 - The training-annotation builder emits `training_annotation.json` and `training_annotation_report.json`.
 - The rubric builder emits `rubric.json` and `rubric_report.json`.
+- The rubric report shows full and exportable criteria separately.
+- The current filter smoke keeps 28 candidate/exportable criteria and 15 diagnostic criteria out of 43 total criteria.
 - The current teacher run stays `partial_ready` rather than hiding low-confidence subgraph and Pipeline A signal gaps.
+- The rw-task export report records `rw_task_rubric_item_count=28` and `diagnostic_rubric_item_count=15`.
+- The exported `dataset_row.json.rubric_json` does not contain Pipeline A graph-signal diagnostic criteria.
 - No registry files are modified.
 - The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
 - If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
-- The eval runner dry-run emits `run_status=dry_run_ready` and `commands_executed=false`.
+- The eval prep emits a new `draft_inspection_only` batch input for the filtered draft case.
+- Authorized filtered external smoke completes and produces a draft-quality observation of `53/62`.
+- Eval feedback reports 5 remaining low-scoring criteria, not the previous Pipeline A diagnostic-heavy 13.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 

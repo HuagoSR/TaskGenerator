@@ -43,6 +43,8 @@ def main() -> None:
                 "case_dir": report.case_dir,
                 "reference_file_count": report.reference_file_count,
                 "deliverable_file_count": report.deliverable_file_count,
+                "rw_task_rubric_item_count": report.rw_task_rubric_item_count,
+                "diagnostic_rubric_item_count": report.diagnostic_rubric_item_count,
                 "reason_codes": report.reason_codes,
             },
             ensure_ascii=False,

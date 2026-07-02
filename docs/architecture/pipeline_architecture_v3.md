@@ -148,7 +148,10 @@ Current bridge status:
 - The new eval-feedback layer turns draft grading into prioritized Pipeline B actions and Pipeline A feedback without mutating readiness, the registry, or transition priors.
 - The prompt/teacher contract has now been strengthened deterministically: the blueprint explicitly names the deliverable contract, requires policy-sensitive conclusions to cite policy clause IDs plus evidence IDs, and adds intermediate states such as `deliverable_outline` and `policy_clause_evidence_map`.
 - The rw-task export/eval bridge now has an additional compatibility layer: V3 structured rubrics are downgraded into rw-task-compatible stringified rubric-item lists at export time, and grading is forced onto the same model family selected by eval prep.
-- The current bottleneck is no longer missing policy reference files or broken rw-task grading glue; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
+- The rubric bridge now separates audiences: full `rubric.json` keeps candidate criteria, teacher diagnostics, and Pipeline A feedback criteria, while rw-task export includes only candidate-visible, candidate-actionable criteria.
+- The latest filter smoke keeps 28 rw-task-exportable criteria and 15 diagnostic criteria out of 43 total criteria; Pipeline A graph-signal gaps remain visible in package/report artifacts instead of being graded as candidate failures.
+- After this split, the draft rw-task smoke score changed from `59/81` (`0.7284`) to `53/62` (`0.8548`), with remaining low-score feedback concentrated on teacher-step operationalization and policy-clause prompting.
+- The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, or grader-facing Pipeline A diagnostics; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
 
 ## Pipeline A: Source-To-Skill Design
 

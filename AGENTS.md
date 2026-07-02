@@ -193,6 +193,7 @@ Near-term implementation rule:
 - keep the current teacher-input builder as the pre-TeacherRunner contract layer
 - keep the current TeacherRunner deterministic and report-first while the reference-doc layer is still incomplete
 - keep the current training annotation and rubric layers JSON-only and explicit about partial readiness
+- keep the current rubric contract split explicit: complete `rubric.json` may include candidate criteria, teacher diagnostics, and Pipeline A feedback criteria, but rw-task export should include only candidate-visible, candidate-actionable criteria
 - keep the current Pipeline B quality gate deterministic; it should decide whether the current package is `reject`, `revise`, or `candidate_ready` before any LLM teacher/prose step is scheduled
 - keep the current V3 rw-task exporter structural and conservative; it should block formal export below `candidate_ready`, and only allow `revise_only` draft export when explicitly requested
 - keep the current rw-task eval summary and eval-feedback layers report-only; draft evaluation evidence can prioritize improvements but must not silently update readiness, registry entries, or transition priors
@@ -481,27 +482,32 @@ Current Pipeline A status:
   - current teacher-input smoke emits `teacher_input_manifest.json` and `teacher_input_validation_report.json` with readiness `partial_ready`
   - current teacher-input contract separates `candidate_view` from `teacher_view`, carries 4 skill intentions, 9 evidence-contract items, and no longer flags `relationship:policy_lookup` because the policy document is now generated with clause locators
   - current teacher-runner smoke emits `golden_run.json` and `teacher_runner_report.json` with readiness `partial_ready`
-  - current teacher-runner creates 6 intermediate states, 4 skill-linked golden steps, and 3 final checks; all 4 steps remain intentionally `partial` because stronger typed resources and stronger support evidence are still missing
+  - current teacher-runner creates 8 intermediate states, 4 skill-linked golden steps, and 5 final checks; all 4 steps remain intentionally `partial` because stronger typed resources and stronger support evidence are still missing
   - current training-annotation smoke emits `training_annotation.json` and `training_annotation_report.json` with readiness `partial_ready`
-  - current training annotation contains 13 supervision items, 4 failure modes, 8 hidden traps, a richer V3 supervision structure, and an embedded V2-compatible `TrainingAnnotation` projection
+  - current training annotation contains 17 supervision items, 4 failure modes, 8 hidden traps, a richer V3 supervision structure, and an embedded V2-compatible `TrainingAnnotation` projection
   - current rubric smoke emits `rubric.json` and `rubric_report.json` with readiness `partial_ready`
-  - current rubric contains 4 sections and 37 criteria; policy-reference deferred warnings are gone, while low-confidence and Pipeline A signal gaps remain explicit
+  - current rubric contains 4 sections and 43 criteria; policy-reference deferred warnings are gone, while low-confidence and Pipeline A signal gaps remain explicit
+  - current rubric criteria carry `audience` and `export_to_rw_task`; the latest filter smoke keeps 28 candidate/exportable criteria and 15 teacher/Pipeline-A diagnostic criteria
   - current quality-gate smoke emits `pipeline_b_quality_report.json` with decision `revise`
   - current quality-gate reason codes now focus on `low_subgraph_confidence`, `single_source_support`, `partial_intermediate_state`, `pipeline_a_signal_gaps`, and `partial_ready_chain`
   - current package-assembler smoke emits `package_manifest.json` and `dataset_row_draft.json` with `package_readiness=revise_only`
   - current package assembler copies 2 generated reference files and keeps only the quality-gate `revise` decision as the remaining export blocker
   - current default rw-task export smoke is intentionally blocked on `package_readiness:revise_only`
   - current explicit `--allow-revise-only` export smoke emits a draft case with 2 candidate-visible reference files and marks `dataset_row.json.extra.not_final_training_data=true`
+  - current rw-task export filters `rubric_json` to candidate-visible criteria only; internal Pipeline A graph-signal diagnostics remain in package artifacts and reports, not grader-facing rubric items
   - current export validation smoke emits `rw_task_export_validation_report.json` with `validation_status=draft_compatible`
   - current eval-prep smoke emits `rw_task_eval_prep_report.json` with `prep_status=prepared` and `evaluation_mode=draft_inspection_only`
   - current eval-runner dry-run smoke emits `rw_task_eval_run_report.json` with `run_status=dry_run_ready` and `commands_executed=false`
   - early local explicit rw-task smoke attempts exposed two environment boundaries: missing process-level `E2B_API_KEY`, then blocked outbound E2B connectivity under the Codex sandbox
   - an authorized external smoke with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env` completed both `stirrup_batch` and `grade_deliverables`
-  - current eval-summary smoke emits `pipeline_b_eval_summary_report.json` with `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and average score ratio `0.625` (`20/32`)
+  - current eval-summary smoke emits `pipeline_b_eval_summary_report.json` with `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and the latest strengthened baseline score ratio `0.7283950617283951` (`59/81`)
+  - after the rubric audience split, the filtered draft smoke completed with score ratio `0.8548387096774194` (`53/62`); this is still draft-quality observation, not `candidate_ready` evidence
+  - filtered eval feedback now reports 5 low-scoring criteria: 4 teacher-step operationalization issues and 1 policy-reference prompting issue, while Pipeline A feedback remains report-only
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
-  - keep the strengthened prompt/teacher contract slice as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, and `policy_clause_traceability`
+  - keep the strengthened prompt/teacher contract and rubric audience split as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, `policy_clause_traceability`, and candidate-only rw-task rubric export
+  - use the filtered draft-only external smoke (`53/62`) to target the next Pipeline B slice: make evidence inventory, deliverable outline, intermediate-state reasoning, and policy-clause mapping more explicit without weakening the task
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path

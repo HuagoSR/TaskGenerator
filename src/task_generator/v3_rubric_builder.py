@@ -21,6 +21,13 @@ RubricSectionName = Literal[
 CriterionType = Literal["fact", "reasoning", "robustness", "compliance"]
 CriterionSeverity = Literal["low", "medium", "high"]
 CriterionStatusHint = Literal["pass", "partial", "blocked"]
+CriterionAudience = Literal["candidate", "teacher_diagnostic", "pipeline_a_feedback"]
+
+
+PIPELINE_A_DIAGNOSTIC_SIGNALS = {
+    "low_subgraph_confidence",
+    "pipeline_a_signal_gaps",
+}
 
 
 class RubricBuildRequest(BaseModel):
@@ -34,6 +41,8 @@ class RubricCriterion(BaseModel):
     criterion_id: str
     section: RubricSectionName
     criterion_type: CriterionType
+    audience: CriterionAudience = "candidate"
+    export_to_rw_task: bool = True
     description: str
     evidence_requirements: List[Dict[str, str]] = Field(default_factory=list)
     pass_condition: str
@@ -66,9 +75,13 @@ class RubricDiagnostics(BaseModel):
     readiness: RubricReadiness
     section_count: int = 0
     criterion_count: int = 0
+    candidate_criterion_count: int = 0
+    diagnostic_criterion_count: int = 0
+    rw_task_exportable_criterion_count: int = 0
     partial_criterion_count: int = 0
     blocked_criterion_count: int = 0
     criteria_by_section: Dict[str, int] = Field(default_factory=dict)
+    criteria_by_audience: Dict[str, int] = Field(default_factory=dict)
     warning_reason_codes: List[str] = Field(default_factory=list)
 
 
@@ -194,10 +207,13 @@ class RubricBuilder:
         criterion_type = self._criterion_type_for_section(section)
         failure_signals = list(item.warning_codes)
         status_hint = self._status_hint(item.status)
+        audience = self._audience_for_supervision_item(item)
         return RubricCriterion(
             criterion_id=item.item_id,
             section=section,
             criterion_type=criterion_type,
+            audience=audience,
+            export_to_rw_task=audience == "candidate",
             description=item.expected_behavior,
             evidence_requirements=[
                 {
@@ -219,10 +235,13 @@ class RubricBuilder:
 
     def _criterion_from_failure_mode(self, failure_mode) -> RubricCriterion:
         section = self._section_for_failure_signal(failure_mode.signal)
+        audience = self._audience_for_signal(failure_mode.signal)
         return RubricCriterion(
             criterion_id=failure_mode.failure_id,
             section=section,
             criterion_type=self._criterion_type_for_section(section),
+            audience=audience,
+            export_to_rw_task=audience == "candidate",
             description=failure_mode.description,
             evidence_requirements=[],
             pass_condition=f"Avoid failure mode: {failure_mode.signal}.",
@@ -253,6 +272,8 @@ class RubricBuilder:
                         ),
                         section=section_name,
                         criterion_type=self._criterion_type_for_section(section_name),
+                        audience=self._audience_for_projection_summary(summary),
+                        export_to_rw_task=self._audience_for_projection_summary(summary) == "candidate",
                         description=summary,
                         evidence_requirements=[],
                         pass_condition=f"Section summary expectation is satisfied: {summary}",
@@ -273,11 +294,14 @@ class RubricBuilder:
         for gap in golden_run.unresolved_gaps:
             signal = self._signal_from_gap(gap)
             section = self._section_for_failure_signal(signal)
+            audience = self._audience_for_gap(gap, signal)
             sections[section].append(
                 RubricCriterion(
                     criterion_id=self._stable_id("gap", [golden_run.golden_run_id, gap]),
                     section=section,
                     criterion_type=self._criterion_type_for_section(section),
+                    audience=audience,
+                    export_to_rw_task=audience == "candidate",
                     description=gap,
                     evidence_requirements=[],
                     pass_condition="The evaluator should preserve this unresolved gap as a visible caveat.",
@@ -323,17 +347,56 @@ class RubricBuilder:
 
     def _diagnostics(self, artifact: RubricArtifact) -> RubricDiagnostics:
         criteria = [criterion for section in artifact.sections for criterion in section.criteria]
+        audience_counts: Dict[str, int] = {}
+        for criterion in criteria:
+            audience_counts[criterion.audience] = audience_counts.get(criterion.audience, 0) + 1
         return RubricDiagnostics(
             readiness=artifact.readiness,
             section_count=len(artifact.sections),
             criterion_count=len(criteria),
+            candidate_criterion_count=sum(1 for criterion in criteria if criterion.audience == "candidate"),
+            diagnostic_criterion_count=sum(1 for criterion in criteria if criterion.audience != "candidate"),
+            rw_task_exportable_criterion_count=sum(1 for criterion in criteria if criterion.export_to_rw_task),
             partial_criterion_count=sum(1 for criterion in criteria if criterion.status_hint == "partial"),
             blocked_criterion_count=sum(1 for criterion in criteria if criterion.status_hint == "blocked"),
             criteria_by_section={
                 section.section_name: len(section.criteria) for section in artifact.sections
             },
+            criteria_by_audience=audience_counts,
             warning_reason_codes=artifact.warning_reason_codes,
         )
+
+    def _audience_for_supervision_item(self, item) -> CriterionAudience:
+        warning_codes = set(item.warning_codes)
+        if item.name in {
+            "pipeline_a_signal_gap_review",
+            "subgraph_edge_evidence_review:motif_cooccurrence,role_sequence",
+        }:
+            return "pipeline_a_feedback"
+        if warning_codes and warning_codes.issubset(PIPELINE_A_DIAGNOSTIC_SIGNALS):
+            return "pipeline_a_feedback"
+        if item.kind == "intermediate_state" and PIPELINE_A_DIAGNOSTIC_SIGNALS.intersection(warning_codes):
+            return "teacher_diagnostic"
+        return "candidate"
+
+    def _audience_for_signal(self, signal: str) -> CriterionAudience:
+        if signal in PIPELINE_A_DIAGNOSTIC_SIGNALS:
+            return "pipeline_a_feedback"
+        return "candidate"
+
+    def _audience_for_projection_summary(self, summary: str) -> CriterionAudience:
+        if "Pipeline A" in summary or "graph-signal" in summary or "sampled skill connections" in summary:
+            return "pipeline_a_feedback"
+        return "candidate"
+
+    def _audience_for_gap(self, gap: str, signal: str) -> CriterionAudience:
+        if signal in PIPELINE_A_DIAGNOSTIC_SIGNALS:
+            return "pipeline_a_feedback"
+        if gap.startswith("Weak Pipeline A signal:") or gap.startswith("pipeline_a_signal_gap_review:"):
+            return "pipeline_a_feedback"
+        if gap.startswith("subgraph_edge_evidence_review:"):
+            return "pipeline_a_feedback"
+        return "teacher_diagnostic"
 
     def _section_for_item(self, item) -> RubricSectionName:
         if item.kind == "final_check":
@@ -432,4 +495,3 @@ class RubricBuilder:
 
         raw = "|".join(parts)
         return f"{prefix}_{hashlib.sha1(raw.encode('utf-8')).hexdigest()[:10]}"
-

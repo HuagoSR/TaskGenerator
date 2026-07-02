@@ -36,6 +36,8 @@ class PipelineBRwTaskExportReport(BaseModel):
     case_dir: Optional[str] = None
     reference_file_count: int = 0
     deliverable_file_count: int = 0
+    rw_task_rubric_item_count: int = 0
+    diagnostic_rubric_item_count: int = 0
     reason_codes: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
 
@@ -89,6 +91,8 @@ class PipelineBRwTaskExporter:
             case_dir=str(output_path) if export_decision != "blocked" else None,
             reference_file_count=0,
             deliverable_file_count=0,
+            rw_task_rubric_item_count=0,
+            diagnostic_rubric_item_count=0,
             reason_codes=reason_codes,
             notes=self._notes(export_decision, package_manifest.package_readiness),
         )
@@ -137,6 +141,12 @@ class PipelineBRwTaskExporter:
 
         report.reference_file_count = len(reference_records)
         report.deliverable_file_count = len(dataset_row["deliverable_files"])
+        report.rw_task_rubric_item_count = dataset_row["extra"]["rw_task_rubric_filter"][
+            "exported_item_count"
+        ]
+        report.diagnostic_rubric_item_count = dataset_row["extra"]["rw_task_rubric_filter"][
+            "diagnostic_item_count"
+        ]
         self._write_report(output_path / "rw_task_export_report.json", report)
         return report
 
@@ -230,6 +240,9 @@ class PipelineBRwTaskExporter:
         else:
             draft_extra["export_status"] = "candidate_ready_export"
         draft_extra["rw_task_export_ready"] = export_decision == "exported"
+        normalized_rubric_items = self._normalize_rubric_payload(draft_row.get("rubric_json"))
+        rubric_filter_summary = self._rubric_filter_summary(draft_row.get("rubric_json"), normalized_rubric_items)
+        draft_extra["rw_task_rubric_filter"] = rubric_filter_summary
 
         return {
             "task_id": case_id,
@@ -239,8 +252,8 @@ class PipelineBRwTaskExporter:
             "prompt": draft_row.get("prompt"),
             "reference_files": [record.package_path for record in reference_records],
             "deliverable_files": list(draft_row.get("deliverable_files") or []),
-            "rubric": draft_row.get("rubric"),
-            "rubric_json": self._rw_task_rubric_json(draft_row.get("rubric_json")),
+            "rubric": self._rw_task_rubric_text(normalized_rubric_items),
+            "rubric_json": self._rw_task_rubric_json(normalized_rubric_items),
             "extra": draft_extra,
         }
 
@@ -294,8 +307,18 @@ class PipelineBRwTaskExporter:
         return any("Support artifact" in note for note in record.notes)
 
     def _rw_task_rubric_json(self, rubric_payload: Any) -> str:
-        normalized_items = self._normalize_rubric_payload(rubric_payload)
+        normalized_items = (
+            rubric_payload
+            if isinstance(rubric_payload, list)
+            else self._normalize_rubric_payload(rubric_payload)
+        )
         return json.dumps(normalized_items, ensure_ascii=False)
+
+    def _rw_task_rubric_text(self, normalized_items: List[Dict[str, Any]]) -> str:
+        return "\n".join(
+            f"- [{item.get('score', 0)} pts] {item.get('criterion', '')}"
+            for item in normalized_items
+        )
 
     def _normalize_rubric_payload(self, rubric_payload: Any) -> List[Dict[str, Any]]:
         if isinstance(rubric_payload, str):
@@ -318,6 +341,8 @@ class PipelineBRwTaskExporter:
         item_index = 1
         for section in rubric.sections:
             for criterion in section.criteria:
+                if not getattr(criterion, "export_to_rw_task", True):
+                    continue
                 normalized.append(
                     {
                         "score": self._criterion_score(criterion),
@@ -332,6 +357,41 @@ class PipelineBRwTaskExporter:
                 )
                 item_index += 1
         return normalized
+
+    def _rubric_filter_summary(
+        self,
+        rubric_payload: Any,
+        normalized_items: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        if not isinstance(rubric_payload, dict):
+            return {
+                "source_type": type(rubric_payload).__name__ if rubric_payload is not None else "none",
+                "exported_item_count": len(normalized_items),
+                "diagnostic_item_count": 0,
+                "filter_applied": False,
+            }
+
+        rubric = RubricArtifact.model_validate(rubric_payload)
+        all_criteria = [criterion for section in rubric.sections for criterion in section.criteria]
+        diagnostic_criteria = [
+            criterion for criterion in all_criteria if not getattr(criterion, "export_to_rw_task", True)
+        ]
+        return {
+            "source_type": "RubricArtifact",
+            "exported_item_count": len(normalized_items),
+            "diagnostic_item_count": len(diagnostic_criteria),
+            "filter_applied": True,
+            "diagnostic_audiences": sorted(
+                set(getattr(criterion, "audience", "candidate") for criterion in diagnostic_criteria)
+            ),
+            "diagnostic_reason_codes": sorted(
+                set(
+                    signal
+                    for criterion in diagnostic_criteria
+                    for signal in list(getattr(criterion, "failure_signals", []) or [])
+                )
+            ),
+        }
 
     def _criterion_score(self, criterion: Any) -> int:
         severity_base = {

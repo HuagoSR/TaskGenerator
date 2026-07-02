@@ -258,6 +258,13 @@ class PipelineBEvalFeedbackAnalyzer:
 
     def _failure_source_for_text(self, text: str) -> LikelyFailureSource:
         lowered = text.lower()
+        if (
+            "pipeline a" in lowered
+            or "graph-signal" in lowered
+            or "subgraph_edge" in lowered
+            or "low_subgraph_confidence" in lowered
+        ):
+            return "pipeline_a_signal_gap"
         if "policy" in lowered or "withholding" in lowered:
             return "policy_reference_prompting"
         if "cite" in lowered or "visible evidence" in lowered or "evidence ids" in lowered:
@@ -267,6 +274,9 @@ class PipelineBEvalFeedbackAnalyzer:
         if any(
             phrase in lowered
             for phrase in [
+                "available evidence units",
+                "required deliverable sections",
+                "intermediate reasoning state",
                 "handle exceptions",
                 "reconcile source totals",
                 "consolidate period financial data",

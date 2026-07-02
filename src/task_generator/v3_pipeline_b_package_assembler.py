@@ -359,8 +359,13 @@ class PipelineBPackageAssembler:
     def _rubric_text(self, rubric: RubricArtifact) -> str:
         lines = []
         for section in rubric.sections:
+            candidate_criteria = [
+                criterion for criterion in section.criteria if criterion.export_to_rw_task
+            ]
+            if not candidate_criteria:
+                continue
             lines.append(section.section_name)
-            for criterion in section.criteria:
+            for criterion in candidate_criteria:
                 lines.append(f"- [{criterion.severity}/{criterion.status_hint}] {criterion.description}")
         return "\n".join(lines)
 
