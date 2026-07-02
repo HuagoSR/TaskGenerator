@@ -147,7 +147,8 @@ Current bridge status:
 - Authorized external toolchain smoke has already completed once for the current draft package, but the result is still only draft-quality evidence.
 - The new eval-feedback layer turns draft grading into prioritized Pipeline B actions and Pipeline A feedback without mutating readiness, the registry, or transition priors.
 - The prompt/teacher contract has now been strengthened deterministically: the blueprint explicitly names the deliverable contract, requires policy-sensitive conclusions to cite policy clause IDs plus evidence IDs, and adds intermediate states such as `deliverable_outline` and `policy_clause_evidence_map`.
-- The current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
+- The rw-task export/eval bridge now has an additional compatibility layer: V3 structured rubrics are downgraded into rw-task-compatible stringified rubric-item lists at export time, and grading is forced onto the same model family selected by eval prep.
+- The current bottleneck is no longer missing policy reference files or broken rw-task grading glue; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
 
 ## Pipeline A: Source-To-Skill Design
 

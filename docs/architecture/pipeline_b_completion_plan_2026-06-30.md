@@ -182,6 +182,23 @@ Completed slices:
      - `package_assembler`: `package_readiness=revise_only`
      - `rw_task_eval_prep`: `prep_status=prepared`, `evaluation_mode=draft_inspection_only`
 
+18. rw-task Compatibility + Grading Model Alignment Fix.
+   - Updated modules:
+     - `src/task_generator/v3_rw_task_exporter.py`
+     - `src/task_generator/v3_rw_task_export_validator.py`
+     - `src/task_generator/v3_rw_task_eval_runner.py`
+   - Purpose: preserve V3 internal rubric richness while exporting a legacy-compatible rw-task grading contract, and keep grading on the intended model instead of drifting to `rw-task/.env` defaults.
+   - Current changes:
+     - exporter now converts V3 `rubric_json` objects into stringified rw-task rubric-item lists
+     - validator now accepts both structured rubric payloads and stringified rubric-item lists
+     - eval runner now sets `GRADER_MODEL` from eval-prep `model` when invoking `bench_standalone.grade_deliverables`
+   - Verified result:
+     - first repaired real smoke no longer failed on missing `total_score`
+     - latest real smoke result is `run_status=completed`
+     - grader model is now `gpt-5.4-pro`
+     - latest summary is `draft_quality_observation` with total score `59 / 81` and score ratio `0.7283950617283951`
+     - latest eval feedback reports 13 low-scoring criteria, 2 Pipeline B actions, and 3 Pipeline A feedback items
+
 Current validation commands:
 
 ```powershell
@@ -228,13 +245,19 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --package-manifest artifacts\pipeline_b\scratch\package_assembler_smoke\package_manifest.json --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_exporter.py src\task_generator\v3_rw_task_export_validator.py src\task_generator\v3_rw_task_eval_runner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --package-manifest artifacts\pipeline_b\scratch\package_assembler_smoke\package_manifest.json --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_summarizer.py --run-report artifacts\pipeline_b\scratch\rw_task_eval_run_real_smoke_strengthened\rw_task_eval_run_report.json --grade-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke_grades\eval_20260702_164743.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke_strengthened
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_eval_feedback_analyzer.py --eval-summary-report artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke_strengthened\pipeline_b_eval_summary_report.json --output-dir artifacts\pipeline_b\scratch\eval_feedback_smoke_strengthened
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation choices:
 
-1. Re-run the guarded real draft rw-task smoke on the strengthened package when external execution is desired, then regenerate eval summary and eval feedback on the new package.
+1. Use the new `draft_quality_observation` (`59 / 81`) plus `eval_feedback_smoke_strengthened` to target the remaining low-scoring rubric dimensions, especially partial intermediate states and visible handling of Pipeline A uncertainty.
 2. Improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
 3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 4. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.

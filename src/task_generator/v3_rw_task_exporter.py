@@ -10,6 +10,7 @@ from task_generator.v3_pipeline_b_package_assembler import (
     PackageArtifactRecord,
     PipelineBPackageManifest,
 )
+from task_generator.v3_rubric_builder import RubricArtifact
 from task_generator.v3_source_schema import load_json_file
 
 
@@ -239,7 +240,7 @@ class PipelineBRwTaskExporter:
             "reference_files": [record.package_path for record in reference_records],
             "deliverable_files": list(draft_row.get("deliverable_files") or []),
             "rubric": draft_row.get("rubric"),
-            "rubric_json": draft_row.get("rubric_json"),
+            "rubric_json": self._rw_task_rubric_json(draft_row.get("rubric_json")),
             "extra": draft_extra,
         }
 
@@ -291,6 +292,70 @@ class PipelineBRwTaskExporter:
 
     def _is_support_reference_record(self, record: PackageArtifactRecord) -> bool:
         return any("Support artifact" in note for note in record.notes)
+
+    def _rw_task_rubric_json(self, rubric_payload: Any) -> str:
+        normalized_items = self._normalize_rubric_payload(rubric_payload)
+        return json.dumps(normalized_items, ensure_ascii=False)
+
+    def _normalize_rubric_payload(self, rubric_payload: Any) -> List[Dict[str, Any]]:
+        if isinstance(rubric_payload, str):
+            try:
+                parsed = json.loads(rubric_payload)
+            except json.JSONDecodeError:
+                return []
+            if isinstance(parsed, list):
+                return parsed
+            rubric_payload = parsed
+
+        if isinstance(rubric_payload, list):
+            return rubric_payload
+
+        if not isinstance(rubric_payload, dict):
+            return []
+
+        rubric = RubricArtifact.model_validate(rubric_payload)
+        normalized: List[Dict[str, Any]] = []
+        item_index = 1
+        for section in rubric.sections:
+            for criterion in section.criteria:
+                normalized.append(
+                    {
+                        "score": self._criterion_score(criterion),
+                        "criterion": criterion.description,
+                        "required": criterion.status_hint != "blocked",
+                        "rubric_item_id": f"R_{item_index:03d}",
+                        "author_type": "model",
+                        "tags": self._criterion_tags(section.section_name, criterion),
+                        "read_only": None,
+                        "form_content": None,
+                    }
+                )
+                item_index += 1
+        return normalized
+
+    def _criterion_score(self, criterion: Any) -> int:
+        severity_base = {
+            "low": 1,
+            "medium": 2,
+            "high": 3,
+        }.get(getattr(criterion, "severity", "medium"), 2)
+        if getattr(criterion, "status_hint", "pass") == "pass":
+            return severity_base + 1 if severity_base < 4 else severity_base
+        return severity_base
+
+    def _criterion_tags(self, section_name: str, criterion: Any) -> List[str]:
+        tags = [section_name]
+        criterion_type = getattr(criterion, "criterion_type", "")
+        if criterion_type and criterion_type not in tags:
+            tags.append(criterion_type)
+        failure_signals = list(getattr(criterion, "failure_signals", []) or [])
+        if failure_signals:
+            tags.append("warning")
+        if getattr(criterion, "status_hint", "") == "pass":
+            tags.append("outcome")
+        else:
+            tags.append("reasoning")
+        return tags
 
     def _write_report(self, report_path: Path, report: PipelineBRwTaskExportReport) -> None:
         report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")

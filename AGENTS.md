@@ -602,6 +602,24 @@ Current strengthened prompt/teacher contract result:
   - `package_assembler`: `package_readiness=revise_only`
   - `rw_task_eval_prep`: `prep_status=prepared`, `evaluation_mode=draft_inspection_only`
 
+Current rw-task compatibility fix result:
+
+- the V3 rw-task exporter now converts internal V3 structured rubric objects into legacy rw-task-compatible `rubric_json`:
+  - stringified list of rubric items
+  - each item carries `score`, `criterion`, `required`, `rubric_item_id`, and `tags`
+- the local export validator now accepts either:
+  - structured JSON rubric payloads
+  - stringified rw-task rubric-item lists
+- the V3 eval runner now aligns `GRADER_MODEL` with the eval-prep model for `grade_deliverables`, instead of silently falling back to `rw-task/.env` `GRADER_MODEL`
+- strengthened real draft smoke result after this fix:
+  - `run_status=completed`
+  - grader model: `gpt-5.4-pro`
+  - `summary_status=summarized`
+  - `evidence_use=draft_quality_observation`
+  - total score `59 / 81`
+  - average score ratio `0.7283950617283951`
+  - eval feedback now reports 13 low-scoring criteria and 2 prioritized Pipeline B actions
+
 Current LLM timing policy:
 
 - Pipeline B Quality Gate V1 does not call LLMs or external APIs.

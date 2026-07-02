@@ -405,14 +405,27 @@ class RwTaskExportValidator:
 
     def _rubric_findings(self, dataset_row: Dict[str, Any]) -> List[RwTaskExportValidationFinding]:
         rubric_json = dataset_row.get("rubric_json")
+        rubric_string_valid = False
+        parsed_type = None
+        if isinstance(rubric_json, str):
+            try:
+                parsed = json.loads(rubric_json)
+                rubric_string_valid = isinstance(parsed, list)
+                parsed_type = type(parsed).__name__
+            except json.JSONDecodeError:
+                rubric_string_valid = False
         return [
             self._finding(
-                "rubric_json_structured",
+                "rubric_json_compatible",
                 "blocking",
-                isinstance(rubric_json, (dict, list)),
-                "rubric_json is structured JSON."
-                if isinstance(rubric_json, (dict, list))
-                else "rubric_json should be structured JSON, not a string or empty value.",
+                isinstance(rubric_json, (dict, list)) or rubric_string_valid,
+                "rubric_json is compatible structured JSON or a stringified rw-task rubric-item list."
+                if isinstance(rubric_json, (dict, list)) or rubric_string_valid
+                else "rubric_json should be structured JSON or a stringified rubric-item list.",
+                {
+                    "stored_type": type(rubric_json).__name__ if rubric_json is not None else "none",
+                    "parsed_type": parsed_type,
+                },
             )
         ]
 

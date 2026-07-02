@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -148,6 +149,7 @@ class RwTaskEvalRunner:
             commands=prep_report.would_run_commands if prep_report else [],
             output_dir=output_path,
             timeout_seconds=command_timeout_seconds,
+            grading_model=prep_report.request.model if prep_report else "",
         )
         failed = any(record.status in {"failed", "timeout"} for record in executed_records)
         report = self._report(
@@ -220,6 +222,7 @@ class RwTaskEvalRunner:
         commands: List[List[str]],
         output_dir: Path,
         timeout_seconds: int,
+        grading_model: str,
     ) -> List[RwTaskEvalCommandRecord]:
         records: List[RwTaskEvalCommandRecord] = []
         log_dir = output_dir / "command_logs"
@@ -233,12 +236,14 @@ class RwTaskEvalRunner:
             stdout = ""
             stderr = ""
             try:
+                env = self._command_env(command, grading_model)
                 completed = subprocess.run(
                     command,
                     capture_output=True,
                     text=True,
                     timeout=timeout,
                     check=False,
+                    env=env,
                 )
                 exit_code = completed.returncode
                 stdout = completed.stdout or ""
@@ -275,6 +280,13 @@ class RwTaskEvalRunner:
             if status != "succeeded":
                 break
         return records
+
+    def _command_env(self, command: List[str], grading_model: str) -> dict[str, str]:
+        env = dict(os.environ)
+        command_name = self._command_name(command)
+        if command_name == "bench_standalone.grade_deliverables" and grading_model:
+            env["GRADER_MODEL"] = grading_model
+        return env
 
     def _output_dirs(self, prep_report: Optional[RwTaskEvalPrepReport]) -> List[str]:
         if not prep_report:
