@@ -261,6 +261,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_rw_task_exporter.py`: CLI for writing `dataset_row.json`, `reference_files/`, `deliverable_files/`, `artifacts/`, and `rw_task_export_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_rw_task_export_validator.py`: local compatibility validator for rw-task-style exports; it checks dataset row fields, copied references, deliverable expectations, draft/final flags, and support-artifact visibility without running model evaluation
 - `Test/run_v3_rw_task_export_validator.py`: CLI for writing `rw_task_export_validation_report.json` for an exported case directory
+- `src/task_generator/v3_rw_task_eval_prep.py`: dry-run evaluation-prep layer that copies a validated rw-task-style export into a batch input directory and emits command previews without running rw-task evaluation
+- `Test/run_v3_rw_task_eval_prep.py`: CLI for writing `rw_task_eval_prep_report.json` and a batch-style eval input directory under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -459,6 +461,7 @@ Current Pipeline A status:
   - blocked export smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --output-dir artifacts\pipeline_b\scratch\rw_task_export_blocked_smoke`
   - draft export smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke`
   - export validation smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke`
+  - eval-prep smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -480,10 +483,11 @@ Current Pipeline A status:
   - current default rw-task export smoke is intentionally blocked on `package_readiness:revise_only`
   - current explicit `--allow-revise-only` export smoke emits a draft case with 2 candidate-visible reference files and marks `dataset_row.json.extra.not_final_training_data=true`
   - current export validation smoke emits `rw_task_export_validation_report.json` with `validation_status=draft_compatible`
+  - current eval-prep smoke emits `rw_task_eval_prep_report.json` with `prep_status=prepared` and `evaluation_mode=draft_inspection_only`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, or V3 rw-task export validator
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, or V3 rw-task eval prep
 - next Pipeline B implementation slice:
-  - optionally connect the locally validated V3 export output to a real `rw-task` smoke evaluation path while keeping blocked vs draft vs final export semantics explicit
+  - optionally run a real `rw-task` smoke evaluation on the prepared batch input while keeping blocked vs draft vs final export semantics explicit
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared

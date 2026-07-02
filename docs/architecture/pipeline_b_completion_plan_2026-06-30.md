@@ -127,6 +127,14 @@ Completed slices:
    - The validator checks local compatibility only: required `dataset_row.json` fields, copied reference files, deliverable expectations, draft/final export flags, structured rubric JSON, and support-artifact visibility.
    - Current smoke result is `validation_status=draft_compatible`; this means the case is structurally inspectable but still not final training data.
 
+13. V3 rw-task Evaluation Prep Dry-Run.
+   - Module: `src/task_generator/v3_rw_task_eval_prep.py`
+   - CLI: `Test/run_v3_rw_task_eval_prep.py`
+   - Inputs: a validated exported case directory plus optional `rw_task_export_validation_report.json`
+   - Outputs: a batch-style eval input directory and `rw_task_eval_prep_report.json`
+   - The prep layer copies the case into `eval_input/<case_id>/`, preserves draft-vs-final truthfulness, and records the exact `stirrup_batch` plus `grade_deliverables` commands that would be run later.
+   - Current smoke result is `prep_status=prepared` with `evaluation_mode=draft_inspection_only`; it does not run any models or rw-task commands.
+
 Current validation commands:
 
 ```powershell
@@ -155,13 +163,15 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --output-di
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_export_validator.py Test\run_v3_rw_task_export_validator.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_prep.py Test\run_v3_rw_task_eval_prep.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Optionally connect the locally validated V3 export output to a real `rw-task` smoke evaluation path, but keep blocked vs draft vs final export semantics explicit.
+1. Optionally run a real `rw-task` smoke evaluation on the prepared batch input, but keep blocked vs draft vs final export semantics explicit.
 2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 3. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
 4. After that, decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
