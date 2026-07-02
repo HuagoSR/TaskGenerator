@@ -263,6 +263,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_rw_task_export_validator.py`: CLI for writing `rw_task_export_validation_report.json` for an exported case directory
 - `src/task_generator/v3_rw_task_eval_prep.py`: dry-run evaluation-prep layer that copies a validated rw-task-style export into a batch input directory and emits command previews without running rw-task evaluation
 - `Test/run_v3_rw_task_eval_prep.py`: CLI for writing `rw_task_eval_prep_report.json` and a batch-style eval input directory under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_rw_task_eval_runner.py`: guarded rw-task smoke runner that consumes `rw_task_eval_prep_report.json`, defaults to dry-run, and only executes prepared commands behind explicit flags
+- `Test/run_v3_rw_task_eval_runner.py`: CLI for writing `rw_task_eval_run_report.json`; use dry-run for normal validation and require `--run-eval --allow-draft-eval` for the current draft-only toolchain smoke
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -462,6 +464,7 @@ Current Pipeline A status:
   - draft export smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke`
   - export validation smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke`
   - eval-prep smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite`
+  - eval-runner dry-run smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -484,10 +487,11 @@ Current Pipeline A status:
   - current explicit `--allow-revise-only` export smoke emits a draft case with 2 candidate-visible reference files and marks `dataset_row.json.extra.not_final_training_data=true`
   - current export validation smoke emits `rw_task_export_validation_report.json` with `validation_status=draft_compatible`
   - current eval-prep smoke emits `rw_task_eval_prep_report.json` with `prep_status=prepared` and `evaluation_mode=draft_inspection_only`
+  - current eval-runner dry-run smoke emits `rw_task_eval_run_report.json` with `run_status=dry_run_ready` and `commands_executed=false`
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, or V3 rw-task eval prep
-- next Pipeline B implementation slice:
-  - optionally run a real `rw-task` smoke evaluation on the prepared batch input while keeping blocked vs draft vs final export semantics explicit
+  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, or V3 rw-task eval runner
+- next Pipeline B implementation choices:
+  - optionally run one explicit draft-only rw-task toolchain smoke with `--run-eval --allow-draft-eval` to verify command compatibility; this is not model-separation evidence
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
@@ -527,6 +531,31 @@ Needed direction:
 LLM teacher mode should use more information than the candidate, such as revealed traps, expected intermediate states, source provenance, and teacher-only checklists.
 
 However, exact grading targets should still be traceable to visible source evidence unless explicitly marked as teacher-only.
+
+## Current rw-task Smoke Runner
+
+Pipeline B now has a guarded runner that consumes the prepared eval input and records execution metadata.
+
+Default behavior:
+
+- read `artifacts/pipeline_b/scratch/rw_task_eval_input_smoke/rw_task_eval_prep_report.json`
+- verify `prep_status=prepared`
+- write a dry-run `rw_task_eval_run_report.json`
+- do not call `bench_standalone.stirrup_batch`, `grade_deliverables`, external APIs, or model providers
+
+Explicit execution behavior:
+
+- require both `--run-eval` and `--allow-draft-eval` for the current `draft_inspection_only` sample
+- record model name, python executable, rw-task root, command list, start/end times, exit codes, output dirs, and failure reasons
+- keep `not_final_training_data=true` and `evaluation_mode=draft_inspection_only` visible in all reports
+- do not mutate `SkillRegistry/*.json`
+
+The first real smoke should answer whether the V3 package can pass through the rw-task toolchain at all. It should not be treated as model-separation evidence until a package reaches `candidate_ready`.
+
+Recommended next choices:
+
+- run the explicit draft toolchain smoke once, if API/network/runtime availability is ready
+- or improve Pipeline A typed resources, transition evidence, and support diversity so the current package can move from `revise_only` toward `candidate_ready`
 
 Current LLM timing policy:
 

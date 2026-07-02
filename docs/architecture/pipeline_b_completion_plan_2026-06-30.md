@@ -11,8 +11,8 @@ Current baseline:
 - Pipeline A has a persistent skill registry and readiness reports.
 - Pipeline B has a report-first resource-aware sampler that can read the seed set and registry, build a `PipelineBSubgraph`, and emit Pipeline A feedback.
 - Pipeline B prototype can still read the seed set directly, and can now also consume a sampler `pipeline_b_subgraph_report.json` to emit a draft `TaskBlueprint`.
-- Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, and a package-level Quality Gate V1.
-- The current chain now includes a V3 rw-task draft export layer after package assembly, but it is still pre-rw-task evaluation and pre-model-separation evaluation.
+- Pipeline B now has deterministic reference-file planning/generation, teacher-input validation, TeacherRunner V1, TrainingAnnotationBuilder V1, RubricBuilder V1, a package-level Quality Gate V1, staged package assembly, V3 rw-task draft export, export validation, eval input prep, and a guarded eval runner.
+- The current chain now reaches rw-task command dry-run metadata. It is still pre-formal model-separation evaluation because the sample package remains `revise_only`.
 
 The next work should convert Pipeline B from "draft blueprint prototype" into "complete task package generator".
 
@@ -135,6 +135,15 @@ Completed slices:
    - The prep layer copies the case into `eval_input/<case_id>/`, preserves draft-vs-final truthfulness, and records the exact `stirrup_batch` plus `grade_deliverables` commands that would be run later.
    - Current smoke result is `prep_status=prepared` with `evaluation_mode=draft_inspection_only`; it does not run any models or rw-task commands.
 
+14. V3 rw-task Eval Runner.
+   - Module: `src/task_generator/v3_rw_task_eval_runner.py`
+   - CLI: `Test/run_v3_rw_task_eval_runner.py`
+   - Input: `rw_task_eval_prep_report.json`
+   - Output: `rw_task_eval_run_report.json`
+   - Default behavior is dry-run metadata only: verify the prep report, keep warning codes visible, and do not call `bench_standalone.stirrup_batch`, `grade_deliverables`, external APIs, or model providers.
+   - Explicit execution requires `--run-eval`; the current `draft_inspection_only` sample additionally requires `--allow-draft-eval`.
+   - Current dry-run smoke result is expected to be `run_status=dry_run_ready` and `commands_executed=false`.
+
 Current validation commands:
 
 ```powershell
@@ -165,17 +174,19 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_prep.py Test\run_v3_rw_task_eval_prep.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py Test\run_v3_rw_task_eval_runner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
-Next implementation slice:
+Next implementation choices:
 
-1. Optionally run a real `rw-task` smoke evaluation on the prepared batch input, but keep blocked vs draft vs final export semantics explicit.
+1. Run one explicit draft-only rw-task toolchain smoke with `--run-eval --allow-draft-eval` if API, network, and runtime availability are ready; treat the result as toolchain evidence only.
 2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 3. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
-4. After that, decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
-5. In parallel, continue improving Pipeline A signals until at least one package can naturally reach `candidate_ready`.
+4. Decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
+5. In parallel, improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
 
 LLM timing policy:
 
@@ -183,6 +194,13 @@ LLM timing policy:
 - LLM teacher mode should run after quality gating, or under an explicit later exploration mode that records partial readiness honestly.
 - LLM output should be stored as teacher proposals, scenario/prose drafts, or reference-document drafts.
 - LLM output must not become grading truth unless validated against candidate-visible evidence or explicitly marked as teacher-only supervision.
+
+Draft evaluation policy:
+
+- A `draft_inspection_only` package may be used to smoke-test the rw-task toolchain, but this is not task-quality evidence.
+- Real smoke execution must record command lines, model name, output dirs, exit codes, failure reasons, and whether grading ran.
+- Formal model-separation evidence should wait for `candidate_ready` packages.
+- The smoke runner must not update the registry, transition priors, or any feedback store as a side effect.
 
 ## Final System Objective
 
@@ -436,8 +454,8 @@ Status:
 - CLI `Test/run_v3_reference_file_planner.py` emits `reference_file_plan.json`.
 - Deterministic table-first generation is now implemented in `src/task_generator/v3_reference_file_generator.py`.
 - CLI `Test/run_v3_reference_file_generator.py` emits concrete files plus manifest/index/trace artifacts.
-- Current smoke generates `source_evidence.xlsx` and explicitly skips `policy_reference.docx` as deferred template work.
-- The next implementation step should broaden supported file types and deepen validation.
+- Current smoke generates `source_evidence.xlsx` and `policy_reference.docx`, writes `policy_reference_clause_map.json`, and keeps generation-strategy metadata for future deterministic, LLM, Stirrup, and imported-file generators.
+- The next implementation step should broaden supported file types and deepen validation without weakening evidence-index traceability.
 
 Goal:
 
@@ -482,7 +500,7 @@ Status:
 - The pre-TeacherRunner contract now exists in `src/task_generator/v3_teacher_input_builder.py`.
 - CLI `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`.
 - `src/task_generator/v3_teacher_runner.py` now consumes those artifacts and emits `golden_run.json` plus `teacher_runner_report.json`.
-- Current teacher readiness remains `partial_ready`, mainly because `policy_reference.docx` is still deferred and subgraph confidence remains low due to resource fallback.
+- Current teacher readiness remains `partial_ready`, mainly because sampled subgraph confidence remains low, selected skills still have single-source support, and Pipeline A typed-resource / transition evidence is incomplete.
 
 Goal:
 
@@ -758,16 +776,20 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The next code change should build the first Pipeline B quality gate on top of the current deterministic blueprint, generation, teacher, annotation, and rubric outputs.
+The current code change is the guarded V3 rw-task eval runner on top of `rw_task_eval_prep_report.json`.
 
 Minimal scope:
 
-- Read `generated_file_manifest.json`, `teacher_runner_report.json`, `training_annotation_report.json`, and `rubric_report.json`.
-- Convert current readiness states and warning codes into a single package-level acceptance or rejection decision with explicit reason codes.
-- Preserve `partial_ready` and unresolved-gap reporting instead of pretending the task is fully solved.
-- Keep policy/reference-doc gaps explicit until richer reference-file generation lands.
+- Read the prepared eval input report.
+- Verify `prep_status=prepared`.
+- Default to `dry_run_ready` and write `rw_task_eval_run_report.json` without calling models, APIs, Stirrup, or rw-task evaluation.
+- Require explicit `--run-eval` for real execution.
+- Require both `--run-eval` and `--allow-draft-eval` for the current `draft_inspection_only` sample.
+- Record model name, python executable, rw-task root, command list, output dirs, start/end times, exit codes, stdout/stderr log paths, and failure reasons if commands are executed.
+- Preserve `not_final_training_data`, revise-only warnings, and `evaluation_mode=draft_inspection_only`.
+- Never mutate `SkillRegistry/*.json`.
 
-This slice should stay conservative. It should prove that Pipeline B can hand a structured, honest teacher packet to the next stage without pretending deferred assets or weak Pipeline A signals have disappeared.
+This slice should answer whether the V3 package has a safe bridge to the rw-task toolchain. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
 
 ## Test Plan For The Current Next Slice
 
@@ -788,6 +810,8 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_trainin
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rubric_builder.py Test\run_v3_rubric_builder.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py Test\run_v3_rw_task_eval_runner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke
 ```
 
 Expected results:
@@ -800,12 +824,12 @@ Expected results:
 - The teacher-runner emits `golden_run.json` and `teacher_runner_report.json`.
 - The training-annotation builder emits `training_annotation.json` and `training_annotation_report.json`.
 - The rubric builder emits `rubric.json` and `rubric_report.json`.
-- The current teacher run stays `partial_ready` rather than hiding missing policy-reference coverage.
+- The current teacher run stays `partial_ready` rather than hiding low-confidence subgraph and Pipeline A signal gaps.
 - No registry files are modified.
 - The plan records file specs, evidence IDs, resource coverage, unresolved gaps, and provenance hooks.
 - If the current registry lacks typed resources for selected skills, the plan carries that warning forward instead of hiding it.
-- Unsupported prose-heavy files are reported explicitly instead of silently skipped.
-- Teacher readiness can remain `partial_ready` when candidate-visible files exist but teacher-critical reference assets are still deferred.
+- The eval runner dry-run emits `run_status=dry_run_ready` and `commands_executed=false`.
+- The current draft eval path remains `draft_inspection_only` and is not final training data.
 
 ## Open Design Questions
 

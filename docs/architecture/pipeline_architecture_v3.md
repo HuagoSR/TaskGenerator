@@ -144,6 +144,7 @@ Current bridge status:
 - blocked vs draft vs final export must remain visible in `dataset_row.extra` and the export report.
 - Local export validation checks structure and file visibility before any model-backed rw-task evaluation is attempted.
 - Evaluation prep dry-run copies only validated cases into a batch-style input directory and records future rw-task commands without executing them.
+- The next planned slice is a guarded real-smoke runner: default dry-run, explicit `--run-eval --allow-draft-eval` for the current draft package, and no registry or prior updates.
 - the current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness and partial teacher/readiness chains.
 
 ## Pipeline A: Source-To-Skill Design
@@ -432,19 +433,19 @@ Current implementation:
 - `Test/run_v3_reference_file_planner.py` consumes a draft `TaskBlueprint`, optionally plus `pipeline_b_subgraph_report.json`.
 - The planner emits `reference_file_plan.json` with stable file IDs, table IDs, text-section IDs, column IDs, evidence IDs, provenance hooks, and carried-forward subgraph diagnostics.
 - `src/task_generator/v3_reference_file_generator.py` now consumes that plan and generates deterministic table-first files where supported.
-- `Test/run_v3_reference_file_generator.py` currently generates `source_evidence.xlsx`, writes `generated_file_manifest.json`, `evidence_index.json`, and `generation_trace.json`, and explicitly marks `.docx` references as deferred template work.
+- `Test/run_v3_reference_file_generator.py` currently generates `source_evidence.xlsx` and `policy_reference.docx`, writes `generated_file_manifest.json`, `evidence_index.json`, `evidence_index_proposal.json`, `generation_trace.json`, and a `policy_reference_clause_map.json` support artifact.
 - `src/task_generator/v3_teacher_input_builder.py` now consumes the blueprint, subgraph report, plan, generated-file manifest, and Pipeline A feedback.
 - `Test/run_v3_teacher_input_builder.py` emits `teacher_input_manifest.json` and `teacher_input_validation_report.json`, separating candidate-visible artifacts from teacher-visible supervision and marking current readiness as `partial_ready`.
 - `src/task_generator/v3_teacher_runner.py` now consumes the teacher input artifacts and deterministically emits `golden_run.json`.
-- `Test/run_v3_teacher_runner.py` emits `golden_run.json` and `teacher_runner_report.json`; current smoke stays `partial_ready` and makes missing policy references explicit instead of hiding them.
+- `Test/run_v3_teacher_runner.py` emits `golden_run.json` and `teacher_runner_report.json`; current smoke stays `partial_ready` because low-confidence sampled subgraphs and support-evidence limits remain visible.
 - `src/task_generator/v3_training_annotation_builder.py` now consumes `golden_run.json`, `teacher_runner_report.json`, and `teacher_input_manifest.json`.
 - `Test/run_v3_training_annotation_builder.py` emits `training_annotation.json` and `training_annotation_report.json`, including a richer V3 supervision artifact plus an embedded V2-compatible annotation projection.
 - `src/task_generator/v3_rubric_builder.py` now consumes the training annotation and teacher outputs and emits a JSON-only `rubric.json`.
 - `Test/run_v3_rubric_builder.py` emits `rubric.json` and `rubric_report.json`, preserving `partial_ready`, unresolved gaps, and warning codes instead of flattening them away.
 - `src/task_generator/v3_pipeline_b_quality_gate.py` now consumes generated-file, teacher-input, teacher-runner, training-annotation, and rubric reports.
-- `Test/run_v3_pipeline_b_quality_gate.py` emits `pipeline_b_quality_report.json`; the current smoke decision is `revise`, not `candidate_ready`, because deferred policy references, policy-lookup warnings, low subgraph confidence, single-source support, and the partial-ready chain remain visible.
+- `Test/run_v3_pipeline_b_quality_gate.py` emits `pipeline_b_quality_report.json`; the current smoke decision is `revise`, not `candidate_ready`, because low subgraph confidence, single-source support, Pipeline A signal gaps, partial intermediate states, and the partial-ready chain remain visible.
 - `src/task_generator/v3_pipeline_b_package_assembler.py` now stages gated artifacts into a package directory.
-- `Test/run_v3_pipeline_b_package_assembler.py` emits `package_manifest.json` and `dataset_row_draft.json`; the current smoke package is `revise_only`, copies the generated workbook, and preserves the deferred policy document blocker.
+- `Test/run_v3_pipeline_b_package_assembler.py` emits `package_manifest.json` and `dataset_row_draft.json`; the current smoke package is `revise_only`, copies both generated reference files, and preserves the quality-gate decision rather than a missing policy-document blocker.
 
 ### 4. TeacherRunner / GoldenRun
 
@@ -519,7 +520,7 @@ Responsibility:
 
 - collect the gated artifacts into a stable package directory
 - copy generated candidate-visible reference files
-- preserve deferred or missing reference files as package blockers
+- preserve deferred or missing reference files as package blockers when they exist
 - emit a draft dataset row for export inspection without claiming final rw-task readiness
 
 Current implementation:
@@ -540,6 +541,17 @@ Targets:
 - rw-task package
 - inspection package
 - debugging package
+
+Current implementation:
+
+- `src/task_generator/v3_rw_task_exporter.py` exports the staged package into an rw-task-style case directory.
+- `Test/run_v3_rw_task_exporter.py` blocks formal export for `revise_only` packages by default; `--allow-revise-only` writes an inspection-only draft case with `not_final_training_data=true`.
+- `src/task_generator/v3_rw_task_export_validator.py` validates the local case structure without running models.
+- `Test/run_v3_rw_task_export_validator.py` currently reports `validation_status=draft_compatible`.
+- `src/task_generator/v3_rw_task_eval_prep.py` copies a validated draft case into a batch-style eval input directory and records future command previews.
+- `Test/run_v3_rw_task_eval_prep.py` currently reports `prep_status=prepared` and `evaluation_mode=draft_inspection_only`.
+- `src/task_generator/v3_rw_task_eval_runner.py` consumes the prep report and writes `rw_task_eval_run_report.json`.
+- `Test/run_v3_rw_task_eval_runner.py` defaults to dry-run metadata only; real execution requires `--run-eval`, and the current draft sample additionally requires `--allow-draft-eval`.
 
 ## Quality Funnel
 
@@ -898,7 +910,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, and a staged package assembler. The next implementation step should either wire `rw-task` export to this package format or broaden the generation contract toward more file types and future LLM/Stirrup strategies.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, staged package assembly, V3 rw-task draft export, export validation, eval-input prep, and guarded eval-runner dry-run metadata. The current package remains `revise_only`, so it is structurally inspectable but not final training data.
 
 Recommended next code tasks:
 
@@ -913,8 +925,11 @@ Recommended next code tasks:
 - keep using `Test/run_v3_rubric_builder.py` to produce `rubric.json` and `rubric_report.json`
 - keep using `Test/run_v3_pipeline_b_quality_gate.py` to produce `pipeline_b_quality_report.json`
 - keep using `Test/run_v3_pipeline_b_package_assembler.py` to produce `package_manifest.json` and `dataset_row_draft.json`
-- wire a `rw-task` export adapter to the staged package, gated by package readiness
-- continue marking prose-heavy `.docx` references as deferred until a separate template/document slice is ready
+- keep using `Test/run_v3_rw_task_exporter.py` and `Test/run_v3_rw_task_export_validator.py` for structural rw-task draft export checks
+- keep using `Test/run_v3_rw_task_eval_prep.py` to prepare batch-style eval input and command previews
+- keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata; only use `--run-eval --allow-draft-eval` when deliberately smoke-testing the toolchain
+- treat draft eval execution as toolchain evidence only, not task-quality or model-separation evidence
+- broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
 - continue improving resource compatibility and motif coverage only in response to Pipeline B assembly failures
