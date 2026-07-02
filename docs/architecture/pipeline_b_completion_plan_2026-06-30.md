@@ -119,6 +119,14 @@ Completed slices:
    - Default behavior blocks formal export unless `package_readiness=candidate_ready`.
    - Current smoke result blocks default export for the `revise_only` package, while explicit `--allow-revise-only` produces an inspection-only draft export with 2 candidate-visible reference files.
 
+12. V3 rw-task Export Validation.
+   - Module: `src/task_generator/v3_rw_task_export_validator.py`
+   - CLI: `Test/run_v3_rw_task_export_validator.py`
+   - Input: an exported rw-task-style case directory
+   - Output: `rw_task_export_validation_report.json`
+   - The validator checks local compatibility only: required `dataset_row.json` fields, copied reference files, deliverable expectations, draft/final export flags, structured rubric JSON, and support-artifact visibility.
+   - Current smoke result is `validation_status=draft_compatible`; this means the case is structurally inspectable but still not final training data.
+
 Current validation commands:
 
 ```powershell
@@ -145,13 +153,15 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_exporter.py Test\run_v3_rw_task_exporter.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --output-dir artifacts\pipeline_b\scratch\rw_task_export_blocked_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_export_validator.py Test\run_v3_rw_task_export_validator.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation slice:
 
-1. Optionally connect the V3 export output to a real `rw-task` smoke evaluation path, but keep blocked vs draft vs final export semantics explicit.
+1. Optionally connect the locally validated V3 export output to a real `rw-task` smoke evaluation path, but keep blocked vs draft vs final export semantics explicit.
 2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 3. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
 4. After that, decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
