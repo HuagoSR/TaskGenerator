@@ -143,7 +143,16 @@ Completed slices:
    - Default behavior is dry-run metadata only: verify the prep report, keep warning codes visible, and do not call `bench_standalone.stirrup_batch`, `grade_deliverables`, external APIs, or model providers.
    - Explicit execution requires `--run-eval`; the current `draft_inspection_only` sample additionally requires `--allow-draft-eval`.
    - Current dry-run smoke result is `run_status=dry_run_ready` and `commands_executed=false`.
-   - Current explicit local smoke evidence: the first run failed without `E2B_API_KEY` in the process environment; after loading `E2B_API_KEY` and `AGENT_*` from `E:\THU\2026Spring\SRT\rw-task\.env`, the run reached E2B sandbox creation and then failed with `All connection attempts failed` under the current Codex sandbox/network boundary.
+   - Early explicit local smoke evidence exposed two environment boundaries: missing process-level `E2B_API_KEY`, then blocked outbound E2B connectivity under the Codex sandbox.
+   - Authorized external smoke with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env` completed both prepared commands: `stirrup_batch` succeeded for 1/1 case and `grade_deliverables` wrote a grader JSON.
+
+15. V3 rw-task Eval Summarizer.
+   - Module: `src/task_generator/v3_rw_task_eval_summarizer.py`
+   - CLI: `Test/run_v3_rw_task_eval_summarizer.py`
+   - Inputs: `rw_task_eval_run_report.json` plus a grader JSON or grade directory
+   - Output: `pipeline_b_eval_summary_report.json`
+   - The summarizer is report-only and does not update registries, transition priors, quality gates, or package readiness.
+   - Current smoke result is `summary_status=summarized`, `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and average score ratio `0.625` (`20/32`).
 
 Current validation commands:
 
@@ -177,17 +186,19 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py Test\run_v3_rw_task_eval_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_summarizer.py Test\run_v3_rw_task_eval_summarizer.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_summarizer.py --run-report artifacts\pipeline_b\scratch\rw_task_eval_run_real_smoke_e2b_escalated\rw_task_eval_run_report.json --grade-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke_e2b_grades --output-dir artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation choices:
 
-1. Rerun the explicit draft-only rw-task toolchain smoke outside the current Codex sandbox, with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env`, if outbound E2B/model-provider access is allowed; treat the result as toolchain evidence only.
-2. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
-3. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
-4. Decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
-5. In parallel, improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
+1. Improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
+2. Use `pipeline_b_eval_summary_report.json` as diagnostic evidence for prompt, rubric, and reference-generation improvements while keeping draft eval results out of registry and transition-prior updates.
+3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
+4. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
+5. Decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
 
 LLM timing policy:
 
@@ -200,7 +211,8 @@ Draft evaluation policy:
 
 - A `draft_inspection_only` package may be used to smoke-test the rw-task toolchain, but this is not task-quality evidence.
 - Real smoke execution must record command lines, model name, output dirs, exit codes, failure reasons, and whether grading ran.
-- Current local evidence shows that successful dry-run and eval-prep are not enough by themselves; real smoke also depends on runtime env injection and outbound E2B connectivity.
+- Current evidence shows that successful dry-run and eval-prep are not enough by themselves; real smoke also depends on runtime env injection and outbound E2B connectivity.
+- Authorized external smoke completed successfully, but its grader result is still a draft-quality observation because the package remains `revise_only`.
 - Formal model-separation evidence should wait for `candidate_ready` packages.
 - The smoke runner must not update the registry, transition priors, or any feedback store as a side effect.
 

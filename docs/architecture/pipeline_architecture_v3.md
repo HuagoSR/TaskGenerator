@@ -137,7 +137,7 @@ This pipeline should be hybrid. LLMs are useful for scenario construction, busin
 
 Current bridge status:
 
-- Pipeline B can now run `seed set -> sampled subgraph -> draft blueprint -> reference-file plan -> generated reference files -> teacher input -> deterministic GoldenRun -> training annotation -> rubric -> quality gate -> staged package -> rw-task-style draft export -> local export validation -> evaluation prep dry-run`.
+- Pipeline B can now run `seed set -> sampled subgraph -> draft blueprint -> reference-file plan -> generated reference files -> teacher input -> deterministic GoldenRun -> training annotation -> rubric -> quality gate -> staged package -> rw-task-style draft export -> local export validation -> evaluation prep -> guarded eval runner -> eval summary`.
 - The export layer is still structural and conservative.
 - `candidate_ready` packages can be formally exported.
 - `revise_only` packages are blocked by default and only export as inspection-only drafts when explicitly allowed.
@@ -552,6 +552,8 @@ Current implementation:
 - `Test/run_v3_rw_task_eval_prep.py` currently reports `prep_status=prepared` and `evaluation_mode=draft_inspection_only`.
 - `src/task_generator/v3_rw_task_eval_runner.py` consumes the prep report and writes `rw_task_eval_run_report.json`.
 - `Test/run_v3_rw_task_eval_runner.py` defaults to dry-run metadata only; real execution requires `--run-eval`, and the current draft sample additionally requires `--allow-draft-eval`.
+- `src/task_generator/v3_rw_task_eval_summarizer.py` consumes the eval run report and grader JSON to emit a report-only `pipeline_b_eval_summary_report.json`.
+- `Test/run_v3_rw_task_eval_summarizer.py` currently summarizes the authorized draft smoke as `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and average score ratio `0.625` (`20/32`).
 
 ## Quality Funnel
 
@@ -914,10 +916,10 @@ Pipeline A has reached a handoff point, and the first Pipeline B bridge is now w
 
 Current toolchain smoke evidence:
 
-- the explicit local draft-only rw-task smoke reached `bench_standalone.stirrup_batch`, so the V3 export and eval-prep bridge is structurally usable by the rw-task CLI
-- the first local run failed because `E2B_API_KEY` was not present in the process environment
-- after loading `E2B_API_KEY` and `AGENT_*` from `E:\THU\2026Spring\SRT\rw-task\.env`, the run reached E2B sandbox creation and then failed with `All connection attempts failed` under the current Codex sandbox/network boundary
-- the follow-on `grade_deliverables` failure was downstream of that failed batch run, not the first blocker
+- early local explicit smoke attempts exposed environment boundaries: missing process-level `E2B_API_KEY`, then blocked outbound E2B connectivity under the Codex sandbox
+- authorized external smoke with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env` completed both `bench_standalone.stirrup_batch` and `bench_standalone.grade_deliverables`
+- the grader JSON records 1 successful sample with score `20/32`, ratio `0.625`, graded by `gpt-4o-mini` under strict grading
+- because the package is still `draft_inspection_only` and `revise_only`, this result is toolchain evidence plus draft-quality observation, not final model-separation evidence
 
 Recommended next code tasks:
 
@@ -934,8 +936,10 @@ Recommended next code tasks:
 - keep using `Test/run_v3_pipeline_b_package_assembler.py` to produce `package_manifest.json` and `dataset_row_draft.json`
 - keep using `Test/run_v3_rw_task_exporter.py` and `Test/run_v3_rw_task_export_validator.py` for structural rw-task draft export checks
 - keep using `Test/run_v3_rw_task_eval_prep.py` to prepare batch-style eval input and command previews
-- keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata; use `--run-eval --allow-draft-eval` only when deliberately smoke-testing the toolchain in an environment that allows outbound E2B/model-provider access
-- treat draft eval execution as toolchain evidence only, not task-quality or model-separation evidence
+- keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata and guarded explicit smoke execution
+- keep using `Test/run_v3_rw_task_eval_summarizer.py` to convert run and grader outputs into a small report-only summary
+- treat draft eval execution as toolchain evidence and draft-quality observation only, not final model-separation evidence
+- focus the next implementation work on the warning reasons still blocking `candidate_ready`: low subgraph confidence, single-source support, partial intermediate states, and Pipeline A signal gaps
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
