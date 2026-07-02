@@ -501,6 +501,7 @@ Current Pipeline A status:
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
+  - keep the strengthened prompt/teacher contract slice as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, and `policy_clause_traceability`
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
@@ -581,6 +582,25 @@ Current eval-feedback result:
   - evidence-to-conclusion traceability
   - skill-step operationalization in teacher states and prompt wording
   - policy-rule usage being too implicit
+
+Current strengthened prompt/teacher contract result:
+
+- the current deterministic blueprint now explicitly requires:
+  - deliverable-path awareness
+  - separation of supported conclusions, confirmed exceptions, and unresolved items
+  - policy-sensitive conclusions to cite both evidence IDs and policy clause IDs
+- the current GoldenPlan now explicitly includes:
+  - `deliverable_outline`
+  - `policy_clause_evidence_map`
+- the current final-check set now explicitly includes:
+  - `deliverable_requirement_coverage`
+  - `policy_clause_traceability`
+- latest deterministic smoke after this strengthening slice:
+  - `teacher_runner`: 8 intermediate states, 5 final checks
+  - `training_annotation`: 17 supervision items
+  - `rubric`: 43 criteria
+  - `package_assembler`: `package_readiness=revise_only`
+  - `rw_task_eval_prep`: `prep_status=prepared`, `evaluation_mode=draft_inspection_only`
 
 Current LLM timing policy:
 

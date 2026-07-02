@@ -357,7 +357,7 @@ class TrainingAnnotationBuilder:
         fact_checks = [
             self._final_check_description(check.check_name, check.status)
             for check in golden_run.final_checks
-            if check.check_name in {"deliverable_presence", "evidence_traceability"}
+            if check.check_name in {"deliverable_presence", "deliverable_requirement_coverage", "evidence_traceability"}
         ]
         reasoning_checks = [
             step.expected_action
@@ -371,7 +371,7 @@ class TrainingAnnotationBuilder:
         compliance_checks = [
             self._final_check_description(check.check_name, check.status)
             for check in golden_run.final_checks
-            if check.check_name == "conclusion_supported_by_visible_evidence"
+            if check.check_name in {"policy_clause_traceability", "conclusion_supported_by_visible_evidence"}
         ]
         return RubricProjection(
             fact_checks=fact_checks,
@@ -437,7 +437,9 @@ class TrainingAnnotationBuilder:
     def _final_check_target_type(self, check_name: str):
         mapping = {
             "deliverable_presence": "binary_check",
+            "deliverable_requirement_coverage": "binary_check",
             "evidence_traceability": "reasoning_check",
+            "policy_clause_traceability": "reasoning_check",
             "conclusion_supported_by_visible_evidence": "reasoning_or_robustness_check",
         }
         return mapping.get(check_name, "reasoning_check")
@@ -445,7 +447,9 @@ class TrainingAnnotationBuilder:
     def _final_check_description(self, check_name: str, status: str) -> str:
         base = {
             "deliverable_presence": "Check that the expected deliverable path is supportable from the generated reference package.",
+            "deliverable_requirement_coverage": "Check that the deliverable covers the required manager-facing sections and does not collapse them into one undifferentiated note.",
             "evidence_traceability": "Check that material conclusions cite candidate-visible evidence IDs or locations.",
+            "policy_clause_traceability": "Check that policy-sensitive conclusions cite explicit candidate-visible policy clause IDs together with supporting evidence.",
             "conclusion_supported_by_visible_evidence": "Check that conclusions are supported by visible evidence rather than hidden assumptions.",
         }.get(check_name, f"Check `{check_name}`.")
         if status != "pass":
@@ -506,4 +510,3 @@ class TrainingAnnotationBuilder:
 
         raw = "|".join(parts)
         return f"{prefix}_{hashlib.sha1(raw.encode('utf-8')).hexdigest()[:10]}"
-

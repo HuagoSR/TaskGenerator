@@ -254,6 +254,14 @@ class TeacherInputBuilder:
         ]
 
         hidden_hints = list(blueprint.prompt_spec.hidden_requirements)
+        for deliverable in blueprint.deliverable_spec:
+            hidden_hints.append(
+                "Deliverable contract: "
+                + deliverable.file_name
+                + " must cover "
+                + "; ".join(deliverable.requirements)
+                + "."
+            )
         hidden_hints.extend(
             f"Pipeline A feedback: {item.get('message', '')}"
             for item in pipeline_a_feedback
@@ -262,6 +270,10 @@ class TeacherInputBuilder:
         hidden_hints.extend(
             f"Deferred asset: {file_name}" for file_name in deferred_assets
         )
+        if any(item.file_name == "policy_reference.docx" for item in generated_manifest.evidence_index):
+            hidden_hints.append(
+                "Policy clause IDs are candidate-visible and should be cited explicitly whenever policy logic is invoked."
+            )
 
         skill_intentions = []
         for skill in subgraph.selected_skills:
@@ -487,10 +499,16 @@ class TeacherInputBuilder:
     def _training_intent(self, skill: Any) -> str:
         capability_text = ", ".join(skill.capability_tags) if skill.capability_tags else "general reasoning"
         motif_text = ", ".join(skill.motif_hints) if skill.motif_hints else "task assembly"
-        return (
+        sentence = (
             f"Train the model to apply {skill.canonical_name.lower()} with emphasis on "
             f"{capability_text} inside motif(s): {motif_text}."
         )
+        lowered = skill.canonical_name.lower()
+        if any(token in lowered for token in ["policy", "tax", "withholding", "requirement"]):
+            sentence += " Require explicit policy-clause and evidence-ID linkage."
+        if any(token in lowered for token in ["reconcile", "consolidate", "report"]):
+            sentence += " Require a manager-ready deliverable step instead of loose notes."
+        return sentence
 
     def _skill_risk_notes(self, skill: Any) -> List[str]:
         notes = []
@@ -498,4 +516,7 @@ class TeacherInputBuilder:
             notes.append("Single-source support means the teacher should check provenance carefully.")
         if not skill.graph_role_hints or "unclassified" in skill.graph_role_hints:
             notes.append("Graph role coverage is incomplete for this skill in the current subgraph.")
+        lowered = skill.canonical_name.lower()
+        if any(token in lowered for token in ["policy", "tax", "withholding", "requirement"]):
+            notes.append("Policy-sensitive reasoning should cite clause IDs and evidence IDs together.")
         return notes

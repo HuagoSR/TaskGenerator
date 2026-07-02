@@ -162,6 +162,26 @@ Completed slices:
    - The analyzer is report-only and does not update registries, transition priors, quality gates, package readiness, or sampling weights.
    - Current smoke result is `feedback_status=analyzed`, with 6 low-scoring criteria, 5 prioritized Pipeline B actions, 3 Pipeline A feedback items, and 14 candidate-ready blockers.
 
+17. Prompt + Teacher Contract Strengthening Slice.
+   - Updated modules:
+     - `src/task_generator/v3_pipeline_b_prototype.py`
+     - `src/task_generator/v3_teacher_input_builder.py`
+     - `src/task_generator/v3_teacher_runner.py`
+     - `src/task_generator/v3_training_annotation_builder.py`
+   - Purpose: apply the first eval-feedback findings without using LLMs by making the deterministic task contract more explicit.
+   - Current changes:
+     - visible prompt requirements now explicitly name the deliverable path, require supported-conclusion / confirmed-exception / unresolved-item separation, and require policy-sensitive conclusions to cite both evidence IDs and policy clause IDs
+     - teacher hints now carry an explicit deliverable contract summary and policy-clause citation reminder
+     - GoldenPlan intermediate states now include `deliverable_outline` and `policy_clause_evidence_map`
+     - final checks now include `deliverable_requirement_coverage` and `policy_clause_traceability`
+     - teacher evidence matching now includes policy-clause artifacts for policy-oriented states and steps
+   - Current smoke result:
+     - `teacher_runner`: 8 intermediate states, 5 final checks
+     - `training_annotation`: 17 supervision items
+     - `rubric`: 43 criteria
+     - `package_assembler`: `package_readiness=revise_only`
+     - `rw_task_eval_prep`: `prep_status=prepared`, `evaluation_mode=draft_inspection_only`
+
 Current validation commands:
 
 ```powershell
@@ -198,13 +218,23 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_summarizer.py --run-report artifacts\pipeline_b\scratch\rw_task_eval_run_real_smoke_e2b_escalated\rw_task_eval_run_report.json --grade-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke_e2b_grades --output-dir artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_eval_feedback_analyzer.py Test\run_v3_pipeline_b_eval_feedback_analyzer.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_eval_feedback_analyzer.py --output-dir artifacts\pipeline_b\scratch\eval_feedback_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_prototype.py src\task_generator\v3_teacher_input_builder.py src\task_generator\v3_teacher_runner.py src\task_generator\v3_training_annotation_builder.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --output-dir artifacts\pipeline_b\scratch\teacher_input_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --output-dir artifacts\pipeline_b\scratch\teacher_runner_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_training_annotation_builder.py --output-dir artifacts\pipeline_b\scratch\training_annotation_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rubric_builder.py --output-dir artifacts\pipeline_b\scratch\rubric_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py --output-dir artifacts\pipeline_b\scratch\package_assembler_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --package-manifest artifacts\pipeline_b\scratch\package_assembler_smoke\package_manifest.json --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation choices:
 
-1. Use `pipeline_b_eval_feedback_report.json` to drive the next deterministic fixes in prompt evidence contracts, teacher-step operationalization, policy-reference usage, supervision density, and intermediate-state completion.
+1. Re-run the guarded real draft rw-task smoke on the strengthened package when external execution is desired, then regenerate eval summary and eval feedback on the new package.
 2. Improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
 3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 4. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.

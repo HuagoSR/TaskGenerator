@@ -146,7 +146,8 @@ Current bridge status:
 - Evaluation prep dry-run copies only validated cases into a batch-style input directory and records future rw-task commands without executing them.
 - Authorized external toolchain smoke has already completed once for the current draft package, but the result is still only draft-quality evidence.
 - The new eval-feedback layer turns draft grading into prioritized Pipeline B actions and Pipeline A feedback without mutating readiness, the registry, or transition priors.
-- The current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness, partial teacher/readiness chains, and under-specified evidence-to-conclusion contracts.
+- The prompt/teacher contract has now been strengthened deterministically: the blueprint explicitly names the deliverable contract, requires policy-sensitive conclusions to cite policy clause IDs plus evidence IDs, and adds intermediate states such as `deliverable_outline` and `policy_clause_evidence_map`.
+- The current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
 
 ## Pipeline A: Source-To-Skill Design
 

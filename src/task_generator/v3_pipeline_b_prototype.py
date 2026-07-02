@@ -385,7 +385,9 @@ class PipelineBPrototypeBuilder:
                 )
             ],
             prompt_spec=PromptSpec(
-                visible_requirements=self._visible_requirements(motif, skill_names),
+                visible_requirements=self._visible_requirements(
+                    motif, skill_names, hints["deliverable_name"], selected_entries
+                ),
                 hidden_requirements=self._hidden_requirements(motif, selected_entries),
                 style_constraints=[
                     "realistic business memo tone",
@@ -395,11 +397,7 @@ class PipelineBPrototypeBuilder:
             ),
             golden_plan=GoldenPlan(
                 required_intermediate_states=self._intermediate_states(motif, selected_entries),
-                required_final_checks=[
-                    "deliverable_presence",
-                    "evidence_traceability",
-                    "conclusion_supported_by_visible_evidence",
-                ],
+                required_final_checks=self._final_checks(motif, selected_entries),
             ),
         )
 
@@ -477,11 +475,19 @@ class PipelineBPrototypeBuilder:
             )
         return relationships
 
-    def _visible_requirements(self, motif: str, skill_names: List[str]) -> List[str]:
+    def _visible_requirements(
+        self,
+        motif: str,
+        skill_names: List[str],
+        deliverable_name: str,
+        entries: List[SkillRegistryEntry],
+    ) -> List[str]:
         requirements = [
             "Review the provided reference files and produce the requested deliverable.",
+            f"Write the final deliverable as `{deliverable_name}` and keep the content manager-ready.",
             "Cite the evidence IDs or source labels that support each material conclusion.",
             "Flag items that cannot be resolved from the provided evidence.",
+            "Separate supported conclusions, confirmed exceptions, and unresolved items instead of blending them together.",
         ]
         if motif == "fan_in_reconciliation":
             requirements.append("Reconcile source evidence to the control totals and explain material differences.")
@@ -491,6 +497,10 @@ class PipelineBPrototypeBuilder:
             requirements.append("Apply the stated policy requirements to each relevant evidence item.")
         elif motif == "evidence_to_deliverable":
             requirements.append("Synthesize the evidence into a manager-ready deliverable rather than a raw notes list.")
+        if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
+            requirements.append(
+                "For each policy-sensitive conclusion, cite both the supporting evidence ID and the applicable policy clause ID."
+            )
         if skill_names:
             requirements.append("The task should exercise: " + "; ".join(skill_names[:4]) + ".")
         return requirements
@@ -499,24 +509,38 @@ class PipelineBPrototypeBuilder:
         hidden = [
             "Do not reward unsupported conclusions that lack visible evidence citations.",
             "Treat unresolved evidence gaps separately from confirmed exceptions.",
+            "The expected deliverable should be supportable from candidate-visible reference files, not hidden teacher assumptions.",
         ]
         if motif in {"cross_check_validation", "fan_in_reconciliation"}:
             hidden.append("The teacher run should expose intermediate cross-check or reconciliation states.")
         if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
             hidden.append("Exact grading anchors must be traceable to visible policy or requirement evidence.")
+            hidden.append("Policy-grounded claims should cite explicit clause IDs together with the evidence they govern.")
         return hidden
 
     def _intermediate_states(self, motif: str, entries: List[SkillRegistryEntry]) -> List[str]:
-        states = ["evidence_inventory", "evidence_to_conclusion_map"]
+        states = ["evidence_inventory", "deliverable_outline", "evidence_to_conclusion_map"]
         if motif in {"fan_in_reconciliation", "cross_check_validation"}:
             states.append("cross_check_matrix")
         if motif == "fan_in_reconciliation":
             states.append("reconciliation_difference_log")
         if motif == "policy_application" or self._mentions(entries, ["policy", "requirement", "tax"]):
             states.append("policy_requirement_mapping")
+            states.append("policy_clause_evidence_map")
         if self._mentions(entries, ["exception", "finding"]):
             states.append("exception_classification_log")
         return states
+
+    def _final_checks(self, motif: str, entries: List[SkillRegistryEntry]) -> List[str]:
+        checks = [
+            "deliverable_presence",
+            "deliverable_requirement_coverage",
+            "evidence_traceability",
+            "conclusion_supported_by_visible_evidence",
+        ]
+        if motif == "policy_application" or self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
+            checks.insert(3, "policy_clause_traceability")
+        return checks
 
     def _diagnose_signals(
         self,
@@ -651,4 +675,3 @@ class PipelineBPrototypeBuilder:
 
     def _title(self, text: str) -> str:
         return re.sub(r"[_-]+", " ", text).title()
-

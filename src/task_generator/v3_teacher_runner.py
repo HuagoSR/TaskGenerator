@@ -300,12 +300,32 @@ class TeacherRunner:
                     blocking_reasons.append("missing_generated_reference_file")
                 else:
                     notes.append("Candidate-visible source evidence exists for deliverable drafting.")
+            elif check_name == "deliverable_requirement_coverage":
+                if not manifest.candidate_view.deliverables:
+                    status = "blocked"
+                    blocking_reasons.append("missing_deliverable_contract")
+                else:
+                    notes.append("Deliverable requirements are explicitly available for teacher-side coverage checks.")
             elif check_name == "evidence_traceability":
                 if not evidence_ids:
                     status = "blocked"
                     blocking_reasons.append("missing_evidence_contract")
                 else:
                     notes.append("Evidence IDs are available for citation checks.")
+            elif check_name == "policy_clause_traceability":
+                relationship_check = warning_checks.get("relationship:policy_lookup")
+                has_policy_evidence = any(
+                    item.file_name == "policy_reference.docx" for item in manifest.teacher_view.evidence_contract
+                )
+                if not has_policy_evidence:
+                    status = "blocked"
+                    blocking_reasons.append("missing_policy_clause_evidence")
+                elif relationship_check and not relationship_check.passed:
+                    status = "partial"
+                    blocking_reasons.append("relationship:policy_lookup")
+                    notes.append("Policy clause traceability is only partially established.")
+                else:
+                    notes.append("Policy clauses are candidate-visible and available for explicit citation.")
             elif check_name == "conclusion_supported_by_visible_evidence":
                 relationship_check = warning_checks.get("relationship:policy_lookup")
                 if relationship_check and not relationship_check.passed:
@@ -433,6 +453,8 @@ class TeacherRunner:
             canonical = intention.canonical_name.lower()
             if "exception" in state_name and "exception" in canonical:
                 selected.append(intention.skill_id)
+            elif "deliverable_outline" in state_name:
+                selected.append(intention.skill_id)
             elif "policy" in state_name and (
                 "policy" in canonical or "tax" in canonical or "withholding" in canonical
             ):
@@ -457,9 +479,30 @@ class TeacherRunner:
             semantic = item.semantic_type.lower()
             if "inventory" in state_name and semantic in {"identifier", "source_label", "business_entity"}:
                 matches.append(item.evidence_id)
+            elif "deliverable_outline" in state_name and semantic in {
+                "identifier",
+                "source_label",
+                "mixed_fact",
+                "policy_rule",
+                "decision_rule",
+            }:
+                matches.append(item.evidence_id)
             elif "conclusion_map" in state_name and semantic in {"mixed_fact", "source_label"}:
                 matches.append(item.evidence_id)
-            elif "policy" in state_name and semantic in {"business_entity", "mixed_fact"}:
+            elif "policy_clause_evidence_map" in state_name and semantic in {
+                "policy_rule",
+                "decision_rule",
+                "contextual_reference",
+                "business_entity",
+                "mixed_fact",
+            }:
+                matches.append(item.evidence_id)
+            elif "policy" in state_name and semantic in {
+                "business_entity",
+                "mixed_fact",
+                "policy_rule",
+                "decision_rule",
+            }:
                 matches.append(item.evidence_id)
             elif "exception" in state_name and semantic in {"mixed_fact", "identifier"}:
                 matches.append(item.evidence_id)
@@ -488,9 +531,17 @@ class TeacherRunner:
             elif ("tax" in lowered or "policy" in lowered or "withholding" in lowered) and semantic in {
                 "business_entity",
                 "mixed_fact",
+                "policy_rule",
+                "decision_rule",
+                "contextual_reference",
             }:
                 matched.append(item)
-            elif "consolidate" in lowered and semantic in {"source_label", "business_entity", "mixed_fact"}:
+            elif "consolidate" in lowered and semantic in {
+                "source_label",
+                "business_entity",
+                "mixed_fact",
+                "time_period",
+            }:
                 matched.append(item)
         if not matched:
             matched = evidence_contract[: min(3, len(evidence_contract))]
@@ -509,8 +560,10 @@ class TeacherRunner:
     def _state_purpose(self, state_name: str) -> str:
         purposes = {
             "evidence_inventory": "List the available evidence units before drawing conclusions.",
+            "deliverable_outline": "Outline the required deliverable sections before drafting final prose.",
             "evidence_to_conclusion_map": "Connect each material conclusion to visible evidence anchors.",
             "policy_requirement_mapping": "Map evidence items to applicable requirement logic.",
+            "policy_clause_evidence_map": "Link policy clauses to the evidence items they govern before stating policy-based conclusions.",
             "exception_classification_log": "Separate confirmed exceptions from unresolved evidence gaps.",
             "pipeline_a_signal_gap_review": "Record where Pipeline A graph signals are weak or missing.",
         }
@@ -521,10 +574,14 @@ class TeacherRunner:
         return "Capture a teacher-visible intermediate supervision state."
 
     def _expected_action(self, canonical_name: str, linked_states: List[str]) -> str:
+        if any("policy_clause_evidence_map" in name for name in linked_states):
+            return f"Apply {canonical_name} with explicit policy-clause and evidence-ID mapping."
         if any("policy" in name for name in linked_states):
             return f"Apply {canonical_name} with explicit policy-to-evidence mapping."
         if any("exception" in name for name in linked_states):
             return f"Use {canonical_name} to classify exceptions and unresolved items."
+        if any("deliverable_outline" in name for name in linked_states):
+            return f"Use {canonical_name} to produce a manager-ready deliverable structure with explicit cited support."
         if any("inventory" in name or "conclusion_map" in name for name in linked_states):
             return f"Use {canonical_name} to transform source evidence into a manager-ready conclusion."
         return f"Apply {canonical_name} as a teacher-supervised reasoning step."
@@ -537,4 +594,3 @@ class TeacherRunner:
         import hashlib
 
         return f"{prefix}_{hashlib.sha1(raw.encode('utf-8')).hexdigest()[:10]}"
-
