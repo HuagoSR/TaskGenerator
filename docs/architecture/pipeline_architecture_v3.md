@@ -137,15 +137,16 @@ This pipeline should be hybrid. LLMs are useful for scenario construction, busin
 
 Current bridge status:
 
-- Pipeline B can now run `seed set -> sampled subgraph -> draft blueprint -> reference-file plan -> generated reference files -> teacher input -> deterministic GoldenRun -> training annotation -> rubric -> quality gate -> staged package -> rw-task-style draft export -> local export validation -> evaluation prep -> guarded eval runner -> eval summary`.
+- Pipeline B can now run `seed set -> sampled subgraph -> draft blueprint -> reference-file plan -> generated reference files -> teacher input -> deterministic GoldenRun -> training annotation -> rubric -> quality gate -> staged package -> rw-task-style draft export -> local export validation -> evaluation prep -> guarded eval runner -> eval summary -> eval feedback analyzer`.
 - The export layer is still structural and conservative.
 - `candidate_ready` packages can be formally exported.
 - `revise_only` packages are blocked by default and only export as inspection-only drafts when explicitly allowed.
 - blocked vs draft vs final export must remain visible in `dataset_row.extra` and the export report.
 - Local export validation checks structure and file visibility before any model-backed rw-task evaluation is attempted.
 - Evaluation prep dry-run copies only validated cases into a batch-style input directory and records future rw-task commands without executing them.
-- The next planned slice is a guarded real-smoke runner: default dry-run, explicit `--run-eval --allow-draft-eval` for the current draft package, and no registry or prior updates.
-- the current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness and partial teacher/readiness chains.
+- Authorized external toolchain smoke has already completed once for the current draft package, but the result is still only draft-quality evidence.
+- The new eval-feedback layer turns draft grading into prioritized Pipeline B actions and Pipeline A feedback without mutating readiness, the registry, or transition priors.
+- The current bottleneck is no longer missing policy reference files; it is mostly Pipeline A signal weakness, partial teacher/readiness chains, and under-specified evidence-to-conclusion contracts.
 
 ## Pipeline A: Source-To-Skill Design
 

@@ -154,6 +154,14 @@ Completed slices:
    - The summarizer is report-only and does not update registries, transition priors, quality gates, or package readiness.
    - Current smoke result is `summary_status=summarized`, `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and average score ratio `0.625` (`20/32`).
 
+16. V3 Pipeline B Eval Feedback Analyzer.
+   - Module: `src/task_generator/v3_pipeline_b_eval_feedback_analyzer.py`
+   - CLI: `Test/run_v3_pipeline_b_eval_feedback_analyzer.py`
+   - Inputs: `pipeline_b_eval_summary_report.json`, `rubric.json`, `training_annotation.json`, `teacher_runner_report.json`, and `pipeline_b_quality_report.json`
+   - Output: `pipeline_b_eval_feedback_report.json`
+   - The analyzer is report-only and does not update registries, transition priors, quality gates, package readiness, or sampling weights.
+   - Current smoke result is `feedback_status=analyzed`, with 6 low-scoring criteria, 5 prioritized Pipeline B actions, 3 Pipeline A feedback items, and 14 candidate-ready blockers.
+
 Current validation commands:
 
 ```powershell
@@ -188,17 +196,20 @@ D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_summarizer.py Test\run_v3_rw_task_eval_summarizer.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_summarizer.py --run-report artifacts\pipeline_b\scratch\rw_task_eval_run_real_smoke_e2b_escalated\rw_task_eval_run_report.json --grade-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke_e2b_grades --output-dir artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_eval_feedback_analyzer.py Test\run_v3_pipeline_b_eval_feedback_analyzer.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_eval_feedback_analyzer.py --output-dir artifacts\pipeline_b\scratch\eval_feedback_smoke
 ```
 
 Both subgraph-mode and legacy seed-mode draft blueprints should validate with `TaskBlueprint.model_validate`.
 
 Next implementation choices:
 
-1. Improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
-2. Use `pipeline_b_eval_summary_report.json` as diagnostic evidence for prompt, rubric, and reference-generation improvements while keeping draft eval results out of registry and transition-prior updates.
+1. Use `pipeline_b_eval_feedback_report.json` to drive the next deterministic fixes in prompt evidence contracts, teacher-step operationalization, policy-reference usage, supervision density, and intermediate-state completion.
+2. Improve Pipeline A typed resources, support diversity, and transition evidence until at least one package can naturally reach `candidate_ready`.
 3. Keep `teacher_input_validation_report.json`, `teacher_runner_report.json`, `training_annotation_report.json`, `rubric_report.json`, `pipeline_b_quality_report.json`, and `package_manifest.json` as readiness gates for downstream export and evaluation.
 4. Extend reference-file generation toward additional document, media, and folder-style file packages beyond the current deterministic workbook plus policy-doc path.
 5. Decide where LLM/Stirrup generators should enter as proposal-producing strategies under the same manifest and validation contract.
+6. Keep draft eval results out of registry and transition-prior updates until there is an explicit, trustworthy feedback-updater design.
 
 LLM timing policy:
 

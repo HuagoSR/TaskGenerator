@@ -195,6 +195,7 @@ Near-term implementation rule:
 - keep the current training annotation and rubric layers JSON-only and explicit about partial readiness
 - keep the current Pipeline B quality gate deterministic; it should decide whether the current package is `reject`, `revise`, or `candidate_ready` before any LLM teacher/prose step is scheduled
 - keep the current V3 rw-task exporter structural and conservative; it should block formal export below `candidate_ready`, and only allow `revise_only` draft export when explicitly requested
+- keep the current rw-task eval summary and eval-feedback layers report-only; draft evaluation evidence can prioritize improvements but must not silently update readiness, registry entries, or transition priors
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -267,6 +268,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_rw_task_eval_runner.py`: CLI for writing `rw_task_eval_run_report.json`; use dry-run for normal validation and require `--run-eval --allow-draft-eval` for the current draft-only toolchain smoke
 - `src/task_generator/v3_rw_task_eval_summarizer.py`: report-only summarizer for rw-task runner and grader outputs; it distinguishes toolchain completion, draft quality observation, and candidate-quality evidence without mutating quality gates or registries
 - `Test/run_v3_rw_task_eval_summarizer.py`: CLI for writing `pipeline_b_eval_summary_report.json` from a run report and grader JSON under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_pipeline_b_eval_feedback_analyzer.py`: report-only analyzer that turns eval summary evidence plus rubric, annotation, teacher, and quality artifacts into prioritized Pipeline B actions and Pipeline A feedback
+- `Test/run_v3_pipeline_b_eval_feedback_analyzer.py`: CLI for writing `pipeline_b_eval_feedback_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -468,6 +471,7 @@ Current Pipeline A status:
   - eval-prep smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke --overwrite`
   - eval-runner dry-run smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_dry_smoke`
   - eval-summary smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_summarizer.py --run-report artifacts\pipeline_b\scratch\rw_task_eval_run_real_smoke_e2b_escalated\rw_task_eval_run_report.json --grade-dir artifacts\pipeline_b\scratch\rw_task_eval_input_smoke_e2b_grades --output-dir artifacts\pipeline_b\scratch\rw_task_eval_summary_smoke`
+  - eval-feedback smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_eval_feedback_analyzer.py --output-dir artifacts\pipeline_b\scratch\eval_feedback_smoke`
   - legacy blueprint smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --output-dir artifacts\pipeline_b\scratch\prototype_legacy_seed_smoke`
   - current sampler smoke selects 4 `sample_ready` skills for `evidence_to_deliverable`
   - current sampler/prototype confidence is `low_due_to_resource_fallback`, mainly because selected persistent registry entries lack typed `SemanticResource` nodes
@@ -495,10 +499,10 @@ Current Pipeline A status:
   - an authorized external smoke with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env` completed both `stirrup_batch` and `grade_deliverables`
   - current eval-summary smoke emits `pipeline_b_eval_summary_report.json` with `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and average score ratio `0.625` (`20/32`)
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-  - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, or V3 rw-task eval summarizer
+- no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
-  - use the draft eval summary as a diagnostic input for improving prompt/rubric/reference generation, not as final model-separation evidence
+  - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
 - current architecture discussion has refined the next Pipeline A goal:
@@ -562,6 +566,21 @@ Recommended next choices:
 
 - improve Pipeline A typed resources, transition evidence, and support diversity so the current package can move from `revise_only` toward `candidate_ready`
 - use `pipeline_b_eval_summary_report.json` as diagnostic evidence for prompt/rubric/reference improvements, while keeping it out of registry and transition-prior updates until the package is candidate-ready
+- use `pipeline_b_eval_feedback_report.json` to prioritize concrete fixes in prompt evidence contracts, teacher-step operationalization, policy-reference usage, supervision density, and intermediate-state completion
+
+Current eval-feedback result:
+
+- `feedback_status=analyzed`
+- `eval_evidence_use=draft_quality_observation`
+- 6 low-scoring criteria
+- 5 prioritized Pipeline B actions
+- 3 Pipeline A feedback items
+- 14 candidate-ready blockers
+- the highest-signal current weaknesses are:
+  - prompt-to-deliverable contract clarity
+  - evidence-to-conclusion traceability
+  - skill-step operationalization in teacher states and prompt wording
+  - policy-rule usage being too implicit
 
 Current LLM timing policy:
 
