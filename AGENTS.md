@@ -506,6 +506,8 @@ Current Pipeline A status:
   - after candidate contract strengthening, the contract draft smoke completed with score ratio `0.9354838709677419` (`58/62`); remaining low-score feedback is 2 reference-evidence traceability items and 2 teacher-step operationalization items
   - after local evidence-traceability tightening, the traceability draft smoke completed with score ratio `0.8548387096774194` (`53/62`); the lower score is expected because the grader now checks local bullet-level evidence and policy locators more strictly
   - traceability eval feedback reports 8 low-scoring criteria, concentrated in `policy_reference_prompting` and `teacher_step_operationalization`
+  - after policy/evidence operationalization, the draft smoke returned to score ratio `0.9354838709677419` (`58/62`); exact `Evidence_ID` usage and policy-sensitive citation checks now mostly pass
+  - current policy/evidence feedback reports 3 low-scoring criteria, all tied to Evidence inventory ordering and teacher-step operationalization
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
@@ -513,7 +515,8 @@ Current Pipeline A status:
   - current contract-strengthening slice makes evidence inventory, deliverable outline, evidence-to-conclusion mapping, and policy-clause mapping explicit in the candidate prompt and TeacherRunner state purposes
   - authorized contract-strengthened external smoke completed successfully; treat `58/62` as draft-quality observation only, not `candidate_ready` evidence
   - current local evidence-traceability tightening requires every material bullet in supported conclusions, confirmed exceptions, and unresolved items to carry bracketed evidence or policy support; treat `53/62` as a stricter diagnostic baseline, not a readiness regression
-  - next Pipeline B slice should make policy-rule usage and evidence inventory ordering more operational, because the latest grader notes show policy-sensitive bullets still sometimes use source labels instead of specific evidence IDs
+  - current policy/evidence operationalization requires exact candidate-visible `Evidence_ID` values such as `EVID-001`, rejects source-label-only citations, and keeps policy clause IDs paired with exact workbook evidence IDs
+  - next Pipeline B slice should make Evidence inventory ordering and formatting harder to violate, because the latest grader notes show the model still moves the detailed Evidence inventory after Follow-up instead of placing it before conclusions
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
@@ -628,6 +631,22 @@ Current local evidence-traceability tightening result:
   - `rw_task_export_validator`: `validation_status=draft_compatible`
   - `rw_task_eval_runner` dry-run: `run_status=dry_run_ready`
 - authorized traceability external smoke completed with `gpt-5.4-pro`, `run_status=completed`, and score `53/62`; this stricter result should be read as a better diagnostic lens, not as final model-separation evidence
+
+Current policy/evidence operationalization result:
+
+- the candidate prompt now requires exact candidate-visible `Evidence_ID` values from the workbook, such as `EVID-001`, and explicitly says source labels such as `Manager Email` or `Ledger Snapshot` are not substitutes
+- policy-sensitive bullets now require exact workbook evidence IDs plus `POL-###` clause IDs in the same local bracketed support
+- TeacherRunner and TrainingAnnotation/Rubric wording now checks exact `Evidence_ID` support rather than generic evidence locations or source labels
+- deterministic smoke results remain structurally stable:
+  - `teacher_input`: `partial_ready`, 2 generated candidate-visible files, 0 deferred files, 9 evidence-contract items, and no relationship warnings
+  - `teacher_runner`: 8 intermediate states, 4 steps, 5 final checks
+  - `training_annotation`: 17 supervision items and 13 hidden traps
+  - `rubric`: 43 total criteria, 28 rw-task-exportable criteria, 15 diagnostic criteria
+  - `quality_gate`: `revise`
+  - `rw_task_export_validator`: `validation_status=draft_compatible`
+  - `rw_task_eval_runner` dry-run: `run_status=dry_run_ready`
+- authorized policy/evidence external smoke completed with `gpt-5.4-pro`, `run_status=completed`, and score `58/62`
+- eval feedback now reports only 3 low-scoring criteria, all tied to Evidence inventory ordering / teacher-step operationalization; policy-reference prompting is no longer the dominant low-score source
 
 Current rw-task compatibility fix result:
 

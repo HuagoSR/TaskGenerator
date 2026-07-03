@@ -485,13 +485,13 @@ class PipelineBPrototypeBuilder:
         requirements = [
             "Review the provided reference files and produce the requested deliverable.",
             f"Write the final deliverable as `{deliverable_name}` and keep the content manager-ready.",
-            "Cite the evidence IDs or source labels that support each material conclusion.",
+            "Cite the exact candidate-visible evidence IDs from the `Evidence_ID` column, such as `EVID-001`; do not use source labels such as `Manager Email` or `Ledger Snapshot` as substitutes for evidence IDs.",
             "Flag items that cannot be resolved from the provided evidence.",
             "Separate supported conclusions, confirmed exceptions, and unresolved items instead of blending them together.",
-            "Include an `Evidence inventory` section before the final conclusions; list each material evidence ID, source file, observed item, and intended use.",
+            "Place an `Evidence inventory` section immediately after the title or opening context and before any supported conclusion, confirmed exception, unresolved item, or recommendation; list each material evidence ID, source file, observed item, and intended use.",
             "Include a `Deliverable outline` section before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
             "Include an `Evidence-to-conclusion map` that links each material conclusion to the specific evidence IDs used.",
-            "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support such as `[Evidence: EV-###]` or `[Evidence: EV-###; Policy: POL-###]`.",
+            "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support using exact workbook evidence IDs, such as `[Evidence: EVID-001]` or `[Evidence: EVID-001; Policy: POL-003]`.",
             "Do not place evidence citations only in a separate appendix; each conclusion must carry its own local evidence or policy locator.",
         ]
         if motif == "fan_in_reconciliation":
@@ -504,13 +504,13 @@ class PipelineBPrototypeBuilder:
             requirements.append("Synthesize the evidence into a manager-ready deliverable rather than a raw notes list.")
         if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
             requirements.append(
-                "For each policy-sensitive conclusion, cite both the supporting evidence ID and the applicable policy clause ID."
+                "For each policy-sensitive conclusion, cite both the exact supporting workbook evidence ID and the applicable policy clause ID."
             )
             requirements.append(
                 "Include a `Policy clause mapping` section with columns or bullets for clause ID, governed evidence ID, applied conclusion, and any unresolved policy uncertainty."
             )
             requirements.append(
-                "For every policy-sensitive bullet in the final deliverable, include both local evidence support and local policy support in the same bullet."
+                "For every policy-sensitive bullet in the final deliverable, include both local evidence support and local policy support in the same bullet; a source label alone is not acceptable evidence support."
             )
         if skill_names:
             requirements.append("The task should exercise: " + "; ".join(skill_names[:4]) + ".")
@@ -520,6 +520,8 @@ class PipelineBPrototypeBuilder:
         hidden = [
             "Do not reward unsupported conclusions that lack visible evidence citations.",
             "Do not reward conclusion bullets whose evidence support appears only elsewhere in the deliverable.",
+            "Do not reward source-label-only citations when a candidate-visible `Evidence_ID` value is available.",
+            "Do not reward deliverables that place the Evidence inventory after final conclusions.",
             "Treat unresolved evidence gaps separately from confirmed exceptions.",
             "The expected deliverable should be supportable from candidate-visible reference files, not hidden teacher assumptions.",
         ]

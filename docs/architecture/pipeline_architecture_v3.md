@@ -155,7 +155,9 @@ Current bridge status:
 - The contract-strengthened draft completed authorized external smoke with score `58/62` (`0.9355`); remaining low-score feedback now concentrates on local evidence traceability and teacher-step operationalization.
 - The local evidence-traceability tightening slice now requires each material conclusion bullet to carry local bracketed evidence or policy support, and propagates that requirement through TeacherRunner checks plus TrainingAnnotation/Rubric descriptions.
 - The tightened traceability draft completed authorized external smoke with score `53/62` (`0.8548`); the lower score is expected because the grader now checks stricter local support, and its feedback is more diagnostic than the previous softer `58/62` contract.
-- The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, or grader-facing Pipeline A diagnostics. It is mostly Pipeline A signal weakness, partial teacher/readiness chains, policy-rule operationalization, and making source labels resolve to specific evidence IDs in policy-sensitive bullets.
+- The policy/evidence operationalization slice now requires exact workbook `Evidence_ID` values such as `EVID-001`, explicitly rejects source-label-only citations, and pairs policy clause IDs with exact evidence IDs in policy-sensitive bullets.
+- The policy/evidence draft completed authorized external smoke with score `58/62` (`0.9355`); policy-sensitive citation checks now mostly pass, and remaining low-score feedback is concentrated on Evidence inventory ordering.
+- The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, grader-facing Pipeline A diagnostics, or source-label-only policy citations. It is mostly Pipeline A signal weakness, partial teacher/readiness chains, and making required intermediate sections, especially Evidence inventory, operationally hard to skip or move.
 
 ## Pipeline A: Source-To-Skill Design
 
@@ -929,8 +931,8 @@ Current toolchain smoke evidence:
 - early local explicit smoke attempts exposed environment boundaries: missing process-level `E2B_API_KEY`, then blocked outbound E2B connectivity under the Codex sandbox
 - authorized external smoke with runtime env loaded from `E:\THU\2026Spring\SRT\rw-task\.env` completed both `bench_standalone.stirrup_batch` and `bench_standalone.grade_deliverables`
 - the grader JSON records 1 successful sample with score `20/32`, ratio `0.625`, graded by `gpt-4o-mini` under strict grading
-- later guarded `gpt-5.4-pro` draft smokes established three useful baselines: filtered rubric export `53/62`, strengthened candidate contract `58/62`, and tightened local traceability `53/62`
-- the latest tightened traceability smoke intentionally made grading stricter; feedback now isolates policy-reference prompting and teacher-step operationalization rather than toolchain or rubric-format problems
+- later guarded `gpt-5.4-pro` draft smokes established four useful baselines: filtered rubric export `53/62`, strengthened candidate contract `58/62`, tightened local traceability `53/62`, and policy/evidence operationalization `58/62`
+- the tightened traceability smoke intentionally made grading stricter; the follow-up policy/evidence slice recovered policy citation credit by requiring exact `Evidence_ID` values, leaving Evidence inventory ordering as the clearest remaining candidate-visible weakness
 - because the package is still `draft_inspection_only` and `revise_only`, this result is toolchain evidence plus draft-quality observation, not final model-separation evidence
 
 Recommended next code tasks:
@@ -951,7 +953,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata and guarded explicit smoke execution
 - keep using `Test/run_v3_rw_task_eval_summarizer.py` to convert run and grader outputs into a small report-only summary
 - treat draft eval execution as toolchain evidence and draft-quality observation only, not final model-separation evidence
-- focus the next implementation work on the warning reasons still blocking `candidate_ready`: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, and policy-sensitive evidence-ID operationalization
+- focus the next implementation work on the warning reasons still blocking `candidate_ready`: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, and Evidence inventory / intermediate-state operationalization
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry

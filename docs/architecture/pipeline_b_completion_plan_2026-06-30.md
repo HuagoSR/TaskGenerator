@@ -904,20 +904,20 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is local evidence-traceability tightening on top of the contract-strengthened draft feedback.
+The current code change is policy/evidence operationalization on top of the local traceability-tightened draft feedback.
 
 Minimal scope:
 
-- Require every material bullet in supported conclusions, confirmed exceptions, and unresolved items to carry local bracketed evidence or policy support.
-- Align TeacherRunner final checks, state purposes, and expected actions with local bullet-level evidence support rather than only general citation availability.
-- Align TrainingAnnotation and RubricBuilder projections with local evidence/policy support checks.
+- Require exact candidate-visible workbook `Evidence_ID` values, such as `EVID-001`, instead of accepting source labels as evidence support.
+- Require policy-sensitive bullets to pair `POL-###` clause IDs with exact workbook evidence IDs in the same local support bracket.
+- Align TeacherRunner final checks, state purposes, expected actions, and TrainingAnnotation/Rubric descriptions with exact `Evidence_ID` support.
 - Preserve the existing rubric audience split and draft/export semantics.
-- Keep the package `revise_only`; do not upgrade readiness because the grader-facing contract is stricter.
+- Keep the package `revise_only`; do not upgrade readiness because the grader-facing contract is clearer.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answered whether the V3 package can make material conclusion support local enough for a stricter draft-only external smoke. It did not convert the current `revise_only` sample into formal training data or model-separation evidence.
+This slice answered whether the V3 package can make policy-sensitive evidence support concrete enough for a stricter draft-only external smoke. It did not convert the current `revise_only` sample into formal training data or model-separation evidence.
 
-The next likely implementation slice is policy/evidence operationalization: make policy-sensitive bullets resolve to specific evidence IDs rather than loose source labels, and make evidence inventory ordering harder for the model to skip or move after conclusions. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
+The next likely implementation slice is Evidence inventory template/ordering: make the required Evidence inventory a fixed early section with explicit columns or bullet fields, so the model cannot satisfy the task by moving the detailed inventory after Follow-up. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
 
 ## Test Plan For The Current Next Slice
 
@@ -981,6 +981,10 @@ Expected results:
 - Traceability-tightened deterministic smoke reaches `rw_task_eval_run_traceability_dry_smoke` with `run_status=dry_run_ready`.
 - Authorized traceability-tightened external smoke completes and produces a stricter draft-quality observation of `53/62`.
 - Traceability eval feedback reports 8 low-scoring criteria, concentrated in `policy_reference_prompting` and `teacher_step_operationalization`; this is a sharper diagnostic baseline, not a readiness regression.
+- Policy/evidence operationalization prompt requires exact workbook `Evidence_ID` values such as `EVID-001`, rejects source-label-only citations, and pairs `POL-###` clauses with exact evidence IDs in policy-sensitive bullets.
+- Policy/evidence deterministic smoke reaches `rw_task_eval_run_policy_operationalization_dry_smoke` with `run_status=dry_run_ready`.
+- Authorized policy/evidence external smoke completes and produces a draft-quality observation of `58/62`.
+- Policy/evidence eval feedback reports 3 remaining low-scoring criteria, all tied to Evidence inventory ordering / teacher-step operationalization.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 
