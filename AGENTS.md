@@ -136,6 +136,9 @@ Cleanliness rules:
 - New generated outputs should go under `artifacts/` or an ignored `Test/...` generated-output directory, not root.
 - New persistent design docs should go under `docs/architecture/`, `docs/handoffs/`, or `docs/reports/` as appropriate.
 - Temporary logs should not be committed from active code directories. If a log has research value, move it to `artifacts/archive/`.
+- Repo `.env` is secret-bearing and must never be committed. Always keep `.env` out of staged files and commits.
+- Do not print API keys, bearer tokens, or full secret values from `.env` into logs, reports, smoke outputs, examples, or documentation. Only mention variable names when necessary.
+- At the end of each completed phase, it is fine to create a focused commit for that phase, but confirm `.env` is excluded before staging.
 - Update `AGENTS.md` and the relevant architecture docs whenever a path becomes an expected project convention.
 
 ## Current Code State
