@@ -1,0 +1,194 @@
+{
+  "workflow_archetype_registry_version": "v3.workflow_archetype_registry.1",
+  "request": {
+    "episode_report_paths": [
+      "artifacts\\pipeline_b\\scratch\\workflow_episode_proposal_smoke\\workflow_episode_proposal_report.json"
+    ],
+    "output_path": "SkillRegistry\\v3_workflow_archetype_registry.experimental.json"
+  },
+  "archetypes": [
+    {
+      "workflow_archetype_id": "wfa_0c53f0f97f9c",
+      "name": "internal_control_exception_documentation",
+      "domain": "audit",
+      "typical_actor_roles": [
+        "auditor"
+      ],
+      "trigger_events": [
+        "reviewing and testing the accuracy of reported Anti-Financial Crime Risk Metrics"
+      ],
+      "common_input_artifacts": [
+        "Audit:ConfidenceLevel",
+        "Audit:PopulationData",
+        "Audit:PopulationSize",
+        "Audit:SamplingCriteria",
+        "Audit:TolerableErrorRate",
+        "Finance:MonetaryAmount",
+        "Finance:QuarterlyData",
+        "NetProfit"
+      ],
+      "common_motifs": [],
+      "common_deliverables": [
+        "analysis"
+      ],
+      "typical_constraints": [
+        "coverage_requirement",
+        "cross_period_comparison",
+        "exception_handling"
+      ],
+      "source_episode_ids": [
+        "wfep_e86b5ebcb60a"
+      ],
+      "status": "experimental",
+      "episode_count": 1,
+      "source_count": 1,
+      "prototype_confidence": "medium",
+      "notes": [
+        "Built from 1 workflow episodes using seeded semi-automatic classification.",
+        "This archetype currently has no stable motif signal and is supported mainly by context/deliverable heuristics."
+      ]
+    },
+    {
+      "workflow_archetype_id": "wfa_6c228ea3be6f",
+      "name": "policy_clause_application_review",
+      "domain": "audit",
+      "typical_actor_roles": [
+        "mid-level Tax Preparer at an accounting firm"
+      ],
+      "trigger_events": [
+        "review"
+      ],
+      "common_input_artifacts": [
+        "Tax:ClientDocuments",
+        "Tax:Form1040",
+        "Tax:IntakeQuestionnaire",
+        "TaxForm"
+      ],
+      "common_motifs": [],
+      "common_deliverables": [
+        "form"
+      ],
+      "typical_constraints": [
+        "jurisdiction_specific_rule"
+      ],
+      "source_episode_ids": [
+        "wfep_64a9640d664c"
+      ],
+      "status": "experimental",
+      "episode_count": 1,
+      "source_count": 1,
+      "prototype_confidence": "medium",
+      "notes": [
+        "Built from 1 workflow episodes using seeded semi-automatic classification.",
+        "This archetype currently has no stable motif signal and is supported mainly by context/deliverable heuristics."
+      ]
+    },
+    {
+      "workflow_archetype_id": "wfa_9907f709a241",
+      "name": "multi_source_reconciliation_memo",
+      "domain": "audit",
+      "typical_actor_roles": [
+        "Senior Staff Accountant at Aurisic",
+        "Senior Staff Accountant in Financial Reporting & Assembly"
+      ],
+      "trigger_events": [
+        "preparing a detailed amortization schedule for all of Aurisic's prepaid expenses and insurance through April 2025",
+        "on an ongoing basis moving forward"
+      ],
+      "common_input_artifacts": [
+        "Accounting:AmortizationPeriod",
+        "Accounting:AmortizationSchedule",
+        "Accounting:OriginalAmount",
+        "Accounting:PrepaidExpense",
+        "Accounting:PrepaidInsurance",
+        "PrepaidExpense",
+        "Accounting:AccrualSchedule",
+        "Accounting:GeneralLedger"
+      ],
+      "common_motifs": [
+        "fan_in_reconciliation"
+      ],
+      "common_deliverables": [
+        "schedule",
+        "report"
+      ],
+      "typical_constraints": [
+        "cross_period_comparison",
+        "formatting_expectation",
+        "coverage_requirement",
+        "jurisdiction_specific_rule",
+        "reconciliation_required",
+        "exception_handling",
+        "missing_info_escalation"
+      ],
+      "source_episode_ids": [
+        "wfep_86bbdef88075",
+        "wfep_3a68a61f3c61"
+      ],
+      "status": "experimental",
+      "episode_count": 2,
+      "source_count": 2,
+      "prototype_confidence": "high",
+      "notes": [
+        "Built from 2 workflow episodes using seeded semi-automatic classification."
+      ]
+    },
+    {
+      "workflow_archetype_id": "wfa_eedd632eed93",
+      "name": "evidence_based_manager_briefing",
+      "domain": "audit",
+      "typical_actor_roles": [
+        "Finance Lead for an advisory client"
+      ],
+      "trigger_events": [
+        "managing and controlling expenses related to their professional music engagements"
+      ],
+      "common_input_artifacts": [
+        "Currency:ExchangeRate",
+        "Currency:SourceCurrency",
+        "Finance:CostData",
+        "Finance:GrossRevenue",
+        "Finance:IncomeData",
+        "Finance:MonetaryAmount",
+        "Finance:SourceEntity",
+        "GrossRevenue"
+      ],
+      "common_motifs": [],
+      "common_deliverables": [
+        "report"
+      ],
+      "typical_constraints": [
+        "formatting_expectation",
+        "jurisdiction_specific_rule"
+      ],
+      "source_episode_ids": [
+        "wfep_8934c6495660"
+      ],
+      "status": "experimental",
+      "episode_count": 1,
+      "source_count": 1,
+      "prototype_confidence": "medium",
+      "notes": [
+        "Built from 1 workflow episodes using seeded semi-automatic classification.",
+        "This archetype currently has no stable motif signal and is supported mainly by context/deliverable heuristics."
+      ]
+    }
+  ],
+  "diagnostics": {
+    "episode_report_count": 1,
+    "input_episode_count": 5,
+    "accepted_episode_count": 5,
+    "archetype_count": 4,
+    "unmatched_episode_count": 0,
+    "warning_codes": [],
+    "notes": [
+      "Archetype classification is seeded and heuristic in V1; unmatched episodes are expected and should guide future coverage expansion.",
+      "Archetypes remain contextual workflow summaries and should not be treated as fixed file or prompt templates.",
+      "Generated 4 experimental archetypes from matched workflow episodes."
+    ]
+  },
+  "notes": [
+    "This registry is experimental and report-only; it does not change sampler, readiness, transition priors, or task packaging behavior.",
+    "Workflow archetypes provide context for future workflow-conditioned sampling and reporting, not fixed task templates."
+  ]
+}
