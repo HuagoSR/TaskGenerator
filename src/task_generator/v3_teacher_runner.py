@@ -311,7 +311,7 @@ class TeacherRunner:
                     status = "blocked"
                     blocking_reasons.append("missing_evidence_contract")
                 else:
-                    notes.append("Evidence IDs are available for citation checks.")
+                    notes.append("Every material conclusion should carry local bracketed evidence support.")
             elif check_name == "policy_clause_traceability":
                 relationship_check = warning_checks.get("relationship:policy_lookup")
                 has_policy_evidence = any(
@@ -325,13 +325,15 @@ class TeacherRunner:
                     blocking_reasons.append("relationship:policy_lookup")
                     notes.append("Policy clause traceability is only partially established.")
                 else:
-                    notes.append("Policy clauses are candidate-visible and available for explicit citation.")
+                    notes.append("Policy-sensitive conclusions should carry local bracketed policy and evidence support.")
             elif check_name == "conclusion_supported_by_visible_evidence":
                 relationship_check = warning_checks.get("relationship:policy_lookup")
                 if relationship_check and not relationship_check.passed:
                     status = "partial"
                     blocking_reasons.append("deferred_policy_reference")
                     notes.append("Visible evidence supports only part of the intended final conclusion.")
+                else:
+                    notes.append("Supported conclusions, confirmed exceptions, and unresolved items should each be locally supported by visible evidence.")
 
             final_checks.append(
                 GoldenFinalCheck(
@@ -561,9 +563,9 @@ class TeacherRunner:
         purposes = {
             "evidence_inventory": "Include an Evidence inventory section listing each material evidence ID, source file, observed item, and intended use before drawing conclusions.",
             "deliverable_outline": "Include a Deliverable outline section with headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
-            "evidence_to_conclusion_map": "Include an Evidence-to-conclusion map linking each material conclusion to specific visible evidence IDs.",
+            "evidence_to_conclusion_map": "Include an Evidence-to-conclusion map and ensure each supported conclusion, confirmed exception, and unresolved item carries local bracketed evidence support.",
             "policy_requirement_mapping": "Map evidence items to applicable requirement logic.",
-            "policy_clause_evidence_map": "Include a Policy clause mapping that links each clause ID to governed evidence IDs, applied conclusion, and unresolved policy uncertainty.",
+            "policy_clause_evidence_map": "Include a Policy clause mapping and ensure each policy-sensitive conclusion carries local bracketed evidence and policy support.",
             "exception_classification_log": "Separate confirmed exceptions from unresolved evidence gaps.",
             "pipeline_a_signal_gap_review": "Record where Pipeline A graph signals are weak or missing.",
         }
@@ -575,15 +577,15 @@ class TeacherRunner:
 
     def _expected_action(self, canonical_name: str, linked_states: List[str]) -> str:
         if any("policy_clause_evidence_map" in name for name in linked_states):
-            return f"Apply {canonical_name} and write the policy-clause mapping with clause IDs, governed evidence IDs, applied conclusion, and unresolved policy uncertainty."
+            return f"Apply {canonical_name} and write policy-sensitive bullets with local bracketed policy-clause and evidence-ID support."
         if any("policy" in name for name in linked_states):
             return f"Apply {canonical_name} with explicit policy-to-evidence mapping."
         if any("exception" in name for name in linked_states):
             return f"Use {canonical_name} to classify exceptions and unresolved items."
         if any("deliverable_outline" in name for name in linked_states):
-            return f"Use {canonical_name} to produce the deliverable outline and manager-ready section structure with explicit cited support."
+            return f"Use {canonical_name} to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry local support."
         if any("inventory" in name or "conclusion_map" in name for name in linked_states):
-            return f"Use {canonical_name} to inventory source evidence and map it to manager-ready conclusions."
+            return f"Use {canonical_name} to inventory source evidence and write manager-ready conclusions with local bracketed evidence support."
         return f"Apply {canonical_name} as a teacher-supervised reasoning step."
 
     def _usage_note(self, canonical_name: str, semantic_type: str) -> str:

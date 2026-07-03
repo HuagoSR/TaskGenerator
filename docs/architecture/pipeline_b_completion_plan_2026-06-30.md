@@ -904,19 +904,20 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is candidate contract strengthening on top of the filtered draft feedback.
+The current code change is local evidence-traceability tightening on top of the contract-strengthened draft feedback.
 
 Minimal scope:
 
-- Make the remaining candidate-facing expectations explicit in the candidate prompt.
-- Align TeacherRunner state purposes with the exact section names candidates are asked to produce.
+- Require every material bullet in supported conclusions, confirmed exceptions, and unresolved items to carry local bracketed evidence or policy support.
+- Align TeacherRunner final checks, state purposes, and expected actions with local bullet-level evidence support rather than only general citation availability.
+- Align TrainingAnnotation and RubricBuilder projections with local evidence/policy support checks.
 - Preserve the existing rubric audience split and draft/export semantics.
-- Keep the package `revise_only`; do not upgrade readiness because the grader-facing rubric is cleaner.
+- Keep the package `revise_only`; do not upgrade readiness because the grader-facing contract is stricter.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice should answer whether the V3 package can make evidence inventory, deliverable outline, intermediate reasoning, and policy-clause mapping visible enough for the next draft-only external smoke. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
+This slice answered whether the V3 package can make material conclusion support local enough for a stricter draft-only external smoke. It did not convert the current `revise_only` sample into formal training data or model-separation evidence.
 
-The next likely implementation slice is a local evidence-traceability tightening pass: require evidence IDs or clause locators for every material conclusion at the local sentence/bullet level, not only in general prompt text. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
+The next likely implementation slice is policy/evidence operationalization: make policy-sensitive bullets resolve to specific evidence IDs rather than loose source labels, and make evidence inventory ordering harder for the model to skip or move after conclusions. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
 
 ## Test Plan For The Current Next Slice
 
@@ -976,6 +977,10 @@ Expected results:
 - Contract-strengthened dry-run reaches `rw_task_eval_run_contract_dry_smoke` with `run_status=dry_run_ready`.
 - Authorized contract-strengthened external smoke completes and produces a draft-quality observation of `58/62`.
 - Eval feedback reports 4 remaining low-scoring criteria: 2 reference-evidence traceability items and 2 teacher-step operationalization items.
+- Traceability-tightened candidate prompt requires local bracketed support such as `[Evidence: EV-###]` or `[Evidence: EV-###; Policy: POL-###]` on material conclusion bullets.
+- Traceability-tightened deterministic smoke reaches `rw_task_eval_run_traceability_dry_smoke` with `run_status=dry_run_ready`.
+- Authorized traceability-tightened external smoke completes and produces a stricter draft-quality observation of `53/62`.
+- Traceability eval feedback reports 8 low-scoring criteria, concentrated in `policy_reference_prompting` and `teacher_step_operationalization`; this is a sharper diagnostic baseline, not a readiness regression.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 

@@ -447,10 +447,10 @@ class TrainingAnnotationBuilder:
     def _final_check_description(self, check_name: str, status: str) -> str:
         base = {
             "deliverable_presence": "Check that the expected deliverable path is supportable from the generated reference package.",
-            "deliverable_requirement_coverage": "Check that the deliverable covers the required manager-facing sections and does not collapse them into one undifferentiated note.",
-            "evidence_traceability": "Check that material conclusions cite candidate-visible evidence IDs or locations.",
-            "policy_clause_traceability": "Check that policy-sensitive conclusions cite explicit candidate-visible policy clause IDs together with supporting evidence.",
-            "conclusion_supported_by_visible_evidence": "Check that conclusions are supported by visible evidence rather than hidden assumptions.",
+            "deliverable_requirement_coverage": "Check that the deliverable covers the required manager-facing sections and keeps conclusion bullets locally supported.",
+            "evidence_traceability": "Check that every material conclusion bullet carries local bracketed support with candidate-visible evidence IDs or locators.",
+            "policy_clause_traceability": "Check that every policy-sensitive conclusion bullet carries local bracketed policy clause IDs together with supporting evidence IDs.",
+            "conclusion_supported_by_visible_evidence": "Check that each supported conclusion, confirmed exception, and unresolved item is locally supported by visible evidence rather than hidden assumptions.",
         }.get(check_name, f"Check `{check_name}`.")
         if status != "pass":
             return f"{base} Current status: {status}."

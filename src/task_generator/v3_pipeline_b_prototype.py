@@ -491,6 +491,8 @@ class PipelineBPrototypeBuilder:
             "Include an `Evidence inventory` section before the final conclusions; list each material evidence ID, source file, observed item, and intended use.",
             "Include a `Deliverable outline` section before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
             "Include an `Evidence-to-conclusion map` that links each material conclusion to the specific evidence IDs used.",
+            "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support such as `[Evidence: EV-###]` or `[Evidence: EV-###; Policy: POL-###]`.",
+            "Do not place evidence citations only in a separate appendix; each conclusion must carry its own local evidence or policy locator.",
         ]
         if motif == "fan_in_reconciliation":
             requirements.append("Reconcile source evidence to the control totals and explain material differences.")
@@ -507,6 +509,9 @@ class PipelineBPrototypeBuilder:
             requirements.append(
                 "Include a `Policy clause mapping` section with columns or bullets for clause ID, governed evidence ID, applied conclusion, and any unresolved policy uncertainty."
             )
+            requirements.append(
+                "For every policy-sensitive bullet in the final deliverable, include both local evidence support and local policy support in the same bullet."
+            )
         if skill_names:
             requirements.append("The task should exercise: " + "; ".join(skill_names[:4]) + ".")
         return requirements
@@ -514,6 +519,7 @@ class PipelineBPrototypeBuilder:
     def _hidden_requirements(self, motif: str, entries: List[SkillRegistryEntry]) -> List[str]:
         hidden = [
             "Do not reward unsupported conclusions that lack visible evidence citations.",
+            "Do not reward conclusion bullets whose evidence support appears only elsewhere in the deliverable.",
             "Treat unresolved evidence gaps separately from confirmed exceptions.",
             "The expected deliverable should be supportable from candidate-visible reference files, not hidden teacher assumptions.",
         ]
