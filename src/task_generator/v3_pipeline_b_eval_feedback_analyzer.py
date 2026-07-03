@@ -275,7 +275,9 @@ class PipelineBEvalFeedbackAnalyzer:
             phrase in lowered
             for phrase in [
                 "available evidence units",
+                "evidence inventory",
                 "required deliverable sections",
+                "manager-facing sections",
                 "intermediate reasoning state",
                 "handle exceptions",
                 "reconcile source totals",

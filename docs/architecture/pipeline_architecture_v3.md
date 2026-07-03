@@ -152,7 +152,7 @@ Current bridge status:
 - The latest filter smoke keeps 28 rw-task-exportable criteria and 15 diagnostic criteria out of 43 total criteria; Pipeline A graph-signal gaps remain visible in package/report artifacts instead of being graded as candidate failures.
 - After this split, the draft rw-task smoke score changed from `59/81` (`0.7284`) to `53/62` (`0.8548`), with remaining low-score feedback concentrated on teacher-step operationalization and policy-clause prompting.
 - The current contract-strengthening slice makes `Evidence inventory`, `Deliverable outline`, `Evidence-to-conclusion map`, and `Policy clause mapping` explicit candidate-visible requirements and aligns TeacherRunner state purposes with those section names.
-- The contract-strengthened draft is validated and eval-prepped in dry-run mode; real external smoke remains pending explicit approval because it sends draft case/reference artifacts to rw-task/E2B/Tuzi.
+- The contract-strengthened draft completed authorized external smoke with score `58/62` (`0.9355`); remaining low-score feedback now concentrates on local evidence traceability and teacher-step operationalization.
 - The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, or grader-facing Pipeline A diagnostics; it is mostly Pipeline A signal weakness and partial teacher/readiness chains, although evidence-to-conclusion contracts are now more explicit than before.
 
 ## Pipeline A: Source-To-Skill Design

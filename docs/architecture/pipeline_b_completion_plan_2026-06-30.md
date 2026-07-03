@@ -244,8 +244,10 @@ Completed slices:
      - export validator: `draft_compatible`
      - eval prep: `prepared`, `draft_inspection_only`
      - eval runner dry-run: `dry_run_ready`
-   - Current boundary:
-     - real external smoke for this new contract case was not executed because it uploads draft case contents and reference artifacts to rw-task/E2B/Tuzi; it requires explicit user approval after this risk is acknowledged
+     - authorized external smoke completed both `stirrup_batch` and `grade_deliverables`
+     - contract-strengthened draft score is `58 / 62` (`0.9354838709677419`), compared with the previous filtered draft `53 / 62` (`0.8548387096774194`)
+     - low-scoring criteria dropped from 5 to 4
+     - remaining low-score feedback is split between reference-evidence traceability and teacher-step operationalization
 
 Current validation commands:
 
@@ -914,7 +916,7 @@ Minimal scope:
 
 This slice should answer whether the V3 package can make evidence inventory, deliverable outline, intermediate reasoning, and policy-clause mapping visible enough for the next draft-only external smoke. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
 
-The next likely implementation slice is either an explicitly approved real external smoke for the contract-strengthened draft, or a Pipeline A typed-resource/support-diversity improvement pass if external uploads should pause.
+The next likely implementation slice is a local evidence-traceability tightening pass: require evidence IDs or clause locators for every material conclusion at the local sentence/bullet level, not only in general prompt text. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
 
 ## Test Plan For The Current Next Slice
 
@@ -972,7 +974,8 @@ Expected results:
 - Eval feedback reports 5 remaining low-scoring criteria, not the previous Pipeline A diagnostic-heavy 13.
 - Contract-strengthened candidate prompt contains `Evidence inventory`, `Deliverable outline`, `Evidence-to-conclusion map`, and `Policy clause mapping`.
 - Contract-strengthened dry-run reaches `rw_task_eval_run_contract_dry_smoke` with `run_status=dry_run_ready`.
-- Real contract-strengthened external smoke is pending explicit approval because it uploads draft case/reference artifacts to external services.
+- Authorized contract-strengthened external smoke completes and produces a draft-quality observation of `58/62`.
+- Eval feedback reports 4 remaining low-scoring criteria: 2 reference-evidence traceability items and 2 teacher-step operationalization items.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 

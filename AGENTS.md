@@ -503,12 +503,14 @@ Current Pipeline A status:
   - current eval-summary smoke emits `pipeline_b_eval_summary_report.json` with `toolchain_completed=true`, `evidence_use=draft_quality_observation`, 1 successful sample, and the latest strengthened baseline score ratio `0.7283950617283951` (`59/81`)
   - after the rubric audience split, the filtered draft smoke completed with score ratio `0.8548387096774194` (`53/62`); this is still draft-quality observation, not `candidate_ready` evidence
   - filtered eval feedback now reports 5 low-scoring criteria: 4 teacher-step operationalization issues and 1 policy-reference prompting issue, while Pipeline A feedback remains report-only
+  - after candidate contract strengthening, the contract draft smoke completed with score ratio `0.9354838709677419` (`58/62`); remaining low-score feedback is 2 reference-evidence traceability items and 2 teacher-step operationalization items
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
   - keep the strengthened prompt/teacher contract and rubric audience split as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, `policy_clause_traceability`, and candidate-only rw-task rubric export
   - current contract-strengthening slice makes evidence inventory, deliverable outline, evidence-to-conclusion mapping, and policy-clause mapping explicit in the candidate prompt and TeacherRunner state purposes
-  - deterministic contract smoke reaches `rw_task_eval_run_contract_dry_smoke` with `run_status=dry_run_ready`; real external smoke for this new contract case requires explicit approval because it uploads the draft case and reference artifacts to rw-task/E2B/Tuzi
+  - authorized contract-strengthened external smoke completed successfully; treat `58/62` as draft-quality observation only, not `candidate_ready` evidence
+  - next Pipeline B slice should require evidence IDs or clause locators for every material conclusion more locally, not just in general prompt text
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
