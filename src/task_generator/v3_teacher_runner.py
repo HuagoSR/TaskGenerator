@@ -561,11 +561,11 @@ class TeacherRunner:
 
     def _state_purpose(self, state_name: str) -> str:
         purposes = {
-            "evidence_inventory": "Place an Evidence inventory section before any conclusion or recommendation, listing each material Evidence_ID value, source file, observed item, and intended use.",
-            "deliverable_outline": "Include a Deliverable outline section with headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
-            "evidence_to_conclusion_map": "Include an Evidence-to-conclusion map and ensure each supported conclusion, confirmed exception, and unresolved item carries local bracketed support with exact Evidence_ID values.",
+            "evidence_inventory": "Place the Evidence inventory as the first substantive section, populate it immediately, and format it with Evidence_ID, Source file, Observed item/value, and Intended use for every material item.",
+            "deliverable_outline": "Include a Deliverable outline section after Evidence inventory, then populate each required section in place instead of using placeholder headings.",
+            "evidence_to_conclusion_map": "Include a populated Evidence-to-conclusion map in its named section, not after Follow-up, and ensure each supported conclusion, confirmed exception, and unresolved item carries local bracketed support with exact Evidence_ID values.",
             "policy_requirement_mapping": "Map evidence items to applicable requirement logic.",
-            "policy_clause_evidence_map": "Include a Policy clause mapping and ensure each policy-sensitive conclusion carries local bracketed policy support plus exact Evidence_ID support.",
+            "policy_clause_evidence_map": "Include a populated Policy clause mapping in its named section, not after Follow-up, and ensure each policy-sensitive conclusion carries local bracketed policy support plus exact Evidence_ID support.",
             "exception_classification_log": "Separate confirmed exceptions from unresolved evidence gaps.",
             "pipeline_a_signal_gap_review": "Record where Pipeline A graph signals are weak or missing.",
         }
@@ -582,9 +582,11 @@ class TeacherRunner:
             return f"Apply {canonical_name} with explicit policy-to-evidence mapping."
         if any("exception" in name for name in linked_states):
             return f"Use {canonical_name} to classify exceptions and unresolved items."
+        if any("inventory" in name for name in linked_states):
+            return f"Use {canonical_name} to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
         if any("deliverable_outline" in name for name in linked_states):
             return f"Use {canonical_name} to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
-        if any("inventory" in name or "conclusion_map" in name for name in linked_states):
+        if any("conclusion_map" in name for name in linked_states):
             return f"Use {canonical_name} to inventory source evidence before conclusions and write manager-ready conclusions with local bracketed Evidence_ID support."
         return f"Apply {canonical_name} as a teacher-supervised reasoning step."
 

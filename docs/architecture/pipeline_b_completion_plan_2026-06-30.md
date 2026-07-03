@@ -904,20 +904,22 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is policy/evidence operationalization on top of the local traceability-tightened draft feedback.
+The current code change is Evidence inventory section/template tightening on top of the policy/evidence operationalization feedback.
 
 Minimal scope:
 
-- Require exact candidate-visible workbook `Evidence_ID` values, such as `EVID-001`, instead of accepting source labels as evidence support.
-- Require policy-sensitive bullets to pair `POL-###` clause IDs with exact workbook evidence IDs in the same local support bracket.
-- Align TeacherRunner final checks, state purposes, expected actions, and TrainingAnnotation/Rubric descriptions with exact `Evidence_ID` support.
+- Require an exact top-level section order before any appendix.
+- Make `Evidence inventory` the first substantive section.
+- Require `Evidence inventory` to include `Evidence_ID`, `Source file`, `Observed item/value`, and `Intended use`.
+- Reject placeholder-only required sections whose details are appended later.
+- Keep evidence inventory, evidence-to-conclusion map, and policy mapping details inside their named sections rather than after `Follow-up`.
 - Preserve the existing rubric audience split and draft/export semantics.
-- Keep the package `revise_only`; do not upgrade readiness because the grader-facing contract is clearer.
+- Keep the package `revise_only`; do not upgrade readiness because the inventory-section smoke does not have a completed external grade.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answered whether the V3 package can make policy-sensitive evidence support concrete enough for a stricter draft-only external smoke. It did not convert the current `revise_only` sample into formal training data or model-separation evidence.
+This slice answered whether the V3 package can make the inventory/order contract visible through deterministic artifacts and rw-task dry-run export. It did not produce a completed external grade because the authorized smoke timed out before writing a runner report or grader JSON.
 
-The next likely implementation slice is Evidence inventory template/ordering: make the required Evidence inventory a fixed early section with explicit columns or bullet fields, so the model cannot satisfy the task by moving the detailed inventory after Follow-up. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
+The next likely implementation slice is eval-runner timeout/resume hardening or a rerun of the inventory-section smoke with a clean grader JSON. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
 
 ## Test Plan For The Current Next Slice
 
@@ -985,6 +987,9 @@ Expected results:
 - Policy/evidence deterministic smoke reaches `rw_task_eval_run_policy_operationalization_dry_smoke` with `run_status=dry_run_ready`.
 - Authorized policy/evidence external smoke completes and produces a draft-quality observation of `58/62`.
 - Policy/evidence eval feedback reports 3 remaining low-scoring criteria, all tied to Evidence inventory ordering / teacher-step operationalization.
+- Inventory-section tightening prompt requires exact section order, a populated first-substantive Evidence inventory with four fields, and no placeholder-only required sections.
+- Inventory-section deterministic smoke reaches `rw_task_eval_run_inventory_section_dry_smoke` with `run_status=dry_run_ready`.
+- Authorized inventory-section external smoke was inconclusive: it exceeded the outer command timeout after starting eval, wrote no runner report or grader JSON, and the spawned Python processes were stopped.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 

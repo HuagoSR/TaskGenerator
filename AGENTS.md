@@ -508,6 +508,7 @@ Current Pipeline A status:
   - traceability eval feedback reports 8 low-scoring criteria, concentrated in `policy_reference_prompting` and `teacher_step_operationalization`
   - after policy/evidence operationalization, the draft smoke returned to score ratio `0.9354838709677419` (`58/62`); exact `Evidence_ID` usage and policy-sensitive citation checks now mostly pass
   - current policy/evidence feedback reports 3 low-scoring criteria, all tied to Evidence inventory ordering and teacher-step operationalization
+  - after Evidence inventory section/template tightening, deterministic chain and eval-runner dry-run passed, but the authorized external smoke exceeded the outer command timeout and produced no grader JSON; do not treat that run as quality evidence
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
@@ -516,7 +517,8 @@ Current Pipeline A status:
   - authorized contract-strengthened external smoke completed successfully; treat `58/62` as draft-quality observation only, not `candidate_ready` evidence
   - current local evidence-traceability tightening requires every material bullet in supported conclusions, confirmed exceptions, and unresolved items to carry bracketed evidence or policy support; treat `53/62` as a stricter diagnostic baseline, not a readiness regression
   - current policy/evidence operationalization requires exact candidate-visible `Evidence_ID` values such as `EVID-001`, rejects source-label-only citations, and keeps policy clause IDs paired with exact workbook evidence IDs
-  - next Pipeline B slice should make Evidence inventory ordering and formatting harder to violate, because the latest grader notes show the model still moves the detailed Evidence inventory after Follow-up instead of placing it before conclusions
+  - current Evidence inventory section tightening requires exact section order, populated required sections, and no placeholder-only headings; it has deterministic validation but not a completed external score yet
+  - next Pipeline B slice should improve eval-runner timeout/resume reporting or rerun the inventory-section smoke to get a clean grader JSON before treating the change as quality evidence
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
@@ -647,6 +649,30 @@ Current policy/evidence operationalization result:
   - `rw_task_eval_runner` dry-run: `run_status=dry_run_ready`
 - authorized policy/evidence external smoke completed with `gpt-5.4-pro`, `run_status=completed`, and score `58/62`
 - eval feedback now reports only 3 low-scoring criteria, all tied to Evidence inventory ordering / teacher-step operationalization; policy-reference prompting is no longer the dominant low-score source
+
+Current Evidence inventory section/template tightening result:
+
+- the candidate prompt now requires exact top-level section order before any appendix:
+  - `Evidence inventory`
+  - `Deliverable outline`
+  - `Evidence reviewed`
+  - `Supported conclusions`
+  - `Confirmed exceptions`
+  - `Unresolved items`
+  - `Policy clause mapping`
+  - `Follow-up`
+- `Evidence inventory` must be the first substantive section and must include `Evidence_ID`, `Source file`, `Observed item/value`, and `Intended use`
+- required sections may not be placeholder-only; evidence inventory, evidence-to-conclusion map, and policy mapping details must appear inside their named sections rather than after `Follow-up`
+- deterministic smoke results remain structurally stable:
+  - `teacher_input`: `partial_ready`, 2 generated candidate-visible files, 0 deferred files, 9 evidence-contract items, and no relationship warnings
+  - `teacher_runner`: 8 intermediate states, 4 steps, 5 final checks
+  - `training_annotation`: 17 supervision items and 17 hidden traps
+  - `rubric`: 43 total criteria, 28 rw-task-exportable criteria, 15 diagnostic criteria
+  - `quality_gate`: `revise`
+  - `rw_task_export_validator`: `validation_status=draft_compatible`
+  - `rw_task_eval_runner` dry-run: `run_status=dry_run_ready`
+- authorized inventory-section external smoke did not produce a quality score: the outer command timed out after the prepared eval started, no `rw_task_eval_run_report.json` or grader JSON was written, and the spawned Python processes were stopped
+- treat this as an evaluation-runner/resume issue or inconclusive external smoke, not as evidence that task quality improved or degraded
 
 Current rw-task compatibility fix result:
 
