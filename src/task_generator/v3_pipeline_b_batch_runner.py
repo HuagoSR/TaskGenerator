@@ -9,6 +9,7 @@ from task_generator.v3_pipeline_b_package_assembler import PipelineBPackageAssem
 from task_generator.v3_pipeline_b_prototype import DEFAULT_MOTIF_PRIORITY, PipelineBPrototypeBuilder
 from task_generator.v3_pipeline_b_quality_gate import PipelineBQualityGate
 from task_generator.v3_pipeline_b_sampler import PipelineBSubgraphSampler
+from task_generator.v3_global_task_validity import GlobalTaskValidityBuilder
 from task_generator.v3_reference_file_generator import ReferenceFileGenerator
 from task_generator.v3_reference_file_planner import ReferenceFilePlanner
 from task_generator.v3_rubric_builder import RubricBuilder
@@ -59,6 +60,10 @@ class PipelineBBatchCaseSummary(BaseModel):
     eval_prep_status: Optional[str] = None
     eval_mode: Optional[str] = None
     eval_run_status: Optional[str] = None
+    global_validity_status: Optional[str] = None
+    real_worldness_score: Optional[float] = None
+    difficulty_overall: Optional[float] = None
+    recommended_next_layer: Optional[str] = None
     reason_codes: List[str] = Field(default_factory=list)
     warning_reason_codes: List[str] = Field(default_factory=list)
     error_type: Optional[str] = None
@@ -200,6 +205,7 @@ class PipelineBBatchRunner:
         annotation_dir = case_dir / "training_annotation"
         rubric_dir = case_dir / "rubric"
         quality_dir = case_dir / "quality_gate"
+        global_validity_dir = case_dir / "global_validity"
         package_dir = case_dir / "package"
         export_dir = case_dir / "rw_task_export"
         eval_input_dir = case_dir / "rw_task_eval_input"
@@ -295,6 +301,34 @@ class PipelineBBatchRunner:
         quality_gate.write_outputs(quality_report, quality_dir)
         quality_report_path = quality_dir / "pipeline_b_quality_report.json"
 
+        global_validity_builder = GlobalTaskValidityBuilder()
+        (
+            global_validity_report,
+            real_worldness_report,
+            difficulty_profile_report,
+            task_constraint_graph_report,
+            execution_plan_dag_report,
+        ) = global_validity_builder.build(
+            blueprint_path=blueprint_path,
+            reference_file_plan_path=reference_plan_path,
+            generated_file_manifest_path=generated_manifest_path,
+            teacher_input_manifest_path=teacher_manifest_path,
+            golden_run_path=golden_run_path,
+            rubric_path=rubric_path,
+            quality_report_path=quality_report_path,
+            output_dir=global_validity_dir,
+            prototype_report_path=prototype_report_path,
+            subgraph_report_path=subgraph_report_path,
+        )
+        global_validity_builder.write_outputs(
+            global_validity_report,
+            real_worldness_report,
+            difficulty_profile_report,
+            task_constraint_graph_report,
+            execution_plan_dag_report,
+            global_validity_dir,
+        )
+
         package_assembler = PipelineBPackageAssembler()
         package_manifest = package_assembler.build(
             blueprint_path=blueprint_path,
@@ -377,6 +411,10 @@ class PipelineBBatchRunner:
             eval_prep_status=prep_report.prep_status,
             eval_mode=prep_report.evaluation_mode,
             eval_run_status=eval_run_report.run_status,
+            global_validity_status="diagnostic_only",
+            real_worldness_score=global_validity_report.real_worldness.real_worldness_score,
+            difficulty_overall=global_validity_report.difficulty_profile.overall_difficulty,
+            recommended_next_layer=global_validity_report.recommended_next_layer,
             reason_codes=reason_codes,
             warning_reason_codes=warning_reason_codes,
         )
