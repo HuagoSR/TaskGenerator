@@ -1,5 +1,27 @@
 ﻿# TaskGenerator V3 Pipeline Roadmap
 
+## Current Priority Notice - 2026-07-04
+
+The newest macro planning document is:
+
+- `docs/architecture/pipeline_next_stage_global_plan.md`
+
+Use that document as the current next-stage priority guide. This roadmap remains authoritative for the established V3 architecture and implementation history, but older "Immediate Next Step" or next-slice wording in this file should not override the newer global plan.
+
+The next stage should preserve the working Pipeline A and Pipeline B chain while adding report-only/schema-first global interfaces:
+
+- `WorkflowEpisode`
+- `WorkflowArchetype`
+- `MotifGraphGrammar`
+- `TaskConstraintGraph`
+- `ExecutionPlanDAG`
+- `RealWorldnessReport`
+- `DifficultyProfile`
+- `ModelSeparationProfile`
+- `PromotionRecord`
+
+Do not return to single-task prompt tuning as the default development loop. Prefer small Pipeline B batches, cross-case reason-code analysis, and explicit report/promotion contracts.
+
 ## Purpose
 
 The project goal is not to craft one strong finance task.

@@ -1,5 +1,15 @@
 # Pipeline B Completion Plan - 2026-06-30
 
+## Current Priority Notice - 2026-07-04
+
+The newest next-stage priority is maintained in:
+
+- `docs/architecture/pipeline_next_stage_global_plan.md`
+
+This file remains useful for Pipeline B implementation history, current runner contracts, and smoke-test context. However, its older "Current Next Slice" section should be treated as historical unless it is restated by the global plan.
+
+The current direction is not to keep tuning one Pipeline B draft or to apply typed-resource proposals as a hidden side effect. The next stage should first add report-only/schema-first global interfaces: global validity diagnostics, workflow episode proposals, motif graph grammar drafts, sampler role coverage, and later explicit promotion/rollback.
+
 ## Purpose
 
 This document is the working plan for completing Pipeline B after the `src/task_generator` package migration.

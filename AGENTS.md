@@ -81,9 +81,17 @@ This pipeline should be hybrid. LLMs are useful for scenario construction and te
 
 Read these first:
 
+- `docs/architecture/pipeline_next_stage_global_plan.md`: newest macro plan and the current source of truth for next-stage priorities
+- `docs/architecture/global_interface_contracts.md`: next-stage report-only/schema-first interface contracts derived from the global plan
 - `docs/architecture/pipeline_architecture_v3.md`: current macro roadmap and future plan
 - `docs/architecture/schema_design_v2.md`: V2 schema details, finance prototype history, and evaluation lessons
 - `docs/architecture/pipeline_b_completion_plan_2026-06-30.md`: concrete execution plan for completing Pipeline B
+
+Priority rule:
+
+- Treat `pipeline_next_stage_global_plan.md` as the current strategic guide.
+- Treat `pipeline_architecture_v3.md`, `schema_design_v2.md`, and `pipeline_b_completion_plan_2026-06-30.md` as still-useful architecture and implementation history, but do not let their older "next slice" language override the newer global plan.
+- If a detail in the global plan conflicts with implemented code, correct the detail conservatively while preserving the plan's macro direction: workflow-conditioned task generation, report-only diagnostics first, and controlled promotion later.
 
 Older stage reports are useful history, especially for why the project moved away from operator-heavy skill extraction, but they are not the current plan unless restated in `docs/architecture/pipeline_architecture_v3.md`.
 
@@ -162,16 +170,36 @@ Do not overfit to the current music-tour finance task. It was a probe, not the f
 
 ## Current Priority
 
-The current priority is the Pipeline A-to-B bridge.
+The current priority is the next-stage global plan: move from a mostly skill-pipeline view to a workflow-conditioned, closed-loop real-world task factory.
 
-Pipeline A is no longer just trying to accumulate more isolated atomic skills. It should now support Pipeline B by exposing composable skill-graph signals: typed semantic resources, local transition traces, motif hints, graph roles, readiness, and sampling risks. Pipeline B should then reveal which of those signals are actually useful by trying to assemble and validate task packages.
+Pipeline A-to-B bridge work remains important, but it is now one layer inside a broader architecture:
+
+```text
+Source / Skill / Resource substrate
+        ->
+Workflow / Motif / Task-graph planning layer
+        ->
+Task package generation
+        ->
+Validity / evaluation / feedback / promotion layer
+```
+
+Pipeline A should no longer only accumulate isolated atomic skills. It should preserve enough workflow context for Pipeline B: typed semantic resources, local transition traces, motif hints, graph roles, source support, sampling risks, and eventually workflow episode proposals. Pipeline B should use batch generation and diagnostics to reveal which signals matter, instead of hiding missing Pipeline A signal behind fallback guesses.
+
+Near-term priority order:
+
+1. Keep the existing Pipeline A and Pipeline B runners working.
+2. Add report-only/schema-first global interfaces before changing core sampler behavior.
+3. Start with global validity diagnostics, workflow episode proposals, motif graph grammar drafts, and sampler role-coverage reporting.
+4. Delay true role-filling sampling, verifier gating, promotion/apply logic, and formal model-separation evaluation until the report contracts are stable.
+5. Keep all registry, readiness, transition-prior, and sampler-weight changes explicit and reviewable.
 
 Final system objective:
 
 - build a closed-loop task factory, not a one-way generator
 - use Pipeline A to mine reusable semantic skills and graph priors from sources
-- use Pipeline B to sample executable skill subgraphs, generate tasks, validate them, and report task outcomes
-- feed task outcomes back into skill, edge, and motif priors so future sampling improves
+- use Pipeline B to sample workflow-conditioned executable subgraphs, generate task packages, validate them, and report task outcomes
+- feed batch-level task outcomes back into skill, resource, workflow, edge, motif, and sampler priors only through explicit review/promotion steps
 
 Important missing final layers:
 
@@ -179,6 +207,11 @@ Important missing final layers:
 - probabilistic subgraph sampler: a future sampler that turns readiness, motif, role, and edge-prior signals into a distribution over executable subgraphs
 - UCB1 or related bandit policy: a later exploration/exploitation mechanism, only meaningful after generated tasks produce comparable quality feedback
 - Pipeline B feedback updater: a report-first then explicit-update loop that converts task generation, GoldenRun, rubric, quality-gate, and model-separation results into prior updates
+- `WorkflowEpisode` and `WorkflowArchetype`: source-grounded and cross-source workflow context objects that prevent Pipeline B from treating skills as context-free list items
+- `MotifGraphGrammar`: structured role/resource/stage definitions for motifs such as `policy_application` and `fan_in_reconciliation`
+- `TaskConstraintGraph` and `ExecutionPlanDAG`: separate the realistic task graph from the acyclic execution plan needed by candidates and GoldenRun
+- `RealWorldnessReport`, `DifficultyProfile`, and `ModelSeparationProfile`: diagnostics for task realism, training/evaluation suitability, and eventual model separation
+- `PromotionRecord` and `RollbackRecord`: explicit, auditable mechanisms for turning report findings into durable registry or sampler changes
 
 Near-term implementation rule:
 
@@ -200,7 +233,8 @@ Near-term implementation rule:
 - keep single-task rw-task smoke results diagnostic only; repeated signals across Pipeline B batches should drive priority decisions
 - harden eval-runner timeout/partial-output reporting before using long external smoke runs as evidence
 - prefer small deterministic Pipeline B batches over repeatedly tuning one draft task
-- then build task-package components and use their failures to drive further Pipeline A improvements
+- next, implement report-only global validity and workflow/motif interfaces; use their failures to drive further Pipeline A and Pipeline B improvements
+- do not implement real UCB/bandit behavior, broad domain expansion, complex file ecosystems, or formal model-separation evaluation until the diagnostic contracts and batch evidence are stable
 
 The current Pipeline A graph target remains:
 
@@ -284,6 +318,15 @@ Current Pipeline A starting files:
 - `Test/run_v3_typed_resource_patch_proposal.py`: CLI for writing `typed_resource_patch_proposals.json` and `typed_resource_patch_proposal_report.json` under `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
+- planned next-stage files, not implemented yet:
+  - `src/task_generator/v3_global_task_validity.py`
+  - `Test/run_v3_global_task_validity.py`
+  - `src/task_generator/v3_workflow_episode_proposer.py`
+  - `Test/run_v3_workflow_episode_proposer.py`
+  - `SkillRegistry/v3_workflow_archetype_registry.experimental.json`
+  - `SkillRegistry/v3_motif_graph_grammar.experimental.json`
+  - future `src/task_generator/v3_task_verifier.py`
+  - future `src/task_generator/v3_promotion_manager.py`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
@@ -612,9 +655,12 @@ The first real smoke should answer whether the V3 package can pass through the r
 
 Recommended next choices:
 
-- improve Pipeline A typed resources, transition evidence, and support diversity so the current package can move from `revise_only` toward `candidate_ready`
-- use `pipeline_b_eval_summary_report.json` as diagnostic evidence for prompt/rubric/reference improvements, while keeping it out of registry and transition-prior updates until the package is candidate-ready
-- use `pipeline_b_eval_feedback_report.json` to prioritize concrete fixes in prompt evidence contracts, teacher-step operationalization, policy-reference usage, supervision density, and intermediate-state completion
+- follow `docs/architecture/pipeline_next_stage_global_plan.md` before any older next-slice note in this file
+- add `global_task_validity_report.json`, `real_worldness_report.json`, `difficulty_profile_report.json`, `task_constraint_graph_report.json`, and `execution_plan_dag_report.json` as diagnostic-only reports without changing current Pipeline B decisions
+- add `WorkflowEpisode` proposal output from existing Pipeline A extraction artifacts, without writing to `SkillRegistry/v3_skill_registry.json`
+- add experimental workflow archetype and motif grammar files, starting with `policy_application` and `fan_in_reconciliation`, without making the sampler depend on them yet
+- extend sampler and batch reports with role coverage fields such as `filled_roles`, `missing_roles`, `role_fit_scores`, `workflow_context_fit`, and `task_graph_shape_assumption`
+- keep using `pipeline_b_batch_report.json`, `pipeline_b_batch_feedback_report.json`, `pipeline_a_substrate_audit_report.json`, and `typed_resource_patch_proposal_report.json` as diagnostic evidence, but do not treat typed-resource proposals as applied registry state
 
 Current eval-feedback result:
 
