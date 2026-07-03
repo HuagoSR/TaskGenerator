@@ -296,6 +296,30 @@ Completed slices:
      - two revise-only draft-compatible cases can be used for a later guarded external smoke, but are not final training data
      - a single task score should no longer drive broad Pipeline B changes without batch feedback
 
+23. Pipeline A Batch-Selected Skill Substrate Audit V1.
+   - New module:
+     - `src/task_generator/v3_pipeline_a_substrate_audit.py`
+   - New CLI:
+     - `Test/run_v3_pipeline_a_substrate_audit.py`
+   - Purpose: turn the batch feedback analyzer's top Pipeline A substrate action into a concrete, per-skill remediation audit.
+   - Current changes:
+     - reads `pipeline_b_batch_feedback_report.json`, `pipeline_b_batch_report.json`, the persistent registry, readiness report, transition graph report, and composition readiness report
+     - extracts the unique skill IDs actually selected by the batch subgraph reports
+     - records typed resource counts, legacy semantic fallback signals, support counts, readiness reasons, graph roles, transition evidence, motif participation, and batch case usage per skill
+     - emits diagnoses such as `missing_typed_resources`, `weak_support_diversity`, `transition_evidence_absent_or_local_only`, `missing_graph_role`, `candidate_ready_for_manual_resource_patch`, and `candidate_needs_new_source_evidence`
+     - emits prioritized remediation actions without writing registry patches, transition priors, readiness changes, or sampler-weight changes
+   - Current smoke result:
+     - writes `artifacts/pipeline_b/scratch/pipeline_a_substrate_audit_smoke/pipeline_a_substrate_audit_report.json`
+     - covers 8 unique batch-selected skills
+     - reports 8 missing persistent typed-resource interfaces
+     - distinguishes 3 exact single-source skills from 5 skills with two source candidate IDs
+     - reports 7 transition gaps and 3 missing graph-role hints
+     - identifies 8 manual typed-resource patch candidates and 3 new source-evidence candidates
+   - Interpretation:
+     - the immediate next substrate work should be a reviewed typed-resource patch proposal layer, not a silent registry migration
+     - single-source skills should receive source-evidence expansion before sampler weights are raised
+     - local-order transition evidence is useful calibration material but should not yet be treated as durable transition-prior evidence
+
 Current validation commands:
 
 ```powershell
@@ -951,29 +975,31 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is Pipeline B Batch Feedback Analyzer V1.
+The current code change is Pipeline A Batch-Selected Skill Substrate Audit V1.
 
 Minimal scope:
 
-- Preserve the existing batch runner output format.
-- Read `pipeline_b_batch_report.json` and selected per-case artifacts.
-- Classify findings into systemic, motif-specific, case-specific, and external-eval-candidate buckets.
-- Emit prioritized actions that tell whether to work on Pipeline A substrate, inspect a rejected motif/case, or run a small guarded external draft smoke.
+- Preserve the existing batch runner and batch feedback analyzer output formats.
+- Read `pipeline_b_batch_feedback_report.json`, `pipeline_b_batch_report.json`, `SkillRegistry/v3_skill_registry.json`, `SkillRegistry/v3_registry_sampling_readiness_report.json`, `SkillRegistry/v3_skill_transition_graph_report.json`, and `SkillRegistry/v3_composition_readiness_report.json`.
+- Extract unique skill IDs from the batch case subgraph reports rather than relying on a hand-written skill list.
+- Audit typed resources, legacy fallback semantics, support diversity, readiness reasons, graph roles, transition evidence, motif participation, and batch case participation for each selected skill.
+- Emit per-skill diagnoses and prioritized remediation actions.
 - Do not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answers how to interpret a small Pipeline B batch before making more local prompt/rubric/reference changes. It turns repeated reason codes into explicit project priorities while keeping all feedback report-first.
+This slice answers what exactly is weak in the Pipeline A substrate for the skills Pipeline B actually sampled. It converts the batch feedback analyzer's top action into a concrete remediation checklist while keeping all feedback report-first.
 
-The next likely implementation slice should follow the analyzer's top action: run a report-first Pipeline A substrate audit for the selected batch skill IDs, focused on typed resources, multi-source support, and transition evidence. A tiny guarded external draft smoke is useful only after selecting cases from the analyzer output.
+The next likely implementation slice should follow the substrate audit output: create a reviewed typed-resource patch proposal layer, or run targeted source-evidence expansion for exact single-source skills. A tiny guarded external draft smoke is useful only after choosing cases from the analyzer output and should remain draft inspection evidence.
 
 ## Test Plan For The Current Next Slice
 
 Commands:
 
 ```powershell
-D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_batch_feedback_analyzer.py Test\run_v3_pipeline_b_batch_feedback_analyzer.py
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_a_substrate_audit.py Test\run_v3_pipeline_a_substrate_audit.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_feedback_analyzer.py --batch-report artifacts\pipeline_b\scratch\batch_runner_smoke\pipeline_b_batch_report.json --output-dir artifacts\pipeline_b\scratch\batch_feedback_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_a_substrate_audit.py --output-dir artifacts\pipeline_b\scratch\pipeline_a_substrate_audit_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py src\task_generator\v3_pipeline_b_batch_runner.py Test\run_v3_rw_task_eval_runner.py Test\run_v3_pipeline_b_batch_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\run --run-eval --command-timeout-seconds 1
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
@@ -1007,9 +1033,15 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-r
 
 Expected results:
 
+- The Pipeline A substrate audit emits `pipeline_a_substrate_audit_report.json`.
+- The report covers all unique selected skills from the current 3-case batch.
+- The report confirms persistent registry typed-resource gaps for the current selected skills.
+- The report distinguishes exact single-source support from skills with two source candidate IDs.
+- The report references readiness, transition, and composition signals, rather than only registry entry fields.
+- The report emits prioritized actions without registry mutation.
 - The batch feedback analyzer emits `pipeline_b_batch_feedback_report.json`.
 - The report contains systemic blockers, motif/case-specific findings, prioritized actions, and draft external-eval candidates.
-- The current top priority is typed-resource/support-diversity/transition-evidence improvement for sampled skills.
+- The current top priority remains typed-resource/support-diversity/transition-evidence improvement for sampled skills.
 - The eval runner can emit `run_status=timeout` for a controlled local timeout and still write command logs.
 - The batch runner emits `pipeline_b_batch_report.json` with 3 completed deterministic dry-run cases.
 - The batch report exposes repeated reason codes and repeated subgraph IDs, if any.

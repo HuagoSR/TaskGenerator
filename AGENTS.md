@@ -278,6 +278,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_pipeline_b_batch_runner.py`: CLI for writing per-case Pipeline B artifacts plus `pipeline_b_batch_report.json` under `artifacts/pipeline_b/scratch/batch_runner_smoke/`
 - `src/task_generator/v3_pipeline_b_batch_feedback_analyzer.py`: report-only analyzer that turns Pipeline B batch smoke output into systemic, motif-specific, case-specific, and external-eval-candidate findings
 - `Test/run_v3_pipeline_b_batch_feedback_analyzer.py`: CLI for writing `pipeline_b_batch_feedback_report.json` under `artifacts/pipeline_b/scratch/batch_feedback_smoke/`
+- `src/task_generator/v3_pipeline_a_substrate_audit.py`: report-only audit layer that inspects the Pipeline A substrate signals for the skills actually sampled by a Pipeline B batch
+- `Test/run_v3_pipeline_a_substrate_audit.py`: CLI for writing `pipeline_a_substrate_audit_report.json` under `artifacts/pipeline_b/scratch/pipeline_a_substrate_audit_smoke/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -525,9 +527,12 @@ Current Pipeline A status:
   - current Pipeline B batch feedback command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_feedback_analyzer.py --batch-report artifacts\pipeline_b\scratch\batch_runner_smoke\pipeline_b_batch_report.json --output-dir artifacts\pipeline_b\scratch\batch_feedback_smoke`
   - current batch feedback smoke writes `pipeline_b_batch_feedback_report.json` with 5 systemic findings, 5 motif-specific findings, 1 case-specific blocking-artifact finding, and 2 draft external-eval candidates
   - current top batch action is to improve Pipeline A typed resources, support diversity, and transition evidence for sampled skills before doing more single-task prompt tuning
+  - current Pipeline A substrate audit command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_a_substrate_audit.py --output-dir artifacts\pipeline_b\scratch\pipeline_a_substrate_audit_smoke`
+  - current substrate audit smoke covers 8 unique batch-selected skills; it reports 8 missing typed-resource interfaces, 3 exact single-source skills, 5 multi-source-candidate skills, 7 transition gaps, and 8 manual typed-resource patch candidates
+  - substrate audit output is a remediation decision aid only; it does not patch registry entries, transition priors, readiness reports, or sampler weights
   - `fan_in_reconciliation` is currently the rejected motif/case to inspect through its teacher, annotation, and rubric reports
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-- no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, V3 eval feedback analyzer, V3 batch runner, or V3 batch feedback analyzer
+- no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, V3 eval feedback analyzer, V3 batch runner, V3 batch feedback analyzer, or V3 Pipeline A substrate audit
 - next Pipeline B implementation choices:
   - keep the strengthened prompt/teacher contract and rubric audience split as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, `policy_clause_traceability`, and candidate-only rw-task rubric export
   - current contract-strengthening slice makes evidence inventory, deliverable outline, evidence-to-conclusion mapping, and policy-clause mapping explicit in the candidate prompt and TeacherRunner state purposes
@@ -536,6 +541,7 @@ Current Pipeline A status:
   - current policy/evidence operationalization requires exact candidate-visible `Evidence_ID` values such as `EVID-001`, rejects source-label-only citations, and keeps policy clause IDs paired with exact workbook evidence IDs
   - current Evidence inventory section tightening requires exact section order, populated required sections, and no placeholder-only headings; it has deterministic validation but not a completed external score yet
   - next Pipeline B work should use `pipeline_b_batch_report.json` and `pipeline_b_batch_feedback_report.json` as the default diagnostic surfaces before making further prompt/rubric/reference changes
+  - next Pipeline A/B bridge work should use `pipeline_a_substrate_audit_report.json` to choose between typed-resource patch proposals, additional source evidence collection, transition calibration, and continued sampler caution
   - rerun external rw-task smoke only after choosing a small batch subset and keeping results as `draft_inspection_only`
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
