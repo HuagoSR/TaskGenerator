@@ -280,6 +280,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_pipeline_b_batch_feedback_analyzer.py`: CLI for writing `pipeline_b_batch_feedback_report.json` under `artifacts/pipeline_b/scratch/batch_feedback_smoke/`
 - `src/task_generator/v3_pipeline_a_substrate_audit.py`: report-only audit layer that inspects the Pipeline A substrate signals for the skills actually sampled by a Pipeline B batch
 - `Test/run_v3_pipeline_a_substrate_audit.py`: CLI for writing `pipeline_a_substrate_audit_report.json` under `artifacts/pipeline_b/scratch/pipeline_a_substrate_audit_smoke/`
+- `src/task_generator/v3_typed_resource_patch_proposal.py`: report-only proposal builder that converts substrate-audit legacy semantics into reviewed `SemanticResource` patch candidates without mutating the registry
+- `Test/run_v3_typed_resource_patch_proposal.py`: CLI for writing `typed_resource_patch_proposals.json` and `typed_resource_patch_proposal_report.json` under `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -530,9 +532,12 @@ Current Pipeline A status:
   - current Pipeline A substrate audit command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_a_substrate_audit.py --output-dir artifacts\pipeline_b\scratch\pipeline_a_substrate_audit_smoke`
   - current substrate audit smoke covers 8 unique batch-selected skills; it reports 8 missing typed-resource interfaces, 3 exact single-source skills, 5 multi-source-candidate skills, 7 transition gaps, and 8 manual typed-resource patch candidates
   - substrate audit output is a remediation decision aid only; it does not patch registry entries, transition priors, readiness reports, or sampler weights
+  - current typed-resource patch proposal command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_typed_resource_patch_proposal.py --output-dir artifacts\pipeline_b\scratch\typed_resource_patch_proposal_smoke`
+  - current typed-resource proposal smoke emits 8 skill patch proposals and 31 proposed resources: 17 required, 1 optional, and 13 provided; 10 resources remain low-confidence, and 3 skill proposals are marked `needs_source_evidence`
+  - typed-resource proposals are review material only; they must not be treated as applied registry state until a separate reviewed apply step exists
   - `fan_in_reconciliation` is currently the rejected motif/case to inspect through its teacher, annotation, and rubric reports
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
-- no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, V3 eval feedback analyzer, V3 batch runner, V3 batch feedback analyzer, or V3 Pipeline A substrate audit
+- no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, V3 eval feedback analyzer, V3 batch runner, V3 batch feedback analyzer, V3 Pipeline A substrate audit, or typed-resource patch proposal builder
 - next Pipeline B implementation choices:
   - keep the strengthened prompt/teacher contract and rubric audience split as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, `policy_clause_traceability`, and candidate-only rw-task rubric export
   - current contract-strengthening slice makes evidence inventory, deliverable outline, evidence-to-conclusion mapping, and policy-clause mapping explicit in the candidate prompt and TeacherRunner state purposes
@@ -542,6 +547,7 @@ Current Pipeline A status:
   - current Evidence inventory section tightening requires exact section order, populated required sections, and no placeholder-only headings; it has deterministic validation but not a completed external score yet
   - next Pipeline B work should use `pipeline_b_batch_report.json` and `pipeline_b_batch_feedback_report.json` as the default diagnostic surfaces before making further prompt/rubric/reference changes
   - next Pipeline A/B bridge work should use `pipeline_a_substrate_audit_report.json` to choose between typed-resource patch proposals, additional source evidence collection, transition calibration, and continued sampler caution
+  - next registry-facing work should review `typed_resource_patch_proposals.json` and either add a separate reviewed apply step or request new Pipeline A source evidence for `needs_source_evidence` proposals
   - rerun external rw-task smoke only after choosing a small batch subset and keeping results as `draft_inspection_only`
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence

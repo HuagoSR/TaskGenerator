@@ -320,6 +320,31 @@ Completed slices:
      - single-source skills should receive source-evidence expansion before sampler weights are raised
      - local-order transition evidence is useful calibration material but should not yet be treated as durable transition-prior evidence
 
+24. Typed Resource Patch Proposal V1.
+   - New module:
+     - `src/task_generator/v3_typed_resource_patch_proposal.py`
+   - New CLI:
+     - `Test/run_v3_typed_resource_patch_proposal.py`
+   - Purpose: turn substrate-audit legacy semantic strings into reviewable `SemanticResource` patch candidates without mutating the persistent registry.
+   - Current changes:
+     - reads `pipeline_a_substrate_audit_report.json`
+     - selects records marked with `manual_resource_patch`
+     - converts legacy required, optional, and provided semantics into proposed typed resources
+     - records target contract paths such as `input_contract.required_resources`, `input_contract.optional_resources`, and `output_contract.provided_resources`
+     - preserves source semantic strings, inferred aliases, confidence, review status, source candidate IDs, and risk reason codes
+     - writes both full proposals and a lightweight proposal summary report
+   - Current smoke result:
+     - writes `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/typed_resource_patch_proposals.json`
+     - writes `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/typed_resource_patch_proposal_report.json`
+     - emits 8 skill patch proposals
+     - emits 31 proposed resources: 17 required, 1 optional, and 13 provided
+     - keeps 10 low-confidence resources visible for review
+     - marks 3 skill proposals as `needs_source_evidence`
+   - Interpretation:
+     - this is review material, not applied registry state
+     - the next registry-facing slice should either implement a reviewed apply command or collect/add source evidence for `needs_source_evidence` proposals
+     - no proposal should raise sampler confidence until it is validated against source evidence and rerun through Pipeline B batch smoke
+
 Current validation commands:
 
 ```powershell
@@ -975,31 +1000,32 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is Pipeline A Batch-Selected Skill Substrate Audit V1.
+The current code change is Typed Resource Patch Proposal V1.
 
 Minimal scope:
 
-- Preserve the existing batch runner and batch feedback analyzer output formats.
-- Read `pipeline_b_batch_feedback_report.json`, `pipeline_b_batch_report.json`, `SkillRegistry/v3_skill_registry.json`, `SkillRegistry/v3_registry_sampling_readiness_report.json`, `SkillRegistry/v3_skill_transition_graph_report.json`, and `SkillRegistry/v3_composition_readiness_report.json`.
-- Extract unique skill IDs from the batch case subgraph reports rather than relying on a hand-written skill list.
-- Audit typed resources, legacy fallback semantics, support diversity, readiness reasons, graph roles, transition evidence, motif participation, and batch case participation for each selected skill.
-- Emit per-skill diagnoses and prioritized remediation actions.
+- Preserve the existing substrate audit output format.
+- Read `pipeline_a_substrate_audit_report.json`.
+- Convert legacy semantic strings into reviewable `SemanticResource` proposals with stable IDs.
+- Keep target contract paths, source semantic strings, inference reason codes, confidence, review status, and source-support risks visible.
+- Emit proposal reports only; do not write back to `SkillRegistry/v3_skill_registry.json`.
 - Do not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answers what exactly is weak in the Pipeline A substrate for the skills Pipeline B actually sampled. It converts the batch feedback analyzer's top action into a concrete remediation checklist while keeping all feedback report-first.
+This slice answers what a reviewed typed-resource backfill might look like while keeping it separated from registry mutation. It turns the substrate audit's manual patch candidates into concrete proposal objects that a later review/apply or source-evidence expansion step can consume.
 
-The next likely implementation slice should follow the substrate audit output: create a reviewed typed-resource patch proposal layer, or run targeted source-evidence expansion for exact single-source skills. A tiny guarded external draft smoke is useful only after choosing cases from the analyzer output and should remain draft inspection evidence.
+The next likely implementation slice should either add a reviewed apply command for accepted proposals, or run targeted source-evidence expansion for proposals marked `needs_source_evidence`. A tiny guarded external draft smoke is useful only after choosing cases from the analyzer output and should remain draft inspection evidence.
 
 ## Test Plan For The Current Next Slice
 
 Commands:
 
 ```powershell
-D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_a_substrate_audit.py Test\run_v3_pipeline_a_substrate_audit.py
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_typed_resource_patch_proposal.py Test\run_v3_typed_resource_patch_proposal.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_feedback_analyzer.py --batch-report artifacts\pipeline_b\scratch\batch_runner_smoke\pipeline_b_batch_report.json --output-dir artifacts\pipeline_b\scratch\batch_feedback_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_a_substrate_audit.py --output-dir artifacts\pipeline_b\scratch\pipeline_a_substrate_audit_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_typed_resource_patch_proposal.py --output-dir artifacts\pipeline_b\scratch\typed_resource_patch_proposal_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py src\task_generator\v3_pipeline_b_batch_runner.py Test\run_v3_rw_task_eval_runner.py Test\run_v3_pipeline_b_batch_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\run --run-eval --command-timeout-seconds 1
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
@@ -1033,6 +1059,12 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-r
 
 Expected results:
 
+- The typed-resource patch proposal builder emits `typed_resource_patch_proposals.json`.
+- The typed-resource patch proposal builder emits `typed_resource_patch_proposal_report.json`.
+- The proposal report contains stable proposal IDs, target contract paths, proposed `SemanticResource` objects, confidence, status, and review notes.
+- Current smoke emits 8 skill proposals and 31 proposed resources.
+- Current smoke marks exact single-source skills as `needs_source_evidence`.
+- The proposal builder does not modify registry files, readiness reports, transition reports, or sampler weights.
 - The Pipeline A substrate audit emits `pipeline_a_substrate_audit_report.json`.
 - The report covers all unique selected skills from the current 3-case batch.
 - The report confirms persistent registry typed-resource gaps for the current selected skills.

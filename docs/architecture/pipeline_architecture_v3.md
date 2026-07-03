@@ -165,6 +165,7 @@ Current bridge status:
 - Pipeline B now has a batch feedback analyzer that converts the dry-run batch into systemic, motif-specific, case-specific, and external-eval-candidate findings.
 - The first batch feedback smoke identifies 5 systemic findings, 5 motif-specific findings, 1 case-specific blocking-artifact finding, and 2 draft external-eval candidates. Its top action is to improve Pipeline A typed resources, support diversity, and transition evidence before further single-task prompt tuning.
 - Pipeline A now has a report-only substrate audit for the skills actually sampled by the Pipeline B batch. The first audit covers 8 unique sampled skills and reports 8 missing persistent typed-resource interfaces, 3 exact single-source skills, 5 multi-source-candidate skills, 7 transition gaps, and 8 manual typed-resource patch candidates.
+- Pipeline A now also has a report-only typed-resource patch proposal layer. The first proposal smoke turns the 8 substrate-audit patch candidates into 31 reviewed `SemanticResource` proposals: 17 required, 1 optional, and 13 provided. It keeps 10 low-confidence proposals visible and marks 3 skills as `needs_source_evidence`.
 - The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, grader-facing Pipeline A diagnostics, or source-label-only policy citations. It is mostly cross-case Pipeline A signal weakness, partial teacher/readiness chains, required intermediate-section operationalization, and robust external-eval timeout/resume reporting.
 - Single-case draft smoke scores should now be treated as diagnostic probes only. Priority decisions should be based on repeated signals in small Pipeline B batches.
 
@@ -946,6 +947,7 @@ Current toolchain smoke evidence:
 - the first Pipeline B batch dry-run writes `artifacts/pipeline_b/scratch/batch_runner_smoke/pipeline_b_batch_report.json` with 3 completed dry-run cases, 3 unique subgraph IDs, 2 `revise` packages, 1 `reject` package, and repeated reason codes around low subgraph confidence and Pipeline A signal gaps
 - the first Pipeline B batch feedback smoke writes `artifacts/pipeline_b/scratch/batch_feedback_smoke/pipeline_b_batch_feedback_report.json`; it marks `low_subgraph_confidence`, `pipeline_a_signal_gaps`, and `single_source_support` as systemic substrate blockers, marks `fan_in_reconciliation` as the rejected motif/case to inspect, and selects 2 draft-compatible cases for possible later guarded external smoke
 - the first Pipeline A substrate audit writes `artifacts/pipeline_b/scratch/pipeline_a_substrate_audit_smoke/pipeline_a_substrate_audit_report.json`; it confirms that all 8 batch-selected skills lack persistent typed resources, 3 have exact single-source support, 5 have two source candidate IDs but still carry `single_source_support`, and 7 have absent or local-only transition evidence
+- the first typed-resource patch proposal smoke writes `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/typed_resource_patch_proposals.json` and `typed_resource_patch_proposal_report.json`; it proposes 31 resources while preserving review status, confidence, source semantic strings, target contract paths, and source-evidence risks
 - because the package is still `draft_inspection_only` and `revise_only`, this result is toolchain evidence plus draft-quality observation, not final model-separation evidence
 
 Recommended next code tasks:
@@ -953,6 +955,7 @@ Recommended next code tasks:
 - prefer `Test/run_v3_pipeline_b_batch_runner.py --max-cases 3` as the default local smoke before tuning a single generated task again
 - use `Test/run_v3_pipeline_b_batch_feedback_analyzer.py` after each batch smoke to choose between Pipeline A substrate work, Pipeline B motif/case inspection, or a tiny guarded external draft smoke
 - use `Test/run_v3_pipeline_a_substrate_audit.py` after batch feedback when the top action points at Pipeline A substrate. Treat its output as the bridge from repeated Pipeline B failures to targeted typed-resource, source-evidence, transition-evidence, or sampler-caution remediation.
+- use `Test/run_v3_typed_resource_patch_proposal.py` after substrate audit to create reviewable typed-resource patch proposals. These proposals are not registry state and should not be applied without a separate review/apply command.
 - keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
@@ -969,7 +972,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata and guarded explicit smoke execution
 - keep using `Test/run_v3_rw_task_eval_summarizer.py` to convert run and grader outputs into a small report-only summary
 - treat draft eval execution as toolchain evidence and draft-quality observation only, not final model-separation evidence
-- focus the next implementation work on analyzer/audit-prioritized repeated reasons: persistent typed-resource gaps, weak source-support diversity, local-only transition evidence, low subgraph confidence, partial intermediate states, Evidence inventory / intermediate-state operationalization, and external eval timeout visibility
+- focus the next implementation work on analyzer/audit/proposal-prioritized repeated reasons: reviewed typed-resource application, weak source-support diversity, local-only transition evidence, low subgraph confidence, partial intermediate states, Evidence inventory / intermediate-state operationalization, and external eval timeout visibility
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
