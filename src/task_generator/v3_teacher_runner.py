@@ -559,11 +559,11 @@ class TeacherRunner:
 
     def _state_purpose(self, state_name: str) -> str:
         purposes = {
-            "evidence_inventory": "List the available evidence units before drawing conclusions.",
-            "deliverable_outline": "Outline the required deliverable sections before drafting final prose.",
-            "evidence_to_conclusion_map": "Connect each material conclusion to visible evidence anchors.",
+            "evidence_inventory": "Include an Evidence inventory section listing each material evidence ID, source file, observed item, and intended use before drawing conclusions.",
+            "deliverable_outline": "Include a Deliverable outline section with headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
+            "evidence_to_conclusion_map": "Include an Evidence-to-conclusion map linking each material conclusion to specific visible evidence IDs.",
             "policy_requirement_mapping": "Map evidence items to applicable requirement logic.",
-            "policy_clause_evidence_map": "Link policy clauses to the evidence items they govern before stating policy-based conclusions.",
+            "policy_clause_evidence_map": "Include a Policy clause mapping that links each clause ID to governed evidence IDs, applied conclusion, and unresolved policy uncertainty.",
             "exception_classification_log": "Separate confirmed exceptions from unresolved evidence gaps.",
             "pipeline_a_signal_gap_review": "Record where Pipeline A graph signals are weak or missing.",
         }
@@ -575,15 +575,15 @@ class TeacherRunner:
 
     def _expected_action(self, canonical_name: str, linked_states: List[str]) -> str:
         if any("policy_clause_evidence_map" in name for name in linked_states):
-            return f"Apply {canonical_name} with explicit policy-clause and evidence-ID mapping."
+            return f"Apply {canonical_name} and write the policy-clause mapping with clause IDs, governed evidence IDs, applied conclusion, and unresolved policy uncertainty."
         if any("policy" in name for name in linked_states):
             return f"Apply {canonical_name} with explicit policy-to-evidence mapping."
         if any("exception" in name for name in linked_states):
             return f"Use {canonical_name} to classify exceptions and unresolved items."
         if any("deliverable_outline" in name for name in linked_states):
-            return f"Use {canonical_name} to produce a manager-ready deliverable structure with explicit cited support."
+            return f"Use {canonical_name} to produce the deliverable outline and manager-ready section structure with explicit cited support."
         if any("inventory" in name or "conclusion_map" in name for name in linked_states):
-            return f"Use {canonical_name} to transform source evidence into a manager-ready conclusion."
+            return f"Use {canonical_name} to inventory source evidence and map it to manager-ready conclusions."
         return f"Apply {canonical_name} as a teacher-supervised reasoning step."
 
     def _usage_note(self, canonical_name: str, semantic_type: str) -> str:

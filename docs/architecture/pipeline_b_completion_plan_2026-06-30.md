@@ -223,6 +223,30 @@ Completed slices:
      - low-scoring criteria dropped from 13 to 5 after removing grader-facing Pipeline A diagnostics
      - remaining low-score feedback is now concentrated on teacher-step operationalization and policy-reference prompting
 
+20. Candidate Contract Strengthening From Filtered Feedback.
+   - Updated modules:
+     - `src/task_generator/v3_pipeline_b_prototype.py`
+     - `src/task_generator/v3_teacher_runner.py`
+   - Purpose: address the remaining candidate-facing low-score feedback without changing readiness, hiding Pipeline A gaps, or weakening the task.
+   - Current changes:
+     - candidate prompt now explicitly requires `Evidence inventory`, `Deliverable outline`, `Evidence-to-conclusion map`, and `Policy clause mapping` sections
+     - policy-sensitive conclusions must now be supported by a visible policy-clause mapping with clause ID, governed evidence ID, applied conclusion, and unresolved policy uncertainty
+     - TeacherRunner intermediate-state purposes now use the same section-oriented wording that the candidate sees
+     - GoldenStep expected actions now emphasize evidence inventory, manager-ready outline, and policy-clause mapping outputs
+   - Current deterministic smoke result:
+     - new blueprint: `bp_pipeline_b_276dc466`
+     - teacher input: `partial_ready`, 2 generated candidate-visible files, 9 evidence-contract items, no warning relationship checks
+     - teacher runner: 8 intermediate states, 4 partial golden steps, 5 final checks, no blocked steps
+     - training annotation: 17 supervision items, 10 hidden traps, 10 unresolved gaps
+     - rubric: 43 total criteria, 28 candidate/exportable criteria, 15 diagnostic criteria
+     - quality gate: `revise`, 23 revise findings, no blocking findings
+     - rw-task export: default blocked, explicit draft export succeeds with 2 references and 28 grader-facing rubric items
+     - export validator: `draft_compatible`
+     - eval prep: `prepared`, `draft_inspection_only`
+     - eval runner dry-run: `dry_run_ready`
+   - Current boundary:
+     - real external smoke for this new contract case was not executed because it uploads draft case contents and reference artifacts to rw-task/E2B/Tuzi; it requires explicit user approval after this risk is acknowledged
+
 Current validation commands:
 
 ```powershell
@@ -878,21 +902,19 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is a feedback-driven rubric/export split on top of the latest draft rw-task smoke.
+The current code change is candidate contract strengthening on top of the filtered draft feedback.
 
 Minimal scope:
 
-- Preserve the full structured `rubric.json` as a diagnostic contract.
-- Mark each criterion with `audience` and `export_to_rw_task`.
-- Keep Pipeline A graph-signal gaps, low subgraph confidence, and other generator/readiness diagnostics visible in reports.
-- Exclude non-candidate diagnostic criteria from the rw-task-facing `rubric_json`.
-- Record exported vs diagnostic criterion counts in the export report and `dataset_row.extra.rw_task_rubric_filter`.
+- Make the remaining candidate-facing expectations explicit in the candidate prompt.
+- Align TeacherRunner state purposes with the exact section names candidates are asked to produce.
+- Preserve the existing rubric audience split and draft/export semantics.
 - Keep the package `revise_only`; do not upgrade readiness because the grader-facing rubric is cleaner.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice should answer whether the V3 package can stop grading candidate models for Pipeline A substrate weaknesses while preserving those weaknesses for quality and feedback analysis. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
+This slice should answer whether the V3 package can make evidence inventory, deliverable outline, intermediate reasoning, and policy-clause mapping visible enough for the next draft-only external smoke. It should not convert the current `revise_only` sample into formal training data or model-separation evidence.
 
-The next likely implementation slice should target the remaining candidate-facing failures without weakening the task: make evidence inventory, deliverable outline, intermediate-state reasoning, and policy-clause-to-evidence mapping more explicit in the prompt/teacher contract.
+The next likely implementation slice is either an explicitly approved real external smoke for the contract-strengthened draft, or a Pipeline A typed-resource/support-diversity improvement pass if external uploads should pause.
 
 ## Test Plan For The Current Next Slice
 
@@ -918,6 +940,13 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_package_assembler.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_exporter.py --package-manifest artifacts\pipeline_b\scratch\package_assembler_filter_smoke\package_manifest.json --allow-revise-only --output-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_export_validator.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_prep.py --case-dir artifacts\pipeline_b\scratch\rw_task_export_filter_smoke --eval-input-dir artifacts\pipeline_b\scratch\rw_task_eval_input_filter_smoke --overwrite
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_prototype.py src\task_generator\v3_teacher_runner.py Test\run_v3_pipeline_b_prototype.py Test\run_v3_teacher_runner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_contract_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_planner.py --blueprint artifacts\pipeline_b\scratch\prototype_contract_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\reference_file_plan_contract_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_reference_file_generator.py --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_contract_smoke\reference_file_plan.json --output-dir artifacts\pipeline_b\scratch\reference_file_generation_contract_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_input_builder.py --blueprint artifacts\pipeline_b\scratch\prototype_contract_smoke\draft_task_blueprint.json --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --reference-file-plan artifacts\pipeline_b\scratch\reference_file_plan_contract_smoke\reference_file_plan.json --generated-file-manifest artifacts\pipeline_b\scratch\reference_file_generation_contract_smoke\generated_file_manifest.json --pipeline-a-feedback artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_a_feedback.json --prototype-report artifacts\pipeline_b\scratch\prototype_contract_smoke\pipeline_b_prototype_report.json --output-dir artifacts\pipeline_b\scratch\teacher_input_contract_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_teacher_runner.py --teacher-input-manifest artifacts\pipeline_b\scratch\teacher_input_contract_smoke\teacher_input_manifest.json --teacher-input-validation-report artifacts\pipeline_b\scratch\teacher_input_contract_smoke\teacher_input_validation_report.json --output-dir artifacts\pipeline_b\scratch\teacher_runner_contract_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\rw_task_eval_input_contract_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\rw_task_eval_run_contract_dry_smoke
 ```
 
 Expected results:
@@ -941,6 +970,9 @@ Expected results:
 - The eval prep emits a new `draft_inspection_only` batch input for the filtered draft case.
 - Authorized filtered external smoke completes and produces a draft-quality observation of `53/62`.
 - Eval feedback reports 5 remaining low-scoring criteria, not the previous Pipeline A diagnostic-heavy 13.
+- Contract-strengthened candidate prompt contains `Evidence inventory`, `Deliverable outline`, `Evidence-to-conclusion map`, and `Policy clause mapping`.
+- Contract-strengthened dry-run reaches `rw_task_eval_run_contract_dry_smoke` with `run_status=dry_run_ready`.
+- Real contract-strengthened external smoke is pending explicit approval because it uploads draft case/reference artifacts to external services.
 - The current draft eval path remains `draft_inspection_only` and is not final training data.
 - A local explicit smoke can surface environment blockers such as missing `E2B_API_KEY` or blocked outbound E2B connections before any task-quality conclusion is possible.
 

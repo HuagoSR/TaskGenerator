@@ -488,6 +488,9 @@ class PipelineBPrototypeBuilder:
             "Cite the evidence IDs or source labels that support each material conclusion.",
             "Flag items that cannot be resolved from the provided evidence.",
             "Separate supported conclusions, confirmed exceptions, and unresolved items instead of blending them together.",
+            "Include an `Evidence inventory` section before the final conclusions; list each material evidence ID, source file, observed item, and intended use.",
+            "Include a `Deliverable outline` section before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
+            "Include an `Evidence-to-conclusion map` that links each material conclusion to the specific evidence IDs used.",
         ]
         if motif == "fan_in_reconciliation":
             requirements.append("Reconcile source evidence to the control totals and explain material differences.")
@@ -500,6 +503,9 @@ class PipelineBPrototypeBuilder:
         if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
             requirements.append(
                 "For each policy-sensitive conclusion, cite both the supporting evidence ID and the applicable policy clause ID."
+            )
+            requirements.append(
+                "Include a `Policy clause mapping` section with columns or bullets for clause ID, governed evidence ID, applied conclusion, and any unresolved policy uncertainty."
             )
         if skill_names:
             requirements.append("The task should exercise: " + "; ".join(skill_names[:4]) + ".")

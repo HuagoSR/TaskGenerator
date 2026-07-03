@@ -507,7 +507,8 @@ Current Pipeline A status:
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
   - keep the strengthened prompt/teacher contract and rubric audience split as the new baseline: explicit deliverable contract, policy-clause citation requirement, `deliverable_outline`, `policy_clause_evidence_map`, `deliverable_requirement_coverage`, `policy_clause_traceability`, and candidate-only rw-task rubric export
-  - use the filtered draft-only external smoke (`53/62`) to target the next Pipeline B slice: make evidence inventory, deliverable outline, intermediate-state reasoning, and policy-clause mapping more explicit without weakening the task
+  - current contract-strengthening slice makes evidence inventory, deliverable outline, evidence-to-conclusion mapping, and policy-clause mapping explicit in the candidate prompt and TeacherRunner state purposes
+  - deterministic contract smoke reaches `rw_task_eval_run_contract_dry_smoke` with `run_status=dry_run_ready`; real external smoke for this new contract case requires explicit approval because it uploads the draft case and reference artifacts to rw-task/E2B/Tuzi
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
