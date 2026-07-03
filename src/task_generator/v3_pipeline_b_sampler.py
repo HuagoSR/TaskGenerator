@@ -578,3 +578,9 @@ class PipelineBSubgraphSampler:
         if len(compact) > 72:
             compact = compact[:72].rstrip("_")
         return f"{prefix}_{compact or 'empty'}_{digest}"
+
+
+def load_motif_graph_grammar(path: Optional[str | Path]) -> Optional[Dict[str, Any]]:
+    if path is None or not Path(path).exists():
+        return None
+    return load_json_file(str(path))

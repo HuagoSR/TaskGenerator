@@ -1,0 +1,532 @@
+{
+  "motif_graph_grammar_version": "v3.motif_graph_grammar.1",
+  "grammars": [
+    {
+      "motif_grammar_id": "mgg_f8e0a60f3615",
+      "motif_type": "policy_application",
+      "required_roles": [
+        {
+          "role_name": "policy_source",
+          "role_kind": "source",
+          "description": "Expose the governing policy text, clause structure, or rule reference.",
+          "required_resource_types": [
+            "PolicyRule"
+          ],
+          "provided_resource_types": [
+            "PolicyRule"
+          ],
+          "typical_graph_roles": [
+            "starter"
+          ],
+          "notes": [
+            "Usually maps to policy docs, compliance references, or rule catalogs."
+          ]
+        },
+        {
+          "role_name": "rule_extraction_skill",
+          "role_kind": "skill",
+          "description": "Extract the applicable rule from a broader policy source.",
+          "required_resource_types": [
+            "PolicyRule"
+          ],
+          "provided_resource_types": [
+            "PolicyRule"
+          ],
+          "typical_graph_roles": [
+            "transform"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "case_evidence_source",
+          "role_kind": "source",
+          "description": "Provide the case facts or candidate-visible evidence to which the rule applies.",
+          "required_resource_types": [
+            "CaseEvidence"
+          ],
+          "provided_resource_types": [
+            "CaseEvidence"
+          ],
+          "typical_graph_roles": [
+            "starter"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "rule_application_skill",
+          "role_kind": "skill",
+          "description": "Apply the extracted rule to the available case evidence.",
+          "required_resource_types": [
+            "PolicyRule",
+            "CaseEvidence"
+          ],
+          "provided_resource_types": [
+            "AppliedPolicyAssessment"
+          ],
+          "typical_graph_roles": [
+            "transform",
+            "fan_in"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "uncertainty_or_exception_handler",
+          "role_kind": "exception_handler",
+          "description": "Handle ambiguity, missing evidence, or exception classification before final output.",
+          "required_resource_types": [
+            "AppliedPolicyAssessment"
+          ],
+          "provided_resource_types": [
+            "ExceptionClassification"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "final_deliverable_skill",
+          "role_kind": "deliverable",
+          "description": "Synthesize a manager-ready finding, memo, or conclusion from the applied rule and exception status.",
+          "required_resource_types": [
+            "AppliedPolicyAssessment",
+            "ExceptionClassification"
+          ],
+          "provided_resource_types": [
+            "ManagerReadyFinding"
+          ],
+          "typical_graph_roles": [
+            "synthesis"
+          ],
+          "notes": []
+        }
+      ],
+      "optional_roles": [
+        {
+          "role_name": "conflicting_policy_detector",
+          "role_kind": "support",
+          "description": "Identify when multiple policy clauses or guidance sources conflict.",
+          "required_resource_types": [
+            "PolicyRule"
+          ],
+          "provided_resource_types": [
+            "PolicyRule"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "missing_evidence_detector",
+          "role_kind": "support",
+          "description": "Flag gaps between the policy test and the available supporting evidence.",
+          "required_resource_types": [
+            "CaseEvidence"
+          ],
+          "provided_resource_types": [
+            "ExceptionClassification"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "cross_check_validator",
+          "role_kind": "validator",
+          "description": "Cross-check the applied conclusion against supporting evidence and cited clauses.",
+          "required_resource_types": [
+            "AppliedPolicyAssessment"
+          ],
+          "provided_resource_types": [
+            "AppliedPolicyAssessment"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        }
+      ],
+      "required_resource_types": [
+        "PolicyRule",
+        "CaseEvidence"
+      ],
+      "provided_resource_types": [
+        "AppliedPolicyAssessment",
+        "ExceptionClassification",
+        "ManagerReadyFinding"
+      ],
+      "expected_graph_shape": "constraint_graph",
+      "execution_stage_template": [
+        {
+          "stage_id": "stage_extract_rule",
+          "stage_name": "extract applicable rule",
+          "required_roles": [
+            "policy_source",
+            "rule_extraction_skill"
+          ],
+          "expected_outputs": [
+            "PolicyRule"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_collect_evidence",
+          "stage_name": "collect case evidence",
+          "required_roles": [
+            "case_evidence_source"
+          ],
+          "expected_outputs": [
+            "CaseEvidence"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_apply_rule",
+          "stage_name": "apply rule to evidence",
+          "required_roles": [
+            "rule_application_skill"
+          ],
+          "expected_outputs": [
+            "AppliedPolicyAssessment"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_resolve_uncertainty",
+          "stage_name": "resolve uncertainty or exception",
+          "required_roles": [
+            "uncertainty_or_exception_handler"
+          ],
+          "expected_outputs": [
+            "ExceptionClassification"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_synthesize_deliverable",
+          "stage_name": "synthesize final deliverable",
+          "required_roles": [
+            "final_deliverable_skill"
+          ],
+          "expected_outputs": [
+            "ManagerReadyFinding"
+          ],
+          "notes": []
+        }
+      ],
+      "validation_constraints": [
+        {
+          "constraint_id": "must_cite_policy_clause",
+          "description": "The final output must cite the specific policy clause or rule used for the conclusion.",
+          "severity": "high",
+          "reason_codes": [
+            "missing_policy_locator"
+          ]
+        },
+        {
+          "constraint_id": "must_cite_supporting_evidence",
+          "description": "The final output must tie the conclusion to candidate-visible supporting evidence.",
+          "severity": "high",
+          "reason_codes": [
+            "missing_evidence_locator"
+          ]
+        },
+        {
+          "constraint_id": "must_separate_confirmed_from_unresolved",
+          "description": "Confirmed findings must be separated from unresolved issues or evidence gaps.",
+          "severity": "medium",
+          "reason_codes": [
+            "flattened_uncertainty"
+          ]
+        }
+      ],
+      "common_failure_modes": [
+        "policy quoted without application",
+        "evidence cited without clause mapping",
+        "exception path omitted",
+        "unresolved ambiguity flattened into false certainty"
+      ],
+      "notes": [
+        "Designed to support policy-heavy review tasks without hard-coding one fixed deliverable surface."
+      ]
+    },
+    {
+      "motif_grammar_id": "mgg_b012faac5418",
+      "motif_type": "fan_in_reconciliation",
+      "required_roles": [
+        {
+          "role_name": "source_a_extractor",
+          "role_kind": "source",
+          "description": "Extract the first source dataset, schedule, or evidence stream.",
+          "required_resource_types": [
+            "SourceRecord"
+          ],
+          "provided_resource_types": [
+            "SourceRecord"
+          ],
+          "typical_graph_roles": [
+            "starter"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "source_b_extractor",
+          "role_kind": "source",
+          "description": "Extract the second source dataset, schedule, or evidence stream.",
+          "required_resource_types": [
+            "SourceRecord"
+          ],
+          "provided_resource_types": [
+            "SourceRecord"
+          ],
+          "typical_graph_roles": [
+            "starter"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "normalizer",
+          "role_kind": "skill",
+          "description": "Normalize records into a comparable basis before differences are calculated.",
+          "required_resource_types": [
+            "SourceRecord"
+          ],
+          "provided_resource_types": [
+            "NormalizedRecord"
+          ],
+          "typical_graph_roles": [
+            "transform"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "difference_calculator",
+          "role_kind": "skill",
+          "description": "Compute the reconciled differences between aligned sources.",
+          "required_resource_types": [
+            "NormalizedRecord",
+            "ReconciliationBasis"
+          ],
+          "provided_resource_types": [
+            "DifferenceSet"
+          ],
+          "typical_graph_roles": [
+            "fan_in",
+            "transform"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "exception_explainer",
+          "role_kind": "exception_handler",
+          "description": "Explain why differences remain and classify unresolved exceptions.",
+          "required_resource_types": [
+            "DifferenceSet"
+          ],
+          "provided_resource_types": [
+            "ExceptionExplanation"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "deliverable_synthesizer",
+          "role_kind": "deliverable",
+          "description": "Turn reconciled differences and explanations into a memo or summary deliverable.",
+          "required_resource_types": [
+            "DifferenceSet",
+            "ExceptionExplanation"
+          ],
+          "provided_resource_types": [
+            "ReconciliationSummary"
+          ],
+          "typical_graph_roles": [
+            "synthesis"
+          ],
+          "notes": []
+        }
+      ],
+      "optional_roles": [
+        {
+          "role_name": "policy_checker",
+          "role_kind": "support",
+          "description": "Verify whether differences are acceptable under policy or accounting rules.",
+          "required_resource_types": [
+            "DifferenceSet"
+          ],
+          "provided_resource_types": [
+            "ExceptionExplanation"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "cross_check_validator",
+          "role_kind": "validator",
+          "description": "Cross-check the reconciled results against a third source or validation basis.",
+          "required_resource_types": [
+            "ReconciliationSummary"
+          ],
+          "provided_resource_types": [
+            "ReconciliationSummary"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        },
+        {
+          "role_name": "missing_evidence_detector",
+          "role_kind": "support",
+          "description": "Distinguish missing support from actual calculation discrepancies.",
+          "required_resource_types": [
+            "SourceRecord"
+          ],
+          "provided_resource_types": [
+            "ExceptionExplanation"
+          ],
+          "typical_graph_roles": [
+            "validator"
+          ],
+          "notes": []
+        }
+      ],
+      "required_resource_types": [
+        "SourceRecord",
+        "NormalizedRecord",
+        "ReconciliationBasis"
+      ],
+      "provided_resource_types": [
+        "DifferenceSet",
+        "ExceptionExplanation",
+        "ReconciliationSummary"
+      ],
+      "expected_graph_shape": "fan_in",
+      "execution_stage_template": [
+        {
+          "stage_id": "stage_extract_source_a",
+          "stage_name": "extract source A",
+          "required_roles": [
+            "source_a_extractor"
+          ],
+          "expected_outputs": [
+            "SourceRecord"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_extract_source_b",
+          "stage_name": "extract source B",
+          "required_roles": [
+            "source_b_extractor"
+          ],
+          "expected_outputs": [
+            "SourceRecord"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_normalize_records",
+          "stage_name": "normalize and align records",
+          "required_roles": [
+            "normalizer"
+          ],
+          "expected_outputs": [
+            "NormalizedRecord"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_calculate_differences",
+          "stage_name": "calculate differences",
+          "required_roles": [
+            "difference_calculator"
+          ],
+          "expected_outputs": [
+            "DifferenceSet"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_explain_exceptions",
+          "stage_name": "explain exceptions",
+          "required_roles": [
+            "exception_explainer"
+          ],
+          "expected_outputs": [
+            "ExceptionExplanation"
+          ],
+          "notes": []
+        },
+        {
+          "stage_id": "stage_synthesize_deliverable",
+          "stage_name": "synthesize deliverable",
+          "required_roles": [
+            "deliverable_synthesizer"
+          ],
+          "expected_outputs": [
+            "ReconciliationSummary"
+          ],
+          "notes": []
+        }
+      ],
+      "validation_constraints": [
+        {
+          "constraint_id": "must_preserve_source_provenance",
+          "description": "The reconciled result must preserve which source each record or figure came from.",
+          "severity": "high",
+          "reason_codes": [
+            "lost_source_provenance"
+          ]
+        },
+        {
+          "constraint_id": "must_explain_unresolved_differences",
+          "description": "Unresolved differences must be explained instead of being silently absorbed.",
+          "severity": "high",
+          "reason_codes": [
+            "unexplained_difference"
+          ]
+        },
+        {
+          "constraint_id": "must_distinguish_missing_from_mismatch",
+          "description": "Missing support must be distinguished from genuine calculation or data mismatches.",
+          "severity": "medium",
+          "reason_codes": [
+            "missing_vs_mismatch_confusion"
+          ]
+        }
+      ],
+      "common_failure_modes": [
+        "source normalization skipped",
+        "differences listed without explanation",
+        "missing evidence confused with actual discrepancy",
+        "final memo lacks reconciliation basis"
+      ],
+      "notes": [
+        "Designed for multi-source reconciliation and variance tasks where provenance and exception handling are both first-class."
+      ]
+    }
+  ],
+  "diagnostics": {
+    "grammar_count": 2,
+    "motif_types": [
+      "policy_application",
+      "fan_in_reconciliation"
+    ],
+    "warning_codes": [],
+    "notes": [
+      "V1 grammar is deterministic and hand-written; it is a stable contract draft rather than a learned ontology.",
+      "These records are intended to support later sampler role coverage and role-filling work without changing current selection behavior."
+    ]
+  },
+  "notes": [
+    "This artifact is experimental and report-first.",
+    "Motif graph grammars describe role/resource/stage expectations and should not be treated as fixed task templates."
+  ]
+}
