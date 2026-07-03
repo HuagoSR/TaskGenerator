@@ -26,6 +26,9 @@ def main() -> None:
     parser.add_argument("--motif", default=None)
     parser.add_argument("--skill-count", type=int, default=4)
     parser.add_argument("--allow-caution", action="store_true")
+    parser.add_argument("--workflow-archetype", default=None)
+    parser.add_argument("--motif-grammar-path", type=Path, default=None)
+    parser.add_argument("--target-difficulty-profile", default=None)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
 
@@ -36,6 +39,9 @@ def main() -> None:
         motif=args.motif,
         skill_count=args.skill_count,
         allow_caution=args.allow_caution,
+        workflow_archetype=args.workflow_archetype,
+        motif_grammar_path=args.motif_grammar_path,
+        target_difficulty_profile=args.target_difficulty_profile,
     )
     outputs = sampler.write_outputs(subgraph, args.output_dir)
     diagnostics = subgraph.diagnostics
@@ -46,6 +52,11 @@ def main() -> None:
                 "motif": subgraph.selected_motif,
                 "selected_skill_count": len(subgraph.selected_skills),
                 "confidence": diagnostics.confidence,
+                "motif_grammar_id": diagnostics.motif_grammar_id,
+                "filled_roles": diagnostics.filled_roles,
+                "missing_roles": diagnostics.missing_roles,
+                "workflow_context_fit": diagnostics.workflow_context_fit,
+                "task_graph_shape_assumption": diagnostics.task_graph_shape_assumption,
                 "typed_edge_count": diagnostics.edge_counts.get("typed_resource_match", 0),
                 "fallback_edge_count": (
                     diagnostics.edge_counts.get("legacy_resource_overlap", 0)

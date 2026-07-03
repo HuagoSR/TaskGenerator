@@ -42,6 +42,10 @@ class PipelineBBatchFeedbackRequest(BaseModel):
 class BatchCaseArtifactSnapshot(BaseModel):
     case_id: str
     motif: str
+    motif_grammar_id: Optional[str] = None
+    workflow_context_fit: Optional[str] = None
+    filled_roles: List[str] = Field(default_factory=list)
+    missing_roles: List[str] = Field(default_factory=list)
     quality_blocking_count: int = 0
     quality_revise_count: int = 0
     teacher_readiness: Optional[str] = None
@@ -179,9 +183,15 @@ class PipelineBBatchFeedbackAnalyzer:
         teacher = self._load_optional(case_dir / "teacher_runner" / "teacher_runner_report.json", errors)
         annotation = self._load_optional(case_dir / "training_annotation" / "training_annotation_report.json", errors)
         rubric = self._load_optional(case_dir / "rubric" / "rubric_report.json", errors)
+        subgraph = self._load_optional(case_dir / "subgraph_sampler" / "pipeline_b_subgraph_report.json", errors)
+        subgraph_diagnostics = (subgraph or {}).get("diagnostics") or {}
         return BatchCaseArtifactSnapshot(
             case_id=case.case_id,
             motif=case.motif,
+            motif_grammar_id=subgraph_diagnostics.get("motif_grammar_id"),
+            workflow_context_fit=subgraph_diagnostics.get("workflow_context_fit"),
+            filled_roles=list(subgraph_diagnostics.get("filled_roles") or []),
+            missing_roles=list(subgraph_diagnostics.get("missing_roles") or []),
             quality_blocking_count=int(((quality or {}).get("decision") or {}).get("blocking_count") or 0),
             quality_revise_count=int(((quality or {}).get("decision") or {}).get("revise_count") or 0),
             teacher_readiness=(teacher or {}).get("readiness"),
@@ -274,6 +284,23 @@ class PipelineBBatchFeedbackAnalyzer:
                         evidence=snapshot.model_dump(),
                     )
                 )
+            if snapshot.missing_roles:
+                findings.append(
+                    self._finding(
+                        category="motif_specific",
+                        severity="medium",
+                        reason_code="missing_motif_roles",
+                        message="Sampler report shows that required motif roles were not fully covered by the selected subgraph.",
+                        affected_case_ids=[snapshot.case_id],
+                        affected_motifs=[snapshot.motif],
+                        evidence={
+                            "motif_grammar_id": snapshot.motif_grammar_id,
+                            "workflow_context_fit": snapshot.workflow_context_fit,
+                            "missing_roles": snapshot.missing_roles,
+                            "filled_roles": snapshot.filled_roles,
+                        },
+                    )
+                )
         return findings
 
     def _external_eval_candidates(
@@ -349,6 +376,19 @@ class PipelineBBatchFeedbackAnalyzer:
                     recommended_next_step="Open the rejected case's teacher_runner_report, training_annotation_report, and rubric_report to identify whether the motif needs stronger evidence planning or should be held out.",
                 )
             )
+        if "missing_motif_roles" in by_reason:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_role_coverage_alignment",
+                    priority=2,
+                    owner="pipeline_b",
+                    title="Inspect motif-role coverage gaps before moving to true role-filling sampling.",
+                    rationale="The sampler can already surface which required motif roles are still missing, so the next improvement should target role coverage rather than prompt tuning.",
+                    linked_reason_codes=["missing_motif_roles"],
+                    linked_case_ids=sorted(by_reason["missing_motif_roles"].affected_case_ids),
+                    recommended_next_step="Review subgraph sampler reports for repeated missing roles and decide whether the gap belongs to motif grammar, graph-role labels, or typed-resource coverage.",
+                )
+            )
         if external_candidates:
             actions.append(
                 PrioritizedBatchAction(
@@ -376,6 +416,10 @@ class PipelineBBatchFeedbackAnalyzer:
             reason_code: len(cases)
             for reason_code, cases in sorted(reason_to_cases.items())
         }
+        role_case_coverage = Counter()
+        for case in batch_report.cases:
+            for role in case.missing_roles:
+                role_case_coverage[role] += 1
         priority_reason_codes = [
             finding.reason_code
             for finding in findings
@@ -387,7 +431,10 @@ class PipelineBBatchFeedbackAnalyzer:
             motif_specific_finding_count=category_counts.get("motif_specific", 0),
             case_specific_finding_count=category_counts.get("case_specific", 0),
             external_eval_candidate_count=len(external_candidates),
-            reason_case_coverage=reason_case_coverage,
+            reason_case_coverage={
+                **reason_case_coverage,
+                **{f"missing_role:{role}": count for role, count in sorted(role_case_coverage.items())},
+            },
             priority_reason_codes=sorted(set(priority_reason_codes)),
             notes=[
                 "Case coverage counts each affected case once even if a reason appears in both reason_codes and warning_reason_codes.",

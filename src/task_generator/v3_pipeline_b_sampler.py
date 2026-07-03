@@ -7,6 +7,11 @@ from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
+from task_generator.v3_motif_graph_grammar import (
+    MotifGraphGrammarArtifact,
+    MotifGraphGrammarRecord,
+    MotifRoleDefinition,
+)
 from task_generator.v3_pipeline_b_prototype import DEFAULT_MOTIF_PRIORITY, RESOURCE_ALIASES
 from task_generator.v3_skill_registry import SkillRegistryBuilder
 from task_generator.v3_source_schema import SemanticResource, SkillRegistryEntry, load_json_file
@@ -17,9 +22,13 @@ ResourceDirection = Literal["required", "optional", "provided"]
 ResourceEvidenceMode = Literal["typed", "legacy_inferred"]
 EdgeEvidenceMode = Literal["typed_resource_match", "legacy_resource_overlap", "role_sequence", "motif_cooccurrence"]
 SamplerConfidence = Literal["blocked", "low_due_to_resource_fallback", "medium_with_pipeline_a_gaps", "medium", "high"]
+WorkflowContextFit = Literal["low", "medium", "high"]
+TaskGraphShapeAssumption = Literal["chain", "tree", "fan_in", "dag", "constraint_graph"]
+RoleFitStatus = Literal["filled", "partial", "missing"]
 
 ROLE_PRIORITY = ["starter", "transform", "fan_in", "validator", "synthesis"]
 BLOCKING_READINESS = {"exclude_until_revised"}
+DEFAULT_MOTIF_GRAMMAR_PATH = Path("SkillRegistry") / "v3_motif_graph_grammar.experimental.json"
 
 
 class PipelineBSamplingRequest(BaseModel):
@@ -28,6 +37,9 @@ class PipelineBSamplingRequest(BaseModel):
     motif: Optional[str] = None
     skill_count: int = 4
     allow_caution: bool = False
+    workflow_archetype: Optional[str] = None
+    motif_grammar_path: Optional[str] = None
+    target_difficulty_profile: Optional[str] = None
 
 
 class PipelineBSelectedSkill(BaseModel):
@@ -67,6 +79,15 @@ class PipelineBSubgraphEdge(BaseModel):
     reason_codes: List[str] = Field(default_factory=list)
 
 
+class PipelineBRoleFitScore(BaseModel):
+    role_name: str
+    role_kind: str
+    status: RoleFitStatus = "missing"
+    score: float = 0.0
+    matched_skill_ids: List[str] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+
+
 class PipelineBSamplingDiagnostics(BaseModel):
     selected_motif: str
     readiness_counts: Dict[str, int] = Field(default_factory=dict)
@@ -78,6 +99,15 @@ class PipelineBSamplingDiagnostics(BaseModel):
     unresolved_gaps: List[str] = Field(default_factory=list)
     missing_or_weak_pipeline_a_signals: List[str] = Field(default_factory=list)
     confidence: SamplerConfidence = "blocked"
+    workflow_archetype_id: Optional[str] = None
+    motif_grammar_id: Optional[str] = None
+    filled_roles: List[str] = Field(default_factory=list)
+    missing_roles: List[str] = Field(default_factory=list)
+    role_fit_scores: List[PipelineBRoleFitScore] = Field(default_factory=list)
+    workflow_context_fit: WorkflowContextFit = "low"
+    task_graph_shape_assumption: TaskGraphShapeAssumption = "chain"
+    sampler_policy_version: str = "role_filling_v1"
+    role_assignment_fallback_reasons: List[str] = Field(default_factory=list)
 
 
 class PipelineBSubgraph(BaseModel):
@@ -105,18 +135,26 @@ class PipelineBSubgraphSampler:
         motif: Optional[str] = None,
         skill_count: int = 4,
         allow_caution: bool = False,
+        workflow_archetype: Optional[str] = None,
+        motif_grammar_path: Optional[str | Path] = None,
+        target_difficulty_profile: Optional[str] = None,
     ) -> PipelineBSubgraph:
+        resolved_motif_grammar_path = self._resolve_motif_grammar_path(motif_grammar_path)
         request = PipelineBSamplingRequest(
             registry_path=str(registry_path),
             seed_report_path=str(seed_report_path),
             motif=motif,
             skill_count=skill_count,
             allow_caution=allow_caution,
+            workflow_archetype=workflow_archetype,
+            motif_grammar_path=str(resolved_motif_grammar_path) if resolved_motif_grammar_path else None,
+            target_difficulty_profile=target_difficulty_profile,
         )
         entries = self.registry_builder.load_registry(registry_path)
         entry_by_id = {entry.skill_id: entry for entry in entries}
         seed_report = load_json_file(str(seed_report_path))
         selected_motif = motif or self._choose_motif(seed_report)
+        motif_grammar = self.load_motif_graph_grammar(resolved_motif_grammar_path).get(selected_motif)
         seed_records = list(seed_report.get("seed_records", []))
         selected_records = self._select_records(seed_records, selected_motif, skill_count, allow_caution)
         selected_entries = [
@@ -136,6 +174,8 @@ class PipelineBSubgraphSampler:
             selected_skills=selected_skills,
             resource_nodes=resource_nodes,
             subgraph_edges=subgraph_edges,
+            workflow_archetype=workflow_archetype,
+            motif_grammar=motif_grammar,
         )
 
         return PipelineBSubgraph(
@@ -150,8 +190,19 @@ class PipelineBSubgraphSampler:
                 "Report-only sampler output; no SkillRegistry files are mutated.",
                 "Typed resources are preferred; legacy keyword resources are diagnostic fallback evidence.",
                 "This sampler is deterministic/static and does not implement UCB, bandit, or learned priors.",
+                "Motif grammar alignment is report-only in V1 and does not yet change the core selection policy.",
             ],
         )
+
+    def load_motif_graph_grammar(
+        self,
+        motif_grammar_path: Optional[str | Path] = None,
+    ) -> Dict[str, MotifGraphGrammarRecord]:
+        resolved_path = self._resolve_motif_grammar_path(motif_grammar_path)
+        if not resolved_path or not resolved_path.exists():
+            return {}
+        artifact = MotifGraphGrammarArtifact.model_validate(load_json_file(str(resolved_path)))
+        return {record.motif_type: record for record in artifact.grammars}
 
     def build_feedback(self, subgraph: PipelineBSubgraph) -> Dict[str, Any]:
         diagnostics = subgraph.diagnostics
@@ -499,6 +550,8 @@ class PipelineBSubgraphSampler:
         selected_skills: List[PipelineBSelectedSkill],
         resource_nodes: List[PipelineBResourceNode],
         subgraph_edges: List[PipelineBSubgraphEdge],
+        workflow_archetype: Optional[str],
+        motif_grammar: Optional[MotifGraphGrammarRecord],
     ) -> PipelineBSamplingDiagnostics:
         readiness_counts = Counter(skill.readiness_decision for skill in selected_skills)
         role_counts = Counter(role for skill in selected_skills for role in skill.graph_role_hints)
@@ -541,6 +594,24 @@ class PipelineBSubgraphSampler:
         if edge_counts.get("motif_cooccurrence", 0):
             fallback_evidence.append("motif_cooccurrence_edges")
 
+        role_alignment = self._role_alignment(
+            selected_motif=selected_motif,
+            selected_skills=selected_skills,
+            resource_nodes=resource_nodes,
+            motif_grammar=motif_grammar,
+        )
+        task_graph_shape_assumption = self._task_graph_shape_assumption(
+            motif_grammar=motif_grammar,
+            selected_motif=selected_motif,
+            subgraph_edges=subgraph_edges,
+        )
+        role_assignment_fallback_reasons = self._role_assignment_fallback_reasons(
+            motif_grammar=motif_grammar,
+            role_alignment=role_alignment,
+            typed_count=typed_count,
+            edge_counts=edge_counts,
+        )
+
         return PipelineBSamplingDiagnostics(
             selected_motif=selected_motif,
             readiness_counts=dict(sorted(readiness_counts.items())),
@@ -552,6 +623,20 @@ class PipelineBSubgraphSampler:
             unresolved_gaps=gaps,
             missing_or_weak_pipeline_a_signals=sorted(set(missing)),
             confidence=self._confidence(selected_skills, missing, typed_count, typed_edge_count),
+            workflow_archetype_id=workflow_archetype,
+            motif_grammar_id=motif_grammar.motif_grammar_id if motif_grammar else None,
+            filled_roles=role_alignment["filled_roles"],
+            missing_roles=role_alignment["missing_roles"],
+            role_fit_scores=role_alignment["role_fit_scores"],
+            workflow_context_fit=self._workflow_context_fit(
+                motif_grammar=motif_grammar,
+                selected_skills=selected_skills,
+                filled_role_count=len(role_alignment["filled_roles"]),
+                required_role_count=role_alignment["required_role_count"],
+                typed_count=typed_count,
+            ),
+            task_graph_shape_assumption=task_graph_shape_assumption,
+            role_assignment_fallback_reasons=role_assignment_fallback_reasons,
         )
 
     def _confidence(
@@ -579,8 +664,201 @@ class PipelineBSubgraphSampler:
             compact = compact[:72].rstrip("_")
         return f"{prefix}_{compact or 'empty'}_{digest}"
 
+    def _resolve_motif_grammar_path(self, motif_grammar_path: Optional[str | Path]) -> Optional[Path]:
+        if motif_grammar_path is None:
+            candidate = Path(DEFAULT_MOTIF_GRAMMAR_PATH)
+            return candidate if candidate.exists() else None
+        candidate = Path(motif_grammar_path)
+        return candidate
 
-def load_motif_graph_grammar(path: Optional[str | Path]) -> Optional[Dict[str, Any]]:
-    if path is None or not Path(path).exists():
-        return None
-    return load_json_file(str(path))
+    def _role_alignment(
+        self,
+        selected_motif: str,
+        selected_skills: List[PipelineBSelectedSkill],
+        resource_nodes: List[PipelineBResourceNode],
+        motif_grammar: Optional[MotifGraphGrammarRecord],
+    ) -> Dict[str, Any]:
+        if motif_grammar is None:
+            return {
+                "filled_roles": [],
+                "missing_roles": [],
+                "role_fit_scores": [],
+                "required_role_count": 0,
+            }
+
+        skill_profiles = self._skill_profiles(selected_skills, resource_nodes)
+        role_fit_scores: List[PipelineBRoleFitScore] = []
+        filled_roles: List[str] = []
+        missing_roles: List[str] = []
+
+        for role in motif_grammar.required_roles:
+            fit = self._best_role_fit(role, skill_profiles, selected_motif)
+            role_fit_scores.append(fit)
+            if fit.status == "filled":
+                filled_roles.append(role.role_name)
+            else:
+                missing_roles.append(role.role_name)
+
+        for role in motif_grammar.optional_roles:
+            role_fit_scores.append(self._best_role_fit(role, skill_profiles, selected_motif))
+
+        return {
+            "filled_roles": filled_roles,
+            "missing_roles": missing_roles,
+            "role_fit_scores": role_fit_scores,
+            "required_role_count": len(motif_grammar.required_roles),
+        }
+
+    def _skill_profiles(
+        self,
+        selected_skills: List[PipelineBSelectedSkill],
+        resource_nodes: List[PipelineBResourceNode],
+    ) -> Dict[str, Dict[str, Any]]:
+        grouped_resources: Dict[str, Dict[str, Set[str]]] = {}
+        for node in resource_nodes:
+            skill_bucket = grouped_resources.setdefault(
+                node.skill_id,
+                {"required": set(), "optional": set(), "provided": set(), "typed": set(), "legacy": set()},
+            )
+            skill_bucket[node.direction].add(node.resource_type)
+            skill_bucket["typed" if node.evidence_mode == "typed" else "legacy"].add(node.resource_type)
+
+        profiles: Dict[str, Dict[str, Any]] = {}
+        for skill in selected_skills:
+            resources = grouped_resources.get(
+                skill.skill_id,
+                {"required": set(), "optional": set(), "provided": set(), "typed": set(), "legacy": set()},
+            )
+            profiles[skill.skill_id] = {
+                "skill": skill,
+                "required": resources["required"],
+                "optional": resources["optional"],
+                "provided": resources["provided"],
+                "all_resources": set(resources["required"]) | set(resources["optional"]) | set(resources["provided"]),
+                "typed": resources["typed"],
+                "legacy": resources["legacy"],
+            }
+        return profiles
+
+    def _best_role_fit(
+        self,
+        role: MotifRoleDefinition,
+        skill_profiles: Dict[str, Dict[str, Any]],
+        selected_motif: str,
+    ) -> PipelineBRoleFitScore:
+        best_score = 0.0
+        best_skill_ids: List[str] = []
+        best_notes: List[str] = []
+
+        for skill_id, profile in skill_profiles.items():
+            skill: PipelineBSelectedSkill = profile["skill"]
+            graph_overlap = 1.0 if set(role.typical_graph_roles) & set(skill.graph_role_hints) else 0.0
+            all_resources = set(profile["all_resources"])
+            provided_resources = set(profile["provided"])
+            required_overlap = self._overlap_score(role.required_resource_types, all_resources)
+            provided_overlap = self._overlap_score(role.provided_resource_types, provided_resources)
+            score = min(1.0, 0.45 * graph_overlap + 0.3 * required_overlap + 0.25 * provided_overlap)
+            if selected_motif in skill.motif_hints and score > 0.0:
+                score = min(1.0, score + 0.05)
+
+            notes: List[str] = []
+            if graph_overlap:
+                notes.append("matched_graph_role_hint")
+            if required_overlap:
+                notes.append("matched_required_resource_types")
+            if provided_overlap:
+                notes.append("matched_provided_resource_types")
+            if profile["legacy"] and not profile["typed"] and score > 0:
+                notes.append("legacy_resource_fallback")
+
+            if score > best_score:
+                best_score = score
+                best_skill_ids = [skill_id]
+                best_notes = notes
+            elif score > 0 and abs(score - best_score) < 1e-9:
+                best_skill_ids.append(skill_id)
+                best_notes = sorted(set(best_notes + notes))
+
+        status: RoleFitStatus
+        if best_score >= 0.6:
+            status = "filled"
+        elif best_score >= 0.35:
+            status = "partial"
+        else:
+            status = "missing"
+
+        if not best_notes and not best_skill_ids:
+            best_notes = ["no_candidate_skill_match"]
+
+        return PipelineBRoleFitScore(
+            role_name=role.role_name,
+            role_kind=role.role_kind,
+            status=status,
+            score=round(best_score, 2),
+            matched_skill_ids=sorted(best_skill_ids),
+            notes=best_notes,
+        )
+
+    def _overlap_score(self, expected: List[str], observed: Set[str]) -> float:
+        if not expected:
+            return 1.0
+        expected_set = {item for item in expected if item}
+        if not expected_set:
+            return 1.0
+        matched = sum(1 for item in expected_set if item in observed)
+        return matched / len(expected_set)
+
+    def _workflow_context_fit(
+        self,
+        motif_grammar: Optional[MotifGraphGrammarRecord],
+        selected_skills: List[PipelineBSelectedSkill],
+        filled_role_count: int,
+        required_role_count: int,
+        typed_count: int,
+    ) -> WorkflowContextFit:
+        if motif_grammar is None or required_role_count == 0 or not selected_skills:
+            return "low"
+        role_fill_ratio = filled_role_count / max(required_role_count, 1)
+        motif_cover_ratio = (
+            sum(1 for skill in selected_skills if motif_grammar.motif_type in skill.motif_hints) / len(selected_skills)
+        )
+        if role_fill_ratio >= 0.8 and motif_cover_ratio >= 0.5 and typed_count > 0:
+            return "high"
+        if role_fill_ratio >= 0.4:
+            return "medium"
+        return "low"
+
+    def _task_graph_shape_assumption(
+        self,
+        motif_grammar: Optional[MotifGraphGrammarRecord],
+        selected_motif: str,
+        subgraph_edges: List[PipelineBSubgraphEdge],
+    ) -> TaskGraphShapeAssumption:
+        if motif_grammar is not None:
+            return motif_grammar.expected_graph_shape
+        evidence_modes = {edge.evidence_mode for edge in subgraph_edges}
+        if "typed_resource_match" in evidence_modes and len(subgraph_edges) >= 3:
+            return "dag"
+        if "role_sequence" in evidence_modes and len(evidence_modes) == 1:
+            return "chain"
+        if "reconciliation" in selected_motif or "fan_in" in selected_motif:
+            return "fan_in"
+        return "chain"
+
+    def _role_assignment_fallback_reasons(
+        self,
+        motif_grammar: Optional[MotifGraphGrammarRecord],
+        role_alignment: Dict[str, Any],
+        typed_count: int,
+        edge_counts: Counter,
+    ) -> List[str]:
+        reasons: List[str] = []
+        if motif_grammar is None:
+            reasons.append("motif_grammar_unavailable")
+        if typed_count == 0:
+            reasons.append("role_matching_under_typed_resource_gaps")
+        if edge_counts.get("role_sequence", 0):
+            reasons.append("role_sequence_fallback_edges")
+        if any(fit.status == "partial" for fit in role_alignment.get("role_fit_scores", [])):
+            reasons.append("partial_role_fit_detected")
+        return sorted(set(reasons))

@@ -64,6 +64,11 @@ class PipelineBBatchCaseSummary(BaseModel):
     real_worldness_score: Optional[float] = None
     difficulty_overall: Optional[float] = None
     recommended_next_layer: Optional[str] = None
+    motif_grammar_id: Optional[str] = None
+    filled_roles: List[str] = Field(default_factory=list)
+    missing_roles: List[str] = Field(default_factory=list)
+    workflow_context_fit: Optional[str] = None
+    task_graph_shape_assumption: Optional[str] = None
     reason_codes: List[str] = Field(default_factory=list)
     warning_reason_codes: List[str] = Field(default_factory=list)
     error_type: Optional[str] = None
@@ -80,6 +85,8 @@ class PipelineBBatchDiagnostics(BaseModel):
     quality_decision_counts: Dict[str, int] = Field(default_factory=dict)
     package_readiness_counts: Dict[str, int] = Field(default_factory=dict)
     subgraph_confidence_counts: Dict[str, int] = Field(default_factory=dict)
+    workflow_context_fit_counts: Dict[str, int] = Field(default_factory=dict)
+    missing_role_counts: Dict[str, int] = Field(default_factory=dict)
     reason_code_counts: Dict[str, int] = Field(default_factory=dict)
     repeated_reason_codes: List[str] = Field(default_factory=list)
     repeated_subgraph_ids: List[str] = Field(default_factory=list)
@@ -415,6 +422,11 @@ class PipelineBBatchRunner:
             real_worldness_score=global_validity_report.real_worldness.real_worldness_score,
             difficulty_overall=global_validity_report.difficulty_profile.overall_difficulty,
             recommended_next_layer=global_validity_report.recommended_next_layer,
+            motif_grammar_id=subgraph.diagnostics.motif_grammar_id,
+            filled_roles=list(subgraph.diagnostics.filled_roles),
+            missing_roles=list(subgraph.diagnostics.missing_roles),
+            workflow_context_fit=subgraph.diagnostics.workflow_context_fit,
+            task_graph_shape_assumption=subgraph.diagnostics.task_graph_shape_assumption,
             reason_codes=reason_codes,
             warning_reason_codes=warning_reason_codes,
         )
@@ -424,6 +436,8 @@ class PipelineBBatchRunner:
         quality_counts = Counter(case.quality_decision for case in cases if case.quality_decision)
         readiness_counts = Counter(case.package_readiness for case in cases if case.package_readiness)
         confidence_counts = Counter(case.subgraph_confidence for case in cases if case.subgraph_confidence)
+        workflow_context_fit_counts = Counter(case.workflow_context_fit for case in cases if case.workflow_context_fit)
+        missing_role_counts = Counter(role for case in cases for role in case.missing_roles)
         reason_counts = Counter(code for case in cases for code in case.reason_codes + case.warning_reason_codes)
         subgraph_counts = Counter(case.subgraph_id for case in cases if case.subgraph_id)
         repeated_subgraphs = sorted([subgraph_id for subgraph_id, count in subgraph_counts.items() if count > 1])
@@ -447,6 +461,8 @@ class PipelineBBatchRunner:
             quality_decision_counts=dict(sorted(quality_counts.items())),
             package_readiness_counts=dict(sorted(readiness_counts.items())),
             subgraph_confidence_counts=dict(sorted(confidence_counts.items())),
+            workflow_context_fit_counts=dict(sorted(workflow_context_fit_counts.items())),
+            missing_role_counts=dict(sorted(missing_role_counts.items())),
             reason_code_counts=dict(sorted(reason_counts.items())),
             repeated_reason_codes=sorted([code for code, count in reason_counts.items() if count > 1]),
             repeated_subgraph_ids=repeated_subgraphs,
