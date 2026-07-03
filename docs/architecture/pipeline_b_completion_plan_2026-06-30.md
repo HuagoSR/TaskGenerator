@@ -274,6 +274,28 @@ Completed slices:
      - cross-case repeated signals should now drive Pipeline A/B priorities
      - the strongest current substrate blocker is still typed resource/support/transition evidence, not a missing reference document or broken rw-task export
 
+22. Pipeline B Batch Feedback Analyzer V1.
+   - New module:
+     - `src/task_generator/v3_pipeline_b_batch_feedback_analyzer.py`
+   - New CLI:
+     - `Test/run_v3_pipeline_b_batch_feedback_analyzer.py`
+   - Purpose: turn a batch smoke report and per-case artifacts into a decision aid before more prompt tuning or external eval.
+   - Current changes:
+     - reads `pipeline_b_batch_report.json`
+     - reads case-level quality, teacher, annotation, and rubric reports when available
+     - computes case coverage for each reason code so repeated mentions inside one case are not mistaken for systemic evidence
+     - classifies findings as `systemic`, `motif_specific`, `case_specific`, or `external_eval_candidate`
+     - emits prioritized actions without mutating registry files, readiness reports, sampler weights, or transition priors
+   - Current smoke result:
+     - writes `artifacts/pipeline_b/scratch/batch_feedback_smoke/pipeline_b_batch_feedback_report.json`
+     - reports 5 systemic findings, 5 motif-specific findings, 1 case-specific blocking-artifact finding, and 2 draft external-eval candidates
+     - top action is Pipeline A typed-resource/support-diversity/transition-evidence improvement for sampled skills
+     - `fan_in_reconciliation` is the current rejected motif/case to inspect before expanding batch size
+   - Interpretation:
+     - `low_subgraph_confidence`, `pipeline_a_signal_gaps`, and `single_source_support` are cross-case substrate blockers
+     - two revise-only draft-compatible cases can be used for a later guarded external smoke, but are not final training data
+     - a single task score should no longer drive broad Pipeline B changes without batch feedback
+
 Current validation commands:
 
 ```powershell
@@ -929,27 +951,29 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is eval-runner timeout hardening plus Pipeline B Batch Runner V1.
+The current code change is Pipeline B Batch Feedback Analyzer V1.
 
 Minimal scope:
 
-- Preserve the existing single-case Pipeline B chain.
-- Add robust command-level timeout reporting to `v3_rw_task_eval_runner.py`.
-- Add a deterministic small-batch runner over multiple motifs.
-- Keep all batch cases draft/diagnostic unless existing quality gates naturally say otherwise.
-- Run eval runner in dry-run mode inside the batch; do not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
-- Aggregate repeated reason codes and repeated subgraphs so project decisions are not based on one task only.
+- Preserve the existing batch runner output format.
+- Read `pipeline_b_batch_report.json` and selected per-case artifacts.
+- Classify findings into systemic, motif-specific, case-specific, and external-eval-candidate buckets.
+- Emit prioritized actions that tell whether to work on Pipeline A substrate, inspect a rejected motif/case, or run a small guarded external draft smoke.
+- Do not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answers whether the V3 package chain can be run as a small task-factory smoke instead of a single-task loop. It also ensures command-level timeouts leave a report rather than disappearing as an inconclusive outer-process timeout.
+This slice answers how to interpret a small Pipeline B batch before making more local prompt/rubric/reference changes. It turns repeated reason codes into explicit project priorities while keeping all feedback report-first.
 
-The next likely implementation slice should use `pipeline_b_batch_report.json` to decide whether to improve Pipeline A typed resources/support diversity, broaden sampler diversity, or run a very small explicit external batch smoke. A single rerun of the inventory-section task should not drive broad optimization by itself.
+The next likely implementation slice should follow the analyzer's top action: run a report-first Pipeline A substrate audit for the selected batch skill IDs, focused on typed resources, multi-source support, and transition evidence. A tiny guarded external draft smoke is useful only after selecting cases from the analyzer output.
 
 ## Test Plan For The Current Next Slice
 
 Commands:
 
 ```powershell
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_pipeline_b_batch_feedback_analyzer.py Test\run_v3_pipeline_b_batch_feedback_analyzer.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_feedback_analyzer.py --batch-report artifacts\pipeline_b\scratch\batch_runner_smoke\pipeline_b_batch_report.json --output-dir artifacts\pipeline_b\scratch\batch_feedback_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py src\task_generator\v3_pipeline_b_batch_runner.py Test\run_v3_rw_task_eval_runner.py Test\run_v3_pipeline_b_batch_runner.py
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\run --run-eval --command-timeout-seconds 1
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
@@ -983,6 +1007,9 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-r
 
 Expected results:
 
+- The batch feedback analyzer emits `pipeline_b_batch_feedback_report.json`.
+- The report contains systemic blockers, motif/case-specific findings, prioritized actions, and draft external-eval candidates.
+- The current top priority is typed-resource/support-diversity/transition-evidence improvement for sampled skills.
 - The eval runner can emit `run_status=timeout` for a controlled local timeout and still write command logs.
 - The batch runner emits `pipeline_b_batch_report.json` with 3 completed deterministic dry-run cases.
 - The batch report exposes repeated reason codes and repeated subgraph IDs, if any.

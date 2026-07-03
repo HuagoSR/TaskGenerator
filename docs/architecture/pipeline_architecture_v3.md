@@ -162,6 +162,8 @@ Current bridge status:
 - The eval runner now reports controlled command timeouts as top-level `run_status=timeout`, preserves command logs, records the failed command stage, and inspects declared output dirs for partial files.
 - Pipeline B now has a deterministic batch smoke runner that can execute the current chain across multiple motifs without LLM/API/Stirrup/rw-task execution.
 - The first 3-case batch dry-run completed 3 case directories with 3 unique subgraph IDs: 2 cases reached `revise`, 1 reached `reject`, and all 3 reported `subgraph_confidence=low_due_to_resource_fallback`.
+- Pipeline B now has a batch feedback analyzer that converts the dry-run batch into systemic, motif-specific, case-specific, and external-eval-candidate findings.
+- The first batch feedback smoke identifies 5 systemic findings, 5 motif-specific findings, 1 case-specific blocking-artifact finding, and 2 draft external-eval candidates. Its top action is to improve Pipeline A typed resources, support diversity, and transition evidence before further single-task prompt tuning.
 - The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, grader-facing Pipeline A diagnostics, or source-label-only policy citations. It is mostly cross-case Pipeline A signal weakness, partial teacher/readiness chains, required intermediate-section operationalization, and robust external-eval timeout/resume reporting.
 - Single-case draft smoke scores should now be treated as diagnostic probes only. Priority decisions should be based on repeated signals in small Pipeline B batches.
 
@@ -941,11 +943,13 @@ Current toolchain smoke evidence:
 - the inventory-section slice has deterministic and dry-run evidence only; its external smoke timed out before grader output, so it should be rerun or paired with better runner timeout/resume reporting before it is used as a quality baseline
 - eval-runner timeout hardening is now in place for command-level timeouts; a controlled local timeout smoke writes `run_status=timeout`, command status `timeout`, and cleanup metadata
 - the first Pipeline B batch dry-run writes `artifacts/pipeline_b/scratch/batch_runner_smoke/pipeline_b_batch_report.json` with 3 completed dry-run cases, 3 unique subgraph IDs, 2 `revise` packages, 1 `reject` package, and repeated reason codes around low subgraph confidence and Pipeline A signal gaps
+- the first Pipeline B batch feedback smoke writes `artifacts/pipeline_b/scratch/batch_feedback_smoke/pipeline_b_batch_feedback_report.json`; it marks `low_subgraph_confidence`, `pipeline_a_signal_gaps`, and `single_source_support` as systemic substrate blockers, marks `fan_in_reconciliation` as the rejected motif/case to inspect, and selects 2 draft-compatible cases for possible later guarded external smoke
 - because the package is still `draft_inspection_only` and `revise_only`, this result is toolchain evidence plus draft-quality observation, not final model-separation evidence
 
 Recommended next code tasks:
 
 - prefer `Test/run_v3_pipeline_b_batch_runner.py --max-cases 3` as the default local smoke before tuning a single generated task again
+- use `Test/run_v3_pipeline_b_batch_feedback_analyzer.py` after each batch smoke to choose between Pipeline A substrate work, Pipeline B motif/case inspection, or a tiny guarded external draft smoke
 - keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
@@ -962,7 +966,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata and guarded explicit smoke execution
 - keep using `Test/run_v3_rw_task_eval_summarizer.py` to convert run and grader outputs into a small report-only summary
 - treat draft eval execution as toolchain evidence and draft-quality observation only, not final model-separation evidence
-- focus the next implementation work on warning reasons that repeat across batch cases: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, Evidence inventory / intermediate-state operationalization, and external eval timeout visibility
+- focus the next implementation work on analyzer-prioritized repeated reasons: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, Evidence inventory / intermediate-state operationalization, and external eval timeout visibility
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry
