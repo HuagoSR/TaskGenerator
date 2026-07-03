@@ -159,7 +159,11 @@ Current bridge status:
 - The policy/evidence draft completed authorized external smoke with score `58/62` (`0.9355`); policy-sensitive citation checks now mostly pass, and remaining low-score feedback is concentrated on Evidence inventory ordering.
 - The Evidence inventory section/template tightening slice now requires exact section order, a first substantive populated Evidence inventory, required fields, and no placeholder-only required sections.
 - The inventory-section deterministic chain and eval-runner dry-run passed, but the authorized external smoke timed out before writing a runner report or grader JSON; this is inconclusive smoke evidence, not a quality score.
-- The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, grader-facing Pipeline A diagnostics, or source-label-only policy citations. It is mostly Pipeline A signal weakness, partial teacher/readiness chains, required intermediate-section operationalization, and robust eval-runner timeout/resume reporting.
+- The eval runner now reports controlled command timeouts as top-level `run_status=timeout`, preserves command logs, records the failed command stage, and inspects declared output dirs for partial files.
+- Pipeline B now has a deterministic batch smoke runner that can execute the current chain across multiple motifs without LLM/API/Stirrup/rw-task execution.
+- The first 3-case batch dry-run completed 3 case directories with 3 unique subgraph IDs: 2 cases reached `revise`, 1 reached `reject`, and all 3 reported `subgraph_confidence=low_due_to_resource_fallback`.
+- The current bottleneck is no longer missing policy reference files, broken rw-task grading glue, grader-facing Pipeline A diagnostics, or source-label-only policy citations. It is mostly cross-case Pipeline A signal weakness, partial teacher/readiness chains, required intermediate-section operationalization, and robust external-eval timeout/resume reporting.
+- Single-case draft smoke scores should now be treated as diagnostic probes only. Priority decisions should be based on repeated signals in small Pipeline B batches.
 
 ## Pipeline A: Source-To-Skill Design
 
@@ -926,7 +930,7 @@ Deliverables:
 
 ## Immediate Next Step
 
-Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, staged package assembly, V3 rw-task draft export, export validation, eval-input prep, and guarded eval-runner dry-run metadata. The current package remains `revise_only`, so it is structurally inspectable but not final training data.
+Pipeline A has reached a handoff point, and the first Pipeline B bridge is now working through subgraph sampling, draft blueprint assembly, reference-file planning, deterministic workbook generation, deterministic policy-reference doc generation, a teacher-input contract, a deterministic TeacherRunner, a deterministic training-annotation layer, a structured rubric layer, a package-level quality gate, staged package assembly, V3 rw-task draft export, export validation, eval-input prep, guarded eval-runner dry-run metadata, and small deterministic batch smoke. Current packages remain draft/revise-oriented, so they are structurally inspectable but not final training data.
 
 Current toolchain smoke evidence:
 
@@ -935,10 +939,13 @@ Current toolchain smoke evidence:
 - the grader JSON records 1 successful sample with score `20/32`, ratio `0.625`, graded by `gpt-4o-mini` under strict grading
 - later guarded `gpt-5.4-pro` draft smokes established four useful scored baselines: filtered rubric export `53/62`, strengthened candidate contract `58/62`, tightened local traceability `53/62`, and policy/evidence operationalization `58/62`
 - the inventory-section slice has deterministic and dry-run evidence only; its external smoke timed out before grader output, so it should be rerun or paired with better runner timeout/resume reporting before it is used as a quality baseline
+- eval-runner timeout hardening is now in place for command-level timeouts; a controlled local timeout smoke writes `run_status=timeout`, command status `timeout`, and cleanup metadata
+- the first Pipeline B batch dry-run writes `artifacts/pipeline_b/scratch/batch_runner_smoke/pipeline_b_batch_report.json` with 3 completed dry-run cases, 3 unique subgraph IDs, 2 `revise` packages, 1 `reject` package, and repeated reason codes around low subgraph confidence and Pipeline A signal gaps
 - because the package is still `draft_inspection_only` and `revise_only`, this result is toolchain evidence plus draft-quality observation, not final model-separation evidence
 
 Recommended next code tasks:
 
+- prefer `Test/run_v3_pipeline_b_batch_runner.py --max-cases 3` as the default local smoke before tuning a single generated task again
 - keep using `Test/run_v3_pipeline_b_subgraph_sampler.py` to produce `pipeline_b_subgraph_report.json`
 - keep using `Test/run_v3_pipeline_b_prototype.py --subgraph-report ...` to produce the draft `TaskBlueprint`
 - keep using `Test/run_v3_reference_file_planner.py` to produce `reference_file_plan.json`
@@ -955,7 +962,7 @@ Recommended next code tasks:
 - keep using `Test/run_v3_rw_task_eval_runner.py` for dry-run execution metadata and guarded explicit smoke execution
 - keep using `Test/run_v3_rw_task_eval_summarizer.py` to convert run and grader outputs into a small report-only summary
 - treat draft eval execution as toolchain evidence and draft-quality observation only, not final model-separation evidence
-- focus the next implementation work on the warning reasons still blocking `candidate_ready`: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, Evidence inventory / intermediate-state operationalization, and eval-runner timeout visibility
+- focus the next implementation work on warning reasons that repeat across batch cases: low subgraph confidence, single-source support, partial intermediate states, Pipeline A signal gaps, Evidence inventory / intermediate-state operationalization, and external eval timeout visibility
 - broaden reference-file generation toward additional document, media, and folder-style packages under the same manifest/evidence-index contract
 - carry missing Pipeline A fields and low-confidence fallback diagnostics into teacher mode rather than hiding them
 - keep graph calibration outputs experiment-only until a later explicit decision allows selected candidates to update the persistent registry

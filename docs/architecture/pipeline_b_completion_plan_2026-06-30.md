@@ -249,6 +249,31 @@ Completed slices:
      - low-scoring criteria dropped from 5 to 4
      - remaining low-score feedback is split between reference-evidence traceability and teacher-step operationalization
 
+21. Eval Runner Timeout Hardening + Pipeline B Batch Runner V1.
+   - Updated modules:
+     - `src/task_generator/v3_rw_task_eval_runner.py`
+     - `src/task_generator/v3_pipeline_b_batch_runner.py`
+   - New CLI:
+     - `Test/run_v3_pipeline_b_batch_runner.py`
+   - Purpose: stop over-reading one draft task and move the local feedback loop toward small deterministic batches.
+   - Current changes:
+     - eval runner now has top-level `run_status=timeout` and `run_status=partial_failed`
+     - command records now include timeout seconds, failure stage, cleanup attempt metadata, and log paths
+     - runner reports inspect declared output dirs so partial artifacts can be noticed after timeout/failure
+     - batch runner executes the current deterministic Pipeline B chain across multiple motifs without LLM calls, external APIs, Stirrup, or real rw-task evaluation
+     - each batch case keeps isolated subdirectories for subgraph, blueprint, reference files, teacher artifacts, rubric, quality gate, package, rw-task draft export, validation, eval prep, and dry-run eval
+     - aggregate `pipeline_b_batch_report.json` records case summaries, readiness counts, subgraph confidence counts, repeated reason codes, duplicate subgraph IDs, and batch warnings
+   - Current smoke result:
+     - controlled local timeout smoke writes `run_status=timeout` and command status `timeout`
+     - 3-case deterministic batch smoke completes 3 cases with 3 unique subgraph IDs
+     - batch quality decisions are 2 `revise` and 1 `reject`
+     - all 3 cases report `subgraph_confidence=low_due_to_resource_fallback`
+     - repeated reason codes include `low_subgraph_confidence`, `single_source_support`, `pipeline_a_signal_gaps`, `partial_ready_chain`, `partial_intermediate_state`, and draft-only export markers
+   - Interpretation:
+     - current single-task scores remain useful diagnostic probes
+     - cross-case repeated signals should now drive Pipeline A/B priorities
+     - the strongest current substrate blocker is still typed resource/support/transition evidence, not a missing reference document or broken rw-task export
+
 Current validation commands:
 
 ```powershell
@@ -904,28 +929,30 @@ Future prior-update rule:
 
 ## Current Next Slice
 
-The current code change is Evidence inventory section/template tightening on top of the policy/evidence operationalization feedback.
+The current code change is eval-runner timeout hardening plus Pipeline B Batch Runner V1.
 
 Minimal scope:
 
-- Require an exact top-level section order before any appendix.
-- Make `Evidence inventory` the first substantive section.
-- Require `Evidence inventory` to include `Evidence_ID`, `Source file`, `Observed item/value`, and `Intended use`.
-- Reject placeholder-only required sections whose details are appended later.
-- Keep evidence inventory, evidence-to-conclusion map, and policy mapping details inside their named sections rather than after `Follow-up`.
-- Preserve the existing rubric audience split and draft/export semantics.
-- Keep the package `revise_only`; do not upgrade readiness because the inventory-section smoke does not have a completed external grade.
+- Preserve the existing single-case Pipeline B chain.
+- Add robust command-level timeout reporting to `v3_rw_task_eval_runner.py`.
+- Add a deterministic small-batch runner over multiple motifs.
+- Keep all batch cases draft/diagnostic unless existing quality gates naturally say otherwise.
+- Run eval runner in dry-run mode inside the batch; do not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
+- Aggregate repeated reason codes and repeated subgraphs so project decisions are not based on one task only.
 - Never mutate `SkillRegistry/*.json`.
 
-This slice answered whether the V3 package can make the inventory/order contract visible through deterministic artifacts and rw-task dry-run export. It did not produce a completed external grade because the authorized smoke timed out before writing a runner report or grader JSON.
+This slice answers whether the V3 package chain can be run as a small task-factory smoke instead of a single-task loop. It also ensures command-level timeouts leave a report rather than disappearing as an inconclusive outer-process timeout.
 
-The next likely implementation slice is eval-runner timeout/resume hardening or a rerun of the inventory-section smoke with a clean grader JSON. A Pipeline A typed-resource/support-diversity improvement pass remains the next substrate-level blocker for `candidate_ready`.
+The next likely implementation slice should use `pipeline_b_batch_report.json` to decide whether to improve Pipeline A typed resources/support diversity, broaden sampler diversity, or run a very small explicit external batch smoke. A single rerun of the inventory-section task should not drive broad optimization by itself.
 
 ## Test Plan For The Current Next Slice
 
 Commands:
 
 ```powershell
+D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_rw_task_eval_runner.py src\task_generator\v3_pipeline_b_batch_runner.py Test\run_v3_rw_task_eval_runner.py Test\run_v3_pipeline_b_batch_runner.py
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-report artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\rw_task_eval_prep_report.json --output-dir artifacts\pipeline_b\scratch\eval_runner_timeout_smoke\run --run-eval --command-timeout-seconds 1
+D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_subgraph_sampler.py --output-dir artifacts\pipeline_b\scratch\subgraph_sampler_smoke
 D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_prototype.py --subgraph-report artifacts\pipeline_b\scratch\subgraph_sampler_smoke\pipeline_b_subgraph_report.json --output-dir artifacts\pipeline_b\scratch\prototype_from_subgraph_smoke
 D:\miniconda3\envs\gdpval\python.exe -m py_compile src\task_generator\v3_reference_file_planner.py Test\run_v3_reference_file_planner.py
@@ -956,6 +983,10 @@ D:\miniconda3\envs\gdpval\python.exe Test\run_v3_rw_task_eval_runner.py --prep-r
 
 Expected results:
 
+- The eval runner can emit `run_status=timeout` for a controlled local timeout and still write command logs.
+- The batch runner emits `pipeline_b_batch_report.json` with 3 completed deterministic dry-run cases.
+- The batch report exposes repeated reason codes and repeated subgraph IDs, if any.
+- The batch runner does not call LLMs, external APIs, Stirrup, or real rw-task evaluation.
 - The sampler emits a report-only subgraph.
 - The prototype emits a draft blueprint from that subgraph.
 - The planner emits `reference_file_plan.json`.

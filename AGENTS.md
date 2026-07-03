@@ -197,6 +197,9 @@ Near-term implementation rule:
 - keep the current Pipeline B quality gate deterministic; it should decide whether the current package is `reject`, `revise`, or `candidate_ready` before any LLM teacher/prose step is scheduled
 - keep the current V3 rw-task exporter structural and conservative; it should block formal export below `candidate_ready`, and only allow `revise_only` draft export when explicitly requested
 - keep the current rw-task eval summary and eval-feedback layers report-only; draft evaluation evidence can prioritize improvements but must not silently update readiness, registry entries, or transition priors
+- keep single-task rw-task smoke results diagnostic only; repeated signals across Pipeline B batches should drive priority decisions
+- harden eval-runner timeout/partial-output reporting before using long external smoke runs as evidence
+- prefer small deterministic Pipeline B batches over repeatedly tuning one draft task
 - then build task-package components and use their failures to drive further Pipeline A improvements
 
 The current Pipeline A graph target remains:
@@ -266,11 +269,13 @@ Current Pipeline A starting files:
 - `src/task_generator/v3_rw_task_eval_prep.py`: dry-run evaluation-prep layer that copies a validated rw-task-style export into a batch input directory and emits command previews without running rw-task evaluation
 - `Test/run_v3_rw_task_eval_prep.py`: CLI for writing `rw_task_eval_prep_report.json` and a batch-style eval input directory under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_rw_task_eval_runner.py`: guarded rw-task smoke runner that consumes `rw_task_eval_prep_report.json`, defaults to dry-run, and only executes prepared commands behind explicit flags
-- `Test/run_v3_rw_task_eval_runner.py`: CLI for writing `rw_task_eval_run_report.json`; use dry-run for normal validation and require `--run-eval --allow-draft-eval` for the current draft-only toolchain smoke
+- `Test/run_v3_rw_task_eval_runner.py`: CLI for writing `rw_task_eval_run_report.json`; use dry-run for normal validation and require `--run-eval --allow-draft-eval` for draft-only toolchain smoke; timeout runs now report top-level `run_status=timeout`
 - `src/task_generator/v3_rw_task_eval_summarizer.py`: report-only summarizer for rw-task runner and grader outputs; it distinguishes toolchain completion, draft quality observation, and candidate-quality evidence without mutating quality gates or registries
 - `Test/run_v3_rw_task_eval_summarizer.py`: CLI for writing `pipeline_b_eval_summary_report.json` from a run report and grader JSON under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_pipeline_b_eval_feedback_analyzer.py`: report-only analyzer that turns eval summary evidence plus rubric, annotation, teacher, and quality artifacts into prioritized Pipeline B actions and Pipeline A feedback
 - `Test/run_v3_pipeline_b_eval_feedback_analyzer.py`: CLI for writing `pipeline_b_eval_feedback_report.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_pipeline_b_batch_runner.py`: deterministic report-first batch smoke runner that executes the current Pipeline B chain across multiple motifs without LLM/API/rw-task execution
+- `Test/run_v3_pipeline_b_batch_runner.py`: CLI for writing per-case Pipeline B artifacts plus `pipeline_b_batch_report.json` under `artifacts/pipeline_b/scratch/batch_runner_smoke/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
@@ -509,6 +514,12 @@ Current Pipeline A status:
   - after policy/evidence operationalization, the draft smoke returned to score ratio `0.9354838709677419` (`58/62`); exact `Evidence_ID` usage and policy-sensitive citation checks now mostly pass
   - current policy/evidence feedback reports 3 low-scoring criteria, all tied to Evidence inventory ordering and teacher-step operationalization
   - after Evidence inventory section/template tightening, deterministic chain and eval-runner dry-run passed, but the authorized external smoke exceeded the outer command timeout and produced no grader JSON; do not treat that run as quality evidence
+  - eval-runner timeout reporting now distinguishes `run_status=timeout`, preserves command logs, records the failed command stage, and inspects declared output directories for partial files
+  - current controlled timeout smoke uses a local sleep command and writes `artifacts/pipeline_b/scratch/eval_runner_timeout_smoke/run/rw_task_eval_run_report.json` with command status `timeout`
+  - current Pipeline B batch smoke command: `D:\miniconda3\envs\gdpval\python.exe Test\run_v3_pipeline_b_batch_runner.py --max-cases 3 --output-dir artifacts\pipeline_b\scratch\batch_runner_smoke`
+  - current Pipeline B batch smoke completes 3 deterministic dry-run cases across motif variants, writes `pipeline_b_batch_report.json`, produces 3 unique subgraph IDs, and does not run LLMs, external APIs, Stirrup, or real rw-task eval
+  - current batch smoke result has 2 `revise` cases and 1 `reject` case; all 3 have `subgraph_confidence=low_due_to_resource_fallback`, so this is now a cross-case Pipeline A substrate signal rather than a single-task quirk
+  - repeated batch reason codes include `low_subgraph_confidence`, `single_source_support`, `pipeline_a_signal_gaps`, `partial_ready_chain`, `partial_intermediate_state`, and draft-only export markers
   - current subgraph-mode and legacy-mode `draft_task_blueprint.json` outputs validate with `TaskBlueprint.model_validate`
 - no registry mutation is performed by the sampler, prototype, planner, generator, teacher-input builder, teacher-runner, training-annotation builder, rubric builder, quality gate, package assembler, V3 rw-task exporter, V3 rw-task export validator, V3 rw-task eval prep, V3 rw-task eval runner, V3 rw-task eval summarizer, or V3 eval feedback analyzer
 - next Pipeline B implementation choices:
@@ -518,7 +529,8 @@ Current Pipeline A status:
   - current local evidence-traceability tightening requires every material bullet in supported conclusions, confirmed exceptions, and unresolved items to carry bracketed evidence or policy support; treat `53/62` as a stricter diagnostic baseline, not a readiness regression
   - current policy/evidence operationalization requires exact candidate-visible `Evidence_ID` values such as `EVID-001`, rejects source-label-only citations, and keeps policy clause IDs paired with exact workbook evidence IDs
   - current Evidence inventory section tightening requires exact section order, populated required sections, and no placeholder-only headings; it has deterministic validation but not a completed external score yet
-  - next Pipeline B slice should improve eval-runner timeout/resume reporting or rerun the inventory-section smoke to get a clean grader JSON before treating the change as quality evidence
+  - next Pipeline B work should use `pipeline_b_batch_report.json` as the default diagnostic surface before making further prompt/rubric/reference changes
+  - rerun external rw-task smoke only after choosing a small batch subset and keeping results as `draft_inspection_only`
   - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path

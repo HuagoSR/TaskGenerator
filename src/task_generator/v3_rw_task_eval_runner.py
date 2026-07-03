@@ -11,7 +11,7 @@ from task_generator.v3_rw_task_eval_prep import RwTaskEvalPrepReport
 from task_generator.v3_source_schema import load_json_file
 
 
-EvalRunStatus = Literal["blocked", "dry_run_ready", "completed", "failed"]
+EvalRunStatus = Literal["blocked", "dry_run_ready", "completed", "failed", "timeout", "partial_failed"]
 CommandRunStatus = Literal["not_run", "succeeded", "failed", "timeout"]
 
 
@@ -35,6 +35,17 @@ class RwTaskEvalCommandRecord(BaseModel):
     stderr_path: Optional[str] = None
     stdout_excerpt: str = ""
     stderr_excerpt: str = ""
+    timeout_seconds: int = 0
+    failure_stage: Optional[str] = None
+    cleanup_attempted: bool = False
+    cleanup_note: str = ""
+
+
+class RwTaskEvalOutputInspection(BaseModel):
+    output_dir: str
+    exists: bool = False
+    file_count: int = 0
+    sample_files: List[str] = Field(default_factory=list)
 
 
 class RwTaskEvalRunReport(BaseModel):
@@ -52,6 +63,7 @@ class RwTaskEvalRunReport(BaseModel):
     command_count: int = 0
     command_records: List[RwTaskEvalCommandRecord] = Field(default_factory=list)
     output_dirs: List[str] = Field(default_factory=list)
+    output_inspections: List[RwTaskEvalOutputInspection] = Field(default_factory=list)
     blocking_reasons: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
@@ -109,10 +121,12 @@ class RwTaskEvalRunner:
 
         command_records = self._initial_command_records(prep_report)
         output_dirs = self._output_dirs(prep_report)
+        output_inspections = self._inspect_output_dirs(output_dirs)
         notes = [
             "This runner consumes a prepared rw-task eval input report and records execution metadata.",
             "Dry-run mode does not call models, APIs, Stirrup, or rw-task evaluation.",
             "Draft inspection runs are toolchain smoke checks, not task-quality or model-separation evidence.",
+            "Timeouts and command failures should still produce this report when they occur inside the runner timeout boundary.",
         ]
 
         if blocking_reasons:
@@ -123,6 +137,7 @@ class RwTaskEvalRunner:
                 commands_executed=False,
                 command_records=command_records,
                 output_dirs=output_dirs,
+                output_inspections=output_inspections,
                 blocking_reasons=blocking_reasons,
                 warnings=warnings,
                 notes=notes,
@@ -138,6 +153,7 @@ class RwTaskEvalRunner:
                 commands_executed=False,
                 command_records=command_records,
                 output_dirs=output_dirs,
+                output_inspections=output_inspections,
                 blocking_reasons=[],
                 warnings=warnings,
                 notes=notes,
@@ -151,14 +167,16 @@ class RwTaskEvalRunner:
             timeout_seconds=command_timeout_seconds,
             grading_model=prep_report.request.model if prep_report else "",
         )
-        failed = any(record.status in {"failed", "timeout"} for record in executed_records)
+        output_inspections = self._inspect_output_dirs(output_dirs)
+        run_status = self._run_status(executed_records)
         report = self._report(
             request=request,
             prep_report=prep_report,
-            run_status="failed" if failed else "completed",
+            run_status=run_status,
             commands_executed=True,
             command_records=executed_records,
             output_dirs=output_dirs,
+            output_inspections=output_inspections,
             blocking_reasons=[],
             warnings=warnings,
             notes=notes,
@@ -179,6 +197,7 @@ class RwTaskEvalRunner:
         commands_executed: bool,
         command_records: List[RwTaskEvalCommandRecord],
         output_dirs: List[str],
+        output_inspections: List[RwTaskEvalOutputInspection],
         blocking_reasons: List[str],
         warnings: List[str],
         notes: List[str],
@@ -197,6 +216,7 @@ class RwTaskEvalRunner:
             command_count=len(command_records),
             command_records=command_records,
             output_dirs=output_dirs,
+            output_inspections=output_inspections,
             blocking_reasons=sorted(set(blocking_reasons)),
             warnings=sorted(set(warnings)),
             notes=notes,
@@ -235,6 +255,10 @@ class RwTaskEvalRunner:
             exit_code: Optional[int] = None
             stdout = ""
             stderr = ""
+            failure_stage: Optional[str] = None
+            cleanup_attempted = False
+            cleanup_note = ""
+            command_name = self._command_name(command)
             try:
                 env = self._command_env(command, grading_model)
                 completed = subprocess.run(
@@ -249,13 +273,19 @@ class RwTaskEvalRunner:
                 stdout = completed.stdout or ""
                 stderr = completed.stderr or ""
                 status = "succeeded" if completed.returncode == 0 else "failed"
+                if status == "failed":
+                    failure_stage = command_name
             except subprocess.TimeoutExpired as exc:
                 status = "timeout"
                 stdout = self._decode_output(exc.stdout)
                 stderr = self._decode_output(exc.stderr)
+                failure_stage = command_name
+                cleanup_attempted = True
+                cleanup_note = "subprocess.run killed and waited for the timed-out command process"
             except Exception as exc:
                 status = "failed"
                 stderr = f"{type(exc).__name__}: {exc}"
+                failure_stage = command_name
             ended_at = self._now()
 
             stdout_path = log_dir / f"command_{index:02d}_stdout.txt"
@@ -266,7 +296,7 @@ class RwTaskEvalRunner:
                 RwTaskEvalCommandRecord(
                     command_index=index,
                     command=command,
-                    command_name=self._command_name(command),
+                    command_name=command_name,
                     status=status,
                     started_at=started_at,
                     ended_at=ended_at,
@@ -275,11 +305,24 @@ class RwTaskEvalRunner:
                     stderr_path=str(stderr_path),
                     stdout_excerpt=self._excerpt(stdout),
                     stderr_excerpt=self._excerpt(stderr),
+                    timeout_seconds=timeout_seconds,
+                    failure_stage=failure_stage,
+                    cleanup_attempted=cleanup_attempted,
+                    cleanup_note=cleanup_note,
                 )
             )
             if status != "succeeded":
                 break
         return records
+
+    def _run_status(self, records: List[RwTaskEvalCommandRecord]) -> EvalRunStatus:
+        if any(record.status == "timeout" for record in records):
+            return "timeout"
+        failed_records = [record for record in records if record.status == "failed"]
+        if failed_records:
+            succeeded_count = sum(1 for record in records if record.status == "succeeded")
+            return "partial_failed" if succeeded_count else "failed"
+        return "completed"
 
     def _command_env(self, command: List[str], grading_model: str) -> dict[str, str]:
         env = dict(os.environ)
@@ -297,6 +340,28 @@ class RwTaskEvalRunner:
                 if part in {"--output", "--out-dir"} and index + 1 < len(command):
                     output_dirs.append(command[index + 1])
         return output_dirs
+
+    def _inspect_output_dirs(self, output_dirs: List[str]) -> List[RwTaskEvalOutputInspection]:
+        inspections: List[RwTaskEvalOutputInspection] = []
+        for output_dir in output_dirs:
+            path = Path(output_dir)
+            sample_files: List[str] = []
+            file_count = 0
+            if path.exists():
+                for child in path.rglob("*"):
+                    if child.is_file():
+                        file_count += 1
+                        if len(sample_files) < 10:
+                            sample_files.append(str(child))
+            inspections.append(
+                RwTaskEvalOutputInspection(
+                    output_dir=str(path),
+                    exists=path.exists(),
+                    file_count=file_count,
+                    sample_files=sample_files,
+                )
+            )
+        return inspections
 
     def _command_name(self, command: List[str]) -> str:
         if "-m" in command:
