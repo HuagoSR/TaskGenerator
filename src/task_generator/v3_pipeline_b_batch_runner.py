@@ -23,6 +23,7 @@ from task_generator.v3_rw_task_export_validator import RwTaskExportValidator
 from task_generator.v3_rw_task_exporter import PipelineBRwTaskExporter
 from task_generator.v3_teacher_input_builder import TeacherInputBuilder
 from task_generator.v3_teacher_runner import TeacherRunner
+from task_generator.v3_task_verifier import TaskVerifier
 from task_generator.v3_training_annotation_builder import TrainingAnnotationBuilder
 
 
@@ -72,6 +73,10 @@ class PipelineBBatchCaseSummary(BaseModel):
     missing_roles: List[str] = Field(default_factory=list)
     workflow_context_fit: Optional[str] = None
     task_graph_shape_assumption: Optional[str] = None
+    verifier_status: Optional[str] = None
+    verifier_blocking_count: int = 0
+    verifier_revise_count: int = 0
+    verifier_reason_codes: List[str] = Field(default_factory=list)
     reason_codes: List[str] = Field(default_factory=list)
     warning_reason_codes: List[str] = Field(default_factory=list)
     error_type: Optional[str] = None
@@ -92,6 +97,8 @@ class PipelineBBatchDiagnostics(BaseModel):
     filled_role_counts: Dict[str, int] = Field(default_factory=dict)
     missing_role_counts: Dict[str, int] = Field(default_factory=dict)
     role_filling_case_count: int = 0
+    verifier_status_counts: Dict[str, int] = Field(default_factory=dict)
+    verifier_blocking_case_count: int = 0
     reason_code_counts: Dict[str, int] = Field(default_factory=dict)
     repeated_reason_codes: List[str] = Field(default_factory=list)
     repeated_subgraph_ids: List[str] = Field(default_factory=list)
@@ -230,6 +237,7 @@ class PipelineBBatchRunner:
         rubric_dir = case_dir / "rubric"
         quality_dir = case_dir / "quality_gate"
         global_validity_dir = case_dir / "global_validity"
+        verifier_dir = case_dir / "task_verifier"
         package_dir = case_dir / "package"
         export_dir = case_dir / "rw_task_export"
         eval_input_dir = case_dir / "rw_task_eval_input"
@@ -356,6 +364,19 @@ class PipelineBBatchRunner:
             global_validity_dir,
         )
 
+        verifier = TaskVerifier()
+        verifier_report = verifier.build(
+            blueprint_path=blueprint_path,
+            teacher_input_manifest_path=teacher_manifest_path,
+            golden_run_path=golden_run_path,
+            rubric_path=rubric_path,
+            task_constraint_graph_report_path=global_validity_dir / "task_constraint_graph_report.json",
+            execution_plan_dag_report_path=global_validity_dir / "execution_plan_dag_report.json",
+            quality_report_path=quality_report_path,
+            output_dir=verifier_dir,
+        )
+        verifier.write_outputs(verifier_report, verifier_dir)
+
         package_assembler = PipelineBPackageAssembler()
         package_manifest = package_assembler.build(
             blueprint_path=blueprint_path,
@@ -447,6 +468,10 @@ class PipelineBBatchRunner:
             missing_roles=list(subgraph.diagnostics.missing_roles),
             workflow_context_fit=subgraph.diagnostics.workflow_context_fit,
             task_graph_shape_assumption=subgraph.diagnostics.task_graph_shape_assumption,
+            verifier_status=verifier_report.verifier_status,
+            verifier_blocking_count=verifier_report.diagnostics.blocking_count,
+            verifier_revise_count=verifier_report.diagnostics.revise_count,
+            verifier_reason_codes=list(verifier_report.diagnostics.reason_codes),
             reason_codes=reason_codes,
             warning_reason_codes=warning_reason_codes,
         )
@@ -459,6 +484,7 @@ class PipelineBBatchRunner:
         workflow_context_fit_counts = Counter(case.workflow_context_fit for case in cases if case.workflow_context_fit)
         filled_role_counts = Counter(role for case in cases for role in case.filled_roles)
         missing_role_counts = Counter(role for case in cases for role in case.missing_roles)
+        verifier_status_counts = Counter(case.verifier_status for case in cases if case.verifier_status)
         reason_counts = Counter(code for case in cases for code in case.reason_codes + case.warning_reason_codes)
         subgraph_counts = Counter(case.subgraph_id for case in cases if case.subgraph_id)
         repeated_subgraphs = sorted([subgraph_id for subgraph_id, count in subgraph_counts.items() if count > 1])
@@ -486,6 +512,8 @@ class PipelineBBatchRunner:
             filled_role_counts=dict(sorted(filled_role_counts.items())),
             missing_role_counts=dict(sorted(missing_role_counts.items())),
             role_filling_case_count=sum(1 for case in cases if case.motif_grammar_id),
+            verifier_status_counts=dict(sorted(verifier_status_counts.items())),
+            verifier_blocking_case_count=sum(1 for case in cases if case.verifier_blocking_count > 0),
             reason_code_counts=dict(sorted(reason_counts.items())),
             repeated_reason_codes=sorted([code for code, count in reason_counts.items() if count > 1]),
             repeated_subgraph_ids=repeated_subgraphs,
