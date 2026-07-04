@@ -344,7 +344,75 @@ class TeacherRunner:
                     notes=notes,
                 )
             )
+        final_checks.extend(
+            self._dossier_final_checks(
+                validation=validation,
+                evidence_ids=evidence_ids,
+            )
+        )
         return final_checks
+
+    def _dossier_final_checks(
+        self,
+        validation: TeacherInputValidationReport,
+        evidence_ids: List[str],
+    ) -> List[GoldenFinalCheck]:
+        warning_findings = {
+            finding.check_name: finding
+            for finding in validation.findings
+            if finding.severity == "warning" and not finding.passed
+        }
+        checks: List[GoldenFinalCheck] = []
+
+        if "dossier_missing_attachment_metadata" in warning_findings:
+            checks.append(
+                GoldenFinalCheck(
+                    check_name="dossier_missing_support_caveat",
+                    status="partial",
+                    supporting_evidence_ids=list(evidence_ids),
+                    blocking_reasons=["dossier_missing_attachment_metadata"],
+                    notes=[
+                        "Teacher outputs should preserve the support gap explicitly instead of treating the dossier as fully complete.",
+                    ],
+                )
+            )
+        if "dossier_conflict_source_metadata" in warning_findings:
+            checks.append(
+                GoldenFinalCheck(
+                    check_name="dossier_conflict_resolution",
+                    status="partial",
+                    supporting_evidence_ids=list(evidence_ids),
+                    blocking_reasons=["dossier_conflict_source_metadata"],
+                    notes=[
+                        "Teacher outputs should preserve reconciliation logic or unresolved disagreement rather than flattening conflict into false certainty.",
+                    ],
+                )
+            )
+        if "dossier_outdated_version_metadata" in warning_findings:
+            checks.append(
+                GoldenFinalCheck(
+                    check_name="dossier_version_governance",
+                    status="partial",
+                    supporting_evidence_ids=list(evidence_ids),
+                    blocking_reasons=["dossier_outdated_version_metadata"],
+                    notes=[
+                        "Teacher outputs should identify which evidence source is current before stale or prior-version material is treated as governing.",
+                    ],
+                )
+            )
+        if "dossier_manager_notes_metadata" in warning_findings:
+            checks.append(
+                GoldenFinalCheck(
+                    check_name="dossier_manager_escalation",
+                    status="partial",
+                    supporting_evidence_ids=list(evidence_ids),
+                    blocking_reasons=["dossier_manager_notes_metadata"],
+                    notes=[
+                        "Teacher outputs should preserve escalation, follow-up, or caveat framing implied by manager-facing dossier context.",
+                    ],
+                )
+            )
+        return checks
 
     def _unresolved_gaps(
         self,

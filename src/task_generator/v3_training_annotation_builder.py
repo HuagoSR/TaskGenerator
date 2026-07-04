@@ -454,6 +454,10 @@ class TrainingAnnotationBuilder:
             "evidence_traceability": "reasoning_check",
             "policy_clause_traceability": "reasoning_check",
             "conclusion_supported_by_visible_evidence": "reasoning_or_robustness_check",
+            "dossier_missing_support_caveat": "reasoning_or_robustness_check",
+            "dossier_conflict_resolution": "reasoning_or_robustness_check",
+            "dossier_version_governance": "reasoning_check",
+            "dossier_manager_escalation": "reasoning_check",
         }
         return mapping.get(check_name, "reasoning_check")
 
@@ -464,6 +468,10 @@ class TrainingAnnotationBuilder:
             "evidence_traceability": "Check that every material conclusion bullet carries local bracketed support with exact candidate-visible Evidence_ID values rather than source labels.",
             "policy_clause_traceability": "Check that every policy-sensitive conclusion bullet carries local bracketed policy clause IDs together with exact supporting Evidence_ID values.",
             "conclusion_supported_by_visible_evidence": "Check that each supported conclusion, confirmed exception, and unresolved item is locally supported by exact visible evidence IDs rather than hidden assumptions or source labels.",
+            "dossier_missing_support_caveat": "Check that missing attachments or incomplete fields remain explicit caveats rather than being silently treated as resolved support.",
+            "dossier_conflict_resolution": "Check that conflicting dossier signals remain visible as reconciliation or disagreement logic instead of being flattened into false certainty.",
+            "dossier_version_governance": "Check that version-sensitive evidence identifies which source is current before stale or prior-version material is treated as governing.",
+            "dossier_manager_escalation": "Check that manager-facing caveats, escalation needs, or follow-up obligations remain explicit when dossier support is incomplete.",
         }.get(check_name, f"Check `{check_name}`.")
         if status != "pass":
             return f"{base} Current status: {status}."

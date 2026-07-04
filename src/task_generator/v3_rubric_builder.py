@@ -436,6 +436,10 @@ class RubricBuilder:
                 return "fact_checks"
             if item.name == "evidence_traceability":
                 return "reasoning_checks"
+            if item.name in {"dossier_missing_support_caveat", "dossier_conflict_resolution"}:
+                return "robustness_checks"
+            if item.name in {"dossier_version_governance", "dossier_manager_escalation"}:
+                return "reasoning_checks"
             return "compliance_checks"
         if item.kind == "intermediate_state":
             if "policy" in item.name:
