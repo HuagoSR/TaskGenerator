@@ -52,6 +52,13 @@ class PipelineBQualityReport(BaseModel):
 class PipelineBQualityGate:
     """Summarize deterministic Pipeline B artifacts into a package-level decision."""
 
+    DOSSIER_REASON_LAYER = {
+        "dossier_missing_attachment_metadata": "reference_file_planning",
+        "dossier_conflict_source_metadata": "reference_file_planning",
+        "dossier_outdated_version_metadata": "reference_file_planning",
+        "dossier_manager_notes_metadata": "teacher_operationalization",
+    }
+
     def build(
         self,
         generated_file_manifest_path: str | Path,
@@ -142,6 +149,7 @@ class PipelineBQualityGate:
                 "Quality Gate V1 is deterministic and does not call LLM or external APIs.",
                 "The gate is intentionally conservative: partial-ready chains are routed to revise.",
                 "LLM teacher/prose generation should be scheduled only after this gate makes readiness explicit.",
+                "Evidence dossier ecology signals are diagnostic revise findings in this slice and do not change gate thresholds.",
             ],
         )
 
@@ -233,6 +241,19 @@ class PipelineBQualityGate:
                         details=finding.model_dump(),
                     )
                 )
+            elif finding.severity == "warning" and not finding.passed:
+                findings.append(
+                    self._finding(
+                        reason_code=finding.check_name,
+                        severity="revise",
+                        source_artifact="teacher_input_validation_report",
+                        message=self._warning_message(
+                            finding.check_name,
+                            source_artifact="teacher_input_validation_report",
+                        ),
+                        details=self._warning_details(finding.check_name, finding.model_dump()),
+                    )
+                )
         for check in report.relationship_checks:
             if not check.passed:
                 severity: FindingSeverity = "blocking" if check.severity == "blocking" else "revise"
@@ -281,13 +302,14 @@ class PipelineBQualityGate:
             )
         )
         for gap in report.unresolved_gaps:
+            reason_code = self._reason_from_gap(gap)
             findings.append(
                 self._finding(
-                    reason_code=self._reason_from_gap(gap),
+                    reason_code=reason_code,
                     severity="revise",
                     source_artifact="teacher_runner_report",
                     message=gap,
-                    details={"gap": gap},
+                    details=self._warning_details(reason_code, {"gap": gap}),
                 )
             )
         return findings
@@ -389,8 +411,8 @@ class PipelineBQualityGate:
                     reason_code=code,
                     severity=severity,
                     source_artifact=source_artifact,
-                    message=f"Warning reason code requires revision review: {code}.",
-                    details={"warning_code": code},
+                    message=self._warning_message(code, source_artifact),
+                    details=self._warning_details(code, {"warning_code": code}),
                 )
             )
         return findings
@@ -443,6 +465,14 @@ class PipelineBQualityGate:
         return "unknown"
 
     def _reason_from_gap(self, gap: str) -> str:
+        if "dossier_missing_support_caveat" in gap or "dossier_missing_attachment_metadata" in gap:
+            return "dossier_missing_attachment_metadata"
+        if "dossier_conflict_resolution" in gap or "dossier_conflict_source_metadata" in gap:
+            return "dossier_conflict_source_metadata"
+        if "dossier_version_governance" in gap or "dossier_outdated_version_metadata" in gap:
+            return "dossier_outdated_version_metadata"
+        if "dossier_manager_escalation" in gap or "dossier_manager_notes_metadata" in gap:
+            return "dossier_manager_notes_metadata"
         if "policy_reference.docx" in gap:
             return "deferred_policy_reference"
         if "policy_lookup" in gap:
@@ -454,6 +484,29 @@ class PipelineBQualityGate:
         if "Weak Pipeline A signal:" in gap or "pipeline_a_signal_gaps" in gap:
             return "pipeline_a_signal_gaps"
         return "unresolved_gap"
+
+    def _warning_message(self, code: str, source_artifact: str) -> str:
+        dossier_messages = {
+            "dossier_missing_attachment_metadata": "Evidence dossier indicates missing support or missing attachments that should remain explicit.",
+            "dossier_conflict_source_metadata": "Evidence dossier indicates conflicting evidence ecology that should remain explicit.",
+            "dossier_outdated_version_metadata": "Evidence dossier indicates stale or prior-version ambiguity that should remain explicit.",
+            "dossier_manager_notes_metadata": "Evidence dossier indicates manager-facing escalation or caveat context that should remain explicit.",
+        }
+        if code in dossier_messages:
+            return dossier_messages[code]
+        return f"Warning reason code requires revision review: {code}."
+
+    def _warning_details(self, code: str, details: Dict[str, Any]) -> Dict[str, Any]:
+        enriched = dict(details)
+        if code in self.DOSSIER_REASON_LAYER:
+            enriched.update(
+                {
+                    "dossier_reason_family": "evidence_dossier",
+                    "diagnostic_only": True,
+                    "recommended_layer": self.DOSSIER_REASON_LAYER[code],
+                }
+            )
+        return enriched
 
     def _finding(
         self,

@@ -25,6 +25,13 @@ SYSTEMIC_REASON_HINTS = {
     "partial_intermediate_state": "Teacher/intermediate-state completion remains partial.",
 }
 
+DOSSIER_REASON_HINTS = {
+    "dossier_missing_attachment_metadata": "Evidence dossier repeatedly signals missing support or absent attachments; current tasks may be under-specified as complete evidence packages.",
+    "dossier_conflict_source_metadata": "Evidence dossier repeatedly signals unresolved cross-source conflict; tasks need stronger reconciliation ecology.",
+    "dossier_outdated_version_metadata": "Evidence dossier repeatedly signals stale/prior-version ambiguity; current tasks need explicit current-vs-outdated evidence governance.",
+    "dossier_manager_notes_metadata": "Evidence dossier repeatedly implies escalation/review context, but current task contracts may not operationalize that context cleanly.",
+}
+
 CASE_OR_MOTIF_REASON_HINTS = {
     "blocked_rubric_criteria": "Rubric contains blocking criteria for this case or motif.",
     "blocked_training_annotation_items": "Training annotation contains blocking supervision items for this case or motif.",
@@ -52,8 +59,10 @@ class BatchCaseArtifactSnapshot(BaseModel):
     partial_role_fit_count: int = 0
     quality_blocking_count: int = 0
     quality_revise_count: int = 0
+    quality_reason_codes: List[str] = Field(default_factory=list)
     teacher_readiness: Optional[str] = None
     teacher_blocking_reason_codes: List[str] = Field(default_factory=list)
+    teacher_warning_reason_codes: List[str] = Field(default_factory=list)
     teacher_unresolved_gaps: List[str] = Field(default_factory=list)
     annotation_readiness: Optional[str] = None
     annotation_blocked_item_count: int = 0
@@ -206,9 +215,13 @@ class PipelineBBatchFeedbackAnalyzer:
             ),
             quality_blocking_count=int(((quality or {}).get("decision") or {}).get("blocking_count") or 0),
             quality_revise_count=int(((quality or {}).get("decision") or {}).get("revise_count") or 0),
+            quality_reason_codes=list((((quality or {}).get("decision") or {}).get("reason_codes") or [])),
             teacher_readiness=(teacher or {}).get("readiness"),
             teacher_blocking_reason_codes=list(
                 (((teacher or {}).get("diagnostics") or {}).get("blocking_reason_codes") or [])
+            ),
+            teacher_warning_reason_codes=list(
+                (((teacher or {}).get("diagnostics") or {}).get("warning_reason_codes") or [])
             ),
             teacher_unresolved_gaps=list((teacher or {}).get("unresolved_gaps") or []),
             annotation_readiness=(annotation or {}).get("readiness"),
@@ -269,7 +282,6 @@ class PipelineBBatchFeedbackAnalyzer:
                         evidence={"case_coverage": coverage, "batch_case_count": len(cases)},
                     )
                 )
-
         for candidate in self._external_eval_candidates(cases):
             findings.append(
                 self._finding(
@@ -283,7 +295,16 @@ class PipelineBBatchFeedbackAnalyzer:
                 )
             )
 
+        dossier_by_reason: Dict[str, List[BatchCaseArtifactSnapshot]] = defaultdict(list)
         for snapshot in snapshots:
+            dossier_codes = sorted(
+                {
+                    *[code for code in snapshot.quality_reason_codes if code in DOSSIER_REASON_HINTS],
+                    *[code for code in snapshot.teacher_warning_reason_codes if code in DOSSIER_REASON_HINTS],
+                }
+            )
+            for code in dossier_codes:
+                dossier_by_reason[code].append(snapshot)
             if snapshot.quality_blocking_count or snapshot.annotation_blocked_item_count or snapshot.rubric_blocked_criterion_count:
                 findings.append(
                     self._finding(
@@ -332,6 +353,72 @@ class PipelineBBatchFeedbackAnalyzer:
                         },
                     )
                 )
+        case_count = max(len(cases), 1)
+        for reason_code, affected_snapshots in sorted(dossier_by_reason.items()):
+            affected_case_ids = sorted({snapshot.case_id for snapshot in affected_snapshots})
+            affected_motifs = sorted({snapshot.motif for snapshot in affected_snapshots})
+            coverage = len(affected_case_ids)
+            category: FindingCategory = (
+                "systemic"
+                if coverage >= max(2, case_count // 2)
+                else ("motif_specific" if len(affected_motifs) == 1 else "case_specific")
+            )
+            findings.append(
+                self._finding(
+                    category=category,
+                    severity="medium",
+                    reason_code=reason_code,
+                    message=DOSSIER_REASON_HINTS[reason_code],
+                    affected_case_ids=affected_case_ids,
+                    affected_motifs=affected_motifs,
+                    evidence={
+                        "case_coverage": coverage,
+                        "batch_case_count": len(cases),
+                        "quality_signal_case_ids": sorted(
+                            {
+                                snapshot.case_id
+                                for snapshot in affected_snapshots
+                                if reason_code in snapshot.quality_reason_codes
+                            }
+                        ),
+                        "teacher_signal_case_ids": sorted(
+                            {
+                                snapshot.case_id
+                                for snapshot in affected_snapshots
+                                if reason_code in snapshot.teacher_warning_reason_codes
+                            }
+                        ),
+                    },
+                )
+            )
+        for reason_code, affected_cases in sorted(reason_to_cases.items()):
+            if reason_code not in DOSSIER_REASON_HINTS or reason_code in dossier_by_reason:
+                continue
+            affected_case_ids = sorted(case.case_id for case in affected_cases)
+            affected_motifs = sorted(set(case.motif for case in affected_cases))
+            coverage = len(affected_case_ids)
+            category = (
+                "systemic"
+                if coverage >= max(2, case_count // 2)
+                else ("motif_specific" if len(affected_motifs) == 1 else "case_specific")
+            )
+            findings.append(
+                self._finding(
+                    category=category,
+                    severity="medium",
+                    reason_code=reason_code,
+                    message=DOSSIER_REASON_HINTS[reason_code],
+                    affected_case_ids=affected_case_ids,
+                    affected_motifs=affected_motifs,
+                    evidence={
+                        "case_coverage": coverage,
+                        "batch_case_count": len(cases),
+                        "quality_signal_case_ids": [],
+                        "teacher_signal_case_ids": [],
+                        "snapshot_signal_available": False,
+                    },
+                )
+            )
         return findings
 
     def _external_eval_candidates(
@@ -433,11 +520,28 @@ class PipelineBBatchFeedbackAnalyzer:
                     recommended_next_step="Inspect whether weak assignments come from missing typed resources, weak graph-role labels, or motif grammar roles that are too strict for the current registry coverage.",
                 )
             )
+        dossier_codes = [code for code in DOSSIER_REASON_HINTS if code in by_reason]
+        if dossier_codes:
+            linked_cases = sorted(
+                set(case_id for code in dossier_codes for case_id in by_reason[code].affected_case_ids)
+            )
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_evidence_dossier_ecology",
+                    priority=3,
+                    owner="pipeline_b",
+                    title="Strengthen evidence dossier ecology before expanding draft task batches.",
+                    rationale="Repeated dossier-aware signals suggest the task package still under-specifies evidence ecology, not just prompt phrasing.",
+                    linked_reason_codes=dossier_codes,
+                    linked_case_ids=linked_cases,
+                    recommended_next_step="Inspect whether repeated dossier signals come from weak file-role design, too many missing-attachment placeholders, unclear current-vs-outdated version relations, or manager-facing escalation context that never enters the deliverable and teacher contract.",
+                )
+            )
         if external_candidates:
             actions.append(
                 PrioritizedBatchAction(
                     action_id="batch_action_guarded_external_draft_smoke",
-                    priority=3,
+                    priority=4,
                     owner="evaluation",
                     title="Optionally run a tiny guarded external draft smoke on selected draft-compatible cases.",
                     rationale="The candidates are structurally compatible and eval-prepared, but remain revise_only and not final training data.",
