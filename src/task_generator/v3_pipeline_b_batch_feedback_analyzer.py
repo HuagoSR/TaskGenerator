@@ -32,6 +32,23 @@ DOSSIER_REASON_HINTS = {
     "dossier_manager_notes_metadata": "Evidence dossier repeatedly implies escalation/review context, but current task contracts may not operationalize that context cleanly.",
 }
 
+VERIFIER_REASON_HINTS = {
+    "missing_declared_evidence_reference": "Verifier found evidence references that do not close against the declared teacher evidence contract; this points to teacher operationalization gaps.",
+    "unsupported_complete_step": "Verifier found complete GoldenRun steps without explicit evidence use; completeness marking is outrunning evidence discipline.",
+    "unsupported_pass_final_check": "Verifier found passed final checks without explicit supporting evidence; final-check support discipline is too weak.",
+    "missing_policy_visible_support": "Verifier found policy-sensitive reasoning without candidate-visible policy support; package planning and teacher grounding are misaligned.",
+    "policy_support_only_partial": "Verifier found policy-sensitive reasoning that remains only partially grounded; visible policy support is still incomplete.",
+    "deliverable_requirement_undercovered": "Verifier found deliverable requirements that are not clearly covered by candidate-facing rubric criteria.",
+    "deliverable_without_candidate_criteria": "Verifier found deliverable requirements without any candidate-facing rubric criteria; the deliverable contract is under-specified for evaluation.",
+    "execution_dag_invalid": "Verifier found an invalid execution DAG; the current teacher plan is not structurally executable as written.",
+    "unsupported_task_constraints": "Verifier found required task constraints that are not grounded in current artifacts; package/global-validity alignment is incomplete.",
+    "deliverable_section_unmapped": "Verifier found deliverable sections that are not clearly mapped into candidate-facing rubric coverage.",
+    "candidate_rubric_exports_invisible_criterion": "Verifier found rubric export leakage: a non-candidate criterion is still marked exportable.",
+    "candidate_rubric_contains_diagnostic_signal": "Verifier found candidate-facing rubric criteria that still carry diagnostic-only signals; rubric audience separation is leaking.",
+    "candidate_rubric_evidence_not_visible": "Verifier found candidate-facing rubric criteria that require non-visible evidence IDs.",
+    "rubric_requires_unused_evidence": "Verifier found candidate-facing rubric evidence requirements that GoldenRun never uses explicitly.",
+}
+
 CASE_OR_MOTIF_REASON_HINTS = {
     "blocked_rubric_criteria": "Rubric contains blocking criteria for this case or motif.",
     "blocked_training_annotation_items": "Training annotation contains blocking supervision items for this case or motif.",
@@ -68,6 +85,11 @@ class BatchCaseArtifactSnapshot(BaseModel):
     annotation_blocked_item_count: int = 0
     rubric_readiness: Optional[str] = None
     rubric_blocked_criterion_count: int = 0
+    verifier_status: Optional[str] = None
+    verifier_blocking_count: int = 0
+    verifier_revise_count: int = 0
+    verifier_reason_codes: List[str] = Field(default_factory=list)
+    verifier_top_findings: List[Dict[str, Any]] = Field(default_factory=list)
     artifact_read_errors: List[str] = Field(default_factory=list)
 
 
@@ -110,6 +132,10 @@ class PipelineBBatchFeedbackDiagnostics(BaseModel):
     case_specific_finding_count: int = 0
     external_eval_candidate_count: int = 0
     reason_case_coverage: Dict[str, int] = Field(default_factory=dict)
+    verifier_case_count: int = 0
+    verifier_blocking_reason_coverage: Dict[str, int] = Field(default_factory=dict)
+    verifier_revise_reason_coverage: Dict[str, int] = Field(default_factory=dict)
+    verifier_status_counts: Dict[str, int] = Field(default_factory=dict)
     priority_reason_codes: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
 
@@ -153,6 +179,7 @@ class PipelineBBatchFeedbackAnalyzer:
             findings=findings,
             external_candidates=external_candidates,
             reason_to_cases=reason_to_cases,
+            snapshots=case_snapshots,
         )
         report = PipelineBBatchFeedbackReport(
             request=request,
@@ -197,9 +224,12 @@ class PipelineBBatchFeedbackAnalyzer:
         annotation = self._load_optional(case_dir / "training_annotation" / "training_annotation_report.json", errors)
         rubric = self._load_optional(case_dir / "rubric" / "rubric_report.json", errors)
         subgraph = self._load_optional(case_dir / "subgraph_sampler" / "pipeline_b_subgraph_report.json", errors)
+        verifier = self._load_optional(case_dir / "task_verifier" / "task_verifier_report.json", errors)
         subgraph_diagnostics = (subgraph or {}).get("diagnostics") or {}
         selection_policy = (subgraph or {}).get("selection_policy_diagnostics") or {}
         role_fit_scores = list(subgraph_diagnostics.get("role_fit_scores") or [])
+        verifier_diagnostics = (verifier or {}).get("diagnostics") or {}
+        verifier_findings = list((verifier or {}).get("findings") or [])
         return BatchCaseArtifactSnapshot(
             case_id=case.case_id,
             motif=case.motif,
@@ -232,6 +262,11 @@ class PipelineBBatchFeedbackAnalyzer:
             rubric_blocked_criterion_count=int(
                 (((rubric or {}).get("diagnostics") or {}).get("blocked_criterion_count") or 0)
             ),
+            verifier_status=(verifier or {}).get("verifier_status"),
+            verifier_blocking_count=int(verifier_diagnostics.get("blocking_count") or 0),
+            verifier_revise_count=int(verifier_diagnostics.get("revise_count") or 0),
+            verifier_reason_codes=list(verifier_diagnostics.get("reason_codes") or []),
+            verifier_top_findings=self._top_verifier_findings(verifier_findings),
             artifact_read_errors=errors,
         )
 
@@ -296,6 +331,7 @@ class PipelineBBatchFeedbackAnalyzer:
             )
 
         dossier_by_reason: Dict[str, List[BatchCaseArtifactSnapshot]] = defaultdict(list)
+        verifier_by_reason: Dict[str, List[BatchCaseArtifactSnapshot]] = defaultdict(list)
         for snapshot in snapshots:
             dossier_codes = sorted(
                 {
@@ -305,6 +341,8 @@ class PipelineBBatchFeedbackAnalyzer:
             )
             for code in dossier_codes:
                 dossier_by_reason[code].append(snapshot)
+            for code in sorted({code for code in snapshot.verifier_reason_codes if code in VERIFIER_REASON_HINTS}):
+                verifier_by_reason[code].append(snapshot)
             if snapshot.quality_blocking_count or snapshot.annotation_blocked_item_count or snapshot.rubric_blocked_criterion_count:
                 findings.append(
                     self._finding(
@@ -353,6 +391,22 @@ class PipelineBBatchFeedbackAnalyzer:
                         },
                     )
                 )
+            if snapshot.verifier_status == "blocking":
+                findings.append(
+                    self._finding(
+                        category="case_specific",
+                        severity="high",
+                        reason_code="case_verifier_blocking",
+                        message="Verifier found blocking structural issues in this case.",
+                        affected_case_ids=[snapshot.case_id],
+                        affected_motifs=[snapshot.motif],
+                        evidence={
+                            "verifier_blocking_count": snapshot.verifier_blocking_count,
+                            "verifier_reason_codes": snapshot.verifier_reason_codes,
+                            "verifier_top_findings": snapshot.verifier_top_findings,
+                        },
+                    )
+                )
         case_count = max(len(cases), 1)
         for reason_code, affected_snapshots in sorted(dossier_by_reason.items()):
             affected_case_ids = sorted({snapshot.case_id for snapshot in affected_snapshots})
@@ -388,6 +442,38 @@ class PipelineBBatchFeedbackAnalyzer:
                                 if reason_code in snapshot.teacher_warning_reason_codes
                             }
                         ),
+                    },
+                )
+            )
+        for reason_code, affected_snapshots in sorted(verifier_by_reason.items()):
+            affected_case_ids = sorted({snapshot.case_id for snapshot in affected_snapshots})
+            affected_motifs = sorted({snapshot.motif for snapshot in affected_snapshots})
+            coverage = len(affected_case_ids)
+            severity = self._verifier_finding_severity(reason_code, affected_snapshots)
+            category: FindingCategory = (
+                "systemic"
+                if severity == "high" and coverage >= max(2, case_count // 2)
+                else ("motif_specific" if len(affected_motifs) == 1 else "case_specific")
+            )
+            findings.append(
+                self._finding(
+                    category=category,
+                    severity=severity,
+                    reason_code=reason_code,
+                    message=VERIFIER_REASON_HINTS[reason_code],
+                    affected_case_ids=affected_case_ids,
+                    affected_motifs=affected_motifs,
+                    evidence={
+                        "case_coverage": coverage,
+                        "batch_case_count": len(cases),
+                        "verifier_statuses": sorted({snapshot.verifier_status or "unknown" for snapshot in affected_snapshots}),
+                        "top_findings": [
+                            item
+                            for snapshot in affected_snapshots
+                            for item in snapshot.verifier_top_findings
+                            if item.get("reason_code") == reason_code
+                        ][:3],
+                        "recommended_layer": self._verifier_recommended_layer(reason_code),
                     },
                 )
             )
@@ -537,6 +623,94 @@ class PipelineBBatchFeedbackAnalyzer:
                     recommended_next_step="Inspect whether repeated dossier signals come from weak file-role design, too many missing-attachment placeholders, unclear current-vs-outdated version relations, or manager-facing escalation context that never enters the deliverable and teacher contract.",
                 )
             )
+        verifier_evidence_codes = [
+            code
+            for code in [
+                "missing_declared_evidence_reference",
+                "unsupported_complete_step",
+                "unsupported_pass_final_check",
+            ]
+            if code in by_reason
+        ]
+        if verifier_evidence_codes:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_verifier_evidence_closure",
+                    priority=3,
+                    owner="pipeline_b",
+                    title="Close verifier evidence-discipline gaps before trusting teacher completeness.",
+                    rationale="Verifier is surfacing unsupported complete/pass states, which points to teacher evidence-contract or final-check support problems rather than ordinary prompt weakness.",
+                    linked_reason_codes=verifier_evidence_codes,
+                    linked_case_ids=sorted(
+                        set(case_id for code in verifier_evidence_codes for case_id in by_reason[code].affected_case_ids)
+                    ),
+                    recommended_next_step="Inspect the teacher evidence contract, GoldenRun complete-step marking, and final-check supporting evidence discipline to ensure declared evidence and solved states really close.",
+                )
+            )
+        verifier_hygiene_codes = [
+            code
+            for code in [
+                "candidate_rubric_exports_invisible_criterion",
+                "candidate_rubric_contains_diagnostic_signal",
+                "candidate_rubric_evidence_not_visible",
+            ]
+            if code in by_reason
+        ]
+        if verifier_hygiene_codes:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_verifier_rubric_hygiene",
+                    priority=3,
+                    owner="pipeline_b",
+                    title="Clean up candidate-facing rubric hygiene before widening evaluation use.",
+                    rationale="Verifier found candidate-rubric leakage or non-visible evidence requirements, which means rubric audience separation is still unstable.",
+                    linked_reason_codes=verifier_hygiene_codes,
+                    linked_case_ids=sorted(
+                        set(case_id for code in verifier_hygiene_codes for case_id in by_reason[code].affected_case_ids)
+                    ),
+                    recommended_next_step="Remove diagnostic-only signals from candidate criteria, ensure exported criteria are genuinely candidate-facing, and drop any non-visible evidence requirements from candidate rubric paths.",
+                )
+            )
+        verifier_deliverable_codes = [
+            code
+            for code in ["deliverable_requirement_undercovered", "deliverable_section_unmapped"]
+            if code in by_reason
+        ]
+        if verifier_deliverable_codes:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_verifier_deliverable_alignment",
+                    priority=3,
+                    owner="pipeline_b",
+                    title="Tighten deliverable-contract alignment between blueprint, teacher contract, and rubric.",
+                    rationale="Verifier found that deliverable expectations are not mapping cleanly into candidate-facing rubric coverage.",
+                    linked_reason_codes=verifier_deliverable_codes,
+                    linked_case_ids=sorted(
+                        set(case_id for code in verifier_deliverable_codes for case_id in by_reason[code].affected_case_ids)
+                    ),
+                    recommended_next_step="Review blueprint deliverable requirements, teacher deliverable contract wording, and rubric candidate section mapping so each visible deliverable obligation has an explicit candidate-facing criterion path.",
+                )
+            )
+        verifier_policy_codes = [
+            code
+            for code in ["missing_policy_visible_support", "policy_support_only_partial"]
+            if code in by_reason
+        ]
+        if verifier_policy_codes:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_verifier_policy_support",
+                    priority=3,
+                    owner="pipeline_b",
+                    title="Strengthen policy-visible support before trusting policy-sensitive verification.",
+                    rationale="Verifier found that policy-sensitive checks are not fully grounded in candidate-visible policy evidence.",
+                    linked_reason_codes=verifier_policy_codes,
+                    linked_case_ids=sorted(
+                        set(case_id for code in verifier_policy_codes for case_id in by_reason[code].affected_case_ids)
+                    ),
+                    recommended_next_step="Check whether policy evidence really enters the candidate package, then align policy-sensitive final checks and rubric criteria with explicit visible policy-clause grounding.",
+                )
+            )
         if external_candidates:
             actions.append(
                 PrioritizedBatchAction(
@@ -558,12 +732,29 @@ class PipelineBBatchFeedbackAnalyzer:
         findings: List[BatchFeedbackFinding],
         external_candidates: List[ExternalEvalCandidate],
         reason_to_cases: Dict[str, List[PipelineBBatchCaseSummary]],
+        snapshots: List[BatchCaseArtifactSnapshot],
     ) -> PipelineBBatchFeedbackDiagnostics:
         category_counts = Counter(finding.category for finding in findings)
         reason_case_coverage = {
             reason_code: len(cases)
             for reason_code, cases in sorted(reason_to_cases.items())
         }
+        verifier_status_counts = Counter(snapshot.verifier_status for snapshot in snapshots if snapshot.verifier_status)
+        verifier_blocking_reason_coverage = Counter()
+        verifier_revise_reason_coverage = Counter()
+        verifier_case_count = 0
+        for snapshot in snapshots:
+            if snapshot.verifier_status:
+                verifier_case_count += 1
+            for item in snapshot.verifier_top_findings:
+                reason_code = item.get("reason_code")
+                severity = item.get("severity")
+                if not reason_code or not severity:
+                    continue
+                if severity == "blocking":
+                    verifier_blocking_reason_coverage[reason_code] += 1
+                elif severity == "revise":
+                    verifier_revise_reason_coverage[reason_code] += 1
         role_case_coverage = Counter()
         for case in batch_report.cases:
             for role in case.missing_roles:
@@ -583,12 +774,70 @@ class PipelineBBatchFeedbackAnalyzer:
                 **reason_case_coverage,
                 **{f"missing_role:{role}": count for role, count in sorted(role_case_coverage.items())},
             },
+            verifier_case_count=verifier_case_count,
+            verifier_blocking_reason_coverage=dict(sorted(verifier_blocking_reason_coverage.items())),
+            verifier_revise_reason_coverage=dict(sorted(verifier_revise_reason_coverage.items())),
+            verifier_status_counts=dict(sorted(verifier_status_counts.items())),
             priority_reason_codes=sorted(set(priority_reason_codes)),
             notes=[
                 "Case coverage counts each affected case once even if a reason appears in both reason_codes and warning_reason_codes.",
                 "Draft external candidates are not candidate_ready packages.",
+                "Verifier coverage is computed from task_verifier_report snapshots when present.",
             ],
         )
+
+    def _top_verifier_findings(self, findings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        severity_rank = {"blocking": 0, "revise": 1, "warning": 2}
+        top = sorted(
+            findings,
+            key=lambda item: (
+                severity_rank.get(item.get("severity", "warning"), 3),
+                item.get("reason_code", ""),
+                item.get("check_name", ""),
+            ),
+        )[:3]
+        return [
+            {
+                "reason_code": item.get("reason_code"),
+                "severity": item.get("severity"),
+                "check_name": item.get("check_name"),
+                "message": item.get("message"),
+            }
+            for item in top
+        ]
+
+    def _verifier_finding_severity(
+        self,
+        reason_code: str,
+        snapshots: List[BatchCaseArtifactSnapshot],
+    ) -> FindingSeverity:
+        if any(
+            item.get("reason_code") == reason_code and item.get("severity") == "blocking"
+            for snapshot in snapshots
+            for item in snapshot.verifier_top_findings
+        ):
+            return "high"
+        return "medium"
+
+    def _verifier_recommended_layer(self, reason_code: str) -> str:
+        if reason_code in {
+            "missing_declared_evidence_reference",
+            "unsupported_complete_step",
+            "unsupported_pass_final_check",
+        }:
+            return "teacher_operationalization"
+        if reason_code in {"missing_policy_visible_support", "policy_support_only_partial"}:
+            return "reference_file_planning + teacher_operationalization"
+        if reason_code in {"deliverable_requirement_undercovered", "deliverable_without_candidate_criteria", "deliverable_section_unmapped"}:
+            return "prototype_deliverable_contract + rubric_builder"
+        if reason_code in {
+            "candidate_rubric_exports_invisible_criterion",
+            "candidate_rubric_contains_diagnostic_signal",
+            "candidate_rubric_evidence_not_visible",
+            "rubric_requires_unused_evidence",
+        }:
+            return "rubric_builder"
+        return "global_validity + package_contract"
 
     def _finding(
         self,
