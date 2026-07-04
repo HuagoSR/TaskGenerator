@@ -29,6 +29,13 @@ PIPELINE_A_DIAGNOSTIC_SIGNALS = {
     "pipeline_a_signal_gaps",
 }
 
+DOSSIER_DIAGNOSTIC_SIGNALS = {
+    "dossier_missing_attachment_metadata",
+    "dossier_conflict_source_metadata",
+    "dossier_outdated_version_metadata",
+    "dossier_manager_notes_metadata",
+}
+
 
 class RubricBuildRequest(BaseModel):
     training_annotation_path: str
@@ -330,6 +337,25 @@ class RubricBuilder:
                         notes=["Explicit warning criterion injected from teacher diagnostics."],
                     )
                 )
+            elif code in DOSSIER_DIAGNOSTIC_SIGNALS:
+                section = self._section_for_failure_signal(code)
+                sections[section].append(
+                    RubricCriterion(
+                        criterion_id=self._stable_id("warn", [golden_run.golden_run_id, code]),
+                        section=section,
+                        criterion_type=self._criterion_type_for_section(section),
+                        audience="teacher_diagnostic" if code != "dossier_manager_notes_metadata" else "pipeline_a_feedback",
+                        export_to_rw_task=False,
+                        description=self._dossier_warning_description(code),
+                        evidence_requirements=[],
+                        pass_condition=self._dossier_pass_condition(code),
+                        failure_signals=[code],
+                        severity=self._severity_from_signal(code),
+                        status_hint="partial",
+                        source_ids=[golden_run.golden_run_id],
+                        notes=["Explicit dossier-aware warning criterion injected from teacher diagnostics."],
+                    )
+                )
 
     def _readiness(
         self,
@@ -375,6 +401,8 @@ class RubricBuilder:
             return "pipeline_a_feedback"
         if warning_codes and warning_codes.issubset(PIPELINE_A_DIAGNOSTIC_SIGNALS):
             return "pipeline_a_feedback"
+        if warning_codes and warning_codes.issubset(DOSSIER_DIAGNOSTIC_SIGNALS):
+            return "teacher_diagnostic"
         if item.kind == "intermediate_state" and PIPELINE_A_DIAGNOSTIC_SIGNALS.intersection(warning_codes):
             return "teacher_diagnostic"
         return "candidate"
@@ -382,6 +410,8 @@ class RubricBuilder:
     def _audience_for_signal(self, signal: str) -> CriterionAudience:
         if signal in PIPELINE_A_DIAGNOSTIC_SIGNALS:
             return "pipeline_a_feedback"
+        if signal in DOSSIER_DIAGNOSTIC_SIGNALS:
+            return "teacher_diagnostic"
         return "candidate"
 
     def _audience_for_projection_summary(self, summary: str) -> CriterionAudience:
@@ -392,6 +422,8 @@ class RubricBuilder:
     def _audience_for_gap(self, gap: str, signal: str) -> CriterionAudience:
         if signal in PIPELINE_A_DIAGNOSTIC_SIGNALS:
             return "pipeline_a_feedback"
+        if signal in DOSSIER_DIAGNOSTIC_SIGNALS:
+            return "teacher_diagnostic"
         if gap.startswith("Weak Pipeline A signal:") or gap.startswith("pipeline_a_signal_gap_review:"):
             return "pipeline_a_feedback"
         if gap.startswith("subgraph_edge_evidence_review:"):
@@ -411,11 +443,17 @@ class RubricBuilder:
             return "reasoning_checks"
         if any(code in {"single_source_support", "low_subgraph_confidence", "pipeline_a_signal_gaps"} for code in item.warning_codes):
             return "robustness_checks"
+        if any(code in {"dossier_missing_attachment_metadata", "dossier_conflict_source_metadata"} for code in item.warning_codes):
+            return "robustness_checks"
         return "reasoning_checks"
 
     def _section_for_failure_signal(self, signal: str) -> RubricSectionName:
         if signal in {"deferred_policy_reference", "relationship:policy_lookup"}:
             return "compliance_checks"
+        if signal in {"dossier_missing_attachment_metadata", "dossier_conflict_source_metadata"}:
+            return "robustness_checks"
+        if signal in {"dossier_outdated_version_metadata", "dossier_manager_notes_metadata"}:
+            return "reasoning_checks"
         if signal in {"low_subgraph_confidence", "pipeline_a_signal_gaps", "single_source_support"}:
             return "robustness_checks"
         if signal == "partial_intermediate_state":
@@ -445,7 +483,11 @@ class RubricBuilder:
     ) -> CriterionSeverity:
         if any(code in {"deferred_policy_reference", "relationship:policy_lookup"} for code in codes):
             return "high"
+        if any(code in {"dossier_missing_attachment_metadata", "dossier_conflict_source_metadata"} for code in codes):
+            return "high"
         if any(code in {"low_subgraph_confidence", "pipeline_a_signal_gaps", "single_source_support", "partial_intermediate_state"} for code in codes):
+            return "medium"
+        if any(code in {"dossier_outdated_version_metadata", "dossier_manager_notes_metadata"} for code in codes):
             return "medium"
         if section in {"fact_checks", "compliance_checks"}:
             return "medium"
@@ -454,7 +496,11 @@ class RubricBuilder:
     def _severity_from_signal(self, signal: str) -> CriterionSeverity:
         if signal in {"deferred_policy_reference", "relationship:policy_lookup"}:
             return "high"
+        if signal in {"dossier_missing_attachment_metadata", "dossier_conflict_source_metadata"}:
+            return "high"
         if signal in {"low_subgraph_confidence", "pipeline_a_signal_gaps", "single_source_support", "partial_intermediate_state"}:
+            return "medium"
+        if signal in {"dossier_outdated_version_metadata", "dossier_manager_notes_metadata"}:
             return "medium"
         return "low"
 
@@ -488,7 +534,33 @@ class RubricBuilder:
             return "low_subgraph_confidence"
         if "pipeline_a_signal_gaps" in gap or "Weak Pipeline A signal:" in gap:
             return "pipeline_a_signal_gaps"
+        if "dossier_missing_attachment_metadata" in gap:
+            return "dossier_missing_attachment_metadata"
+        if "dossier_conflict_source_metadata" in gap:
+            return "dossier_conflict_source_metadata"
+        if "dossier_outdated_version_metadata" in gap:
+            return "dossier_outdated_version_metadata"
+        if "dossier_manager_notes_metadata" in gap:
+            return "dossier_manager_notes_metadata"
         return "partial_intermediate_state"
+
+    def _dossier_warning_description(self, code: str) -> str:
+        mapping = {
+            "dossier_missing_attachment_metadata": "The evidence dossier indicates missing attachments or missing fields; the evaluation should preserve the resulting support gap explicitly.",
+            "dossier_conflict_source_metadata": "The evidence dossier indicates conflicting source ecology; the evaluation should require the output to preserve disagreement or reconciliation logic.",
+            "dossier_outdated_version_metadata": "The evidence dossier indicates a stale or prior-version source; the evaluation should require explicit version-sensitive reasoning.",
+            "dossier_manager_notes_metadata": "The evidence dossier implies manager-facing review or escalation context; the evaluation should preserve caveats and follow-up framing where support is incomplete.",
+        }
+        return mapping.get(code, f"Dossier-aware warning criterion for `{code}`.")
+
+    def _dossier_pass_condition(self, code: str) -> str:
+        mapping = {
+            "dossier_missing_attachment_metadata": "Do not treat missing-support cases as fully closed; preserve the missing attachment or incomplete-field caveat explicitly.",
+            "dossier_conflict_source_metadata": "Do not flatten conflicting evidence into false certainty; preserve reconciliation or unresolved conflict explicitly.",
+            "dossier_outdated_version_metadata": "Do not award full credit when the output uses stale-version evidence without clarifying which source is current.",
+            "dossier_manager_notes_metadata": "Do not strip escalation, caveat, or follow-up framing when manager-facing review context is part of the dossier.",
+        }
+        return mapping.get(code, f"Preserve dossier-aware caution for `{code}`.")
 
     def _stable_id(self, prefix: str, parts: List[str]) -> str:
         import hashlib

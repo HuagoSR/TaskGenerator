@@ -341,6 +341,12 @@ class TrainingAnnotationBuilder:
             f"Deferred-asset trap: {asset}"
             for asset in teacher_manifest.teacher_view.deferred_assets
         )
+        traps.extend(
+            f"Dossier trap: {hint}"
+            for hint in teacher_manifest.teacher_view.hidden_hints
+            if hint.startswith("Evidence dossier")
+            or hint.startswith("At least one candidate-visible file")
+        )
         return traps
 
     def _expected_reasoning_path(self, golden_run: GoldenRun) -> List[str]:
@@ -366,7 +372,14 @@ class TrainingAnnotationBuilder:
         robustness_checks = [
             self._failure_description(code)
             for code in teacher_report.diagnostics.warning_reason_codes
-            if code in {"partial_intermediate_state", "single_source_support", "pipeline_a_signal_gaps"}
+            if code in {
+                "partial_intermediate_state",
+                "single_source_support",
+                "pipeline_a_signal_gaps",
+                "dossier_missing_attachment_metadata",
+                "dossier_conflict_source_metadata",
+                "dossier_outdated_version_metadata",
+            }
         ]
         compliance_checks = [
             self._final_check_description(check.check_name, check.status)
@@ -459,6 +472,8 @@ class TrainingAnnotationBuilder:
     def _failure_severity(self, code: str) -> str:
         if code in {"deferred_policy_reference", "relationship:policy_lookup"}:
             return "high"
+        if code in {"dossier_missing_attachment_metadata", "dossier_conflict_source_metadata"}:
+            return "high"
         if code in {"low_subgraph_confidence", "pipeline_a_signal_gaps"}:
             return "medium"
         return "medium"
@@ -471,6 +486,10 @@ class TrainingAnnotationBuilder:
             "pipeline_a_signal_gaps": "The model hides missing graph-signal uncertainty instead of acknowledging it.",
             "relationship:policy_lookup": "The model claims policy-grounded conclusions without a complete policy lookup artifact.",
             "single_source_support": "The model treats a single source as decisive without preserving provenance caution.",
+            "dossier_missing_attachment_metadata": "The model acts as if the dossier is complete even though dossier metadata signals missing supporting attachments or fields.",
+            "dossier_conflict_source_metadata": "The model flattens conflicting evidence ecology into a single certainty claim instead of preserving reconciliation or disagreement.",
+            "dossier_outdated_version_metadata": "The model treats a stale or prior-version source as governing evidence without acknowledging version risk.",
+            "dossier_manager_notes_metadata": "The model ignores manager-facing escalation or caveat context implied by the evidence dossier.",
         }
         return descriptions.get(code, f"Failure mode triggered by `{code}`.")
 
@@ -502,6 +521,10 @@ class TrainingAnnotationBuilder:
             "pipeline_a_signal_gaps": "Teach the model to surface graph uncertainty instead of hiding it.",
             "relationship:policy_lookup": "Do not award full policy-grounded reasoning without a candidate-visible policy lookup source.",
             "single_source_support": "Require provenance wording and caution language when only one source supports the claim.",
+            "dossier_missing_attachment_metadata": "Require the output to preserve the missing-support caveat instead of silently filling the gap.",
+            "dossier_conflict_source_metadata": "Require the output to distinguish unresolved conflict from confirmed findings.",
+            "dossier_outdated_version_metadata": "Require the output to identify which source is current before using version-sensitive evidence.",
+            "dossier_manager_notes_metadata": "Require the output to preserve escalation, follow-up, or caveat language implied by manager-facing context.",
         }
         return hints.get(code, "")
 

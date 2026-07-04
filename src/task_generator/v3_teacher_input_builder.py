@@ -274,6 +274,7 @@ class TeacherInputBuilder:
             hidden_hints.append(
                 "Policy clause IDs are candidate-visible and should be cited explicitly whenever policy logic is invoked."
             )
+        hidden_hints.extend(self._dossier_hidden_hints(reference_plan))
 
         skill_intentions = []
         for skill in subgraph.selected_skills:
@@ -380,6 +381,7 @@ class TeacherInputBuilder:
                 details=teacher_view.subgraph_confidence,
             )
         )
+        findings.extend(self._dossier_validation_findings(reference_plan))
 
         for relationship in reference_plan.data_relationships:
             relationship_checks.append(
@@ -489,6 +491,99 @@ class TeacherInputBuilder:
             blocking_reason_codes=blocking_reason_codes,
             warning_reason_codes=warning_reason_codes,
         )
+
+    def _dossier_hidden_hints(self, reference_plan: ReferenceFilePlan) -> List[str]:
+        hints: List[str] = []
+        dossier = reference_plan.evidence_dossier
+        role_by_file_id = {item.file_id: item for item in dossier.file_roles}
+
+        if dossier.synthetic_artifacts:
+            hints.append(
+                "Evidence dossier metadata includes metadata-only artifacts; unresolved support, conflict, or stale-version ecology should stay visible in teacher reasoning."
+            )
+
+        for artifact in dossier.synthetic_artifacts:
+            if artifact.role == "missing_attachment":
+                hints.append(
+                    "Evidence dossier indicates a missing attachment placeholder; teacher outputs should preserve the support gap explicitly instead of treating the record as complete."
+                )
+            elif artifact.role == "conflict_source":
+                hints.append(
+                    "Evidence dossier indicates a conflict source placeholder; teacher outputs should distinguish unresolved disagreement from confirmed findings."
+                )
+            elif artifact.role == "outdated_version":
+                hints.append(
+                    "Evidence dossier indicates a stale or prior-version placeholder; teacher outputs should avoid silently treating outdated material as governing evidence."
+                )
+            elif artifact.role == "manager_notes":
+                hints.append(
+                    "Evidence dossier implies manager-facing notes or review context; teacher outputs should preserve escalation or caveat language where support is incomplete."
+                )
+
+        if any(item.contains_missing_fields for item in role_by_file_id.values()):
+            hints.append(
+                "At least one candidate-visible file is marked as containing missing fields; teacher outputs should preserve incompleteness as a first-class caveat."
+            )
+        if any(item.contains_conflict for item in role_by_file_id.values()):
+            hints.append(
+                "At least one candidate-visible file is marked as containing conflict; teacher outputs should preserve reconciliation logic rather than flattening disagreement."
+            )
+        return hints
+
+    def _dossier_validation_findings(self, reference_plan: ReferenceFilePlan) -> List[ValidationFinding]:
+        dossier = reference_plan.evidence_dossier
+        findings: List[ValidationFinding] = []
+        file_roles = dossier.file_roles
+        synthetic_by_role = {artifact.role: artifact for artifact in dossier.synthetic_artifacts}
+
+        findings.append(
+            ValidationFinding(
+                check_name="dossier_metadata_present",
+                severity="info",
+                passed=bool(dossier.dossier_id),
+                details=f"dossier_id={dossier.dossier_id}",
+            )
+        )
+        if any(item.contains_missing_fields for item in file_roles) or "missing_attachment" in synthetic_by_role:
+            findings.append(
+                ValidationFinding(
+                    check_name="dossier_missing_attachment_metadata",
+                    severity="warning",
+                    passed=False,
+                    details="Dossier metadata indicates missing support or attachment gaps that should remain explicit.",
+                )
+            )
+        if any(item.contains_conflict for item in file_roles) or "conflict_source" in synthetic_by_role:
+            findings.append(
+                ValidationFinding(
+                    check_name="dossier_conflict_source_metadata",
+                    severity="warning",
+                    passed=False,
+                    details="Dossier metadata indicates conflicting source ecology that should remain explicit in teacher reasoning.",
+                )
+            )
+        if any(
+            item.version_relation and item.version_relation != "current"
+            for item in file_roles
+        ) or "outdated_version" in synthetic_by_role:
+            findings.append(
+                ValidationFinding(
+                    check_name="dossier_outdated_version_metadata",
+                    severity="warning",
+                    passed=False,
+                    details="Dossier metadata indicates a stale or prior-version source that should not be treated as governing by default.",
+                )
+            )
+        if "manager_notes" in synthetic_by_role:
+            findings.append(
+                ValidationFinding(
+                    check_name="dossier_manager_notes_metadata",
+                    severity="warning",
+                    passed=False,
+                    details="Dossier metadata implies manager-facing review context or escalation-oriented notes.",
+                )
+            )
+        return findings
 
     def _evidence_ids_by_file(self, generated_manifest: GeneratedFileManifest) -> Dict[str, List[str]]:
         result: Dict[str, List[str]] = {}
