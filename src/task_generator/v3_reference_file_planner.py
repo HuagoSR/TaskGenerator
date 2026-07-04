@@ -19,6 +19,16 @@ GenerationStrategy = Literal[
     "stirrup_agentic_file",
     "external_or_imported",
 ]
+EvidenceDossierRole = Literal[
+    "primary_evidence",
+    "policy_reference",
+    "manager_notes",
+    "outdated_version",
+    "distractor_source",
+    "missing_attachment",
+    "conflict_source",
+]
+NoiseLevel = Literal["low", "medium", "high"]
 
 
 class ReferenceFilePlanRequest(BaseModel):
@@ -72,6 +82,47 @@ class EvidenceAnchor(BaseModel):
     provenance_notes: List[str] = Field(default_factory=list)
 
 
+class EvidenceDossierFileRole(BaseModel):
+    file_id: str
+    role: EvidenceDossierRole
+    noise_level: NoiseLevel = "low"
+    contains_conflict: bool = False
+    contains_missing_fields: bool = False
+    version_relation: Optional[str] = None
+
+
+class EvidenceDossierConstraint(BaseModel):
+    constraint_id: str
+    description: str
+    constraint_type: str
+    linked_file_ids: List[str] = Field(default_factory=list)
+
+
+class EvidenceDossierDistractor(BaseModel):
+    distractor_id: str
+    distractor_type: str
+    description: str
+    linked_file_ids: List[str] = Field(default_factory=list)
+
+
+class ExpectedEvidencePath(BaseModel):
+    evidence_id: str
+    file_id: str
+    locator: str
+    semantic_type: str
+
+
+class EvidenceDossierPlan(BaseModel):
+    dossier_id: str
+    business_context: str
+    candidate_visible_files: List[str] = Field(default_factory=list)
+    teacher_only_files: List[str] = Field(default_factory=list)
+    file_roles: List[EvidenceDossierFileRole] = Field(default_factory=list)
+    cross_file_constraints: List[EvidenceDossierConstraint] = Field(default_factory=list)
+    distractor_items: List[EvidenceDossierDistractor] = Field(default_factory=list)
+    expected_evidence_paths: List[ExpectedEvidencePath] = Field(default_factory=list)
+
+
 class PlannedReferenceFile(BaseModel):
     file_id: str
     file_name: str
@@ -112,6 +163,7 @@ class ReferenceFilePlan(BaseModel):
     template_family: str
     selected_skill_ids: List[str] = Field(default_factory=list)
     planned_files: List[PlannedReferenceFile] = Field(default_factory=list)
+    evidence_dossier: EvidenceDossierPlan
     deliverable_expectations: List[Dict[str, Any]] = Field(default_factory=list)
     data_relationships: List[Dict[str, Any]] = Field(default_factory=list)
     diagnostics: ReferenceFilePlanDiagnostics
@@ -135,6 +187,7 @@ class ReferenceFilePlanner:
             self._planned_file(file_spec, blueprint, subgraph, resource_nodes)
             for file_spec in blueprint.data_spec.reference_files
         ]
+        evidence_dossier = self._evidence_dossier(blueprint, subgraph, planned_files)
         diagnostics = self._diagnostics(blueprint, subgraph, planned_files)
 
         return ReferenceFilePlan(
@@ -146,6 +199,7 @@ class ReferenceFilePlanner:
             template_family=blueprint.template_family,
             selected_skill_ids=selected_skill_ids,
             planned_files=planned_files,
+            evidence_dossier=evidence_dossier,
             deliverable_expectations=[
                 {
                     "file_name": deliverable.file_name,
@@ -167,6 +221,7 @@ class ReferenceFilePlanner:
                 "This is a planning artifact only; no reference files are generated.",
                 "Stable IDs are intended to become provenance anchors for future file generation and GoldenRun.",
                 "Candidate-visible evidence is separated from teacher-only notes before concrete files exist.",
+                "Evidence dossier metadata describes the intended evidence ecology without requiring new file generators in V1.",
             ],
         )
 
@@ -505,6 +560,193 @@ class ReferenceFilePlanner:
         if section.clause_id:
             return f"{file_name}:{section.clause_id}"
         return f"{file_name}:{section.heading}"
+
+    def _evidence_dossier(
+        self,
+        blueprint: TaskBlueprint,
+        subgraph: Optional[PipelineBSubgraph],
+        planned_files: List[PlannedReferenceFile],
+    ) -> EvidenceDossierPlan:
+        selected_motif = subgraph.selected_motif if subgraph else blueprint.template_family
+        business_context = blueprint.scenario_spec.business_context.strip() or f"{blueprint.template_family}:{selected_motif}"
+        file_roles = self._dossier_file_roles(planned_files, blueprint, subgraph)
+        constraints = self._dossier_constraints(planned_files, blueprint, subgraph)
+        distractors = self._dossier_distractors(file_roles, constraints)
+        expected_paths = [
+            ExpectedEvidencePath(
+                evidence_id=anchor.evidence_id,
+                file_id=anchor.file_id,
+                locator=anchor.locator,
+                semantic_type=anchor.semantic_type,
+            )
+            for planned_file in planned_files
+            for anchor in planned_file.evidence_anchors
+        ]
+        return EvidenceDossierPlan(
+            dossier_id=self._stable_id("dos", [blueprint.blueprint_id, selected_motif]),
+            business_context=business_context,
+            candidate_visible_files=[planned.file_id for planned in planned_files if planned.candidate_visible],
+            teacher_only_files=[],
+            file_roles=file_roles,
+            cross_file_constraints=constraints,
+            distractor_items=distractors,
+            expected_evidence_paths=expected_paths,
+        )
+
+    def _dossier_file_roles(
+        self,
+        planned_files: List[PlannedReferenceFile],
+        blueprint: TaskBlueprint,
+        subgraph: Optional[PipelineBSubgraph],
+    ) -> List[EvidenceDossierFileRole]:
+        selected_motif = subgraph.selected_motif if subgraph else ""
+        missing_support = self._dossier_has_missing_support(blueprint, subgraph)
+        primary_ids = [
+            planned.file_id
+            for planned in planned_files
+            if self._dossier_role_for_file(planned) == "primary_evidence"
+        ]
+        conflict_enabled = selected_motif in {"fan_in_reconciliation", "cross_check_validation"} and bool(primary_ids)
+        conflict_file_id = primary_ids[0] if conflict_enabled else None
+        missing_file_id = primary_ids[-1] if missing_support and primary_ids else None
+        roles: List[EvidenceDossierFileRole] = []
+        for planned in planned_files:
+            role = self._dossier_role_for_file(planned)
+            roles.append(
+                EvidenceDossierFileRole(
+                    file_id=planned.file_id,
+                    role=role,
+                    noise_level=self._dossier_noise_level(planned),
+                    contains_conflict=planned.file_id == conflict_file_id,
+                    contains_missing_fields=planned.file_id == missing_file_id,
+                    version_relation=self._dossier_version_relation(role, primary_ids),
+                )
+            )
+        return roles
+
+    def _dossier_role_for_file(self, planned: PlannedReferenceFile) -> EvidenceDossierRole:
+        file_name = planned.file_name.lower()
+        if file_name == "policy_reference.docx":
+            return "policy_reference"
+        if any(token in file_name for token in ["notes", "memo", "manager"]):
+            return "manager_notes"
+        if any(token in file_name for token in ["old", "prior", "archived"]):
+            return "outdated_version"
+        if planned.file_role in {"source_data", "reference_table", "supporting_data"} or planned.file_format in {"xlsx", "csv", "json"}:
+            return "primary_evidence"
+        return "primary_evidence"
+
+    def _dossier_noise_level(self, planned: PlannedReferenceFile) -> NoiseLevel:
+        if planned.file_format in {"xlsx", "csv", "json"}:
+            return "low"
+        return "medium"
+
+    def _dossier_has_missing_support(
+        self,
+        blueprint: TaskBlueprint,
+        subgraph: Optional[PipelineBSubgraph],
+    ) -> bool:
+        context = " ".join(
+            [
+                blueprint.scenario_spec.business_context,
+                blueprint.scenario_spec.role,
+                blueprint.scenario_spec.time_context,
+            ]
+        ).lower()
+        if any(token in context for token in ["exception", "missing", "gap", "follow-up", "support"]):
+            return True
+        if not subgraph:
+            return False
+        return bool({"persistent_registry_typed_resources", "transition_evidence"} & set(subgraph.diagnostics.missing_or_weak_pipeline_a_signals))
+
+    def _dossier_version_relation(
+        self,
+        role: EvidenceDossierRole,
+        primary_ids: List[str],
+    ) -> Optional[str]:
+        if role == "outdated_version" and primary_ids:
+            return f"outdated_of:{primary_ids[0]}"
+        if role == "conflict_source" and primary_ids:
+            return f"conflicts_with:{primary_ids[0]}"
+        if role in {"primary_evidence", "policy_reference", "manager_notes"}:
+            return "current"
+        return None
+
+    def _dossier_constraints(
+        self,
+        planned_files: List[PlannedReferenceFile],
+        blueprint: TaskBlueprint,
+        subgraph: Optional[PipelineBSubgraph],
+    ) -> List[EvidenceDossierConstraint]:
+        file_ids = [planned.file_id for planned in planned_files if planned.candidate_visible]
+        constraints: List[EvidenceDossierConstraint] = []
+        for index, relationship in enumerate(blueprint.data_spec.data_relationships, start=1):
+            constraints.append(
+                EvidenceDossierConstraint(
+                    constraint_id=self._stable_id("dossier_constraint", [blueprint.blueprint_id, str(index)]),
+                    description=f"{relationship.relation_type} must remain traceable between {relationship.left} and {relationship.right}.",
+                    constraint_type=relationship.relation_type,
+                    linked_file_ids=file_ids,
+                )
+            )
+        motif = subgraph.selected_motif if subgraph else ""
+        if motif == "fan_in_reconciliation":
+            constraints.append(
+                EvidenceDossierConstraint(
+                    constraint_id=self._stable_id("dossier_constraint", [blueprint.blueprint_id, "reconciliation"]),
+                    description="At least one primary evidence file should require cross-file reconciliation against another source.",
+                    constraint_type="reconciliation_required",
+                    linked_file_ids=file_ids,
+                )
+            )
+        if motif == "policy_application":
+            constraints.append(
+                EvidenceDossierConstraint(
+                    constraint_id=self._stable_id("dossier_constraint", [blueprint.blueprint_id, "policy_link"]),
+                    description="Candidate-visible evidence should be interpretable alongside the policy reference clauses.",
+                    constraint_type="policy_evidence_linking",
+                    linked_file_ids=file_ids,
+                )
+            )
+        return constraints
+
+    def _dossier_distractors(
+        self,
+        file_roles: List[EvidenceDossierFileRole],
+        constraints: List[EvidenceDossierConstraint],
+    ) -> List[EvidenceDossierDistractor]:
+        distractors: List[EvidenceDossierDistractor] = []
+        if any(role.contains_conflict for role in file_roles):
+            linked = [role.file_id for role in file_roles if role.contains_conflict]
+            distractors.append(
+                EvidenceDossierDistractor(
+                    distractor_id=self._stable_id("distractor", [*linked, "conflict"]),
+                    distractor_type="conflicting_signal",
+                    description="One candidate-visible evidence source may push toward a conflicting interpretation that still needs reconciliation.",
+                    linked_file_ids=linked,
+                )
+            )
+        if any(role.contains_missing_fields for role in file_roles):
+            linked = [role.file_id for role in file_roles if role.contains_missing_fields]
+            distractors.append(
+                EvidenceDossierDistractor(
+                    distractor_id=self._stable_id("distractor", [*linked, "missing"]),
+                    distractor_type="missing_support",
+                    description="A file may appear complete at first glance but still omit fields needed for a fully supported conclusion.",
+                    linked_file_ids=linked,
+                )
+            )
+        if constraints and not distractors:
+            linked = constraints[0].linked_file_ids[:2]
+            distractors.append(
+                EvidenceDossierDistractor(
+                    distractor_id=self._stable_id("distractor", [*(linked or ["none"]), "ambient"]),
+                    distractor_type="ambient_noise",
+                    description="The dossier is simple in V1, but future versions may attach a stale or low-signal supporting source around these files.",
+                    linked_file_ids=linked,
+                )
+            )
+        return distractors[:2]
 
     def _tokens(self, text: str) -> set[str]:
         return {token for token in "".join(char.lower() if char.isalnum() else " " for char in text).split() if token}

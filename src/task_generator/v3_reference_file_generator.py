@@ -118,9 +118,20 @@ class ReferenceFileGenerator:
         generated_files: List[GeneratedFileRecord] = []
         evidence_index: List[GeneratedEvidenceMapping] = []
         trace_records: List[Dict[str, Any]] = []
+        dossier_role_by_file_id = {
+            item.file_id: item
+            for item in plan.evidence_dossier.file_roles
+        }
 
         for planned_file in plan.planned_files:
             record, mappings, trace = self._generate_file(planned_file, reference_dir)
+            dossier_role = dossier_role_by_file_id.get(planned_file.file_id)
+            if dossier_role is not None:
+                trace["dossier_role"] = dossier_role.role
+                trace["dossier_noise_level"] = dossier_role.noise_level
+                trace["dossier_contains_conflict"] = dossier_role.contains_conflict
+                trace["dossier_contains_missing_fields"] = dossier_role.contains_missing_fields
+                trace["dossier_version_relation"] = dossier_role.version_relation
             generated_files.append(record)
             evidence_index.extend(mappings)
             trace_records.append(trace)
@@ -731,6 +742,11 @@ class ReferenceFileGenerator:
             "generation_strategy_counts": dict(sorted(strategy_counts.items())),
             "validator_status_counts": dict(sorted(validator_counts.items())),
             "subgraph_confidence": plan.diagnostics.subgraph_confidence,
+            "dossier_id": plan.evidence_dossier.dossier_id,
+            "candidate_visible_file_count": len(plan.evidence_dossier.candidate_visible_files),
+            "teacher_only_file_count": len(plan.evidence_dossier.teacher_only_files),
+            "cross_file_constraint_count": len(plan.evidence_dossier.cross_file_constraints),
+            "distractor_item_count": len(plan.evidence_dossier.distractor_items),
             "carried_forward_warnings": plan.diagnostics.planner_warnings,
         }
 
@@ -761,6 +777,12 @@ class ReferenceFileGenerator:
                 {
                     "blueprint_id": manifest.blueprint_id,
                     "template_family": manifest.template_family,
+                    "dossier_summary": {
+                        "dossier_id": manifest.diagnostics.get("dossier_id"),
+                        "candidate_visible_file_count": manifest.diagnostics.get("candidate_visible_file_count", 0),
+                        "cross_file_constraint_count": manifest.diagnostics.get("cross_file_constraint_count", 0),
+                        "distractor_item_count": manifest.diagnostics.get("distractor_item_count", 0),
+                    },
                     "trace_records": trace_records,
                 },
                 ensure_ascii=False,
