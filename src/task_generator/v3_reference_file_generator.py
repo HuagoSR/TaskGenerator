@@ -747,8 +747,16 @@ class ReferenceFileGenerator:
             "teacher_only_file_count": len(plan.evidence_dossier.teacher_only_files),
             "cross_file_constraint_count": len(plan.evidence_dossier.cross_file_constraints),
             "distractor_item_count": len(plan.evidence_dossier.distractor_items),
+            "synthetic_artifact_count": len(plan.evidence_dossier.synthetic_artifacts),
+            "synthetic_artifact_role_counts": self._synthetic_artifact_role_counts(plan),
             "carried_forward_warnings": plan.diagnostics.planner_warnings,
         }
+
+    def _synthetic_artifact_role_counts(self, plan: ReferenceFilePlan) -> Dict[str, int]:
+        counts: Dict[str, int] = {}
+        for artifact in plan.evidence_dossier.synthetic_artifacts:
+            counts[artifact.role] = counts.get(artifact.role, 0) + 1
+        return dict(sorted(counts.items()))
 
     def _write_outputs(
         self,
@@ -782,6 +790,8 @@ class ReferenceFileGenerator:
                         "candidate_visible_file_count": manifest.diagnostics.get("candidate_visible_file_count", 0),
                         "cross_file_constraint_count": manifest.diagnostics.get("cross_file_constraint_count", 0),
                         "distractor_item_count": manifest.diagnostics.get("distractor_item_count", 0),
+                        "synthetic_artifact_count": manifest.diagnostics.get("synthetic_artifact_count", 0),
+                        "synthetic_artifact_role_counts": manifest.diagnostics.get("synthetic_artifact_role_counts", {}),
                     },
                     "trace_records": trace_records,
                 },

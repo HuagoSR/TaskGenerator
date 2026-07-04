@@ -112,6 +112,17 @@ class ExpectedEvidencePath(BaseModel):
     semantic_type: str
 
 
+class EvidenceDossierSyntheticArtifact(BaseModel):
+    artifact_id: str
+    role: EvidenceDossierRole
+    title: str
+    candidate_visible: bool = True
+    realization_mode: str = "metadata_only"
+    description: str
+    linked_file_ids: List[str] = Field(default_factory=list)
+    reason_codes: List[str] = Field(default_factory=list)
+
+
 class EvidenceDossierPlan(BaseModel):
     dossier_id: str
     business_context: str
@@ -121,6 +132,7 @@ class EvidenceDossierPlan(BaseModel):
     cross_file_constraints: List[EvidenceDossierConstraint] = Field(default_factory=list)
     distractor_items: List[EvidenceDossierDistractor] = Field(default_factory=list)
     expected_evidence_paths: List[ExpectedEvidencePath] = Field(default_factory=list)
+    synthetic_artifacts: List[EvidenceDossierSyntheticArtifact] = Field(default_factory=list)
 
 
 class PlannedReferenceFile(BaseModel):
@@ -572,6 +584,13 @@ class ReferenceFilePlanner:
         file_roles = self._dossier_file_roles(planned_files, blueprint, subgraph)
         constraints = self._dossier_constraints(planned_files, blueprint, subgraph)
         distractors = self._dossier_distractors(file_roles, constraints)
+        synthetic_artifacts = self._dossier_synthetic_artifacts(
+            blueprint=blueprint,
+            subgraph=subgraph,
+            file_roles=file_roles,
+            constraints=constraints,
+            distractors=distractors,
+        )
         expected_paths = [
             ExpectedEvidencePath(
                 evidence_id=anchor.evidence_id,
@@ -591,6 +610,7 @@ class ReferenceFilePlanner:
             cross_file_constraints=constraints,
             distractor_items=distractors,
             expected_evidence_paths=expected_paths,
+            synthetic_artifacts=synthetic_artifacts,
         )
 
     def _dossier_file_roles(
@@ -747,6 +767,130 @@ class ReferenceFilePlanner:
                 )
             )
         return distractors[:2]
+
+    def _dossier_synthetic_artifacts(
+        self,
+        blueprint: TaskBlueprint,
+        subgraph: Optional[PipelineBSubgraph],
+        file_roles: List[EvidenceDossierFileRole],
+        constraints: List[EvidenceDossierConstraint],
+        distractors: List[EvidenceDossierDistractor],
+    ) -> List[EvidenceDossierSyntheticArtifact]:
+        selected_motif = subgraph.selected_motif if subgraph else blueprint.template_family
+        context_tokens = self._tokens(
+            " ".join(
+                [
+                    blueprint.scenario_spec.role,
+                    blueprint.scenario_spec.business_context,
+                    blueprint.task_metadata.scenario_title,
+                    " ".join(requirement for deliverable in blueprint.deliverable_spec for requirement in deliverable.requirements),
+                    " ".join(deliverable.file_role for deliverable in blueprint.deliverable_spec),
+                ]
+            )
+        )
+        primary_file_ids = [role.file_id for role in file_roles if role.role == "primary_evidence"]
+        policy_file_ids = [role.file_id for role in file_roles if role.role == "policy_reference"]
+        conflict_file_ids = [role.file_id for role in file_roles if role.contains_conflict]
+        missing_file_ids = [role.file_id for role in file_roles if role.contains_missing_fields]
+
+        synthetic_artifacts: List[EvidenceDossierSyntheticArtifact] = []
+
+        def add_artifact(
+            role: EvidenceDossierRole,
+            title: str,
+            description: str,
+            linked_file_ids: List[str],
+            reason_codes: List[str],
+            candidate_visible: bool = True,
+        ) -> None:
+            artifact = EvidenceDossierSyntheticArtifact(
+                artifact_id=self._stable_id("dos_artifact", [blueprint.blueprint_id, role, title]),
+                role=role,
+                title=title,
+                candidate_visible=candidate_visible,
+                description=description,
+                linked_file_ids=linked_file_ids,
+                reason_codes=reason_codes,
+            )
+            if artifact.artifact_id not in {item.artifact_id for item in synthetic_artifacts}:
+                synthetic_artifacts.append(artifact)
+
+        manager_signal_tokens = {
+            "manager",
+            "leadership",
+            "executive",
+            "cfo",
+            "brief",
+            "briefing",
+            "review",
+            "summary",
+            "escalate",
+            "escalation",
+        }
+        if context_tokens & manager_signal_tokens:
+            add_artifact(
+                role="manager_notes",
+                title="Manager Review Notes Placeholder",
+                description="The dossier implies a manager-facing note or review thread, but V1 keeps it as metadata only.",
+                linked_file_ids=primary_file_ids[:2] or policy_file_ids[:1],
+                reason_codes=["manager_facing_context"],
+            )
+
+        if missing_file_ids:
+            add_artifact(
+                role="missing_attachment",
+                title="Missing Attachment Placeholder",
+                description="The dossier should communicate that at least one supporting attachment is referenced or expected but absent from the visible file set.",
+                linked_file_ids=missing_file_ids,
+                reason_codes=["missing_support_signal", "metadata_only_gap"],
+            )
+
+        if conflict_file_ids or selected_motif in {"fan_in_reconciliation", "cross_check_validation"}:
+            add_artifact(
+                role="conflict_source",
+                title="Conflict Source Placeholder",
+                description="The dossier should preserve that one source may disagree with another and require reconciliation or validation.",
+                linked_file_ids=conflict_file_ids or primary_file_ids[:2],
+                reason_codes=["conflict_signal", f"motif:{selected_motif}"],
+            )
+
+        outdated_signals = {"prior", "old", "outdated", "archived", "legacy", "previous"}
+        has_explicit_outdated_file = any(role.role == "outdated_version" for role in file_roles)
+        if not has_explicit_outdated_file and (
+            context_tokens & outdated_signals or selected_motif == "policy_application" or bool(policy_file_ids)
+        ):
+            linked_file_ids = policy_file_ids[:1] or primary_file_ids[:1]
+            if linked_file_ids:
+                add_artifact(
+                    role="outdated_version",
+                    title="Outdated Version Placeholder",
+                    description="The dossier may later include a prior version or stale copy that should not be treated as the governing source.",
+                    linked_file_ids=linked_file_ids,
+                    reason_codes=["version_ecology_signal", f"motif:{selected_motif}"],
+                )
+
+        if distractors:
+            linked_file_ids = []
+            for distractor in distractors:
+                linked_file_ids.extend(distractor.linked_file_ids)
+            add_artifact(
+                role="distractor_source",
+                title="Distractor Source Placeholder",
+                description="The dossier reserves room for a low-signal or partially misleading supporting source without forcing V1 physical file generation.",
+                linked_file_ids=list(dict.fromkeys(linked_file_ids))[:2],
+                reason_codes=["distractor_metadata", f"distractor_count:{len(distractors)}"],
+            )
+
+        if constraints and selected_motif == "policy_application" and not policy_file_ids:
+            add_artifact(
+                role="policy_reference",
+                title="Policy Reference Placeholder",
+                description="The dossier contract expects a policy or rules source even if the current planned file set has not materialized it as a separate document.",
+                linked_file_ids=primary_file_ids[:1],
+                reason_codes=["policy_constraint_without_file"],
+            )
+
+        return synthetic_artifacts
 
     def _tokens(self, text: str) -> set[str]:
         return {token for token in "".join(char.lower() if char.isalnum() else " " for char in text).split() if token}

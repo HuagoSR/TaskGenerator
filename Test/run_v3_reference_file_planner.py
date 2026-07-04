@@ -50,6 +50,8 @@ def main() -> None:
                 "dossier_id": plan.evidence_dossier.dossier_id,
                 "candidate_visible_file_count": len(plan.evidence_dossier.candidate_visible_files),
                 "cross_file_constraint_count": len(plan.evidence_dossier.cross_file_constraints),
+                "synthetic_artifact_count": len(plan.evidence_dossier.synthetic_artifacts),
+                "synthetic_artifact_roles": [artifact.role for artifact in plan.evidence_dossier.synthetic_artifacts],
                 "subgraph_confidence": diagnostics.subgraph_confidence,
                 "planner_warnings": diagnostics.planner_warnings,
             },

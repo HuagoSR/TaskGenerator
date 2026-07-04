@@ -46,6 +46,8 @@ def main() -> None:
                 "dossier_id": diagnostics["dossier_id"],
                 "candidate_visible_file_count": diagnostics["candidate_visible_file_count"],
                 "cross_file_constraint_count": diagnostics["cross_file_constraint_count"],
+                "synthetic_artifact_count": diagnostics["synthetic_artifact_count"],
+                "synthetic_artifact_role_counts": diagnostics["synthetic_artifact_role_counts"],
                 "carried_forward_warnings": diagnostics["carried_forward_warnings"],
             },
             ensure_ascii=False,
