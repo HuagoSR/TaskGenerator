@@ -323,6 +323,8 @@ Current Pipeline A starting files:
 - `Test/run_v3_typed_resource_patch_proposal.py`: CLI for writing `typed_resource_patch_proposals.json` and `typed_resource_patch_proposal_report.json` under `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/`
 - `src/task_generator/v3_promotion_manager.py`: explicit promotion/apply/rollback manager for typed-resource patch proposals; proposal-only by default and apply-only behind explicit flags
 - `Test/run_v3_promotion_manager.py`: CLI for writing `promotion_proposals.json`, `promotion_report.json`, and optional `rollback_record.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_global_pipeline_dashboard.py`: deterministic batch-level aggregator that turns batch, validity, verifier, substrate, typed-resource, and promotion reports into a single global dashboard JSON
+- `Test/run_v3_global_pipeline_dashboard.py`: CLI for writing `global_pipeline_dashboard_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - implemented next-stage files and assets:
@@ -334,7 +336,7 @@ Current Pipeline A starting files:
   - `SkillRegistry/v3_motif_graph_grammar.experimental.json`
   - `src/task_generator/v3_task_verifier.py`
 - currently planned next-stage files:
-  - future `global_pipeline_dashboard_report.json`
+  - future `ModelSeparationProfile`-level aggregation and evidence plumbing
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
