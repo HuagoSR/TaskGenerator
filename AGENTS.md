@@ -315,21 +315,26 @@ Current Pipeline A starting files:
 - `Test/run_v3_pipeline_b_batch_runner.py`: CLI for writing per-case Pipeline B artifacts plus `pipeline_b_batch_report.json` under `artifacts/pipeline_b/scratch/batch_runner_smoke/`
 - `src/task_generator/v3_pipeline_b_batch_feedback_analyzer.py`: report-only analyzer that turns Pipeline B batch smoke output into systemic, motif-specific, case-specific, and external-eval-candidate findings
 - `Test/run_v3_pipeline_b_batch_feedback_analyzer.py`: CLI for writing `pipeline_b_batch_feedback_report.json` under `artifacts/pipeline_b/scratch/batch_feedback_smoke/`
+- `src/task_generator/v3_task_verifier.py`: deterministic structural verifier that checks evidence closure, policy-visible support, deliverable/rubric alignment, and rubric hygiene without changing quality decisions
+- `Test/run_v3_task_verifier.py`: CLI for writing `task_verifier_report.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_pipeline_a_substrate_audit.py`: report-only audit layer that inspects the Pipeline A substrate signals for the skills actually sampled by a Pipeline B batch
 - `Test/run_v3_pipeline_a_substrate_audit.py`: CLI for writing `pipeline_a_substrate_audit_report.json` under `artifacts/pipeline_b/scratch/pipeline_a_substrate_audit_smoke/`
 - `src/task_generator/v3_typed_resource_patch_proposal.py`: report-only proposal builder that converts substrate-audit legacy semantics into reviewed `SemanticResource` patch candidates without mutating the registry
 - `Test/run_v3_typed_resource_patch_proposal.py`: CLI for writing `typed_resource_patch_proposals.json` and `typed_resource_patch_proposal_report.json` under `artifacts/pipeline_b/scratch/typed_resource_patch_proposal_smoke/`
+- `src/task_generator/v3_promotion_manager.py`: explicit promotion/apply/rollback manager for typed-resource patch proposals; proposal-only by default and apply-only behind explicit flags
+- `Test/run_v3_promotion_manager.py`: CLI for writing `promotion_proposals.json`, `promotion_report.json`, and optional `rollback_record.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
-- planned next-stage files, not implemented yet:
+- implemented next-stage files and assets:
   - `src/task_generator/v3_global_task_validity.py`
   - `Test/run_v3_global_task_validity.py`
   - `src/task_generator/v3_workflow_episode_proposer.py`
   - `Test/run_v3_workflow_episode_proposer.py`
   - `SkillRegistry/v3_workflow_archetype_registry.experimental.json`
   - `SkillRegistry/v3_motif_graph_grammar.experimental.json`
-  - future `src/task_generator/v3_task_verifier.py`
-  - future `src/task_generator/v3_promotion_manager.py`
+  - `src/task_generator/v3_task_verifier.py`
+- currently planned next-stage files:
+  - future `global_pipeline_dashboard_report.json`
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
