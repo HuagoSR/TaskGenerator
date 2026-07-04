@@ -46,6 +46,10 @@ class BatchCaseArtifactSnapshot(BaseModel):
     workflow_context_fit: Optional[str] = None
     filled_roles: List[str] = Field(default_factory=list)
     missing_roles: List[str] = Field(default_factory=list)
+    used_role_filling: bool = False
+    duplicate_role_reuse_count: int = 0
+    unfilled_required_role_count: int = 0
+    partial_role_fit_count: int = 0
     quality_blocking_count: int = 0
     quality_revise_count: int = 0
     teacher_readiness: Optional[str] = None
@@ -185,6 +189,8 @@ class PipelineBBatchFeedbackAnalyzer:
         rubric = self._load_optional(case_dir / "rubric" / "rubric_report.json", errors)
         subgraph = self._load_optional(case_dir / "subgraph_sampler" / "pipeline_b_subgraph_report.json", errors)
         subgraph_diagnostics = (subgraph or {}).get("diagnostics") or {}
+        selection_policy = (subgraph or {}).get("selection_policy_diagnostics") or {}
+        role_fit_scores = list(subgraph_diagnostics.get("role_fit_scores") or [])
         return BatchCaseArtifactSnapshot(
             case_id=case.case_id,
             motif=case.motif,
@@ -192,6 +198,12 @@ class PipelineBBatchFeedbackAnalyzer:
             workflow_context_fit=subgraph_diagnostics.get("workflow_context_fit"),
             filled_roles=list(subgraph_diagnostics.get("filled_roles") or []),
             missing_roles=list(subgraph_diagnostics.get("missing_roles") or []),
+            used_role_filling=bool(selection_policy.get("used_role_filling")),
+            duplicate_role_reuse_count=int(selection_policy.get("duplicate_role_reuse_count") or 0),
+            unfilled_required_role_count=int(selection_policy.get("unfilled_required_role_count") or 0),
+            partial_role_fit_count=sum(
+                1 for item in role_fit_scores if (item or {}).get("status") == "partial"
+            ),
             quality_blocking_count=int(((quality or {}).get("decision") or {}).get("blocking_count") or 0),
             quality_revise_count=int(((quality or {}).get("decision") or {}).get("revise_count") or 0),
             teacher_readiness=(teacher or {}).get("readiness"),
@@ -301,6 +313,25 @@ class PipelineBBatchFeedbackAnalyzer:
                         },
                     )
                 )
+            if snapshot.used_role_filling and (
+                snapshot.partial_role_fit_count >= 2 or snapshot.duplicate_role_reuse_count >= 2
+            ):
+                findings.append(
+                    self._finding(
+                        category="motif_specific",
+                        severity="medium",
+                        reason_code="weak_role_assignment_confidence",
+                        message="Role-filling ran, but multiple partial fits or repeated role reuse suggest the current slot assignments remain weak.",
+                        affected_case_ids=[snapshot.case_id],
+                        affected_motifs=[snapshot.motif],
+                        evidence={
+                            "motif_grammar_id": snapshot.motif_grammar_id,
+                            "partial_role_fit_count": snapshot.partial_role_fit_count,
+                            "duplicate_role_reuse_count": snapshot.duplicate_role_reuse_count,
+                            "unfilled_required_role_count": snapshot.unfilled_required_role_count,
+                        },
+                    )
+                )
         return findings
 
     def _external_eval_candidates(
@@ -387,6 +418,19 @@ class PipelineBBatchFeedbackAnalyzer:
                     linked_reason_codes=["missing_motif_roles"],
                     linked_case_ids=sorted(by_reason["missing_motif_roles"].affected_case_ids),
                     recommended_next_step="Review subgraph sampler reports for repeated missing roles and decide whether the gap belongs to motif grammar, graph-role labels, or typed-resource coverage.",
+                )
+            )
+        if "weak_role_assignment_confidence" in by_reason:
+            actions.append(
+                PrioritizedBatchAction(
+                    action_id="batch_action_strengthen_role_assignment_confidence",
+                    priority=2,
+                    owner="pipeline_b",
+                    title="Strengthen role-slot confidence before trusting role-filling output.",
+                    rationale="The sampler is filling roles, but repeated partial fits or heavy reuse indicate the current role assignment policy is still leaning on weak substrate signals.",
+                    linked_reason_codes=["weak_role_assignment_confidence"],
+                    linked_case_ids=sorted(by_reason["weak_role_assignment_confidence"].affected_case_ids),
+                    recommended_next_step="Inspect whether weak assignments come from missing typed resources, weak graph-role labels, or motif grammar roles that are too strict for the current registry coverage.",
                 )
             )
         if external_candidates:

@@ -34,6 +34,9 @@ def main() -> None:
     parser.add_argument("--skill-count", type=int, default=4)
     parser.add_argument("--max-cases", type=int, default=3)
     parser.add_argument("--allow-caution", action="store_true")
+    parser.add_argument("--workflow-archetype", default=None)
+    parser.add_argument("--motif-grammar-path", type=Path, default=None)
+    parser.add_argument("--target-difficulty-profile", default=None)
     parser.add_argument("--model", type=str, default="gpt-5.4-pro")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
@@ -57,6 +60,9 @@ def main() -> None:
         skill_count=args.skill_count,
         max_cases=args.max_cases,
         allow_caution=args.allow_caution,
+        workflow_archetype=args.workflow_archetype,
+        motif_grammar_path=args.motif_grammar_path,
+        target_difficulty_profile=args.target_difficulty_profile,
         model=args.model,
         workers=args.workers,
         rw_task_root=args.rw_task_root,
@@ -75,6 +81,8 @@ def main() -> None:
                 "quality_decision_counts": report.diagnostics.quality_decision_counts,
                 "package_readiness_counts": report.diagnostics.package_readiness_counts,
                 "subgraph_confidence_counts": report.diagnostics.subgraph_confidence_counts,
+                "role_filling_case_count": report.diagnostics.role_filling_case_count,
+                "missing_role_counts": report.diagnostics.missing_role_counts,
                 "repeated_reason_codes": report.diagnostics.repeated_reason_codes,
                 "batch_warnings": report.diagnostics.batch_warnings,
             },

@@ -37,6 +37,9 @@ class PipelineBBatchRunRequest(BaseModel):
     skill_count: int = 4
     max_cases: int = 3
     allow_caution: bool = False
+    workflow_archetype: Optional[str] = None
+    motif_grammar_path: Optional[str] = None
+    target_difficulty_profile: Optional[str] = None
     model: str = "gpt-5.4-pro"
     workers: int = 1
     rw_task_root: str = str(DEFAULT_RW_TASK_ROOT)
@@ -86,7 +89,9 @@ class PipelineBBatchDiagnostics(BaseModel):
     package_readiness_counts: Dict[str, int] = Field(default_factory=dict)
     subgraph_confidence_counts: Dict[str, int] = Field(default_factory=dict)
     workflow_context_fit_counts: Dict[str, int] = Field(default_factory=dict)
+    filled_role_counts: Dict[str, int] = Field(default_factory=dict)
     missing_role_counts: Dict[str, int] = Field(default_factory=dict)
+    role_filling_case_count: int = 0
     reason_code_counts: Dict[str, int] = Field(default_factory=dict)
     repeated_reason_codes: List[str] = Field(default_factory=list)
     repeated_subgraph_ids: List[str] = Field(default_factory=list)
@@ -113,6 +118,9 @@ class PipelineBBatchRunner:
         skill_count: int = 4,
         max_cases: int = 3,
         allow_caution: bool = False,
+        workflow_archetype: Optional[str] = None,
+        motif_grammar_path: Optional[str | Path] = None,
+        target_difficulty_profile: Optional[str] = None,
         model: str = "gpt-5.4-pro",
         workers: int = 1,
         rw_task_root: str | Path = DEFAULT_RW_TASK_ROOT,
@@ -129,6 +137,9 @@ class PipelineBBatchRunner:
             skill_count=skill_count,
             max_cases=max_cases,
             allow_caution=allow_caution,
+            workflow_archetype=workflow_archetype,
+            motif_grammar_path=str(motif_grammar_path) if motif_grammar_path else None,
+            target_difficulty_profile=target_difficulty_profile,
             model=model,
             workers=workers,
             rw_task_root=str(rw_task_root),
@@ -150,6 +161,9 @@ class PipelineBBatchRunner:
                         seed_report_path=seed_report_path,
                         skill_count=skill_count,
                         allow_caution=allow_caution,
+                        workflow_archetype=workflow_archetype,
+                        motif_grammar_path=motif_grammar_path,
+                        target_difficulty_profile=target_difficulty_profile,
                         model=model,
                         workers=workers,
                         rw_task_root=rw_task_root,
@@ -198,6 +212,9 @@ class PipelineBBatchRunner:
         seed_report_path: str | Path,
         skill_count: int,
         allow_caution: bool,
+        workflow_archetype: Optional[str],
+        motif_grammar_path: Optional[str | Path],
+        target_difficulty_profile: Optional[str],
         model: str,
         workers: int,
         rw_task_root: str | Path,
@@ -225,6 +242,9 @@ class PipelineBBatchRunner:
             motif=motif,
             skill_count=skill_count,
             allow_caution=allow_caution,
+            workflow_archetype=workflow_archetype,
+            motif_grammar_path=motif_grammar_path,
+            target_difficulty_profile=target_difficulty_profile,
         )
         sampler.write_outputs(subgraph, subgraph_dir)
         subgraph_report_path = subgraph_dir / "pipeline_b_subgraph_report.json"
@@ -437,6 +457,7 @@ class PipelineBBatchRunner:
         readiness_counts = Counter(case.package_readiness for case in cases if case.package_readiness)
         confidence_counts = Counter(case.subgraph_confidence for case in cases if case.subgraph_confidence)
         workflow_context_fit_counts = Counter(case.workflow_context_fit for case in cases if case.workflow_context_fit)
+        filled_role_counts = Counter(role for case in cases for role in case.filled_roles)
         missing_role_counts = Counter(role for case in cases for role in case.missing_roles)
         reason_counts = Counter(code for case in cases for code in case.reason_codes + case.warning_reason_codes)
         subgraph_counts = Counter(case.subgraph_id for case in cases if case.subgraph_id)
@@ -462,7 +483,9 @@ class PipelineBBatchRunner:
             package_readiness_counts=dict(sorted(readiness_counts.items())),
             subgraph_confidence_counts=dict(sorted(confidence_counts.items())),
             workflow_context_fit_counts=dict(sorted(workflow_context_fit_counts.items())),
+            filled_role_counts=dict(sorted(filled_role_counts.items())),
             missing_role_counts=dict(sorted(missing_role_counts.items())),
+            role_filling_case_count=sum(1 for case in cases if case.motif_grammar_id),
             reason_code_counts=dict(sorted(reason_counts.items())),
             repeated_reason_codes=sorted([code for code, count in reason_counts.items() if count > 1]),
             repeated_subgraph_ids=repeated_subgraphs,

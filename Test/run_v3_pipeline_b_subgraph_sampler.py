@@ -57,6 +57,8 @@ def main() -> None:
                 "missing_roles": diagnostics.missing_roles,
                 "workflow_context_fit": diagnostics.workflow_context_fit,
                 "task_graph_shape_assumption": diagnostics.task_graph_shape_assumption,
+                "used_role_filling": subgraph.selection_policy_diagnostics.used_role_filling,
+                "unfilled_required_role_count": subgraph.selection_policy_diagnostics.unfilled_required_role_count,
                 "typed_edge_count": diagnostics.edge_counts.get("typed_resource_match", 0),
                 "fallback_edge_count": (
                     diagnostics.edge_counts.get("legacy_resource_overlap", 0)
