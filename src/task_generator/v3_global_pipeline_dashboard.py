@@ -87,6 +87,22 @@ class EvalOrchestrationSnapshot(BaseModel):
     artifact_read_errors: List[str] = Field(default_factory=list)
 
 
+class PromotionGovernanceSnapshot(BaseModel):
+    source_report_path: Optional[str] = None
+    promotion_count: int = 0
+    eligible_promotion_count: int = 0
+    eligible_unreviewed_promotion_count: int = 0
+    applied_promotion_count: int = 0
+    rolled_back_promotion_count: int = 0
+    blocked_promotion_count: int = 0
+    no_effective_diff_promotion_count: int = 0
+    promotion_ids: List[str] = Field(default_factory=list)
+    source_promotion_keys: List[str] = Field(default_factory=list)
+    promotion_status_counts: Dict[str, int] = Field(default_factory=dict)
+    blocked_reason_counts: Dict[str, int] = Field(default_factory=dict)
+    notes: List[str] = Field(default_factory=list)
+
+
 class ModelSeparationSnapshot(BaseModel):
     task_id: Optional[str] = None
     case_id: str = "unknown"
@@ -131,7 +147,10 @@ class PipelineASubstrateHealthSummary(BaseModel):
     new_source_evidence_candidate_count: int = 0
     typed_resource_promotion_candidate_count: int = 0
     eligible_typed_resource_promotion_count: int = 0
+    eligible_unreviewed_typed_resource_promotion_count: int = 0
     applied_typed_resource_promotion_count: int = 0
+    rolled_back_typed_resource_promotion_count: int = 0
+    no_effective_diff_typed_resource_promotion_count: int = 0
 
 
 class TaskRealismHealthSummary(BaseModel):
@@ -169,6 +188,8 @@ class TrainingEvaluationReadinessSummary(BaseModel):
     diagnostic_only_model_separation_count: int = 0
     comparable_model_separation_count: int = 0
     promotion_ready_count: int = 0
+    promotion_applied_count: int = 0
+    promotion_rolled_back_count: int = 0
 
 
 class DashboardHealthSummary(BaseModel):
@@ -209,6 +230,7 @@ class GlobalPipelineDashboardReport(BaseModel):
     global_pipeline_dashboard_version: str = "v3.global_pipeline_dashboard.1"
     request: GlobalPipelineDashboardRequest
     case_snapshots: List[DashboardArtifactSnapshot] = Field(default_factory=list)
+    promotion_governance_snapshot: Optional[PromotionGovernanceSnapshot] = None
     eval_orchestration_snapshots: List[EvalOrchestrationSnapshot] = Field(default_factory=list)
     model_separation_snapshots: List[ModelSeparationSnapshot] = Field(default_factory=list)
     health_summary: DashboardHealthSummary
@@ -294,6 +316,7 @@ class GlobalPipelineDashboardBuilder:
             if promotion_report_path and Path(promotion_report_path).exists()
             else None
         )
+        promotion_snapshot = self._promotion_governance_snapshot(promotion_report)
 
         artifact_errors: List[str] = []
         eval_orchestration_paths = self._collect_eval_orchestrator_report_paths(
@@ -346,6 +369,7 @@ class GlobalPipelineDashboardBuilder:
         report = GlobalPipelineDashboardReport(
             request=request,
             case_snapshots=snapshots,
+            promotion_governance_snapshot=promotion_snapshot,
             eval_orchestration_snapshots=eval_orchestration_snapshots,
             model_separation_snapshots=model_separation_snapshots,
             health_summary=health_summary,
@@ -453,6 +477,7 @@ class GlobalPipelineDashboardBuilder:
         model_separation_snapshots: List[ModelSeparationSnapshot],
     ) -> DashboardHealthSummary:
         promotion_diagnostics = (promotion_report or {}).get("diagnostics") or {}
+        promotion_snapshot = self._promotion_governance_snapshot(promotion_report)
         batch_health = BatchHealthSummary(
             attempted_case_count=batch_report.diagnostics.case_count,
             completed_case_count=batch_report.diagnostics.completed_case_count,
@@ -473,8 +498,17 @@ class GlobalPipelineDashboardBuilder:
             eligible_typed_resource_promotion_count=int(
                 promotion_diagnostics.get("eligible_promotion_count") or 0
             ),
+            eligible_unreviewed_typed_resource_promotion_count=int(
+                promotion_snapshot.eligible_unreviewed_promotion_count if promotion_snapshot else 0
+            ),
             applied_typed_resource_promotion_count=int(
                 promotion_diagnostics.get("applied_promotion_count") or 0
+            ),
+            rolled_back_typed_resource_promotion_count=int(
+                promotion_snapshot.rolled_back_promotion_count if promotion_snapshot else 0
+            ),
+            no_effective_diff_typed_resource_promotion_count=int(
+                promotion_snapshot.no_effective_diff_promotion_count if promotion_snapshot else 0
             ),
         )
 
@@ -548,6 +582,10 @@ class GlobalPipelineDashboardBuilder:
                 1 for snapshot in model_separation_snapshots if snapshot.evaluation_status == "comparable_signal"
             ),
             promotion_ready_count=int(promotion_diagnostics.get("eligible_promotion_count") or 0),
+            promotion_applied_count=int(promotion_snapshot.applied_promotion_count if promotion_snapshot else 0),
+            promotion_rolled_back_count=int(
+                promotion_snapshot.rolled_back_promotion_count if promotion_snapshot else 0
+            ),
         )
         return DashboardHealthSummary(
             batch_health=batch_health,
@@ -692,6 +730,7 @@ class GlobalPipelineDashboardBuilder:
             )
 
         promotion_diagnostics = (promotion_report or {}).get("diagnostics") or {}
+        promotion_snapshot = self._promotion_governance_snapshot(promotion_report)
         if int(promotion_diagnostics.get("eligible_promotion_count") or 0) > 0:
             focus_areas.append(
                 DashboardFocusArea(
@@ -704,6 +743,12 @@ class GlobalPipelineDashboardBuilder:
                         "promotion_count": int(promotion_diagnostics.get("promotion_count") or 0),
                         "eligible_promotion_count": int(promotion_diagnostics.get("eligible_promotion_count") or 0),
                         "applied_promotion_count": int(promotion_diagnostics.get("applied_promotion_count") or 0),
+                        "eligible_unreviewed_promotion_count": int(
+                            promotion_snapshot.eligible_unreviewed_promotion_count if promotion_snapshot else 0
+                        ),
+                        "rolled_back_promotion_count": int(
+                            promotion_snapshot.rolled_back_promotion_count if promotion_snapshot else 0
+                        ),
                     },
                     recommended_next_step="Review apply-eligible typed-resource promotions on a scratch registry copy, then decide whether to promote selected substrate fixes into durable state.",
                 )
@@ -855,7 +900,40 @@ class GlobalPipelineDashboardBuilder:
                 "Missing case-level artifacts are tolerated and retained as diagnostic signals instead of blocking dashboard generation.",
                 "Evaluation orchestration reports are optional read-only inputs that can auto-link downstream model separation profiles.",
                 "Model separation profiles are optional and may remain unmatched to the current batch case ids during early evidence collection.",
+                "Promotion governance snapshot prefers source_promotion_key for cross-copy review trails when available.",
             ],
+        )
+
+    def _promotion_governance_snapshot(
+        self,
+        promotion_report: Optional[Dict[str, Any]],
+    ) -> Optional[PromotionGovernanceSnapshot]:
+        if promotion_report is None:
+            return None
+        promotion_summaries = promotion_report.get("promotion_summaries") or []
+        diagnostics = promotion_report.get("diagnostics") or {}
+        status_counts = Counter(
+            str(item.get("review_status") or "unknown")
+            for item in promotion_summaries
+        )
+        blocked_reason_counts = Counter()
+        for item in promotion_summaries:
+            for reason_code in item.get("blocked_reason_codes") or []:
+                blocked_reason_counts[str(reason_code)] += 1
+        return PromotionGovernanceSnapshot(
+            source_report_path=((promotion_report.get("request") or {}).get("typed_resource_patch_proposals_path")),
+            promotion_count=int(diagnostics.get("promotion_count") or 0),
+            eligible_promotion_count=int(diagnostics.get("eligible_promotion_count") or 0),
+            eligible_unreviewed_promotion_count=int(diagnostics.get("eligible_unreviewed_promotion_count") or 0),
+            applied_promotion_count=int(diagnostics.get("applied_promotion_count") or 0),
+            rolled_back_promotion_count=int(diagnostics.get("rolled_back_promotion_count") or 0),
+            blocked_promotion_count=int(diagnostics.get("blocked_promotion_count") or 0),
+            no_effective_diff_promotion_count=int(diagnostics.get("no_effective_diff_promotion_count") or 0),
+            promotion_ids=[str(value) for value in (promotion_report.get("promotion_ids") or [])],
+            source_promotion_keys=[str(value) for value in (promotion_report.get("source_promotion_keys") or [])],
+            promotion_status_counts=dict(sorted(status_counts.items())),
+            blocked_reason_counts=dict(sorted(blocked_reason_counts.items())),
+            notes=[str(value) for value in (promotion_report.get("notes") or [])],
         )
 
     def _load_model_separation_snapshots(

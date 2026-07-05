@@ -102,6 +102,8 @@ def main() -> None:
                 "model_separation_profile_count": report.health_summary.training_evaluation_readiness.model_separation_profile_count,
                 "model_separation_evidence_count": report.health_summary.training_evaluation_readiness.model_separation_evidence_count,
                 "promotion_ready_count": report.health_summary.training_evaluation_readiness.promotion_ready_count,
+                "promotion_applied_count": report.health_summary.training_evaluation_readiness.promotion_applied_count,
+                "promotion_rolled_back_count": report.health_summary.training_evaluation_readiness.promotion_rolled_back_count,
             },
             ensure_ascii=False,
             indent=2,

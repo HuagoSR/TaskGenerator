@@ -343,6 +343,10 @@ Current Pipeline A starting files:
 - currently planned next-stage files:
   - future richer multi-run evaluation comparison and post-orchestration governance
   - dashboard/profile consumption of repeated executed multi-model evidence after the current single-case smoke
+- promotion-governance operating note:
+  - `promotion_id` is invocation/target-path specific and can differ between canonical registry and scratch registry copies
+  - use `source_promotion_key` from `promotion_proposals.json` / `promotion_report.json` when tracking the same patch intent across review, scratch apply, rollback, and later canonical apply
+  - prefer validating apply/rollback on a scratch registry copy first; the dashboard can summarize eligible, applied, rolled-back, and `no_effective_diff` promotion states without mutating canonical registry state
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries

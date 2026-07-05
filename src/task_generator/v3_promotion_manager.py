@@ -49,6 +49,7 @@ class PromotionDiffItem(BaseModel):
 
 class PromotionRecord(BaseModel):
     promotion_id: str
+    source_promotion_key: str
     target_type: PromotionTargetType = "typed_resource_patch"
     target_ids: List[str] = Field(default_factory=list)
     source_report_path: str
@@ -81,9 +82,11 @@ class RollbackRecord(BaseModel):
 class PromotionManagerDiagnostics(BaseModel):
     promotion_count: int = 0
     eligible_promotion_count: int = 0
+    eligible_unreviewed_promotion_count: int = 0
     blocked_promotion_count: int = 0
     applied_promotion_count: int = 0
     rolled_back_promotion_count: int = 0
+    no_effective_diff_promotion_count: int = 0
     diff_item_count: int = 0
     blocked_reason_counts: Dict[str, int] = Field(default_factory=dict)
     notes: List[str] = Field(default_factory=list)
@@ -133,6 +136,7 @@ class PromotionManager:
                 "Promotion Manager V1 is typed-resource-first and report-first by default.",
                 "Proposal-only mode never mutates SkillRegistry/v3_skill_registry.json.",
                 "Apply requires an explicit promotion id plus reviewer metadata.",
+                "Use source_promotion_key to track the same patch intent across different registry copies.",
             ],
         )
         self.write_outputs(artifact, output_dir)
@@ -224,6 +228,7 @@ class PromotionManager:
             notes=[
                 "Apply mode only mutates the explicitly targeted registry file.",
                 "Each apply creates a full-file backup to support deterministic rollback.",
+                "Promotion ids are target-run specific; source_promotion_key is the stable cross-copy review handle.",
             ],
         )
         self.write_outputs(artifact, output_dir)
@@ -285,6 +290,19 @@ class PromotionManager:
             "promotion_manager_version": artifact.promotion_manager_version,
             "request": artifact.request.model_dump(),
             "promotion_ids": [promotion.promotion_id for promotion in artifact.promotions],
+            "source_promotion_keys": [promotion.source_promotion_key for promotion in artifact.promotions],
+            "promotion_summaries": [
+                {
+                    "promotion_id": promotion.promotion_id,
+                    "source_promotion_key": promotion.source_promotion_key,
+                    "skill_id": promotion.target_ids[0] if promotion.target_ids else None,
+                    "apply_eligible": promotion.apply_eligible,
+                    "review_status": promotion.review_status,
+                    "decision": promotion.decision,
+                    "blocked_reason_codes": promotion.blocked_reason_codes,
+                }
+                for promotion in artifact.promotions
+            ],
             "diagnostics": artifact.diagnostics.model_dump(),
             "rollback_record_id": artifact.rollback_record.rollback_record_id if artifact.rollback_record else None,
             "notes": artifact.notes,
@@ -349,6 +367,10 @@ class PromotionManager:
             and all(resource.proposed_resource.resource_type != "UnknownResource" for resource in resources)
             and any(not item.before_present for item in diff_summary)
         )
+        source_promotion_key = self._stable_id(
+            "promotion_source",
+            f"{proposal.skill_id}:{','.join(sorted(item.proposal_id or item.resource_signature for item in diff_summary))}",
+        )
         promotion_id = self._stable_id(
             "promotion",
             f"{proposal.skill_id}:{normalized_source_report}:{','.join(item.resource_signature for item in diff_summary)}",
@@ -357,10 +379,14 @@ class PromotionManager:
             "This promotion is append-only and does not rewrite legacy semantic strings.",
             f"Patch proposal status: {proposal.proposal_status}.",
         ]
+        notes.append(
+            "source_promotion_key stays stable across canonical and scratch registry copies for the same patch intent."
+        )
         if proposal.risk_reason_codes:
             notes.append(f"Upstream patch risks: {', '.join(sorted(proposal.risk_reason_codes))}.")
         return PromotionRecord(
             promotion_id=promotion_id,
+            source_promotion_key=source_promotion_key,
             target_type="typed_resource_patch",
             target_ids=[proposal.skill_id],
             source_report_path=normalized_source_report,
@@ -498,14 +524,23 @@ class PromotionManager:
         return PromotionManagerDiagnostics(
             promotion_count=len(promotions),
             eligible_promotion_count=sum(1 for promotion in promotions if promotion.apply_eligible),
+            eligible_unreviewed_promotion_count=sum(
+                1
+                for promotion in promotions
+                if promotion.apply_eligible and promotion.review_status == "proposed"
+            ),
             blocked_promotion_count=sum(1 for promotion in promotions if not promotion.apply_eligible),
             applied_promotion_count=sum(1 for promotion in promotions if promotion.review_status == "applied"),
             rolled_back_promotion_count=1 if rollback_record and rollback_record.status == "rolled_back" else 0,
+            no_effective_diff_promotion_count=sum(
+                1 for promotion in promotions if "no_effective_diff" in promotion.blocked_reason_codes
+            ),
             diff_item_count=sum(len(promotion.diff_summary) for promotion in promotions),
             blocked_reason_counts=dict(sorted(blocked_reason_counts.items())),
             notes=[
                 "Promotion eligibility is recomputed from current registry state each run.",
                 "Backup-restore rollback is intentionally coarse in V1 to keep mutation auditable.",
+                "Promotion ids can differ across target registry paths; source_promotion_key is the stable review key.",
             ],
         )
 
