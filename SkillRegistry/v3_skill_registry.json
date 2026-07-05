@@ -210,7 +210,38 @@
         ],
         "optional_semantics": [],
         "provides_semantics": [],
-        "required_resources": [],
+        "required_resources": [
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "Gross revenue by country",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Gross revenue by country",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "skill_candidate_005",
+              "source_candidate_abbc4e169e"
+            ]
+          },
+          {
+            "resource_type": "PolicyRule",
+            "subtype": "Withholding tax rates per country",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Withholding tax rates per country",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "skill_candidate_005",
+              "source_candidate_abbc4e169e"
+            ]
+          }
+        ],
         "optional_resources": [],
         "provided_resources": []
       },
@@ -223,7 +254,38 @@
         ],
         "required_resources": [],
         "optional_resources": [],
-        "provided_resources": []
+        "provided_resources": [
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "Net revenue after withholding",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Net revenue after withholding",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "skill_candidate_005",
+              "source_candidate_abbc4e169e"
+            ]
+          },
+          {
+            "resource_type": "MonetaryAmount",
+            "subtype": "Withholding tax amount per country",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Withholding tax amount per country",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "finance",
+            "evidence_refs": [
+              "skill_candidate_005",
+              "source_candidate_abbc4e169e"
+            ]
+          }
+        ]
       },
       "business_meaning": "Reduces gross revenue by applicable foreign tax withholding rates to compute net revenue, handling multiple countries with different rates.",
       "hidden_difficulty": "Correct application of percentage rates per country and ensuring accurate subtraction.",
