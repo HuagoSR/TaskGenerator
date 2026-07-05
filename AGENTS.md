@@ -325,6 +325,7 @@ Current Pipeline A starting files:
 - `Test/run_v3_promotion_manager.py`: CLI for writing `promotion_proposals.json`, `promotion_report.json`, and optional `rollback_record.json` under `artifacts/pipeline_b/scratch/`
 - `src/task_generator/v3_global_pipeline_dashboard.py`: deterministic batch-level aggregator that turns batch, validity, verifier, substrate, typed-resource, and promotion reports into a single global dashboard JSON
 - `Test/run_v3_global_pipeline_dashboard.py`: CLI for writing `global_pipeline_dashboard_report.json` under `artifacts/pipeline_b/scratch/`
+- `src/task_generator/v3_rw_task_eval_stirrup_wrapper.py`: wrapper around rw-task Stirrup batch execution that keeps eval orchestration report-first while allowing model-specific execution shims such as conservative token caps for weaker models
 - `src/task_generator/v3_calibration_registry_admission.py`: report-only admission reviewer for graph calibration accepted candidates
 - `Test/run_v3_calibration_registry_admission.py`: CLI for writing `SkillRegistry/v3_calibration_registry_admission_report.json`
 - implemented next-stage files and assets:
@@ -335,8 +336,13 @@ Current Pipeline A starting files:
   - `SkillRegistry/v3_workflow_archetype_registry.experimental.json`
   - `SkillRegistry/v3_motif_graph_grammar.experimental.json`
   - `src/task_generator/v3_task_verifier.py`
+- `src/task_generator/v3_model_separation_profile.py`
+- `Test/run_v3_model_separation_profile.py`
+- `src/task_generator/v3_eval_orchestrator.py`
+- `Test/run_v3_eval_orchestrator.py`
 - currently planned next-stage files:
-  - future `ModelSeparationProfile`-level aggregation and evidence plumbing
+  - future richer multi-run evaluation comparison and post-orchestration governance
+  - dashboard/profile consumption of repeated executed multi-model evidence after the current single-case smoke
 - `SkillRegistry/v3_skill_registry.json`: current persistent V3 atomic skill registry
 - `SkillRegistry/v3_skill_registry_update_report.json`: latest persistent registry update and coverage report
 - `SkillRegistry/v3_skill_registry_audit_report.json`: latest non-destructive audit report for unmatched or suspicious registry entries
@@ -804,6 +810,7 @@ rw-task smoke note:
 - `All connection attempts failed` when the current sandbox blocks outbound E2B connectivity even after the runtime env is loaded
 - an authorized external run completed both prepared commands and produced grader output
 - treat the completed smoke as toolchain evidence and draft-quality observation, not final task-quality truth
+- the current evaluation focus is to harden executed evidence closure and keep blocked or dry-run summaries out of comparison intake, not to claim a formal model-comparison verdict yet
 
 Tuzi/OpenAI-compatible provider notes:
 

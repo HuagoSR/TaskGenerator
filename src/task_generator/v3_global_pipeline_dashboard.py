@@ -33,11 +33,15 @@ class GlobalPipelineDashboardRequest(BaseModel):
     substrate_audit_report_path: str
     typed_resource_patch_proposal_report_path: str
     promotion_report_path: Optional[str] = None
+    eval_orchestrator_report_paths: List[str] = Field(default_factory=list)
+    eval_orchestrator_report_dir: Optional[str] = None
+    model_separation_profile_paths: List[str] = Field(default_factory=list)
     output_dir: str
 
 
 class DashboardArtifactSnapshot(BaseModel):
     case_id: str
+    blueprint_id: Optional[str] = None
     motif: str
     case_dir: str
     quality_decision: Optional[str] = None
@@ -53,7 +57,50 @@ class DashboardArtifactSnapshot(BaseModel):
     verifier_blocking_count: int = 0
     verifier_revise_count: int = 0
     verifier_reason_codes: List[str] = Field(default_factory=list)
+    eval_execution_mode: Optional[str] = None
+    eval_usable_summary_model_count: int = 0
+    eval_feedback_model_count: int = 0
+    eval_reason_codes: List[str] = Field(default_factory=list)
+    model_separation_evaluation_status: Optional[str] = None
+    model_separation_eligibility_status: Optional[str] = None
+    model_separation_recommendation: Optional[str] = None
     artifact_read_errors: List[str] = Field(default_factory=list)
+
+
+class EvalOrchestrationSnapshot(BaseModel):
+    batch_case_id: str = "unknown"
+    blueprint_id: str = "unknown"
+    rw_task_task_id: str = "unknown"
+    execution_mode: str = "dry_run_only"
+    model_count: int = 0
+    executed_model_count: int = 0
+    run_completed_model_count: int = 0
+    summarized_model_count: int = 0
+    usable_summary_model_count: int = 0
+    profile_input_model_count: int = 0
+    feedback_model_count: int = 0
+    candidate_quality_model_count: int = 0
+    draft_observation_model_count: int = 0
+    reason_codes: List[str] = Field(default_factory=list)
+    model_separation_profile_path: Optional[str] = None
+    source_report_path: str
+    artifact_read_errors: List[str] = Field(default_factory=list)
+
+
+class ModelSeparationSnapshot(BaseModel):
+    task_id: Optional[str] = None
+    case_id: str = "unknown"
+    linked_batch_case_id: Optional[str] = None
+    linked_blueprint_id: Optional[str] = None
+    evaluation_status: str = "not_enough_data"
+    eligibility_status: str = "not_ready_for_model_separation"
+    recommendation: str = "collect_more_evidence"
+    score_gap: Optional[float] = None
+    weak_model_mean: Optional[float] = None
+    medium_model_mean: Optional[float] = None
+    strong_model_mean: Optional[float] = None
+    common_failure_modes: List[str] = Field(default_factory=list)
+    source_profile_path: str
 
 
 class ScoreDistribution(BaseModel):
@@ -111,7 +158,16 @@ class TrainingEvaluationReadinessSummary(BaseModel):
     revise_only_count: int = 0
     draft_external_eval_candidate_count: int = 0
     verifier_pass_count: int = 0
+    evaluation_orchestration_count: int = 0
+    executed_orchestration_count: int = 0
+    usable_eval_evidence_case_count: int = 0
+    draft_eval_only_case_count: int = 0
+    orchestration_with_profile_count: int = 0
     model_separation_evidence_count: int = 0
+    model_separation_profile_count: int = 0
+    ready_for_diagnostic_comparison_count: int = 0
+    diagnostic_only_model_separation_count: int = 0
+    comparable_model_separation_count: int = 0
     promotion_ready_count: int = 0
 
 
@@ -140,6 +196,10 @@ class GlobalPipelineDashboardDiagnostics(BaseModel):
     missing_global_validity_case_count: int = 0
     missing_verifier_case_count: int = 0
     missing_promotion_report: bool = False
+    eval_orchestration_report_count: int = 0
+    unmatched_eval_orchestration_count: int = 0
+    model_separation_profile_count: int = 0
+    unmatched_model_separation_profile_count: int = 0
     focus_area_count: int = 0
     artifact_read_errors: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
@@ -149,6 +209,8 @@ class GlobalPipelineDashboardReport(BaseModel):
     global_pipeline_dashboard_version: str = "v3.global_pipeline_dashboard.1"
     request: GlobalPipelineDashboardRequest
     case_snapshots: List[DashboardArtifactSnapshot] = Field(default_factory=list)
+    eval_orchestration_snapshots: List[EvalOrchestrationSnapshot] = Field(default_factory=list)
+    model_separation_snapshots: List[ModelSeparationSnapshot] = Field(default_factory=list)
     health_summary: DashboardHealthSummary
     focus_areas: List[DashboardFocusArea] = Field(default_factory=list)
     diagnostics: GlobalPipelineDashboardDiagnostics
@@ -197,6 +259,9 @@ class GlobalPipelineDashboardBuilder:
         typed_resource_patch_proposal_report_path: str | Path,
         output_dir: str | Path,
         promotion_report_path: Optional[str | Path] = None,
+        eval_orchestrator_report_paths: Optional[List[str | Path]] = None,
+        eval_orchestrator_report_dir: Optional[str | Path] = None,
+        model_separation_profile_paths: Optional[List[str | Path]] = None,
     ) -> GlobalPipelineDashboardReport:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -206,6 +271,13 @@ class GlobalPipelineDashboardBuilder:
             substrate_audit_report_path=str(substrate_audit_report_path),
             typed_resource_patch_proposal_report_path=str(typed_resource_patch_proposal_report_path),
             promotion_report_path=str(promotion_report_path) if promotion_report_path else None,
+            eval_orchestrator_report_paths=[
+                str(path) for path in (eval_orchestrator_report_paths or [])
+            ],
+            eval_orchestrator_report_dir=str(eval_orchestrator_report_dir) if eval_orchestrator_report_dir else None,
+            model_separation_profile_paths=[
+                str(path) for path in (model_separation_profile_paths or [])
+            ],
             output_dir=str(output_path),
         )
 
@@ -224,7 +296,25 @@ class GlobalPipelineDashboardBuilder:
         )
 
         artifact_errors: List[str] = []
+        eval_orchestration_paths = self._collect_eval_orchestrator_report_paths(
+            eval_orchestrator_report_paths or [],
+            eval_orchestrator_report_dir,
+        )
+        eval_orchestration_snapshots, linked_profile_paths = self._load_eval_orchestration_snapshots(
+            eval_orchestration_paths,
+            artifact_errors,
+        )
+        all_model_separation_paths = self._merge_unique_paths(
+            linked_profile_paths,
+            model_separation_profile_paths or [],
+        )
+        model_separation_snapshots = self._load_model_separation_snapshots(
+            all_model_separation_paths,
+            artifact_errors,
+        )
         snapshots = [self._snapshot(case, artifact_errors) for case in batch_report.cases]
+        self._attach_eval_orchestration_to_cases(snapshots, eval_orchestration_snapshots)
+        self._attach_model_separation_to_cases(snapshots, model_separation_snapshots)
         health_summary = self._health_summary(
             batch_report=batch_report,
             batch_feedback=batch_feedback,
@@ -232,6 +322,8 @@ class GlobalPipelineDashboardBuilder:
             typed_patch_report=typed_patch_report,
             promotion_report=promotion_report,
             snapshots=snapshots,
+            eval_orchestration_snapshots=eval_orchestration_snapshots,
+            model_separation_snapshots=model_separation_snapshots,
         )
         focus_areas = self._focus_areas(
             batch_report=batch_report,
@@ -239,10 +331,14 @@ class GlobalPipelineDashboardBuilder:
             substrate_audit=substrate_audit,
             promotion_report=promotion_report,
             snapshots=snapshots,
+            eval_orchestration_snapshots=eval_orchestration_snapshots,
+            model_separation_snapshots=model_separation_snapshots,
         )
         diagnostics = self._diagnostics(
             batch_report=batch_report,
             snapshots=snapshots,
+            eval_orchestration_snapshots=eval_orchestration_snapshots,
+            model_separation_snapshots=model_separation_snapshots,
             focus_areas=focus_areas,
             promotion_report=promotion_report,
             artifact_errors=artifact_errors,
@@ -250,13 +346,15 @@ class GlobalPipelineDashboardBuilder:
         report = GlobalPipelineDashboardReport(
             request=request,
             case_snapshots=snapshots,
+            eval_orchestration_snapshots=eval_orchestration_snapshots,
+            model_separation_snapshots=model_separation_snapshots,
             health_summary=health_summary,
             focus_areas=focus_areas,
             diagnostics=diagnostics,
             notes=[
                 "Global Pipeline Dashboard V1 is a deterministic JSON-only aggregation layer.",
                 "This dashboard does not mutate registry, sampler, quality gate, or evaluation settings.",
-                "Model separation evidence remains intentionally zero until a dedicated artifact exists.",
+                "Model separation profiles are optional read-only inputs and remain non-gating.",
             ],
         )
         self.write_outputs(report, output_path)
@@ -309,6 +407,7 @@ class GlobalPipelineDashboardBuilder:
             artifact_errors.extend(f"{case.case_id}:{item}" for item in errors)
         return DashboardArtifactSnapshot(
             case_id=case.case_id,
+            blueprint_id=getattr(case, "blueprint_id", None),
             motif=case.motif,
             case_dir=case.case_dir,
             quality_decision=case.quality_decision,
@@ -350,6 +449,8 @@ class GlobalPipelineDashboardBuilder:
         typed_patch_report: TypedResourcePatchProposalReport,
         promotion_report: Optional[Dict[str, Any]],
         snapshots: List[DashboardArtifactSnapshot],
+        eval_orchestration_snapshots: List[EvalOrchestrationSnapshot],
+        model_separation_snapshots: List[ModelSeparationSnapshot],
     ) -> DashboardHealthSummary:
         promotion_diagnostics = (promotion_report or {}).get("diagnostics") or {}
         batch_health = BatchHealthSummary(
@@ -414,7 +515,38 @@ class GlobalPipelineDashboardBuilder:
             revise_only_count=sum(1 for case in batch_report.cases if case.package_readiness == "revise_only"),
             draft_external_eval_candidate_count=batch_feedback.diagnostics.external_eval_candidate_count,
             verifier_pass_count=sum(1 for s in snapshots if s.verifier_status == "pass"),
-            model_separation_evidence_count=0,
+            evaluation_orchestration_count=len(eval_orchestration_snapshots),
+            executed_orchestration_count=sum(
+                1 for snapshot in eval_orchestration_snapshots if snapshot.execution_mode != "dry_run_only"
+            ),
+            usable_eval_evidence_case_count=sum(
+                1 for snapshot in eval_orchestration_snapshots if snapshot.usable_summary_model_count > 0
+            ),
+            draft_eval_only_case_count=sum(
+                1
+                for snapshot in eval_orchestration_snapshots
+                if snapshot.draft_observation_model_count > 0 and snapshot.candidate_quality_model_count == 0
+            ),
+            orchestration_with_profile_count=sum(
+                1 for snapshot in eval_orchestration_snapshots if snapshot.model_separation_profile_path
+            ),
+            model_separation_evidence_count=sum(
+                1
+                for snapshot in model_separation_snapshots
+                if snapshot.evaluation_status in {"weak_signal", "comparable_signal"}
+            ),
+            model_separation_profile_count=len(model_separation_snapshots),
+            ready_for_diagnostic_comparison_count=sum(
+                1
+                for snapshot in model_separation_snapshots
+                if snapshot.eligibility_status == "ready_for_diagnostic_comparison"
+            ),
+            diagnostic_only_model_separation_count=sum(
+                1 for snapshot in model_separation_snapshots if snapshot.evaluation_status == "diagnostic_only"
+            ),
+            comparable_model_separation_count=sum(
+                1 for snapshot in model_separation_snapshots if snapshot.evaluation_status == "comparable_signal"
+            ),
             promotion_ready_count=int(promotion_diagnostics.get("eligible_promotion_count") or 0),
         )
         return DashboardHealthSummary(
@@ -432,6 +564,8 @@ class GlobalPipelineDashboardBuilder:
         substrate_audit: PipelineASubstrateAuditReport,
         promotion_report: Optional[Dict[str, Any]],
         snapshots: List[DashboardArtifactSnapshot],
+        eval_orchestration_snapshots: List[EvalOrchestrationSnapshot],
+        model_separation_snapshots: List[ModelSeparationSnapshot],
     ) -> List[DashboardFocusArea]:
         focus_areas: List[DashboardFocusArea] = []
         case_count = max(len(batch_report.cases), 1)
@@ -575,6 +709,85 @@ class GlobalPipelineDashboardBuilder:
                 )
             )
 
+        execution_reason_counts = Counter()
+        execution_case_ids = set()
+        for snapshot in eval_orchestration_snapshots:
+            repeated_reasons = {
+                reason_code
+                for reason_code in snapshot.reason_codes
+                if reason_code
+                in {
+                    "grade_artifact_missing_after_run",
+                    "summary_blocked_after_run",
+                    "feedback_skipped_due_to_missing_summary",
+                    "no_summarized_eval_evidence",
+                }
+            }
+            if repeated_reasons:
+                execution_case_ids.add(snapshot.batch_case_id)
+                for reason_code in repeated_reasons:
+                    execution_reason_counts[reason_code] += 1
+        executed_count = sum(
+            1 for snapshot in eval_orchestration_snapshots if snapshot.execution_mode != "dry_run_only"
+        )
+        weak_usable_count = sum(
+            1
+            for snapshot in eval_orchestration_snapshots
+            if snapshot.execution_mode != "dry_run_only" and snapshot.usable_summary_model_count <= 0
+        )
+        if execution_reason_counts or (executed_count > 0 and weak_usable_count >= max(1, executed_count // 2)):
+            priority: FocusPriority = "high" if execution_reason_counts else "medium"
+            focus_areas.append(
+                DashboardFocusArea(
+                    focus_id="focus_evaluation_execution_robustness",
+                    owner_layer="evaluation",
+                    priority=priority,
+                    title="Stabilize executed evaluation evidence before scaling comparison claims.",
+                    rationale="Executed evaluation runs should first close run, grade, summary, and feedback evidence paths cleanly before model-comparison conclusions are widened.",
+                    evidence={
+                        "case_coverage": len(execution_case_ids),
+                        "executed_orchestration_count": executed_count,
+                        "low_usable_summary_count": weak_usable_count,
+                        "reason_coverage": dict(sorted(execution_reason_counts.items())),
+                    },
+                    recommended_next_step="Inspect whether repeated evaluation issues come from missing grade artifacts, blocked summaries, skipped feedback, or no summarized evidence after execution before collecting broader comparison campaigns.",
+                )
+            )
+
+        if model_separation_snapshots and not any(
+            snapshot.evaluation_status in {"weak_signal", "comparable_signal"}
+            for snapshot in model_separation_snapshots
+        ):
+            ready_count = sum(
+                1
+                for snapshot in model_separation_snapshots
+                if snapshot.eligibility_status == "ready_for_diagnostic_comparison"
+            )
+            focus_areas.append(
+                DashboardFocusArea(
+                    focus_id="focus_evaluation_model_separation",
+                    owner_layer="evaluation",
+                    priority="low" if ready_count > 0 else "medium",
+                    title="Collect stronger model-comparison evidence instead of over-reading draft eval traces.",
+                    rationale="ModelSeparationProfile is now visible, but the current evidence still looks diagnostic or insufficient rather than reliably comparative.",
+                    evidence={
+                        "profile_count": len(model_separation_snapshots),
+                        "ready_for_diagnostic_comparison_count": ready_count,
+                        "not_enough_data_count": sum(
+                            1
+                            for snapshot in model_separation_snapshots
+                            if snapshot.evaluation_status == "not_enough_data"
+                        ),
+                        "diagnostic_only_count": sum(
+                            1
+                            for snapshot in model_separation_snapshots
+                            if snapshot.evaluation_status == "diagnostic_only"
+                        ),
+                    },
+                    recommended_next_step="Keep model separation report-first: collect more summarized eval evidence on better-closed tasks before treating draft inspection outputs as comparative capability signals.",
+                )
+            )
+
         return sorted(
             focus_areas,
             key=lambda item: (
@@ -588,10 +801,17 @@ class GlobalPipelineDashboardBuilder:
         self,
         batch_report: PipelineBBatchRunReport,
         snapshots: List[DashboardArtifactSnapshot],
+        eval_orchestration_snapshots: List[EvalOrchestrationSnapshot],
+        model_separation_snapshots: List[ModelSeparationSnapshot],
         focus_areas: List[DashboardFocusArea],
         promotion_report: Optional[Dict[str, Any]],
         artifact_errors: List[str],
     ) -> GlobalPipelineDashboardDiagnostics:
+        case_identifiers = set()
+        for snapshot in snapshots:
+            case_identifiers.add(snapshot.case_id)
+            if snapshot.blueprint_id:
+                case_identifiers.add(snapshot.blueprint_id)
         return GlobalPipelineDashboardDiagnostics(
             case_count=batch_report.diagnostics.case_count,
             snapshot_count=len(snapshots),
@@ -607,13 +827,220 @@ class GlobalPipelineDashboardBuilder:
                 if any("task_verifier_report" in error for error in snapshot.artifact_read_errors)
             ),
             missing_promotion_report=promotion_report is None,
+            eval_orchestration_report_count=len(eval_orchestration_snapshots),
+            unmatched_eval_orchestration_count=sum(
+                1
+                for snapshot in eval_orchestration_snapshots
+                if not (
+                    snapshot.batch_case_id in case_identifiers
+                    or snapshot.blueprint_id in case_identifiers
+                    or snapshot.rw_task_task_id in case_identifiers
+                )
+            ),
+            model_separation_profile_count=len(model_separation_snapshots),
+            unmatched_model_separation_profile_count=sum(
+                1
+                for snapshot in model_separation_snapshots
+                if not (
+                    snapshot.case_id in case_identifiers
+                    or (snapshot.task_id or "") in case_identifiers
+                    or (snapshot.linked_batch_case_id or "") in case_identifiers
+                    or (snapshot.linked_blueprint_id or "") in case_identifiers
+                )
+            ),
             focus_area_count=len(focus_areas),
             artifact_read_errors=artifact_errors,
             notes=[
                 "Case-level validity and verifier artifacts are discovered from case_dir paths in the batch report.",
                 "Missing case-level artifacts are tolerated and retained as diagnostic signals instead of blocking dashboard generation.",
+                "Evaluation orchestration reports are optional read-only inputs that can auto-link downstream model separation profiles.",
+                "Model separation profiles are optional and may remain unmatched to the current batch case ids during early evidence collection.",
             ],
         )
+
+    def _load_model_separation_snapshots(
+        self,
+        paths: List[str | Path],
+        artifact_errors: List[str],
+    ) -> List[ModelSeparationSnapshot]:
+        snapshots: List[ModelSeparationSnapshot] = []
+        for path_value in paths:
+            path = Path(path_value)
+            if not path.exists():
+                artifact_errors.append(f"model_separation_profile_missing:{path}")
+                continue
+            try:
+                payload = load_json_file(str(path))
+            except Exception as exc:
+                artifact_errors.append(f"model_separation_profile_unreadable:{path}:{type(exc).__name__}")
+                continue
+            score_summary = payload.get("score_summary") or {}
+            snapshots.append(
+                ModelSeparationSnapshot(
+                    task_id=payload.get("task_id"),
+                    case_id=str(payload.get("case_id") or "unknown"),
+                    linked_batch_case_id=payload.get("linked_batch_case_id"),
+                    linked_blueprint_id=payload.get("linked_blueprint_id"),
+                    evaluation_status=str(payload.get("evaluation_status") or "not_enough_data"),
+                    eligibility_status=str(
+                        payload.get("eligibility_status") or "not_ready_for_model_separation"
+                    ),
+                    recommendation=str(payload.get("recommendation") or "collect_more_evidence"),
+                    score_gap=self._float_or_none(score_summary.get("score_gap")),
+                    weak_model_mean=self._float_or_none(score_summary.get("weak_model_mean")),
+                    medium_model_mean=self._float_or_none(score_summary.get("medium_model_mean")),
+                    strong_model_mean=self._float_or_none(score_summary.get("strong_model_mean")),
+                    common_failure_modes=list(payload.get("common_failure_modes") or []),
+                    source_profile_path=str(path),
+                )
+            )
+        return snapshots
+
+    def _collect_eval_orchestrator_report_paths(
+        self,
+        explicit_paths: List[str | Path],
+        report_dir: str | Path | None,
+    ) -> List[Path]:
+        ordered: List[Path] = []
+        seen: set[str] = set()
+        for value in explicit_paths:
+            path = Path(value)
+            key = self._normalize_path_key(path)
+            if key not in seen:
+                seen.add(key)
+                ordered.append(path)
+        if report_dir:
+            for path in sorted(Path(report_dir).rglob("evaluation_orchestration_report.json")):
+                key = self._normalize_path_key(path)
+                if key not in seen:
+                    seen.add(key)
+                    ordered.append(path)
+        return ordered
+
+    def _load_eval_orchestration_snapshots(
+        self,
+        paths: List[str | Path],
+        artifact_errors: List[str],
+    ) -> tuple[List[EvalOrchestrationSnapshot], List[Path]]:
+        snapshots: List[EvalOrchestrationSnapshot] = []
+        linked_profile_paths: List[Path] = []
+        for path_value in paths:
+            path = Path(path_value)
+            errors: List[str] = []
+            if not path.exists():
+                artifact_errors.append(f"evaluation_orchestration_report_missing:{path}")
+                continue
+            try:
+                payload = load_json_file(str(path))
+            except Exception as exc:
+                artifact_errors.append(f"evaluation_orchestration_report_unreadable:{path}:{type(exc).__name__}")
+                continue
+            profile_path_value = payload.get("model_separation_profile_path")
+            profile_path = Path(profile_path_value) if profile_path_value else None
+            if profile_path_value and profile_path is not None:
+                if profile_path.exists():
+                    linked_profile_paths.append(profile_path)
+                else:
+                    errors.append(f"linked_model_separation_profile_missing:{profile_path}")
+                    artifact_errors.append(f"linked_model_separation_profile_missing:{profile_path}")
+            diagnostics = payload.get("diagnostics") or {}
+            snapshots.append(
+                EvalOrchestrationSnapshot(
+                    batch_case_id=str(payload.get("batch_case_id") or "unknown"),
+                    blueprint_id=str(payload.get("blueprint_id") or "unknown"),
+                    rw_task_task_id=str(payload.get("rw_task_task_id") or "unknown"),
+                    execution_mode=str(payload.get("execution_mode") or "dry_run_only"),
+                    model_count=int(diagnostics.get("model_count") or 0),
+                    executed_model_count=int(diagnostics.get("executed_model_count") or 0),
+                    run_completed_model_count=int(diagnostics.get("run_completed_model_count") or 0),
+                    summarized_model_count=int(diagnostics.get("summarized_model_count") or 0),
+                    usable_summary_model_count=int(diagnostics.get("usable_summary_model_count") or 0),
+                    profile_input_model_count=int(diagnostics.get("profile_input_model_count") or 0),
+                    feedback_model_count=int(diagnostics.get("feedback_model_count") or 0),
+                    candidate_quality_model_count=int(diagnostics.get("candidate_quality_model_count") or 0),
+                    draft_observation_model_count=int(diagnostics.get("draft_observation_model_count") or 0),
+                    reason_codes=list(diagnostics.get("reason_codes") or []),
+                    model_separation_profile_path=str(profile_path) if profile_path and profile_path.exists() else None,
+                    source_report_path=str(path),
+                    artifact_read_errors=errors,
+                )
+            )
+        return snapshots, linked_profile_paths
+
+    def _merge_unique_paths(
+        self,
+        first: List[str | Path],
+        second: List[str | Path],
+    ) -> List[Path]:
+        ordered: List[Path] = []
+        seen: set[str] = set()
+        for value in [*first, *second]:
+            path = Path(value)
+            key = self._normalize_path_key(path)
+            if key not in seen:
+                seen.add(key)
+                ordered.append(path)
+        return ordered
+
+    def _normalize_path_key(self, path: Path) -> str:
+        try:
+            return str(path.resolve(strict=False)).lower()
+        except Exception:
+            return str(path).lower()
+
+    def _attach_eval_orchestration_to_cases(
+        self,
+        case_snapshots: List[DashboardArtifactSnapshot],
+        eval_orchestration_snapshots: List[EvalOrchestrationSnapshot],
+    ) -> None:
+        by_identifier: Dict[str, EvalOrchestrationSnapshot] = {}
+        for snapshot in eval_orchestration_snapshots:
+            identifiers = {
+                snapshot.batch_case_id,
+                snapshot.blueprint_id,
+                snapshot.rw_task_task_id,
+            }
+            for identifier in identifiers:
+                if identifier and identifier != "unknown":
+                    by_identifier[identifier] = snapshot
+        for case_snapshot in case_snapshots:
+            eval_snapshot = (
+                by_identifier.get(case_snapshot.case_id)
+                or by_identifier.get(case_snapshot.blueprint_id or "")
+            )
+            if eval_snapshot is None:
+                continue
+            case_snapshot.eval_execution_mode = eval_snapshot.execution_mode
+            case_snapshot.eval_usable_summary_model_count = eval_snapshot.usable_summary_model_count
+            case_snapshot.eval_feedback_model_count = eval_snapshot.feedback_model_count
+            case_snapshot.eval_reason_codes = list(eval_snapshot.reason_codes)
+
+    def _attach_model_separation_to_cases(
+        self,
+        case_snapshots: List[DashboardArtifactSnapshot],
+        model_separation_snapshots: List[ModelSeparationSnapshot],
+    ) -> None:
+        by_identifier: Dict[str, ModelSeparationSnapshot] = {}
+        for snapshot in model_separation_snapshots:
+            identifiers = {
+                snapshot.case_id,
+                snapshot.task_id or "",
+                snapshot.linked_batch_case_id or "",
+                snapshot.linked_blueprint_id or "",
+            }
+            for identifier in identifiers:
+                if identifier:
+                    by_identifier[identifier] = snapshot
+        for case_snapshot in case_snapshots:
+            model_snapshot = (
+                by_identifier.get(case_snapshot.case_id)
+                or by_identifier.get(case_snapshot.blueprint_id or "")
+            )
+            if model_snapshot is None:
+                continue
+            case_snapshot.model_separation_evaluation_status = model_snapshot.evaluation_status
+            case_snapshot.model_separation_eligibility_status = model_snapshot.eligibility_status
+            case_snapshot.model_separation_recommendation = model_snapshot.recommendation
 
     def _motif_failure_distribution(
         self,

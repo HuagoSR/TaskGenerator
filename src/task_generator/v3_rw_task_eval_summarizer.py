@@ -41,6 +41,10 @@ class RwTaskEvalSummaryReport(BaseModel):
     summary_status: EvalSummaryStatus
     evidence_use: EvalEvidenceUse
     case_id: str = "unknown"
+    batch_case_id: str = "unknown"
+    blueprint_id: str = "unknown"
+    rw_task_task_id: str = "unknown"
+    evaluated_model_name: str = ""
     evaluation_mode: Optional[str] = None
     run_status: str = "unknown"
     toolchain_completed: bool = False
@@ -48,6 +52,8 @@ class RwTaskEvalSummaryReport(BaseModel):
     command_count: int = 0
     command_success_count: int = 0
     grade_report_path: Optional[str] = None
+    grade_artifact_present: bool = False
+    usable_for_model_separation: bool = False
     grader_model: str = ""
     grading_strictness: str = ""
     sample_count: int = 0
@@ -72,14 +78,6 @@ class RwTaskEvalSummarizer:
         run_path = Path(run_report_path)
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
-        resolved_grade_path = self._resolve_grade_path(grade_report_path, grade_dir)
-        request = RwTaskEvalSummaryRequest(
-            run_report_path=str(run_path),
-            grade_report_path=str(resolved_grade_path) if resolved_grade_path else None,
-            grade_dir=str(grade_dir) if grade_dir else None,
-            output_dir=str(output_path),
-        )
-
         blocking_reasons: List[str] = []
         run_report: Optional[RwTaskEvalRunReport] = None
         grade_report: Optional[Dict[str, Any]] = None
@@ -91,6 +89,17 @@ class RwTaskEvalSummarizer:
                 run_report = RwTaskEvalRunReport.model_validate(load_json_file(str(run_path)))
             except Exception:
                 blocking_reasons.append("run_report_unreadable")
+
+        resolved_grade_dir = str(grade_dir) if grade_dir else None
+        if resolved_grade_dir is None and run_report and run_report.grade_output_dir:
+            resolved_grade_dir = run_report.grade_output_dir
+        resolved_grade_path = self._resolve_grade_path(grade_report_path, resolved_grade_dir)
+        request = RwTaskEvalSummaryRequest(
+            run_report_path=str(run_path),
+            grade_report_path=str(resolved_grade_path) if resolved_grade_path else None,
+            grade_dir=resolved_grade_dir,
+            output_dir=str(output_path),
+        )
 
         if resolved_grade_path is None:
             blocking_reasons.append("grade_report_missing")
@@ -106,6 +115,10 @@ class RwTaskEvalSummarizer:
             summary_status="blocked" if blocking_reasons else "summarized",
             evidence_use=self._evidence_use(run_report),
             case_id=run_report.case_id if run_report else "unknown",
+            batch_case_id=run_report.batch_case_id if run_report else "unknown",
+            blueprint_id=run_report.blueprint_id if run_report else "unknown",
+            rw_task_task_id=self._rw_task_task_id(run_report, samples),
+            evaluated_model_name=self._evaluated_model_name(run_report),
             evaluation_mode=run_report.evaluation_mode if run_report else None,
             run_status=run_report.run_status if run_report else "unknown",
             toolchain_completed=bool(run_report and run_report.run_status == "completed"),
@@ -113,6 +126,12 @@ class RwTaskEvalSummarizer:
             command_count=run_report.command_count if run_report else 0,
             command_success_count=self._command_success_count(run_report),
             grade_report_path=str(resolved_grade_path) if resolved_grade_path else None,
+            grade_artifact_present=grade_report is not None,
+            usable_for_model_separation=self._usable_for_model_separation(
+                run_report=run_report,
+                blocking_reasons=blocking_reasons,
+                samples=samples,
+            ),
             grader_model=str((grade_report or {}).get("model") or ""),
             grading_strictness=str((grade_report or {}).get("grading_strictness") or ""),
             sample_count=len(samples),
@@ -213,3 +232,36 @@ class RwTaskEvalSummarizer:
                 "The source package was explicitly marked draft_inspection_only and not_final_training_data."
             )
         return notes
+
+    def _usable_for_model_separation(
+        self,
+        run_report: Optional[RwTaskEvalRunReport],
+        blocking_reasons: List[str],
+        samples: List[RwTaskEvalSampleSummary],
+    ) -> bool:
+        if run_report is None or blocking_reasons:
+            return False
+        if run_report.run_status != "completed":
+            return False
+        if len(samples) <= 0:
+            return False
+        return sum(1 for sample in samples if sample.success) > 0
+
+    def _rw_task_task_id(
+        self,
+        run_report: Optional[RwTaskEvalRunReport],
+        samples: List[RwTaskEvalSampleSummary],
+    ) -> str:
+        if samples and samples[0].task_id:
+            return samples[0].task_id
+        if run_report:
+            return run_report.rw_task_task_id
+        return "unknown"
+
+    def _evaluated_model_name(
+        self,
+        run_report: Optional[RwTaskEvalRunReport],
+    ) -> str:
+        if not run_report:
+            return ""
+        return run_report.evaluated_model_name or run_report.model or ""

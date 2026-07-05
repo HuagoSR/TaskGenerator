@@ -54,6 +54,10 @@ class PipelineBEvalFeedbackReport(BaseModel):
     feedback_status: FeedbackStatus
     eval_evidence_use: str = "unknown"
     case_id: str = "unknown"
+    batch_case_id: str = "unknown"
+    blueprint_id: str = "unknown"
+    rw_task_task_id: str = "unknown"
+    evaluated_model_name: str = ""
     run_status: str = "unknown"
     quality_gate_decision: str = "unknown"
     toolchain_completed: bool = False
@@ -130,6 +134,10 @@ class PipelineBEvalFeedbackAnalyzer:
             feedback_status="blocked" if blocking_reasons else "analyzed",
             eval_evidence_use=summary_report.evidence_use if summary_report else "unknown",
             case_id=summary_report.case_id if summary_report else "unknown",
+            batch_case_id=summary_report.batch_case_id if summary_report else "unknown",
+            blueprint_id=summary_report.blueprint_id if summary_report else "unknown",
+            rw_task_task_id=summary_report.rw_task_task_id if summary_report else "unknown",
+            evaluated_model_name=summary_report.evaluated_model_name if summary_report else "",
             run_status=summary_report.run_status if summary_report else "unknown",
             quality_gate_decision=str(((quality_report or {}).get("decision") or {}).get("decision") or "unknown"),
             toolchain_completed=bool(summary_report and summary_report.toolchain_completed),

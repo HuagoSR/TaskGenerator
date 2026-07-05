@@ -52,12 +52,18 @@ class RwTaskEvalRunReport(BaseModel):
     run_version: str = "v3.rw_task_eval_runner.1"
     request: RwTaskEvalRunRequest
     case_id: str = "unknown"
+    batch_case_id: str = "unknown"
+    blueprint_id: str = "unknown"
+    rw_task_task_id: str = "unknown"
+    evaluated_model_name: str = ""
     prep_status: str = "unknown"
     evaluation_mode: Optional[str] = None
     model: str = ""
     python_exe: str = ""
     rw_task_root: str = ""
     eval_input_case_dir: Optional[str] = None
+    eval_results_dir: Optional[str] = None
+    grade_output_dir: Optional[str] = None
     run_status: EvalRunStatus
     commands_executed: bool = False
     command_count: int = 0
@@ -121,6 +127,8 @@ class RwTaskEvalRunner:
 
         command_records = self._initial_command_records(prep_report)
         output_dirs = self._output_dirs(prep_report)
+        eval_results_dir = self._dir_for_flag(prep_report, "--output")
+        grade_output_dir = self._dir_for_flag(prep_report, "--out-dir")
         output_inspections = self._inspect_output_dirs(output_dirs)
         notes = [
             "This runner consumes a prepared rw-task eval input report and records execution metadata.",
@@ -137,6 +145,8 @@ class RwTaskEvalRunner:
                 commands_executed=False,
                 command_records=command_records,
                 output_dirs=output_dirs,
+                eval_results_dir=eval_results_dir,
+                grade_output_dir=grade_output_dir,
                 output_inspections=output_inspections,
                 blocking_reasons=blocking_reasons,
                 warnings=warnings,
@@ -153,6 +163,8 @@ class RwTaskEvalRunner:
                 commands_executed=False,
                 command_records=command_records,
                 output_dirs=output_dirs,
+                eval_results_dir=eval_results_dir,
+                grade_output_dir=grade_output_dir,
                 output_inspections=output_inspections,
                 blocking_reasons=[],
                 warnings=warnings,
@@ -176,6 +188,8 @@ class RwTaskEvalRunner:
             commands_executed=True,
             command_records=executed_records,
             output_dirs=output_dirs,
+            eval_results_dir=eval_results_dir,
+            grade_output_dir=grade_output_dir,
             output_inspections=output_inspections,
             blocking_reasons=[],
             warnings=warnings,
@@ -197,6 +211,8 @@ class RwTaskEvalRunner:
         commands_executed: bool,
         command_records: List[RwTaskEvalCommandRecord],
         output_dirs: List[str],
+        eval_results_dir: Optional[str],
+        grade_output_dir: Optional[str],
         output_inspections: List[RwTaskEvalOutputInspection],
         blocking_reasons: List[str],
         warnings: List[str],
@@ -205,12 +221,18 @@ class RwTaskEvalRunner:
         return RwTaskEvalRunReport(
             request=request,
             case_id=prep_report.case_id if prep_report else "unknown",
+            batch_case_id=prep_report.batch_case_id if prep_report else "unknown",
+            blueprint_id=prep_report.blueprint_id if prep_report else "unknown",
+            rw_task_task_id=prep_report.rw_task_task_id if prep_report else "unknown",
+            evaluated_model_name=prep_report.evaluated_model_name if prep_report else "",
             prep_status=prep_report.prep_status if prep_report else "unknown",
             evaluation_mode=prep_report.evaluation_mode if prep_report else None,
             model=prep_report.request.model if prep_report else "",
             python_exe=prep_report.request.python_exe if prep_report else "",
             rw_task_root=prep_report.request.rw_task_root if prep_report else "",
             eval_input_case_dir=prep_report.eval_input_case_dir if prep_report else None,
+            eval_results_dir=eval_results_dir,
+            grade_output_dir=grade_output_dir,
             run_status=run_status,
             commands_executed=commands_executed,
             command_count=len(command_records),
@@ -340,6 +362,19 @@ class RwTaskEvalRunner:
                 if part in {"--output", "--out-dir"} and index + 1 < len(command):
                     output_dirs.append(command[index + 1])
         return output_dirs
+
+    def _dir_for_flag(
+        self,
+        prep_report: Optional[RwTaskEvalPrepReport],
+        flag: str,
+    ) -> Optional[str]:
+        if not prep_report:
+            return None
+        for command in prep_report.would_run_commands:
+            for index, part in enumerate(command):
+                if part == flag and index + 1 < len(command):
+                    return command[index + 1]
+        return None
 
     def _inspect_output_dirs(self, output_dirs: List[str]) -> List[RwTaskEvalOutputInspection]:
         inspections: List[RwTaskEvalOutputInspection] = []

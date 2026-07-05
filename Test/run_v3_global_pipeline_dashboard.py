@@ -24,6 +24,9 @@ DEFAULT_TYPED_RESOURCE_PATCH_PROPOSAL_REPORT = (
     SCRATCH / "typed_resource_patch_proposal_smoke" / "typed_resource_patch_proposal_report.json"
 )
 DEFAULT_PROMOTION_REPORT = SCRATCH / "promotion_manager_smoke" / "promotion_report.json"
+DEFAULT_EVAL_ORCHESTRATOR_REPORT = (
+    SCRATCH / "eval_orchestrator_exec_campaign_smoke_v3" / "evaluation_orchestration_report.json"
+)
 DEFAULT_OUTPUT_DIR = SCRATCH / "global_pipeline_dashboard_smoke"
 
 
@@ -40,10 +43,36 @@ def main() -> None:
         default=DEFAULT_TYPED_RESOURCE_PATCH_PROPOSAL_REPORT,
     )
     parser.add_argument("--promotion-report", type=Path, default=DEFAULT_PROMOTION_REPORT)
+    parser.add_argument(
+        "--eval-orchestrator-report",
+        type=Path,
+        action="append",
+        default=[],
+        help="Optional evaluation_orchestration_report.json path. Can be repeated.",
+    )
+    parser.add_argument(
+        "--eval-orchestrator-report-dir",
+        type=Path,
+        default=None,
+        help="Optional directory to recursively collect evaluation_orchestration_report.json files.",
+    )
+    parser.add_argument(
+        "--model-separation-profile",
+        type=Path,
+        action="append",
+        default=[],
+        help="Optional model_separation_profile.json path. Can be repeated.",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
 
     promotion_report = args.promotion_report if args.promotion_report.exists() else None
+    eval_orchestrator_reports = [
+        path
+        for path in (args.eval_orchestrator_report or [DEFAULT_EVAL_ORCHESTRATOR_REPORT])
+        if path.exists()
+    ]
+    model_separation_profiles = [path for path in (args.model_separation_profile or []) if path.exists()]
     builder = GlobalPipelineDashboardBuilder()
     report = builder.build(
         batch_report_path=args.batch_report,
@@ -51,6 +80,9 @@ def main() -> None:
         substrate_audit_report_path=args.substrate_audit_report,
         typed_resource_patch_proposal_report_path=args.typed_resource_patch_proposal_report,
         promotion_report_path=promotion_report,
+        eval_orchestrator_report_paths=eval_orchestrator_reports,
+        eval_orchestrator_report_dir=args.eval_orchestrator_report_dir,
+        model_separation_profile_paths=model_separation_profiles,
         output_dir=args.output_dir,
     )
     print(
@@ -64,6 +96,11 @@ def main() -> None:
                 "snapshot_error_case_count": report.diagnostics.snapshot_error_case_count,
                 "missing_promotion_report": report.diagnostics.missing_promotion_report,
                 "candidate_ready_count": report.health_summary.training_evaluation_readiness.candidate_ready_count,
+                "evaluation_orchestration_count": report.health_summary.training_evaluation_readiness.evaluation_orchestration_count,
+                "executed_orchestration_count": report.health_summary.training_evaluation_readiness.executed_orchestration_count,
+                "usable_eval_evidence_case_count": report.health_summary.training_evaluation_readiness.usable_eval_evidence_case_count,
+                "model_separation_profile_count": report.health_summary.training_evaluation_readiness.model_separation_profile_count,
+                "model_separation_evidence_count": report.health_summary.training_evaluation_readiness.model_separation_evidence_count,
                 "promotion_ready_count": report.health_summary.training_evaluation_readiness.promotion_ready_count,
             },
             ensure_ascii=False,
