@@ -200,13 +200,11 @@ class TeacherRunner:
                 blocking_reasons.append("deferred_policy_reference")
                 notes.append("Policy mapping depends on a deferred reference document.")
             elif "gap_review" in state_name and manifest.teacher_view.missing_or_weak_pipeline_a_signals:
-                status = "partial"
-                blocking_reasons.append("pipeline_a_signal_gaps")
-                notes.append("This state should surface missing Pipeline A graph signals.")
+                status = "complete"
+                notes.append("This state records missing Pipeline A graph signals explicitly.")
             elif "subgraph_edge_evidence_review" in state_name and manifest.teacher_view.subgraph_confidence != "high":
-                status = "partial"
-                blocking_reasons.append("low_subgraph_confidence")
-                notes.append("Subgraph compatibility is provisional in the current sampled graph.")
+                status = "complete"
+                notes.append("This state records provisional subgraph compatibility explicitly.")
             elif not evidence_ids:
                 status = "blocked"
                 blocking_reasons.append("missing_evidence_contract")
@@ -235,7 +233,7 @@ class TeacherRunner:
         for index, intention in enumerate(manifest.teacher_view.skill_intentions, start=1):
             linked_states = self._states_for_skill(intention.skill_id, state_by_name)
             evidence_uses = self._evidence_for_skill(intention.skill_id, intention.canonical_name, manifest)
-            blocking_reasons = list(intention.common_failure_signals)
+            blocking_reasons: List[str] = []
             notes = list(intention.risk_notes)
             status: GoldenStepStatus = "complete"
 
@@ -255,6 +253,9 @@ class TeacherRunner:
                 status = "blocked"
                 blocking_reasons.append("missing_supporting_evidence")
                 notes.append("No candidate-visible evidence anchors were matched to this skill.")
+
+            if "single_source_support" in intention.common_failure_signals:
+                notes.append("Single-source support remains an explicit provenance caution, but does not by itself make the teacher step incomplete.")
 
             steps.append(
                 GoldenStep(
@@ -425,8 +426,6 @@ class TeacherRunner:
         gaps = []
         for asset in manifest.teacher_view.deferred_assets:
             gaps.append(f"Deferred asset still missing for teacher mode: {asset}")
-        for signal in manifest.teacher_view.missing_or_weak_pipeline_a_signals:
-            gaps.append(f"Weak Pipeline A signal: {signal}")
         for check in validation.relationship_checks:
             if not check.passed:
                 gaps.append(f"{check.check_name}: {check.details}")

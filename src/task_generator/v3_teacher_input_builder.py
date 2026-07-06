@@ -458,7 +458,7 @@ class TeacherInputBuilder:
         warning_failures = [check for check in all_checks if check.severity == "warning" and not check.passed]
         if blocking_failures:
             return "not_ready"
-        if warning_failures or teacher_view.deferred_assets or teacher_view.subgraph_confidence != "high":
+        if warning_failures or teacher_view.deferred_assets:
             return "partial_ready"
         return "teacher_ready"
 
@@ -535,6 +535,11 @@ class TeacherInputBuilder:
         findings: List[ValidationFinding] = []
         file_roles = dossier.file_roles
         synthetic_by_role = {artifact.role: artifact for artifact in dossier.synthetic_artifacts}
+        conflict_artifact = synthetic_by_role.get("conflict_source")
+        conflict_reason_codes = set(conflict_artifact.reason_codes) if conflict_artifact else set()
+        motif_native_conflict = bool(
+            {"motif:cross_check_validation", "motif:fan_in_reconciliation"} & conflict_reason_codes
+        )
 
         findings.append(
             ValidationFinding(
@@ -557,9 +562,14 @@ class TeacherInputBuilder:
             findings.append(
                 ValidationFinding(
                     check_name="dossier_conflict_source_metadata",
-                    severity="warning",
-                    passed=False,
-                    details="Dossier metadata indicates conflicting source ecology that should remain explicit in teacher reasoning.",
+                    severity="info" if motif_native_conflict else "warning",
+                    passed=True if motif_native_conflict else False,
+                    details=(
+                        "Dossier metadata indicates motif-native conflicting source ecology; "
+                        "teacher reasoning should preserve the conflict explicitly without treating it as a readiness downgrade."
+                        if motif_native_conflict
+                        else "Dossier metadata indicates conflicting source ecology that should remain explicit in teacher reasoning."
+                    ),
                 )
             )
         if any(

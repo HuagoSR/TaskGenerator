@@ -351,6 +351,13 @@ class RwTaskEvalRunner:
         command_name = self._command_name(command)
         if command_name == "bench_standalone.grade_deliverables" and grading_model:
             env["GRADER_MODEL"] = grading_model
+        if command_name == "task_generator.v3_rw_task_eval_stirrup_wrapper":
+            repo_src = Path(__file__).resolve().parents[1]
+            existing_pythonpath = env.get("PYTHONPATH", "").strip()
+            if existing_pythonpath:
+                env["PYTHONPATH"] = f"{repo_src}{os.pathsep}{existing_pythonpath}"
+            else:
+                env["PYTHONPATH"] = str(repo_src)
         return env
 
     def _output_dirs(self, prep_report: Optional[RwTaskEvalPrepReport]) -> List[str]:

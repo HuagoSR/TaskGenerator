@@ -175,6 +175,30 @@ Do not overfit to the current music-tour finance task. It was a probe, not the f
 
 The current priority is the next-stage global plan: move from a mostly skill-pipeline view to a workflow-conditioned, closed-loop real-world task factory.
 
+Current status snapshot as of `2026-07-06`:
+
+- Phase 0-10 global interface, verifier, promotion, dashboard, model-separation-profile, and eval-orchestrator layers are implemented.
+- Phase 11 has completed the first candidate-ready production-path closure pass.
+- Phase 12 has started and already has executable hardening runners plus first-pass evidence:
+  - `5 / 5 candidate_ready` and `5 / 5 verifier pass` on the first expanded deterministic regression
+  - `10 / 10 candidate_ready` and `10 / 10 verifier pass` on the current 10-case hardening smoke
+  - `7 / 7` current negative-control mutations detected by the expected structural layer
+  - `TransitionPriorStore V0 observed-only` now exists at `SkillRegistry/v3_transition_prior_store.observed.json`
+- Phase 12 executable hardening layers now also include:
+  - `12.3` substrate hardening with scratch-governed typed-resource apply and rollback evidence
+  - `12.4` workflow-context strengthening with improved workflow-context fit on the strengthened 5-case rerun
+  - `12.5` guarded executed eval mini-campaign with real two-model evidence on the selected 3-case slice
+  - `12.7` phase-scoped hardening dashboard aggregation
+  - `12.8` hardening postmortem with explicit `success` vs `still_open` decision logic
+- Phase 12 is now complete:
+  - deterministic hardening expanded from the Phase 11 `3 / 3` slice to verified `5 / 5` and `10 / 10` candidate-ready smokes
+  - `7 / 7` current negative controls were caught by the expected structural layer
+  - the guarded executed mini-campaign completed with `3` selected cases x `2` models, `summary_completion_rate = 1.0`, and `usable_summary_rate = 1.0`
+- Phase 13 readiness should now be treated as open, but executed eval evidence remains diagnostic rather than benchmark-grade model-separation truth.
+- The user has explicitly authorized reading `E:\THU\2026Spring\SRT\rw-task\.env` and sending selected Phase 12 case packages to external model APIs for evaluation. Treat this as permission for the guarded executed-eval mini-campaign only; do not print secret values or stage `.env`.
+- However, the current Codex execution environment still enforces a tenant policy that blocks sending private workspace task-package contents to external third-party model APIs. If the real Phase 12 mini-campaign is needed, prepare the exact command and run it in a separately permitted environment rather than attempting a workaround here.
+- Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
+
 Pipeline A-to-B bridge work remains important, but it is now one layer inside a broader architecture:
 
 ```text
@@ -192,9 +216,9 @@ Pipeline A should no longer only accumulate isolated atomic skills. It should pr
 Near-term priority order:
 
 1. Keep the existing Pipeline A and Pipeline B runners working.
-2. Add report-only/schema-first global interfaces before changing core sampler behavior.
-3. Start with global validity diagnostics, workflow episode proposals, motif graph grammar drafts, and sampler role-coverage reporting.
-4. Delay true role-filling sampling, verifier gating, promotion/apply logic, and formal model-separation evaluation until the report contracts are stable.
+2. Continue Phase 12 hardening with deterministic regression expansion, negative controls, substrate repair, and workflow-context strengthening.
+3. Keep promotion/apply reviewable and explicit; prefer scratch validation before any canonical registry mutation.
+4. Treat executed eval and model-separation outputs as diagnostic evidence until repeated comparison evidence is available.
 5. Keep all registry, readiness, transition-prior, and sampler-weight changes explicit and reviewable.
 
 Final system objective:
@@ -204,17 +228,16 @@ Final system objective:
 - use Pipeline B to sample workflow-conditioned executable subgraphs, generate task packages, validate them, and report task outcomes
 - feed batch-level task outcomes back into skill, resource, workflow, edge, motif, and sampler priors only through explicit review/promotion steps
 
-Important missing final layers:
+Important still-maturing layers:
 
-- `SkillTransitionPriorStore`: a persistent store outside `SkillRegistryEntry` for transition/motif evidence, with fields such as `observed_count`, `success_count`, `failure_count`, `prior_score`, `posterior_score`, `exploration_bonus`, source evidence, and task feedback IDs
+- richer `SkillTransitionPriorStore`: the observed-only V0 store now exists, but future versions still need reviewed aggregation fields such as `observed_count`, `success_count`, `failure_count`, `prior_score`, `posterior_score`, `exploration_bonus`, source evidence, and task feedback IDs
 - probabilistic subgraph sampler: a future sampler that turns readiness, motif, role, and edge-prior signals into a distribution over executable subgraphs
 - UCB1 or related bandit policy: a later exploration/exploitation mechanism, only meaningful after generated tasks produce comparable quality feedback
 - Pipeline B feedback updater: a report-first then explicit-update loop that converts task generation, GoldenRun, rubric, quality-gate, and model-separation results into prior updates
-- `WorkflowEpisode` and `WorkflowArchetype`: source-grounded and cross-source workflow context objects that prevent Pipeline B from treating skills as context-free list items
-- `MotifGraphGrammar`: structured role/resource/stage definitions for motifs such as `policy_application` and `fan_in_reconciliation`
-- `TaskConstraintGraph` and `ExecutionPlanDAG`: separate the realistic task graph from the acyclic execution plan needed by candidates and GoldenRun
-- `RealWorldnessReport`, `DifficultyProfile`, and `ModelSeparationProfile`: diagnostics for task realism, training/evaluation suitability, and eventual model separation
-- `PromotionRecord` and `RollbackRecord`: explicit, auditable mechanisms for turning report findings into durable registry or sampler changes
+- `WorkflowEpisode` / `WorkflowArchetype` / `MotifGraphGrammar`: V1 report-first and experimental layers are implemented; future work is about stronger canonicalization, broader coverage, and deeper sampler integration rather than first introduction
+- `TaskConstraintGraph` / `ExecutionPlanDAG` / `RealWorldnessReport` / `DifficultyProfile`: deterministic diagnostic shells are implemented; future work is about broader task coverage and stronger downstream use, not creating them from scratch
+- `ModelSeparationProfile`: the report-only eligibility/profile layer is implemented; future work is about repeated executed evidence and stronger comparison semantics
+- `PromotionRecord` / `RollbackRecord`: typed-resource-first governance is implemented; future work is about canonical reviewed apply expansion, not first creation
 
 Near-term implementation rule:
 
@@ -236,7 +259,7 @@ Near-term implementation rule:
 - keep single-task rw-task smoke results diagnostic only; repeated signals across Pipeline B batches should drive priority decisions
 - harden eval-runner timeout/partial-output reporting before using long external smoke runs as evidence
 - prefer small deterministic Pipeline B batches over repeatedly tuning one draft task
-- next, implement report-only global validity and workflow/motif interfaces; use their failures to drive further Pipeline A and Pipeline B improvements
+- keep using the implemented global validity, workflow, motif, verifier, dashboard, promotion, and eval-orchestration layers as diagnostic interfaces; use their failures to drive further Pipeline A and Pipeline B improvements
 - do not implement real UCB/bandit behavior, broad domain expansion, complex file ecosystems, or formal model-separation evaluation until the diagnostic contracts and batch evidence are stable
 
 The current Pipeline A graph target remains:
@@ -340,9 +363,20 @@ Current Pipeline A starting files:
 - `Test/run_v3_model_separation_profile.py`
 - `src/task_generator/v3_eval_orchestrator.py`
 - `Test/run_v3_eval_orchestrator.py`
+- current Phase 12 hardening entrypoints:
+  - `src/task_generator/v3_phase12_hardening.py`
+  - `Test/run_v3_phase12_hardening.py`
+  - `src/task_generator/v3_transition_prior_store.py`
+  - `Test/run_v3_transition_prior_store.py`
+  - `src/task_generator/v3_phase12_substrate_hardening.py`
+  - `src/task_generator/v3_phase12_workflow_context.py`
+  - `src/task_generator/v3_phase12_eval_campaign.py`
+  - `src/task_generator/v3_phase12_dashboard.py`
+  - `src/task_generator/v3_phase12_postmortem.py`
 - currently planned next-stage files:
-  - future richer multi-run evaluation comparison and post-orchestration governance
-  - dashboard/profile consumption of repeated executed multi-model evidence after the current single-case smoke
+  - Phase 13 planning and handoff after the completed Phase 12 hardening cycle
+  - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first
+  - richer multi-run evaluation comparison and post-orchestration governance after repeated evidence is available
 - promotion-governance operating note:
   - `promotion_id` is invocation/target-path specific and can differ between canonical registry and scratch registry copies
   - use `source_promotion_key` from `promotion_proposals.json` / `promotion_report.json` when tracking the same patch intent across review, scratch apply, rollback, and later canonical apply
@@ -612,7 +646,7 @@ Current Pipeline A status:
   - next Pipeline A/B bridge work should use `pipeline_a_substrate_audit_report.json` to choose between typed-resource patch proposals, additional source evidence collection, transition calibration, and continued sampler caution
   - next registry-facing work should review `typed_resource_patch_proposals.json` and either add a separate reviewed apply step or request new Pipeline A source evidence for `needs_source_evidence` proposals
   - rerun external rw-task smoke only after choosing a small batch subset and keeping results as `draft_inspection_only`
-  - continue improving Pipeline A and teacher-readiness signals until at least one package can naturally reach `candidate_ready`
+  - treat the first `candidate_ready` milestone as achieved; the next task is to preserve and widen that path across repeated deterministic slices and better workflow-conditioned cases
   - use the draft eval summary and eval feedback report as diagnostic inputs for improving prompt/rubric/reference generation and teacher supervision, not as final model-separation evidence
   - extend reference-file generation toward more document and media types beyond the current deterministic workbook plus policy-doc path
   - keep explicit readiness gating and missing-signal reporting instead of pretending deferred assets have disappeared
@@ -671,7 +705,7 @@ Explicit execution behavior:
 - keep `not_final_training_data=true` and `evaluation_mode=draft_inspection_only` visible in all reports
 - do not mutate `SkillRegistry/*.json`
 
-The first real smoke should answer whether the V3 package can pass through the rw-task toolchain at all. It should not be treated as model-separation evidence until a package reaches `candidate_ready`.
+The first real smoke has already answered that the V3 package can pass through the rw-task toolchain. Current executed eval evidence should still not be treated as formal model-separation evidence unless it is repeated on sufficiently closed `candidate_ready` cases.
 
 Recommended next choices:
 

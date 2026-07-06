@@ -10,7 +10,12 @@ from pydantic import BaseModel, Field
 GraphShape = Literal["chain", "fan_in", "fan_out", "dag", "constraint_graph"]
 RoleKind = Literal["source", "skill", "validator", "deliverable", "exception_handler", "support"]
 ConstraintSeverity = Literal["low", "medium", "high"]
-MotifType = Literal["policy_application", "fan_in_reconciliation"]
+MotifType = Literal[
+    "policy_application",
+    "fan_in_reconciliation",
+    "evidence_to_deliverable",
+    "cross_check_validation",
+]
 
 
 class MotifRoleDefinition(BaseModel):

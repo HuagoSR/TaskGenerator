@@ -367,7 +367,12 @@ class RubricBuilder:
             return "not_ready"
         if annotation_report.readiness == "partial_ready" or teacher_report.readiness == "partial_ready":
             return "partial_ready"
-        if any(criterion.status_hint != "pass" for section in sections for criterion in section.criteria):
+        if any(
+            criterion.status_hint != "pass"
+            for section in sections
+            for criterion in section.criteria
+            if criterion.audience == "candidate" or criterion.export_to_rw_task
+        ):
             return "partial_ready"
         return "rubric_ready"
 

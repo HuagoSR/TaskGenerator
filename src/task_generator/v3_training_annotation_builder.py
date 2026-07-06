@@ -118,7 +118,7 @@ class TrainingAnnotationBuilder:
         failure_modes = self._failure_modes(golden_run, teacher_report, teacher_manifest)
         hidden_traps = self._hidden_traps(teacher_manifest, teacher_report)
         expected_reasoning_path = self._expected_reasoning_path(golden_run)
-        rubric_projection = self._rubric_projection(golden_run, teacher_report)
+        rubric_projection = self._rubric_projection(golden_run, teacher_report, teacher_manifest)
         readiness = self._readiness(teacher_report, supervision_items)
         legacy_projection = TrainingAnnotation(
             annotation_id=self._stable_id("ann", [golden_run.blueprint_id, golden_run.golden_run_id]),
@@ -297,7 +297,11 @@ class TrainingAnnotationBuilder:
                     kind="final_check",
                     name=check.check_name,
                     linked_skill_ids=[item.skill_id for item in teacher_manifest.teacher_view.skill_intentions],
-                    expected_behavior=self._final_check_description(check.check_name, check.status),
+                    expected_behavior=self._final_check_description(
+                        check.check_name,
+                        check.status,
+                        teacher_manifest,
+                    ),
                     evidence_requirements=self._requirements_for_ids(
                         check.supporting_evidence_ids,
                         evidence_by_id,
@@ -359,9 +363,10 @@ class TrainingAnnotationBuilder:
         self,
         golden_run: GoldenRun,
         teacher_report: TeacherRunnerReport,
+        teacher_manifest: TeacherInputManifest,
     ) -> RubricProjection:
         fact_checks = [
-            self._final_check_description(check.check_name, check.status)
+            self._final_check_description(check.check_name, check.status, teacher_manifest)
             for check in golden_run.final_checks
             if check.check_name in {"deliverable_presence", "deliverable_requirement_coverage", "evidence_traceability"}
         ]
@@ -382,7 +387,7 @@ class TrainingAnnotationBuilder:
             }
         ]
         compliance_checks = [
-            self._final_check_description(check.check_name, check.status)
+            self._final_check_description(check.check_name, check.status, teacher_manifest)
             for check in golden_run.final_checks
             if check.check_name in {"policy_clause_traceability", "conclusion_supported_by_visible_evidence"}
         ]
@@ -461,7 +466,12 @@ class TrainingAnnotationBuilder:
         }
         return mapping.get(check_name, "reasoning_check")
 
-    def _final_check_description(self, check_name: str, status: str) -> str:
+    def _final_check_description(
+        self,
+        check_name: str,
+        status: str,
+        teacher_manifest: TeacherInputManifest | None = None,
+    ) -> str:
         base = {
             "deliverable_presence": "Check that the expected deliverable path is supportable from the generated reference package.",
             "deliverable_requirement_coverage": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported.",
@@ -473,9 +483,22 @@ class TrainingAnnotationBuilder:
             "dossier_version_governance": "Check that version-sensitive evidence identifies which source is current before stale or prior-version material is treated as governing.",
             "dossier_manager_escalation": "Check that manager-facing caveats, escalation needs, or follow-up obligations remain explicit when dossier support is incomplete.",
         }.get(check_name, f"Check `{check_name}`.")
+        if check_name == "deliverable_requirement_coverage" and teacher_manifest is not None:
+            requirement_text = self._deliverable_requirement_text(teacher_manifest)
+            if requirement_text:
+                base = f"{base} Explicit deliverable requirements: {requirement_text}."
         if status != "pass":
             return f"{base} Current status: {status}."
         return base
+
+    def _deliverable_requirement_text(self, teacher_manifest: TeacherInputManifest) -> str:
+        requirements: List[str] = []
+        for deliverable in teacher_manifest.candidate_view.deliverables:
+            for requirement in deliverable.get("requirements", []):
+                normalized = str(requirement).strip()
+                if normalized and normalized not in requirements:
+                    requirements.append(normalized)
+        return "; ".join(requirements)
 
     def _failure_severity(self, code: str) -> str:
         if code in {"deferred_policy_reference", "relationship:policy_lookup"}:

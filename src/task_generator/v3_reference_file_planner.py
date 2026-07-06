@@ -673,11 +673,21 @@ class ReferenceFilePlanner:
                 blueprint.scenario_spec.time_context,
             ]
         ).lower()
-        if any(token in context for token in ["exception", "missing", "gap", "follow-up", "support"]):
+        explicit_missing_signals = [
+            "missing attachment",
+            "missing support",
+            "support gap",
+            "incomplete evidence",
+            "incomplete support",
+            "absent attachment",
+            "attachment gap",
+            "not provided",
+            "not yet provided",
+            "supporting document missing",
+        ]
+        if any(signal in context for signal in explicit_missing_signals):
             return True
-        if not subgraph:
-            return False
-        return bool({"persistent_registry_typed_resources", "transition_evidence"} & set(subgraph.diagnostics.missing_or_weak_pipeline_a_signals))
+        return False
 
     def _dossier_version_relation(
         self,
@@ -815,19 +825,29 @@ class ReferenceFilePlanner:
             if artifact.artifact_id not in {item.artifact_id for item in synthetic_artifacts}:
                 synthetic_artifacts.append(artifact)
 
-        manager_signal_tokens = {
+        manager_context_signals = {
             "manager",
             "leadership",
             "executive",
             "cfo",
-            "brief",
-            "briefing",
-            "review",
-            "summary",
+            "controller",
+        }
+        escalation_signals = {
             "escalate",
             "escalation",
+            "approval",
+            "approve",
+            "reviewthread",
+            "review_thread",
+            "managernotes",
+            "managernotes",
+            "manageremail",
+            "manager_email",
+            "followuprequired",
         }
-        if context_tokens & manager_signal_tokens:
+        has_explicit_manager_context = bool(context_tokens & manager_context_signals)
+        has_explicit_escalation_signal = bool(context_tokens & escalation_signals)
+        if has_explicit_manager_context and has_explicit_escalation_signal:
             add_artifact(
                 role="manager_notes",
                 title="Manager Review Notes Placeholder",
@@ -856,9 +876,7 @@ class ReferenceFilePlanner:
 
         outdated_signals = {"prior", "old", "outdated", "archived", "legacy", "previous"}
         has_explicit_outdated_file = any(role.role == "outdated_version" for role in file_roles)
-        if not has_explicit_outdated_file and (
-            context_tokens & outdated_signals or selected_motif == "policy_application" or bool(policy_file_ids)
-        ):
+        if not has_explicit_outdated_file and context_tokens & outdated_signals:
             linked_file_ids = policy_file_ids[:1] or primary_file_ids[:1]
             if linked_file_ids:
                 add_artifact(

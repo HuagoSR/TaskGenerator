@@ -421,7 +421,8 @@ class PipelineBPrototypeBuilder:
                 ],
             )
         ]
-        if motif in {"policy_application", "cross_check_validation"} or self._mentions(entries, ["policy", "requirement", "tax"]):
+        policy_contract = self._requires_policy_contract(motif, entries)
+        if policy_contract:
             files.append(
                 FileSpec(
                     file_name="policy_reference.docx",
@@ -465,7 +466,7 @@ class PipelineBPrototypeBuilder:
                     right="control_totals.xlsx:Control_Totals.Expected_Total",
                 )
             )
-        if motif == "policy_application" or self._mentions(entries, ["policy", "requirement", "tax"]):
+        if self._requires_policy_contract(motif, entries):
             relationships.append(
                 DataRelationship(
                     relation_type="policy_lookup",
@@ -482,22 +483,47 @@ class PipelineBPrototypeBuilder:
         deliverable_name: str,
         entries: List[SkillRegistryEntry],
     ) -> List[str]:
+        policy_contract = self._requires_policy_contract(motif, entries)
         requirements = [
             "Review the provided reference files and produce the requested deliverable.",
             f"Write the final deliverable as `{deliverable_name}` and keep the content manager-ready.",
             "Cite the exact candidate-visible evidence IDs from the `Evidence_ID` column, such as `EVID-001`; do not use source labels such as `Manager Email` or `Ledger Snapshot` as substitutes for evidence IDs.",
             "Flag items that cannot be resolved from the provided evidence.",
             "Separate supported conclusions, confirmed exceptions, and unresolved items instead of blending them together.",
-            "Use this exact top-level section order before any appendix: `Evidence inventory`, `Deliverable outline`, `Evidence reviewed`, `Supported conclusions`, `Confirmed exceptions`, `Unresolved items`, `Policy clause mapping`, `Follow-up`.",
             "Place the `Evidence inventory` section immediately after the title or opening context and before any supported conclusion, confirmed exception, unresolved item, recommendation, or follow-up.",
             "Format `Evidence inventory` as a table or bullet list with these four explicit fields for every material item: `Evidence_ID`, `Source file`, `Observed item/value`, and `Intended use`.",
-            "Include a `Deliverable outline` section after `Evidence inventory` and before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
             "Do not use placeholder headings for required sections; populate each required section with its complete content where that section appears.",
-            "Do not append the detailed Evidence inventory, Evidence-to-conclusion map, or Policy clause mapping after `Follow-up`; write those details inside their named sections.",
             "Include an `Evidence-to-conclusion map` that links each material conclusion to the specific evidence IDs used.",
-            "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support using exact workbook evidence IDs, such as `[Evidence: EVID-001]` or `[Evidence: EVID-001; Policy: POL-003]`.",
+            "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support using exact workbook evidence IDs, such as `[Evidence: EVID-001]`.",
             "Do not place evidence citations only in a separate appendix; each conclusion must carry its own local evidence or policy locator.",
         ]
+        if policy_contract:
+            requirements.insert(
+                5,
+                "Use this exact top-level section order before any appendix: `Evidence inventory`, `Deliverable outline`, `Evidence reviewed`, `Supported conclusions`, `Confirmed exceptions`, `Unresolved items`, `Policy clause mapping`, `Follow-up`.",
+            )
+            requirements.insert(
+                8,
+                "Include a `Deliverable outline` section after `Evidence inventory` and before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, policy mapping, and follow-up.",
+            )
+            requirements.insert(
+                10,
+                "Do not append the detailed Evidence inventory, Evidence-to-conclusion map, or Policy clause mapping after `Follow-up`; write those details inside their named sections.",
+            )
+            requirements[12] = "In `Supported conclusions`, `Confirmed exceptions`, and `Unresolved items`, end every material bullet with bracketed local support using exact workbook evidence IDs, such as `[Evidence: EVID-001]` or `[Evidence: EVID-001; Policy: POL-003]`."
+        else:
+            requirements.insert(
+                5,
+                "Use this exact top-level section order before any appendix: `Evidence inventory`, `Deliverable outline`, `Evidence reviewed`, `Supported conclusions`, `Confirmed exceptions`, `Unresolved items`, `Follow-up`.",
+            )
+            requirements.insert(
+                8,
+                "Include a `Deliverable outline` section after `Evidence inventory` and before drafting conclusions; use headings for evidence reviewed, supported conclusions, confirmed exceptions, unresolved items, and follow-up.",
+            )
+            requirements.insert(
+                10,
+                "Do not append the detailed Evidence inventory or Evidence-to-conclusion map after `Follow-up`; write those details inside their named sections.",
+            )
         if motif == "fan_in_reconciliation":
             requirements.append("Reconcile source evidence to the control totals and explain material differences.")
         elif motif == "cross_check_validation":
@@ -506,7 +532,7 @@ class PipelineBPrototypeBuilder:
             requirements.append("Apply the stated policy requirements to each relevant evidence item.")
         elif motif == "evidence_to_deliverable":
             requirements.append("Synthesize the evidence into a manager-ready deliverable rather than a raw notes list.")
-        if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
+        if policy_contract:
             requirements.append(
                 "For each policy-sensitive conclusion, cite both the exact supporting workbook evidence ID and the applicable policy clause ID."
             )
@@ -521,6 +547,7 @@ class PipelineBPrototypeBuilder:
         return requirements
 
     def _hidden_requirements(self, motif: str, entries: List[SkillRegistryEntry]) -> List[str]:
+        policy_contract = self._requires_policy_contract(motif, entries)
         hidden = [
             "Do not reward unsupported conclusions that lack visible evidence citations.",
             "Do not reward conclusion bullets whose evidence support appears only elsewhere in the deliverable.",
@@ -529,13 +556,16 @@ class PipelineBPrototypeBuilder:
             "Do not reward deliverables whose Evidence inventory lacks the required fields: Evidence_ID, Source file, Observed item/value, and Intended use.",
             "Do not reward deliverables that place Follow-up before the detailed Evidence inventory.",
             "Do not reward placeholder-only required sections whose actual details are appended later.",
-            "Do not reward Evidence-to-conclusion or Policy clause mapping details that are moved after Follow-up instead of appearing in their named sections.",
             "Treat unresolved evidence gaps separately from confirmed exceptions.",
             "The expected deliverable should be supportable from candidate-visible reference files, not hidden teacher assumptions.",
         ]
+        if policy_contract:
+            hidden.append("Do not reward Evidence-to-conclusion or Policy clause mapping details that are moved after Follow-up instead of appearing in their named sections.")
+        else:
+            hidden.append("Do not reward Evidence-to-conclusion mapping details that are moved after Follow-up instead of appearing in their named section.")
         if motif in {"cross_check_validation", "fan_in_reconciliation"}:
             hidden.append("The teacher run should expose intermediate cross-check or reconciliation states.")
-        if self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
+        if policy_contract:
             hidden.append("Exact grading anchors must be traceable to visible policy or requirement evidence.")
             hidden.append("Policy-grounded claims should cite explicit clause IDs together with the evidence they govern.")
         return hidden
@@ -546,7 +576,7 @@ class PipelineBPrototypeBuilder:
             states.append("cross_check_matrix")
         if motif == "fan_in_reconciliation":
             states.append("reconciliation_difference_log")
-        if motif == "policy_application" or self._mentions(entries, ["policy", "requirement", "tax"]):
+        if self._requires_policy_contract(motif, entries):
             states.append("policy_requirement_mapping")
             states.append("policy_clause_evidence_map")
         if self._mentions(entries, ["exception", "finding"]):
@@ -560,9 +590,17 @@ class PipelineBPrototypeBuilder:
             "evidence_traceability",
             "conclusion_supported_by_visible_evidence",
         ]
-        if motif == "policy_application" or self._mentions(entries, ["policy", "requirement", "tax", "compliance"]):
+        if self._requires_policy_contract(motif, entries):
             checks.insert(3, "policy_clause_traceability")
         return checks
+
+    def _requires_policy_contract(self, motif: str, entries: List[SkillRegistryEntry]) -> bool:
+        if motif in {"policy_application", "cross_check_validation"}:
+            return True
+        return self._mentions(
+            entries,
+            ["policy", "tax", "withholding", "jurisdiction", "regulation", "clause"],
+        )
 
     def _diagnose_signals(
         self,

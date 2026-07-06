@@ -1,0 +1,428 @@
+{
+  "transition_prior_store_version": "v0.observed",
+  "request": {
+    "batch_report_path": "artifacts\\pipeline_b\\scratch\\phase12_hardening_phase1234_smoke_v2\\phase12_workflow_context\\workflow_strengthened_regression_5case\\batch\\pipeline_b_batch_report.json",
+    "store_output_path": "SkillRegistry\\v3_transition_prior_store.observed.json",
+    "report_output_path": "artifacts\\pipeline_b\\scratch\\phase12_hardening_phase1234_smoke_v2\\phase12_transition_prior_observation_report.json"
+  },
+  "observations": [
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_01_evidence_to_deliverable_skill_9149d84703_skill_21b64a3c34",
+      "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_9149d84703",
+      "to_skill_id": "skill_21b64a3c34",
+      "from_role": "evidence_source",
+      "to_role": "analysis_or_exception_handler",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_01_evidence_to_deliverable_skill_21b64a3c34_skill_03116f26d2",
+      "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_21b64a3c34",
+      "to_skill_id": "skill_03116f26d2",
+      "from_role": "analysis_or_exception_handler",
+      "to_role": "deliverable_synthesizer",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_01_evidence_to_deliverable_skill_03116f26d2_skill_e1c4dedc31",
+      "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_03116f26d2",
+      "to_skill_id": "skill_e1c4dedc31",
+      "from_role": "deliverable_synthesizer",
+      "to_role": "policy_reference_support",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_e08be4157d_skill_d7ee699ef7",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_e08be4157d",
+      "to_skill_id": "skill_d7ee699ef7",
+      "from_role": "primary_source_extractor",
+      "to_role": "cross_check_validator",
+      "resource_bridge": "role_sequence_fallback",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_d7ee699ef7_skill_21b64a3c34",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_d7ee699ef7",
+      "to_skill_id": "skill_21b64a3c34",
+      "from_role": "cross_check_validator",
+      "to_role": "exception_documenter",
+      "resource_bridge": "role_sequence_fallback",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_21b64a3c34_skill_03116f26d2",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_21b64a3c34",
+      "to_skill_id": "skill_03116f26d2",
+      "from_role": "exception_documenter",
+      "to_role": "deliverable_synthesizer",
+      "resource_bridge": "role_sequence_fallback",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_e08be4157d_skill_d7ee699ef7",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_e08be4157d",
+      "to_skill_id": "skill_d7ee699ef7",
+      "from_role": "primary_source_extractor",
+      "to_role": "cross_check_validator",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_d7ee699ef7_skill_21b64a3c34",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_d7ee699ef7",
+      "to_skill_id": "skill_21b64a3c34",
+      "from_role": "cross_check_validator",
+      "to_role": "exception_documenter",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_02_cross_check_validation_skill_21b64a3c34_skill_03116f26d2",
+      "case_id": "pipeline_b_batch_02_cross_check_validation",
+      "workflow_archetype_id": null,
+      "motif_type": "cross_check_validation",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_21b64a3c34",
+      "to_skill_id": "skill_03116f26d2",
+      "from_role": "exception_documenter",
+      "to_role": "deliverable_synthesizer",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_03_fan_in_reconciliation_skill_9149d84703_skill_5332cf7fe8",
+      "case_id": "pipeline_b_batch_03_fan_in_reconciliation",
+      "workflow_archetype_id": null,
+      "motif_type": "fan_in_reconciliation",
+      "task_graph_shape": "fan_in",
+      "from_skill_id": "skill_9149d84703",
+      "to_skill_id": "skill_5332cf7fe8",
+      "from_role": "deliverable_synthesizer|exception_explainer|source_a_extractor",
+      "to_role": "source_b_extractor",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_03_fan_in_reconciliation_skill_5332cf7fe8_skill_bb94a7eb4f",
+      "case_id": "pipeline_b_batch_03_fan_in_reconciliation",
+      "workflow_archetype_id": null,
+      "motif_type": "fan_in_reconciliation",
+      "task_graph_shape": "fan_in",
+      "from_skill_id": "skill_5332cf7fe8",
+      "to_skill_id": "skill_bb94a7eb4f",
+      "from_role": "source_b_extractor",
+      "to_role": "normalizer",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_03_fan_in_reconciliation_skill_bb94a7eb4f_skill_62c4a25083",
+      "case_id": "pipeline_b_batch_03_fan_in_reconciliation",
+      "workflow_archetype_id": null,
+      "motif_type": "fan_in_reconciliation",
+      "task_graph_shape": "fan_in",
+      "from_skill_id": "skill_bb94a7eb4f",
+      "to_skill_id": "skill_62c4a25083",
+      "from_role": "normalizer",
+      "to_role": "difference_calculator",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_04_policy_application_skill_e1c4dedc31_skill_9149d84703",
+      "case_id": "pipeline_b_batch_04_policy_application",
+      "workflow_archetype_id": null,
+      "motif_type": "policy_application",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_e1c4dedc31",
+      "to_skill_id": "skill_9149d84703",
+      "from_role": "policy_source",
+      "to_role": "final_deliverable_skill|rule_extraction_skill",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_04_policy_application_skill_9149d84703_skill_e08be4157d",
+      "case_id": "pipeline_b_batch_04_policy_application",
+      "workflow_archetype_id": null,
+      "motif_type": "policy_application",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_9149d84703",
+      "to_skill_id": "skill_e08be4157d",
+      "from_role": "final_deliverable_skill|rule_extraction_skill",
+      "to_role": "case_evidence_source|uncertainty_or_exception_handler",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_04_policy_application_skill_e08be4157d_skill_ce9d7b7f1c",
+      "case_id": "pipeline_b_batch_04_policy_application",
+      "workflow_archetype_id": null,
+      "motif_type": "policy_application",
+      "task_graph_shape": "constraint_graph",
+      "from_skill_id": "skill_e08be4157d",
+      "to_skill_id": "skill_ce9d7b7f1c",
+      "from_role": "case_evidence_source|uncertainty_or_exception_handler",
+      "to_role": "rule_application_skill",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_05_evidence_to_deliverable_skill_9149d84703_skill_21b64a3c34",
+      "case_id": "pipeline_b_batch_05_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_9149d84703",
+      "to_skill_id": "skill_21b64a3c34",
+      "from_role": "evidence_source",
+      "to_role": "analysis_or_exception_handler",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_05_evidence_to_deliverable_skill_21b64a3c34_skill_03116f26d2",
+      "case_id": "pipeline_b_batch_05_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_21b64a3c34",
+      "to_skill_id": "skill_03116f26d2",
+      "from_role": "analysis_or_exception_handler",
+      "to_role": "deliverable_synthesizer",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    },
+    {
+      "transition_observation_id": "obs_pipeline_b_batch_05_evidence_to_deliverable_skill_03116f26d2_skill_e1c4dedc31",
+      "case_id": "pipeline_b_batch_05_evidence_to_deliverable",
+      "workflow_archetype_id": null,
+      "motif_type": "evidence_to_deliverable",
+      "task_graph_shape": "chain",
+      "from_skill_id": "skill_03116f26d2",
+      "to_skill_id": "skill_e1c4dedc31",
+      "from_role": "deliverable_synthesizer",
+      "to_role": "policy_reference_support",
+      "resource_bridge": "motif_cooccurrence",
+      "source_trace_evidence_count": 0,
+      "task_usage_count_increment": 1,
+      "outcome": "candidate_ready",
+      "quality_reason_codes": [
+        "export_status:candidate_ready_export"
+      ],
+      "verifier_status": "pass",
+      "eval_evidence_status": "not_run",
+      "confidence": "low",
+      "status": "observed_only"
+    }
+  ],
+  "diagnostics": {
+    "observation_count": 18,
+    "candidate_ready_observation_count": 18,
+    "revise_observation_count": 0,
+    "reject_observation_count": 0,
+    "motif_counts": {
+      "cross_check_validation": 6,
+      "evidence_to_deliverable": 6,
+      "fan_in_reconciliation": 3,
+      "policy_application": 3
+    },
+    "role_context_count": 18,
+    "source_trace_backed_count": 0,
+    "notes": [
+      "Observations are currently derived from completed batch cases and local subgraph reports.",
+      "Role context may be sparse when the sampler falls back to unstructured or repeated-role assignments."
+    ]
+  },
+  "notes": [
+    "TransitionPriorStore V0 is observational only and does not influence sampling.",
+    "These observations are intended as future evidence for transition, motif, and role priors after explicit review."
+  ]
+}

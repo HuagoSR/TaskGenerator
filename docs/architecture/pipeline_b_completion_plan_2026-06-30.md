@@ -10,6 +10,26 @@ This file remains useful for Pipeline B implementation history, current runner c
 
 The current direction is not to keep tuning one Pipeline B draft or to apply typed-resource proposals as a hidden side effect. The next stage should first add report-only/schema-first global interfaces: global validity diagnostics, workflow episode proposals, motif graph grammar drafts, sampler role coverage, and later explicit promotion/rollback.
 
+## Status Note - 2026-07-06
+
+This completion plan now mixes historical baseline notes with the current implemented chain.
+
+Important live-state correction:
+
+- the earlier `revise_only` package baseline described below is no longer the best summary of the repo
+- Phase 11 has already closed the first candidate-ready production path
+- the latest deterministic 3-case regression reaches `3 / 3 candidate_ready` and `3 / 3 verifier pass`
+- the current Phase 12 hardening pass has already expanded that baseline to `5 / 5 candidate_ready` and `10 / 10 candidate_ready` deterministic regressions
+- negative-control hardening is now executable and currently catches `7 / 7` structural fault injections
+- `TransitionPriorStore V0 observed-only` is now implemented, but it remains report-first and does not influence sampling
+
+Use this file for implementation history and component contracts, but use the following files for the latest operational state:
+
+- `docs/handoffs/PHASE_11_CANDIDATE_READY_SUCCESS_2026-07-05.md`
+- `docs/handoffs/PHASE_12_PROGRESS_2026-07-06.md`
+- `artifacts/pipeline_b/scratch/phase11_batch_regression_3case_policy_fix_v2/pipeline_b_batch_report.json`
+- `artifacts/pipeline_b/scratch/phase_11_batch_regression/phase_11_batch_regression_report.json`
+
 ## Purpose
 
 This document is the working plan for completing Pipeline B after the `src/task_generator` package migration.

@@ -22,6 +22,25 @@ The next stage should preserve the working Pipeline A and Pipeline B chain while
 
 Do not return to single-task prompt tuning as the default development loop. Prefer small Pipeline B batches, cross-case reason-code analysis, and explicit report/promotion contracts.
 
+## Status Note - 2026-07-06
+
+This roadmap is still useful for architecture and implementation history, but several status lines later in the document now describe an earlier pre-closure snapshot.
+
+Current live status has moved beyond the old `revise_only` baseline:
+
+- the Phase 11 deterministic 3-case regression reaches `3 / 3 candidate_ready`
+- the same slice reaches `3 / 3 verifier pass`
+- the first Phase 12 hardening pass reaches `5 / 5 candidate_ready`, `5 / 5 verifier pass`, and catches `7 / 7` current negative controls
+- the current 10-case hardening smoke reaches `10 / 10 candidate_ready` and `10 / 10 verifier pass`
+- `TransitionPriorStore V0 observed-only` is now implemented as a report/store layer
+- executed eval orchestration has been proven in diagnostic mode, but should still not be treated as formal model-separation evidence
+
+For current state, prefer reading this roadmap together with:
+
+- `docs/handoffs/PHASE_11_CANDIDATE_READY_SUCCESS_2026-07-05.md`
+- `docs/handoffs/PHASE_12_PROGRESS_2026-07-06.md`
+- `artifacts/pipeline_b/scratch/phase_11_batch_regression/phase_11_batch_regression_report.json`
+
 ## Purpose
 
 The project goal is not to craft one strong finance task.

@@ -520,7 +520,53 @@
         ],
         "optional_semantics": [],
         "provides_semantics": [],
-        "required_resources": [],
+        "required_resources": [
+          {
+            "resource_type": "Dataset",
+            "subtype": "Source transaction data",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Source transaction data",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_010",
+              "source_candidate_da8d1b62e9"
+            ]
+          },
+          {
+            "resource_type": "DeliverableSection",
+            "subtype": "Previous period report",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Previous period report",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_010",
+              "source_candidate_da8d1b62e9"
+            ]
+          },
+          {
+            "resource_type": "TimePeriod",
+            "subtype": "Current period adjustments",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Current period adjustments",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_010",
+              "source_candidate_da8d1b62e9"
+            ]
+          }
+        ],
         "optional_resources": [],
         "provided_resources": []
       },
@@ -533,7 +579,38 @@
         ],
         "required_resources": [],
         "optional_resources": [],
-        "provided_resources": []
+        "provided_resources": [
+          {
+            "resource_type": "ReconciliationDifference",
+            "subtype": "Reconciled financial report line items",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Reconciled financial report line items",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_010",
+              "source_candidate_da8d1b62e9"
+            ]
+          },
+          {
+            "resource_type": "ReconciliationDifference",
+            "subtype": "Variance explanations",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Variance explanations",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_010",
+              "source_candidate_da8d1b62e9"
+            ]
+          }
+        ]
       },
       "business_meaning": "Verifies that totals from detailed source files match the aggregated amounts in financial report line items, identifying and adjusting discrepancies.",
       "hidden_difficulty": "Handling multiple source files with different formats, ensuring all transactions are captured, proper period cut-off.",
@@ -583,7 +660,53 @@
         ],
         "optional_semantics": [],
         "provides_semantics": [],
-        "required_resources": [],
+        "required_resources": [
+          {
+            "resource_type": "Dataset",
+            "subtype": "Source data files (payroll, accruals, financials)",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Source data files (payroll, accruals, financials)",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_011",
+              "source_candidate_eb55605afc"
+            ]
+          },
+          {
+            "resource_type": "SpreadsheetWorkbook",
+            "subtype": "Previous period workbook",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Previous period workbook",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_011",
+              "source_candidate_eb55605afc"
+            ]
+          },
+          {
+            "resource_type": "MappingTable",
+            "subtype": "Mapping of accounts",
+            "attributes": {
+              "role": "required",
+              "source_semantic": "Mapping of accounts",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_011",
+              "source_candidate_eb55605afc"
+            ]
+          }
+        ],
         "optional_resources": [],
         "provided_resources": []
       },
@@ -596,7 +719,38 @@
         ],
         "required_resources": [],
         "optional_resources": [],
-        "provided_resources": []
+        "provided_resources": [
+          {
+            "resource_type": "FinancialStatement",
+            "subtype": "Consolidated financial statements",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Consolidated financial statements",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_011",
+              "source_candidate_eb55605afc"
+            ]
+          },
+          {
+            "resource_type": "DeliverableSection",
+            "subtype": "Supporting schedules",
+            "attributes": {
+              "role": "provided",
+              "source_semantic": "Supporting schedules",
+              "proposal_source": "pipeline_a_substrate_audit",
+              "proposal_status": "requires_review"
+            },
+            "domain": "accounting",
+            "evidence_refs": [
+              "skill_candidate_011",
+              "source_candidate_eb55605afc"
+            ]
+          }
+        ]
       },
       "business_meaning": "Combines financial data from disparate source systems (payroll, accruals, general ledger) into a unified financial package for a reporting period.",
       "hidden_difficulty": "Ensuring all sources are incorporated correctly, handling different data structures, maintaining data integrity.",

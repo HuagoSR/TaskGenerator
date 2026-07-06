@@ -546,10 +546,10 @@ class TaskVerifier:
         return used
 
     def _is_policy_sensitive(self, criterion: RubricCriterion) -> bool:
-        if criterion.section == "compliance_checks":
-            return True
         haystack = " ".join(
             [
+                criterion.section,
+                criterion.criterion_type,
                 criterion.description,
                 criterion.pass_condition,
                 " ".join(criterion.failure_signals),
