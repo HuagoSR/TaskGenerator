@@ -37,6 +37,7 @@ class PipelineBSamplingRequest(BaseModel):
     registry_path: str
     seed_report_path: str
     motif: Optional[str] = None
+    motif_occurrence_index: int = 0
     skill_count: int = 4
     allow_caution: bool = False
     workflow_archetype: Optional[str] = None
@@ -154,6 +155,7 @@ class PipelineBSubgraphSampler:
         registry_path: str | Path,
         seed_report_path: str | Path,
         motif: Optional[str] = None,
+        motif_occurrence_index: int = 0,
         skill_count: int = 4,
         allow_caution: bool = False,
         workflow_archetype: Optional[str] = None,
@@ -165,6 +167,7 @@ class PipelineBSubgraphSampler:
             registry_path=str(registry_path),
             seed_report_path=str(seed_report_path),
             motif=motif,
+            motif_occurrence_index=motif_occurrence_index,
             skill_count=skill_count,
             allow_caution=allow_caution,
             workflow_archetype=workflow_archetype,
@@ -185,6 +188,7 @@ class PipelineBSubgraphSampler:
         ) = self._select_records(
             seed_records=seed_records,
             motif=selected_motif,
+            motif_occurrence_index=motif_occurrence_index,
             skill_count=skill_count,
             allow_caution=allow_caution,
             motif_grammar=motif_grammar,
@@ -229,6 +233,7 @@ class PipelineBSubgraphSampler:
                 "Typed resources are preferred; legacy keyword resources are diagnostic fallback evidence.",
                 "This sampler is deterministic/static and does not implement UCB, bandit, or learned priors.",
                 "Motif grammar alignment is report-only in V1 and does not yet change the core selection policy.",
+                "Repeated motif occurrences can use deterministic variant rotation to reduce exact subgraph reuse.",
             ],
         )
 
@@ -335,6 +340,7 @@ class PipelineBSubgraphSampler:
         self,
         seed_records: List[Dict[str, Any]],
         motif: str,
+        motif_occurrence_index: int,
         skill_count: int,
         allow_caution: bool,
         motif_grammar: Optional[MotifGraphGrammarRecord],
@@ -351,7 +357,7 @@ class PipelineBSubgraphSampler:
             eligible.append(record)
 
         if motif_grammar is None:
-            selected = self._select_records_legacy(eligible, motif, skill_count)
+            selected = self._select_records_legacy(eligible, motif, skill_count, motif_occurrence_index)
             return (
                 selected,
                 [],
@@ -366,6 +372,7 @@ class PipelineBSubgraphSampler:
         selected, assignments, selection_diagnostics = self._select_records_for_roles(
             eligible=eligible,
             motif=motif,
+            motif_occurrence_index=motif_occurrence_index,
             skill_count=skill_count,
             motif_grammar=motif_grammar,
             entry_by_id=entry_by_id,
@@ -378,14 +385,16 @@ class PipelineBSubgraphSampler:
         eligible: List[Dict[str, Any]],
         motif: str,
         skill_count: int,
+        motif_occurrence_index: int,
     ) -> List[Dict[str, Any]]:
         matching = [record for record in eligible if motif in record.get("motif_hints", [])]
         matching.sort(key=self._record_sort_key)
-        selected = self._role_balanced_pick(matching, skill_count)
+        rotated_matching = self._rotate_records(matching, motif_occurrence_index)
+        selected = self._role_balanced_pick(rotated_matching, skill_count)
 
         if len(selected) < skill_count:
             seen = {record.get("skill_id") for record in selected}
-            fallback = sorted(eligible, key=self._record_sort_key)
+            fallback = self._rotate_records(sorted(eligible, key=self._record_sort_key), motif_occurrence_index)
             for record in fallback:
                 if record.get("skill_id") in seen:
                     continue
@@ -400,6 +409,7 @@ class PipelineBSubgraphSampler:
         self,
         eligible: List[Dict[str, Any]],
         motif: str,
+        motif_occurrence_index: int,
         skill_count: int,
         motif_grammar: MotifGraphGrammarRecord,
         entry_by_id: Dict[str, SkillRegistryEntry],
@@ -423,7 +433,7 @@ class PipelineBSubgraphSampler:
                 workflow_archetype=workflow_archetype,
                 allow_new_skills=len(selected_records) < skill_count,
             )
-            chosen = self._choose_role_candidate(scored)
+            chosen = self._choose_role_candidate(scored, motif_occurrence_index)
             if not chosen:
                 unfilled_required_role_count += 1
                 fallback_reasons.append(f"missing_required_role:{role.role_name}")
@@ -445,12 +455,12 @@ class PipelineBSubgraphSampler:
                     role=role,
                     candidate_profiles=candidate_profiles,
                     motif=motif,
-                selected_skill_ids=selected_skill_ids,
-                selected_resource_bases=selected_resource_bases,
-                workflow_archetype=workflow_archetype,
-                allow_new_skills=True,
-            )
-                chosen = self._choose_optional_role_candidate(scored)
+                    selected_skill_ids=selected_skill_ids,
+                    selected_resource_bases=selected_resource_bases,
+                    workflow_archetype=workflow_archetype,
+                    allow_new_skills=True,
+                )
+                chosen = self._choose_optional_role_candidate(scored, motif_occurrence_index)
                 if not chosen:
                     continue
                 role_assignments.append(
@@ -468,7 +478,7 @@ class PipelineBSubgraphSampler:
 
         if len(selected_records) < skill_count:
             fallback_reasons.append("legacy_role_balanced_backfill")
-            fallback_records = self._select_records_legacy(eligible, motif, skill_count)
+            fallback_records = self._select_records_legacy(eligible, motif, skill_count, motif_occurrence_index)
             seen = set(selected_skill_ids)
             for record in fallback_records:
                 skill_id = record.get("skill_id")
@@ -672,42 +682,90 @@ class PipelineBSubgraphSampler:
     def _choose_role_candidate(
         self,
         scored_candidates: List[Dict[str, Any]],
+        motif_occurrence_index: int = 0,
     ) -> Optional[Dict[str, Any]]:
         if not scored_candidates:
             return None
         top_score = float(scored_candidates[0]["candidate_score"])
-        best_unused = next(
-            (
-                candidate
-                for candidate in scored_candidates
-                if not candidate["already_selected"] and float(candidate["candidate_score"]) >= 0.35
-            ),
-            None,
+        eligible_unused = [
+            candidate
+            for candidate in scored_candidates
+            if not candidate["already_selected"] and float(candidate["candidate_score"]) >= 0.35
+        ]
+        diversified_unused = self._diversified_candidates(
+            eligible_unused,
+            top_score=top_score,
+            motif_occurrence_index=motif_occurrence_index,
+            tolerance=0.08,
         )
-        if best_unused is not None:
-            return best_unused
-        best_reused = next(
-            (
-                candidate
-                for candidate in scored_candidates
-                if candidate["already_selected"] and float(candidate["candidate_score"]) >= max(0.35, top_score * 0.9)
-            ),
-            None,
+        if diversified_unused:
+            return diversified_unused[0]
+        eligible_reused = [
+            candidate
+            for candidate in scored_candidates
+            if candidate["already_selected"] and float(candidate["candidate_score"]) >= max(0.35, top_score * 0.9)
+        ]
+        diversified_reused = self._diversified_candidates(
+            eligible_reused,
+            top_score=top_score,
+            motif_occurrence_index=motif_occurrence_index,
+            tolerance=0.04,
         )
-        return best_reused
+        if diversified_reused:
+            return diversified_reused[0]
+        return None
 
     def _choose_optional_role_candidate(
         self,
         scored_candidates: List[Dict[str, Any]],
+        motif_occurrence_index: int = 0,
     ) -> Optional[Dict[str, Any]]:
-        return next(
-            (
-                candidate
-                for candidate in scored_candidates
-                if not candidate["already_selected"] and float(candidate["candidate_score"]) >= 0.35
-            ),
-            None,
+        top_score = float(scored_candidates[0]["candidate_score"]) if scored_candidates else 0.0
+        eligible_unused = [
+            candidate
+            for candidate in scored_candidates
+            if not candidate["already_selected"] and float(candidate["candidate_score"]) >= 0.35
+        ]
+        diversified_unused = self._diversified_candidates(
+            eligible_unused,
+            top_score=top_score,
+            motif_occurrence_index=motif_occurrence_index,
+            tolerance=0.08,
         )
+        if diversified_unused:
+            return diversified_unused[0]
+        return None
+
+    def _diversified_candidates(
+        self,
+        candidates: List[Dict[str, Any]],
+        top_score: float,
+        motif_occurrence_index: int,
+        tolerance: float,
+    ) -> List[Dict[str, Any]]:
+        if not candidates:
+            return []
+        if motif_occurrence_index <= 0:
+            return candidates[:1]
+        near_top = [
+            candidate
+            for candidate in candidates
+            if float(candidate["candidate_score"]) >= max(0.35, top_score - tolerance)
+        ]
+        if not near_top:
+            near_top = candidates
+        offset = motif_occurrence_index % len(near_top)
+        return near_top[offset:] + near_top[:offset]
+
+    def _rotate_records(
+        self,
+        records: List[Dict[str, Any]],
+        motif_occurrence_index: int,
+    ) -> List[Dict[str, Any]]:
+        if not records or motif_occurrence_index <= 0:
+            return list(records)
+        offset = motif_occurrence_index % len(records)
+        return list(records[offset:] + records[:offset])
 
     def _readiness_score(self, record: Dict[str, Any]) -> float:
         readiness = record.get("readiness_decision", "unknown")

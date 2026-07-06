@@ -53,6 +53,7 @@ class PipelineBBatchCaseSummary(BaseModel):
     case_dir: str
     status: BatchCaseStatus
     motif: str
+    motif_occurrence_index: int = 0
     subgraph_id: Optional[str] = None
     subgraph_confidence: Optional[str] = None
     selected_skill_count: int = 0
@@ -154,7 +155,10 @@ class PipelineBBatchRunner:
         )
 
         cases: List[PipelineBBatchCaseSummary] = []
+        motif_occurrence_counts: Dict[str, int] = {}
         for index, motif in enumerate(selected_motifs, start=1):
+            motif_occurrence_index = motif_occurrence_counts.get(motif, 0)
+            motif_occurrence_counts[motif] = motif_occurrence_index + 1
             case_id = f"pipeline_b_batch_{index:02d}_{self._slug(motif)}"
             case_dir = output_path / case_id
             try:
@@ -164,6 +168,7 @@ class PipelineBBatchRunner:
                         case_id=case_id,
                         case_dir=case_dir,
                         motif=motif,
+                        motif_occurrence_index=motif_occurrence_index,
                         registry_path=registry_path,
                         seed_report_path=seed_report_path,
                         skill_count=skill_count,
@@ -185,6 +190,7 @@ class PipelineBBatchRunner:
                         case_dir=str(case_dir),
                         status="failed",
                         motif=motif,
+                        motif_occurrence_index=motif_occurrence_index,
                         error_type=type(exc).__name__,
                         error_message=str(exc),
                     )
@@ -215,6 +221,7 @@ class PipelineBBatchRunner:
         case_id: str,
         case_dir: Path,
         motif: str,
+        motif_occurrence_index: int,
         registry_path: str | Path,
         seed_report_path: str | Path,
         skill_count: int,
@@ -248,6 +255,7 @@ class PipelineBBatchRunner:
             registry_path=registry_path,
             seed_report_path=seed_report_path,
             motif=motif,
+            motif_occurrence_index=motif_occurrence_index,
             skill_count=skill_count,
             allow_caution=allow_caution,
             workflow_archetype=workflow_archetype,
@@ -448,6 +456,7 @@ class PipelineBBatchRunner:
             case_dir=str(case_dir),
             status="completed",
             motif=motif,
+            motif_occurrence_index=motif_occurrence_index,
             subgraph_id=subgraph.subgraph_id,
             subgraph_confidence=subgraph.diagnostics.confidence,
             selected_skill_count=len(subgraph.selected_skills),

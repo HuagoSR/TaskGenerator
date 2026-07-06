@@ -195,6 +195,40 @@ Current status snapshot as of `2026-07-06`:
   - `7 / 7` current negative controls were caught by the expected structural layer
   - the guarded executed mini-campaign completed with `3` selected cases x `2` models, `summary_completion_rate = 1.0`, and `usable_summary_rate = 1.0`
 - Phase 13 readiness should now be treated as open, but executed eval evidence remains diagnostic rather than benchmark-grade model-separation truth.
+- The first Phase 13 production QA surfaces now also exist:
+  - production manifests now carry per-case `blueprint_id`, `subgraph_id`, `template_family`, deliverable-file names, and selected-skill signatures
+  - `src/task_generator/v3_production_batch_diversity.py` adds report-only diversity / dedup diagnostics over production batches
+  - `src/task_generator/v3_production_qa_gate.py` adds a report-first governed promotion decision layer: `blocked`, `review_required`, or `approved_production_candidate`
+  - the current 3-case production pilot smoke reaches `3 / 3 candidate_ready`, `3 / 3 review_required`, `0 / 3 blocked`, with no repeated subgraph / blueprint / deliverable / skill-signature concentration in that slice
+  - the current 1-case smoke remains `review_required`, not `approved_production_candidate`, because `workflow_context_fit=low`, `global_validity_status=diagnostic_only`, and `real_worldness_score=0.83`
+- The first Phase 13 release-packaging layer now also exists:
+  - `src/task_generator/v3_dataset_release_packager.py`
+  - `Test/run_v3_dataset_release_packager.py`
+  - strict `production_ready_only` release packaging currently yields `0` included tasks on the 3-case smoke, which is the expected outcome while all current cases remain `review_required`
+  - explicit `internal_review_release` packaging now produces a sanitized 3-task release bundle under `artifacts/releases/finance_audit_mvp_v0_1_internal_review/` with release manifest, reports, docs, dataset rows, and per-task bundles
+- The first Phase 13 production dashboard layer now also exists:
+  - `src/task_generator/v3_production_dashboard.py`
+  - `Test/run_v3_production_dashboard.py`
+  - the current dashboard on `phase13_pilot3_smoke` reports `candidate_ready_rate = 1.0`, `production_ready_rate = 0.0`, `verifier_pass_rate = 1.0`, `export_compatible_rate = 1.0`, and `release_readiness_status = not_ready_for_release`
+  - the current blocking reason is explicit: `no_production_ready_cases`
+- The first explicit Phase 13 production promotion layer now also exists:
+  - `src/task_generator/v3_production_promotion_manager.py`
+  - `Test/run_v3_production_promotion_manager.py`
+  - `docs/examples/production_review_policy.example.json`
+  - on `phase13_pilot4_smoke`, an explicit reviewer policy now promotes `2 / 4` cases to governed `approved_production_candidate`, while the two low-workflow cases remain `review_required`
+  - the resulting strict reviewed release bundle now exists at `artifacts/releases/finance_audit_mvp_v0_1_reviewed_strict/` with `task_count = 2`
+- Current scale-up bottleneck is now clearer:
+  - the 8-case pilot reaches `8 / 8 candidate_ready` and `8 / 8 verifier pass`
+  - but it also produces `duplicate_subgraph_count = 4` plus diversity warnings `repeated_subgraph_ids_present` and `repeated_skill_signatures_present`
+  - this means Phase 13 is now limited more by batch diversity / repeated subgraph reuse than by basic candidate-ready closure
+- The next Phase 13 sampler-hardening slice now also exists:
+  - `src/task_generator/v3_pipeline_b_sampler.py` and `src/task_generator/v3_pipeline_b_batch_runner.py` now carry a deterministic `motif_occurrence_index` path for repeated motifs in the same batch
+  - repeated motif slots now rotate across near-top eligible candidates instead of collapsing to the exact same subgraph by default
+  - the new `phase13_pilot8_diversified_smoke` keeps `8 / 8 candidate_ready` and `8 / 8 verifier pass` while reducing `duplicate_subgraph_count` from `4` to `0`
+  - the same diversified 8-case pilot also reduces `duplicate_skill_signature_count` from repeated warnings to `0`
+  - remaining concentration is now mostly template-level: duplicate deliverable signatures still appear per motif family
+  - base production QA on that diversified batch still reports `8 / 8 review_required`, but the existing explicit reviewer policy now upgrades `3 / 8` cases to `approved_production_candidate`
+  - the resulting strict reviewed release bundle now exists at `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversified_reviewed_strict/` with `task_count = 3`
 - The user has explicitly authorized reading `E:\THU\2026Spring\SRT\rw-task\.env` and sending selected Phase 12 case packages to external model APIs for evaluation. Treat this as permission for the guarded executed-eval mini-campaign only; do not print secret values or stage `.env`.
 - However, the current Codex execution environment still enforces a tenant policy that blocks sending private workspace task-package contents to external third-party model APIs. If the real Phase 12 mini-campaign is needed, prepare the exact command and run it in a separately permitted environment rather than attempting a workaround here.
 - Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
@@ -373,8 +407,23 @@ Current Pipeline A starting files:
   - `src/task_generator/v3_phase12_eval_campaign.py`
   - `src/task_generator/v3_phase12_dashboard.py`
   - `src/task_generator/v3_phase12_postmortem.py`
+- current Phase 13 production-shell entrypoints:
+  - `docs/architecture/production_mvp_definition.md`
+  - `SkillRegistry/production_state_contract.experimental.json`
+  - `src/task_generator/v3_production_batch_runner.py`
+  - `Test/run_v3_production_batch_runner.py`
+  - `src/task_generator/v3_production_batch_diversity.py`
+  - `Test/run_v3_production_batch_diversity.py`
+  - `src/task_generator/v3_production_qa_gate.py`
+  - `Test/run_v3_production_qa_gate.py`
+  - `src/task_generator/v3_dataset_release_packager.py`
+  - `Test/run_v3_dataset_release_packager.py`
+  - `src/task_generator/v3_production_dashboard.py`
+  - `Test/run_v3_production_dashboard.py`
+  - `src/task_generator/v3_production_promotion_manager.py`
+  - `Test/run_v3_production_promotion_manager.py`
 - currently planned next-stage files:
-  - Phase 13 planning and handoff after the completed Phase 12 hardening cycle
+  - richer production batch quality distribution / failure reporting plus post-diversification template/deliverable concentration controls after the first production promotion slice
   - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first
   - richer multi-run evaluation comparison and post-orchestration governance after repeated evidence is available
 - promotion-governance operating note:

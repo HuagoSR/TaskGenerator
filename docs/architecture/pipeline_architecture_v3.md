@@ -34,6 +34,32 @@ Current live status has moved beyond the old `revise_only` baseline:
 - the current 10-case hardening smoke reaches `10 / 10 candidate_ready` and `10 / 10 verifier pass`
 - `TransitionPriorStore V0 observed-only` is now implemented as a report/store layer
 - executed eval orchestration has been proven in diagnostic mode, but should still not be treated as formal model-separation evidence
+- the first Phase 13 production shell now exists as a manifest-first layer:
+  - `docs/architecture/production_mvp_definition.md`
+  - `SkillRegistry/production_state_contract.experimental.json`
+  - `src/task_generator/v3_production_batch_runner.py`
+  - `Test/run_v3_production_batch_runner.py`
+  - `src/task_generator/v3_production_batch_diversity.py`
+  - `Test/run_v3_production_batch_diversity.py`
+  - `src/task_generator/v3_production_qa_gate.py`
+  - `Test/run_v3_production_qa_gate.py`
+  - `src/task_generator/v3_dataset_release_packager.py`
+  - `Test/run_v3_dataset_release_packager.py`
+  - `src/task_generator/v3_production_dashboard.py`
+  - `Test/run_v3_production_dashboard.py`
+  - `src/task_generator/v3_production_promotion_manager.py`
+  - `Test/run_v3_production_promotion_manager.py`
+  - current behavior intentionally auto-assigns task state only through `candidate_ready`; the new QA gate stays report-first and keeps `production_candidate` governed rather than silently assigned
+  - the current 3-case production pilot smoke reaches `3 / 3 candidate_ready` with no dedup concentration warnings, but all 3 cases remain `review_required` rather than approved for governed production promotion
+  - the first release-packaging layer now exists as both a strict `production_ready_only` path and an explicit `internal_review_release` path; the current 3-case smoke only fills the latter because no case is yet approved as a governed production candidate
+  - the first production dashboard now makes that bottleneck explicit: `candidate_ready_rate = 1.0`, `production_ready_rate = 0.0`, and `release_readiness_status = not_ready_for_release`
+  - the next production-governance step now exists too: an explicit reviewer policy can promote selected `review_required` cases into governed `approved_production_candidate`
+  - on the 4-motif pilot, that reviewed promotion path currently yields `2 / 4 approved_production_candidate` and a strict reviewed release bundle with `task_count = 2`
+  - the first sampler-hardening follow-up now also exists: repeated motif occurrences carry a deterministic variant index through the batch runner and sampler so near-top candidates can rotate without giving up report-first determinism
+  - the new `phase13_pilot8_diversified_smoke` preserves `8 / 8 candidate_ready` and `8 / 8 verifier pass` while reducing `duplicate_subgraph_count` from `4` to `0` and removing repeated skill-signature warnings
+  - after that fix, the current scale-up bottleneck shifts upward: remaining concentration is mostly duplicate deliverable signatures within motif families
+  - applying the existing explicit reviewer policy to that diversified 8-case batch now yields `3 / 8 approved_production_candidate` and a strict reviewed release bundle with `task_count = 3`
+  - the remaining live gap is therefore not basic batch closure or exact subgraph reuse, but higher-level production gating and broader template-family diversity
 
 For current state, prefer reading this roadmap together with:
 

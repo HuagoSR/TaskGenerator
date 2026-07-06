@@ -1,0 +1,31 @@
+{
+  "production_review_spec_version": "v3.production_review_spec.1",
+  "review_id": "finance_audit_phase13_example",
+  "reviewer": "phase13_reviewer",
+  "batch_id": "phase13_pilot4_smoke",
+  "default_action": "review_required",
+  "rules": [
+    {
+      "rule_id": "approve_known_high_workflow_templates",
+      "description": "Approve known high-workflow finance/audit templates after explicit reviewer sign-off.",
+      "approve_for_production": true,
+      "template_families": [
+        "multi_source_reconciliation_workpaper",
+        "policy_application_review"
+      ],
+      "required_warning_codes": [
+        "global_validity_diagnostic_only",
+        "real_worldness_below_production_target"
+      ],
+      "max_warning_codes": 2,
+      "min_real_worldness_score": 0.75,
+      "allowed_workflow_context_fits": [
+        "high"
+      ],
+      "reviewer_note": "Approved after explicit reviewer check: known template family, high workflow-context fit, and bounded real-worldness warning only."
+    }
+  ],
+  "notes": [
+    "This is an example policy for governed reviewer-driven promotion, not an automatic threshold change."
+  ]
+}

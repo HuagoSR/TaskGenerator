@@ -1,0 +1,82 @@
+{
+  "production_state_contract_version": "v3.production_state_contract.1",
+  "status": "experimental",
+  "states": [
+    {
+      "state": "generated",
+      "description": "Case planned or emitted by the production runner without structural acceptance yet.",
+      "auto_assignable": true
+    },
+    {
+      "state": "structurally_valid",
+      "description": "Case completed deterministic generation and wrote structural task artifacts.",
+      "auto_assignable": true
+    },
+    {
+      "state": "verifier_passed",
+      "description": "Case is structurally valid and passes the deterministic task verifier.",
+      "auto_assignable": true
+    },
+    {
+      "state": "candidate_ready",
+      "description": "Case is candidate-ready under the existing quality, verifier, export, and validity contracts.",
+      "auto_assignable": true
+    },
+    {
+      "state": "production_candidate",
+      "description": "Governed production-facing state that requires an explicit production QA layer.",
+      "auto_assignable": false
+    },
+    {
+      "state": "training_pool_candidate",
+      "description": "Production candidate suitable for the training pool after additional hygiene review.",
+      "auto_assignable": false
+    },
+    {
+      "state": "diagnostic_eval_sampled",
+      "description": "Production candidate selected for diagnostic executed evaluation sampling.",
+      "auto_assignable": false
+    },
+    {
+      "state": "released",
+      "description": "Case included in a release-ready dataset package.",
+      "auto_assignable": false
+    },
+    {
+      "state": "deprecated",
+      "description": "Case explicitly retired from active production use.",
+      "auto_assignable": false
+    }
+  ],
+  "entry_rules": {
+    "candidate_ready": [
+      "quality_gate = candidate_ready",
+      "verifier_status = pass",
+      "validation_status = candidate_ready_compatible",
+      "global_validity_status in {diagnostic_only, pass, null}"
+    ],
+    "production_candidate": [
+      "candidate_ready",
+      "production batch manifest complete",
+      "provenance complete",
+      "no unresolved critical production QA finding",
+      "no hidden artifact exposure",
+      "no negative-control regression failure"
+    ],
+    "training_pool_candidate": [
+      "production_candidate",
+      "candidate-facing rubric hygiene passed",
+      "evidence closure passed",
+      "no manual blocker"
+    ],
+    "diagnostic_eval_sampled": [
+      "production_candidate",
+      "selected by eval sampling policy",
+      "executed eval completed or explicitly skipped"
+    ]
+  },
+  "notes": [
+    "The current production batch runner may assign states through candidate_ready only.",
+    "Downstream states remain governed and should not be assigned as hidden side effects."
+  ]
+}
