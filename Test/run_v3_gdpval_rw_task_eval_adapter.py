@@ -51,6 +51,18 @@ def main() -> None:
         default=DEFAULT_GRADER_MODEL,
         help="Model used by bench_standalone.grade_deliverables via GRADER_MODEL.",
     )
+    parser.add_argument(
+        "--case-timeout-seconds",
+        type=int,
+        default=1800,
+        help="Maximum seconds for one rw-task case before it is recorded as failed.",
+    )
+    parser.add_argument(
+        "--sandbox-timeout-seconds",
+        type=int,
+        default=3600,
+        help="E2B sandbox lifetime seconds forced into rw-task's E2B provider. E2B currently caps this at 3600.",
+    )
     args = parser.parse_args()
 
     models = args.model if args.model else list(DEFAULT_MODELS)
@@ -68,6 +80,8 @@ def main() -> None:
         command_timeout_seconds=args.command_timeout_seconds,
         run_eval=args.run_eval,
         agent_max_tokens=args.agent_max_tokens,
+        case_timeout_seconds=args.case_timeout_seconds,
+        sandbox_timeout_seconds=args.sandbox_timeout_seconds,
         grader_model=args.grader_model,
     )
     report = GDPValRwTaskEvalAdapter().run(request)

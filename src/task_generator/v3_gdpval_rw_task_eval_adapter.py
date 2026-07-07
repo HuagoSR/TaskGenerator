@@ -58,6 +58,8 @@ class GDPValRwTaskEvalRequest(BaseModel):
     command_timeout_seconds: int = 7200
     run_eval: bool = False
     agent_max_tokens: int = 16000
+    case_timeout_seconds: int = 1800
+    sandbox_timeout_seconds: int = 3600
     grader_model: Optional[str] = DEFAULT_GRADER_MODEL
 
 
@@ -404,6 +406,10 @@ class GDPValRwTaskEvalAdapter:
             "task_generator.v3_rw_task_stirrup_entrypoint",
             "--agent-max-tokens",
             str(request.agent_max_tokens),
+            "--case-timeout-seconds",
+            str(request.case_timeout_seconds),
+            "--sandbox-timeout-seconds",
+            str(request.sandbox_timeout_seconds),
             str(eval_input_dir),
             "--output",
             str(output_dir),

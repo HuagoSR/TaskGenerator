@@ -460,8 +460,11 @@ Current Pipeline A starting files:
   - Phase 14.3 dry-run command: `python Test/run_v3_gdpval_rw_task_eval_adapter.py --mode dry-run --model gpt-5.4-pro --model gpt-4o-mini --overwrite`
   - current Phase 14.3 dry-run result: 10 prepared GDPVal calibration tasks, 0 blocked tasks, 2 command-preview model runs, 0 executed model runs
   - Phase 14.3 execute uses `task_generator.v3_rw_task_stirrup_entrypoint` to run `bench_standalone.stirrup_batch` sequentially with `agent_max_tokens=16000` by default; this avoids the current `gpt-4o-mini` API limit error from rw-task's fixed `MAX_TOKENS=64000`
+  - the rw-task entrypoint now also exposes `--case-timeout-seconds` and `--sandbox-timeout-seconds`; the outer case timeout can be larger, but the observed E2B sandbox cap is 3600 seconds and larger sandbox values are rejected
   - Phase 14.3 grading defaults `--grader-model gpt-5.4-pro`; `--model` is the evaluated model, not necessarily the grader model
   - current Phase 14.3 execute smoke result under `artifacts/phase14/gdpval_eval_baseline_execute_smoke/`: 1 GDPVal case, evaluated model `gpt-4o-mini`, grader `gpt-5.4-pro`, run completed, grade completed, score `8 / 63` (`score_ratio ~= 0.127`), failure_count 0
+  - current Phase 14.3 5-case executed baseline result under `artifacts/phase14/gdpval_eval_baseline_5case_execute/`: 5 GDPVal cases prepared, 0 blocked, both `gpt-5.4-pro` and `gpt-4o-mini` attempted; `gpt-5.4-pro` produced 2 completed task scores and 3 grading failures, `gpt-4o-mini` produced 4 completed task scores and 1 grading failure, and only 1 task is currently usable for two-model gap analysis
+  - current 5-case usable gap task is `ee09d943-5a11-430a-b7a2-971b4e9b01b5`: `gpt-5.4-pro` score ratio `0.0`, `gpt-4o-mini` score ratio `0.23728813559322035`; treat this as diagnostic only because grading robustness and task runnability remain the limiting factors
 - currently planned next-stage files:
   - richer production batch quality distribution / failure reporting plus post-diversification template/deliverable concentration controls after the first production promotion slice
   - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first

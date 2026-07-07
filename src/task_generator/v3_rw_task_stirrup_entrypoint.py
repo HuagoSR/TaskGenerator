@@ -14,6 +14,8 @@ def main() -> None:
         description="Run bench_standalone.stirrup_batch with TaskGenerator-safe runtime overrides."
     )
     parser.add_argument("--agent-max-tokens", type=int, default=16000)
+    parser.add_argument("--case-timeout-seconds", type=int, default=1800)
+    parser.add_argument("--sandbox-timeout-seconds", type=int, default=3600)
     parser.add_argument("input_path", type=Path)
     parser.add_argument("--output", metavar="DIR", default=None)
     parser.add_argument("-w", "--workers", type=int, default=1)
@@ -22,8 +24,18 @@ def main() -> None:
     args = parser.parse_args()
 
     from bench_standalone import stirrup_batch
+    from stirrup.tools.code_backends import e2b as e2b_backend
 
     stirrup_batch.MAX_TOKENS = args.agent_max_tokens
+    sandbox_timeout_seconds = min(args.sandbox_timeout_seconds, 3600)
+    original_provider = e2b_backend.E2BCodeExecToolProvider
+
+    class E2BCodeExecToolProviderWithForcedTimeout(original_provider):  # type: ignore[misc, valid-type]
+        def __init__(self, *provider_args, **provider_kwargs):
+            provider_kwargs["timeout"] = sandbox_timeout_seconds
+            super().__init__(*provider_args, **provider_kwargs)
+
+    e2b_backend.E2BCodeExecToolProvider = E2BCodeExecToolProviderWithForcedTimeout
     input_path = args.input_path.resolve()
     if not input_path.exists():
         raise SystemExit(f"Error: input path does not exist: {input_path}")
@@ -45,6 +57,8 @@ def main() -> None:
     print(f"Model            : {args.model}")
     print(f"E2B template     : {args.e2b_template}")
     print(f"Agent max tokens : {stirrup_batch.MAX_TOKENS}")
+    print(f"Case timeout     : {args.case_timeout_seconds}")
+    print(f"Sandbox timeout  : {sandbox_timeout_seconds}")
     print()
     if not test_cases:
         raise SystemExit(f"No test case found under {input_path}")
@@ -65,7 +79,12 @@ def main() -> None:
         try:
             with log_file.open("w", encoding="utf-8", buffering=1) as log:
                 with redirect_stdout(log), redirect_stderr(log):
-                    asyncio.run(stirrup_batch._run_async(case_dir, output_run_dir, args.model, args.e2b_template))
+                    asyncio.run(
+                        asyncio.wait_for(
+                            stirrup_batch._run_async(case_dir, output_run_dir, args.model, args.e2b_template),
+                            timeout=args.case_timeout_seconds,
+                        )
+                    )
             print(f"  [OK]   {task_id}")
             succeeded += 1
         except Exception as exc:
