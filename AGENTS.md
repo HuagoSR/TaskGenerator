@@ -194,7 +194,7 @@ Current status snapshot as of `2026-07-06`:
   - deterministic hardening expanded from the Phase 11 `3 / 3` slice to verified `5 / 5` and `10 / 10` candidate-ready smokes
   - `7 / 7` current negative controls were caught by the expected structural layer
   - the guarded executed mini-campaign completed with `3` selected cases x `2` models, `summary_completion_rate = 1.0`, and `usable_summary_rate = 1.0`
-- Phase 13 readiness should now be treated as open, but executed eval evidence remains diagnostic rather than benchmark-grade model-separation truth.
+- Phase 13 production MVP is now complete at the current governed scope, but executed eval evidence remains diagnostic rather than benchmark-grade model-separation truth.
 - The first Phase 13 production QA surfaces now also exist:
   - production manifests now carry per-case `blueprint_id`, `subgraph_id`, `template_family`, deliverable-file names, and selected-skill signatures
   - `src/task_generator/v3_production_batch_diversity.py` adds report-only diversity / dedup diagnostics over production batches
@@ -229,6 +229,14 @@ Current status snapshot as of `2026-07-06`:
   - remaining concentration is now mostly template-level: duplicate deliverable signatures still appear per motif family
   - base production QA on that diversified batch still reports `8 / 8 review_required`, but the existing explicit reviewer policy now upgrades `3 / 8` cases to `approved_production_candidate`
   - the resulting strict reviewed release bundle now exists at `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversified_reviewed_strict/` with `task_count = 3`
+- The current Phase 13 closure slice has now completed the governed release-ready pass:
+  - `src/task_generator/v3_motif_graph_grammar.py` now carries full grammar coverage for `policy_application`, `fan_in_reconciliation`, `evidence_to_deliverable`, and `cross_check_validation`
+  - `src/task_generator/v3_pipeline_b_prototype.py` now adds a second evidence-to-deliverable reference file plus trap-spec ambiguity injection so realism stays high on the strengthened evidence-package motif
+  - `src/task_generator/v3_pipeline_b_sampler.py` now widens the deterministic diversification window for repeated motif occurrences, allowing later occurrences to select a bounded second-tier alternative skill instead of only reordering the same top clique
+  - the new `phase13_pilot8_diversity_final_smoke` reaches `8 / 8 candidate_ready`, `8 / 8 verifier pass`, `duplicate_subgraph_count = 0`, and `duplicate_skill_signature_count = 0`
+  - explicit reviewed promotion on that batch now yields `8 / 8 approved_production_candidate`
+  - the strict reviewed release bundle now exists at `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversity_final_reviewed_strict/` with `task_count = 8`
+  - the reviewed production dashboard for that batch now reports `production_ready_count = 8` and `release_readiness_status = release_ready`
 - The user has explicitly authorized reading `E:\THU\2026Spring\SRT\rw-task\.env` and sending selected Phase 12 case packages to external model APIs for evaluation. Treat this as permission for the guarded executed-eval mini-campaign only; do not print secret values or stage `.env`.
 - However, the current Codex execution environment still enforces a tenant policy that blocks sending private workspace task-package contents to external third-party model APIs. If the real Phase 12 mini-campaign is needed, prepare the exact command and run it in a separately permitted environment rather than attempting a workaround here.
 - Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
@@ -308,11 +316,13 @@ Current Pipeline A starting files:
 
 - `src/task_generator/v3_source_schema.py`: source-to-skill schema objects
 - `src/task_generator/v3_source_collector.py`: Stirrup/E2B-backed SourceCollector contracts, prompt builder, manifest validator, and RawSource writer
+- `src/task_generator/v3_direct_source_collector.py`: deterministic direct web collector that uses Serper search, `httpx`, and `trafilatura` to write `raw_sources/` without relying on an agent to save files
 - `src/task_generator/v3_source_search_tools.py`: Serper-backed Stirrup-compatible web search/fetch tool provider
+- `Test/run_v3_direct_source_collector.py`: CLI for the default direct public-web collection path in the unified `taskgenerator` environment
 - `Test/run_v3_stirrup_source_collector.py`: CLI for collecting public web source materials; requires explicit `--allow-web-collection`
 - `Test/run_v3_collected_sources_to_skill_package.py`: connector CLI for turning collected `RawSource` records into normalized sources and a skill-extraction prompt package
 - `Test/run_v3_web_source_pipeline_a.py`: one-command runner for existing collected web sources -> normalization -> LLM extraction -> review -> persistent registry update
-- `Test/run_v3_web_source_pipeline_a_batch.py`: batch runner for multiple web-source topics or existing collection dirs -> collection/reuse -> Pipeline A -> aggregate quality report
+- `Test/run_v3_web_source_pipeline_a_batch.py`: batch runner for multiple web-source topics or existing collection dirs -> collection/reuse -> Pipeline A -> aggregate quality report; default collector backend is now `direct`, while Stirrup remains an explicit optional backend
 - `Test/run_v3_local_source_to_skill.py`: local no-network prototype for normalizing `.txt` and `.md` sources and producing a skill-extraction prompt package
 - `src/task_generator/v3_skill_extractor.py`: extractor interfaces plus deterministic mock, LLM extractor, and provider fallback logic
 - `Test/run_v3_mock_skill_extractor.py`: CLI for the mock extractor
@@ -422,6 +432,36 @@ Current Pipeline A starting files:
   - `Test/run_v3_production_dashboard.py`
   - `src/task_generator/v3_production_promotion_manager.py`
   - `Test/run_v3_production_promotion_manager.py`
+- current end-to-end pipeline hub entrypoints:
+  - `environment.taskgenerator.yml`
+  - `pyproject.toml`
+  - `src/task_generator/v3_end_to_end_pipeline.py`
+  - `Test/run_v3_end_to_end_pipeline.py`
+  - preferred manual smoke:
+    `python Test/run_v3_end_to_end_pipeline.py --run-id e2e_smoke --stage all --source-mode existing --max-cases 2 --eval-mode dry-run --reuse-existing`
+  - preferred fresh-start smoke on a new machine:
+    `python Test/run_v3_end_to_end_pipeline.py --run-id fresh_e2e --stage all --source-mode web --registry-mode fresh_scratch --collector-backend direct --topic "audit evidence reconciliation" --allow-web-collection --allow-external-upload --max-cases 2 --eval-mode dry-run`
+  - `fresh_scratch` means run-local empty registry under `artifacts/end_to_end_runs/<run_id>/00_run_state/`; do not manually clear `SkillRegistry/v3_skill_registry.json`
+  - the hub remains report-first: registry writes, external eval execution, and release packaging through reviewer promotion all require explicit flags
+- Phase 14 baseline/calibration assets now exist:
+  - `src/task_generator/v3_phase14_baseline.py`
+  - `src/task_generator/v3_gdpval_local_mirror.py`
+  - `src/task_generator/v3_gdpval_subset_selector.py`
+  - `src/task_generator/v3_gdpval_rw_task_eval_adapter.py`
+  - `src/task_generator/v3_rw_task_stirrup_entrypoint.py`
+  - `Test/run_v3_phase14_baseline.py`
+  - `Test/run_v3_gdpval_local_mirror.py`
+  - `Test/run_v3_gdpval_subset_selector.py`
+  - `Test/run_v3_gdpval_rw_task_eval_adapter.py`
+  - `artifacts/phase14/gdpval_local_mirror/` is calibration-only and must not be used as Pipeline A source material or training generation input
+  - `artifacts/phase14/gdpval_subset/` is the reviewed finance/audit calibration slice over that mirror
+  - `artifacts/phase14/gdpval_eval_baseline/` is the Phase 14.3 rw-task diagnostic baseline package/report directory; its `eval_input/` cases keep GDPVal deliverables out of generation input and store original expected deliverable names only as metadata
+  - `docs/architecture/phase_14_scope.md` is the frozen 14.0 boundary document
+  - Phase 14.3 dry-run command: `python Test/run_v3_gdpval_rw_task_eval_adapter.py --mode dry-run --model gpt-5.4-pro --model gpt-4o-mini --overwrite`
+  - current Phase 14.3 dry-run result: 10 prepared GDPVal calibration tasks, 0 blocked tasks, 2 command-preview model runs, 0 executed model runs
+  - Phase 14.3 execute uses `task_generator.v3_rw_task_stirrup_entrypoint` to run `bench_standalone.stirrup_batch` sequentially with `agent_max_tokens=16000` by default; this avoids the current `gpt-4o-mini` API limit error from rw-task's fixed `MAX_TOKENS=64000`
+  - Phase 14.3 grading defaults `--grader-model gpt-5.4-pro`; `--model` is the evaluated model, not necessarily the grader model
+  - current Phase 14.3 execute smoke result under `artifacts/phase14/gdpval_eval_baseline_execute_smoke/`: 1 GDPVal case, evaluated model `gpt-4o-mini`, grader `gpt-5.4-pro`, run completed, grade completed, score `8 / 63` (`score_ratio ~= 0.127`), failure_count 0
 - currently planned next-stage files:
   - richer production batch quality distribution / failure reporting plus post-diversification template/deliverable concentration controls after the first production promotion slice
   - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first
@@ -882,12 +922,25 @@ Current LLM timing policy:
 
 Use conda Python, not bare Python.
 
+Recommended default environment for new manual testing:
+
+- `environment.taskgenerator.yml`
+- Python `3.12`
+- create once with:
+  - `conda env create -f environment.taskgenerator.yml`
+  - `conda activate taskgenerator`
+  - `python -m pip install -e .`
+- verified executed-eval dependency pins in that environment:
+  - `stirrup[e2b]==0.1.8`
+  - `e2b==2.20.0`
+  - `e2b-code-interpreter==2.6.0`
+
 Known useful interpreters:
 
 - `D:\miniconda3\envs\gdpval\python.exe`
 - `D:\miniconda3\envs\real-world-task\python.exe`
 
-The `real-world-task` environment is used for rw-task evaluation. The `gdpval` environment has been useful for generation and pandas/openpyxl work.
+The preferred path is now to run both generation and rw-task evaluation from `taskgenerator`. `real-world-task` and `gdpval` remain compatibility environments only.
 
 rw-task smoke note:
 
@@ -896,6 +949,7 @@ rw-task smoke note:
 - missing `E2B_API_KEY` if the process environment is not populated from `E:\THU\2026Spring\SRT\rw-task\.env`
 - `All connection attempts failed` when the current sandbox blocks outbound E2B connectivity even after the runtime env is loaded
 - an authorized external run completed both prepared commands and produced grader output
+- after pinning `stirrup/e2b` to the versions above, the same real two-model eval also completed successfully from the unified `taskgenerator` environment
 - treat the completed smoke as toolchain evidence and draft-quality observation, not final task-quality truth
 - the current evaluation focus is to harden executed evidence closure and keep blocked or dry-run summaries out of comparison intake, not to claim a formal model-comparison verdict yet
 
