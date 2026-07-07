@@ -99,4 +99,49 @@ Observed result:
 
 The one task with two completed scores was `ee09d943-5a11-430a-b7a2-971b4e9b01b5`: `gpt-5.4-pro` scored `0.0`, `gpt-4o-mini` scored `0.23728813559322035`, and the diagnostic score gap was `0.23728813559322035`.
 
-This is a useful toolchain baseline, but it is not yet a clean model-separation benchmark. The main exposed issues are grading robustness and task runnability, not just model capability. The next calibration slice should either repair per-task grading failure handling or choose a smaller "runnable calibration slice" before increasing task count.
+This is a useful toolchain baseline, but it is not yet a clean model-separation benchmark. The main exposed issues are grading robustness and task runnability, not just model capability. The `gpt-5.4-pro = 0.0` vs `gpt-4o-mini = 0.23728813559322035` result should not be treated as a model-quality finding because later inspection showed that some zero scores came from missing deliverables after sandbox timeout.
+
+## Phase 14.3 Single-Case Progressive Evaluation
+
+The current Phase 14.3 evaluation path is now single-case first. Each task should be run or repaired independently, then diagnosed before moving to the next task.
+
+Main single-case entry point:
+
+```bash
+python Test/run_v3_gdpval_single_case_eval.py --run-id case_7b08 --task-id 7b08cd4d-df60-41ae-9102-8aaa49306ba2 --mode execute --model gpt-5.4-pro --model gpt-4o-mini --run-eval
+```
+
+For already-completed raw runs, first inspect and sanitize without rerunning the E2B agent:
+
+```bash
+python Test/run_v3_gdpval_single_case_eval.py --run-id inspect_7b08 --task-id 7b08cd4d-df60-41ae-9102-8aaa49306ba2 --mode diagnose-existing --source-run artifacts\phase14\gdpval_eval_baseline_5case_execute
+```
+
+Then run sanitized regrade only:
+
+```bash
+python Test/run_v3_gdpval_single_case_eval.py --run-id regrade_7b08 --task-id 7b08cd4d-df60-41ae-9102-8aaa49306ba2 --mode execute-regrade --source-run artifacts\phase14\gdpval_eval_baseline_5case_execute --run-eval
+```
+
+The single-case runner writes:
+
+- `single_case_report.json`
+- `deliverable_diagnostic_report.json`
+- `sanitized_regrade_report.json`
+- `case_gap_profile.json`
+- `continue_decision.json`
+
+Sanitized regrade keeps only candidate deliverables such as `.xlsx`, `.pptx`, `.docx`, `.pdf`, and `.csv`; it excludes helper scripts and scratch files. Archive deliverables such as `.tar.gz` are unpacked and scored only if a supported deliverable file is found inside.
+
+First repaired result:
+
+- `artifacts/phase14/gdpval_single_case_runs/regrade_7b08/`
+- task: `7b08cd4d-df60-41ae-9102-8aaa49306ba2`
+- decision: `ready_for_next_case`
+- `gpt-5.4-pro`: `78 / 89`, score ratio `0.8764044943820225`
+- `gpt-4o-mini`: `8 / 89`, score ratio `0.0898876404494382`
+- score gap: `0.7865168539325843`
+
+This repaired result is the preferred interpretation for the Fall Music Tour P&L case. It shows that the earlier batch failure was mainly a grading/package hygiene problem, not evidence that the weaker model outperformed the stronger model.
+
+Model fallback probes now exist at `Test/probe_v3_model_provider.py`. As of this pass, Tuzi `gemini-3-pro-preview` and DeepSeek official `deepseek-v4-pro` both responded to small chat and JSON probes. Probe reports are stored under `artifacts/phase14/model_provider_probes/` and do not contain secret values.

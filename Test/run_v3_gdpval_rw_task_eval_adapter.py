@@ -37,6 +37,8 @@ def main() -> None:
     parser.add_argument("--python-exe", default=sys.executable)
     parser.add_argument("--env-path", default=str(DEFAULT_RW_TASK_ROOT / ".env"))
     parser.add_argument("--task-limit", type=int, default=0)
+    parser.add_argument("--task-id", action="append", default=None, help="GDPVal task_id to include. Repeatable.")
+    parser.add_argument("--case-index", action="append", type=int, default=None, help="1-based subset index to include.")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--command-timeout-seconds", type=int, default=7200)
     parser.add_argument("--run-eval", action="store_true")
@@ -76,6 +78,8 @@ def main() -> None:
         python_exe=args.python_exe,
         env_path=args.env_path,
         task_limit=args.task_limit,
+        task_ids=args.task_id or [],
+        case_indexes=args.case_index or [],
         overwrite=args.overwrite,
         command_timeout_seconds=args.command_timeout_seconds,
         run_eval=args.run_eval,

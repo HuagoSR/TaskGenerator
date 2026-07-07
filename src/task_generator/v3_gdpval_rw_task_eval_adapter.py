@@ -54,6 +54,8 @@ class GDPValRwTaskEvalRequest(BaseModel):
     python_exe: str = sys.executable
     env_path: Optional[str] = None
     task_limit: int = 0
+    task_ids: List[str] = Field(default_factory=list)
+    case_indexes: List[int] = Field(default_factory=list)
     overwrite: bool = False
     command_timeout_seconds: int = 7200
     run_eval: bool = False
@@ -188,8 +190,12 @@ class GDPValRwTaskEvalAdapter:
         mirror_by_id = {str(record.get("task_id")): record for record in mirror_manifest.get("tasks", [])}
 
         selected = list(subset_manifest.get("selected_records") or [])
-        if request.task_limit > 0:
-            selected = selected[: request.task_limit]
+        selected = self._select_records(
+            selected,
+            task_ids=request.task_ids,
+            case_indexes=request.case_indexes,
+            task_limit=request.task_limit,
+        )
 
         prepared_cases = [
             self._prepare_case(
@@ -244,6 +250,45 @@ class GDPValRwTaskEvalAdapter:
         failure_report = self._build_failure_report(report)
         self._write_json(output_dir / "gdpval_eval_failure_report.json", failure_report.model_dump(mode="json"))
         return report
+
+    def _select_records(
+        self,
+        records: List[Dict[str, Any]],
+        *,
+        task_ids: List[str],
+        case_indexes: List[int],
+        task_limit: int,
+    ) -> List[Dict[str, Any]]:
+        selected = list(records)
+        wanted_ids = {str(task_id).strip() for task_id in task_ids if str(task_id).strip()}
+        wanted_indexes = [int(index) for index in case_indexes if int(index) > 0]
+        if wanted_ids or wanted_indexes:
+            by_id = {str(record.get("task_id") or ""): record for record in records}
+            picked: List[Dict[str, Any]] = []
+            seen: set[str] = set()
+            for task_id in task_ids:
+                normalized = str(task_id).strip()
+                if not normalized:
+                    continue
+                record = by_id.get(normalized)
+                if record is None:
+                    continue
+                if normalized not in seen:
+                    picked.append(record)
+                    seen.add(normalized)
+            for index in wanted_indexes:
+                zero_based = index - 1
+                if zero_based < 0 or zero_based >= len(records):
+                    continue
+                record = records[zero_based]
+                task_id = str(record.get("task_id") or "")
+                if task_id not in seen:
+                    picked.append(record)
+                    seen.add(task_id)
+            selected = picked
+        elif task_limit > 0:
+            selected = selected[:task_limit]
+        return selected
 
     def _prepare_case(
         self,

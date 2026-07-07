@@ -448,11 +448,14 @@ Current Pipeline A starting files:
   - `src/task_generator/v3_gdpval_local_mirror.py`
   - `src/task_generator/v3_gdpval_subset_selector.py`
   - `src/task_generator/v3_gdpval_rw_task_eval_adapter.py`
+  - `src/task_generator/v3_gdpval_single_case_eval.py`
   - `src/task_generator/v3_rw_task_stirrup_entrypoint.py`
   - `Test/run_v3_phase14_baseline.py`
   - `Test/run_v3_gdpval_local_mirror.py`
   - `Test/run_v3_gdpval_subset_selector.py`
   - `Test/run_v3_gdpval_rw_task_eval_adapter.py`
+  - `Test/run_v3_gdpval_single_case_eval.py`
+  - `Test/probe_v3_model_provider.py`
   - `artifacts/phase14/gdpval_local_mirror/` is calibration-only and must not be used as Pipeline A source material or training generation input
   - `artifacts/phase14/gdpval_subset/` is the reviewed finance/audit calibration slice over that mirror
   - `artifacts/phase14/gdpval_eval_baseline/` is the Phase 14.3 rw-task diagnostic baseline package/report directory; its `eval_input/` cases keep GDPVal deliverables out of generation input and store original expected deliverable names only as metadata
@@ -464,7 +467,10 @@ Current Pipeline A starting files:
   - Phase 14.3 grading defaults `--grader-model gpt-5.4-pro`; `--model` is the evaluated model, not necessarily the grader model
   - current Phase 14.3 execute smoke result under `artifacts/phase14/gdpval_eval_baseline_execute_smoke/`: 1 GDPVal case, evaluated model `gpt-4o-mini`, grader `gpt-5.4-pro`, run completed, grade completed, score `8 / 63` (`score_ratio ~= 0.127`), failure_count 0
   - current Phase 14.3 5-case executed baseline result under `artifacts/phase14/gdpval_eval_baseline_5case_execute/`: 5 GDPVal cases prepared, 0 blocked, both `gpt-5.4-pro` and `gpt-4o-mini` attempted; `gpt-5.4-pro` produced 2 completed task scores and 3 grading failures, `gpt-4o-mini` produced 4 completed task scores and 1 grading failure, and only 1 task is currently usable for two-model gap analysis
-  - current 5-case usable gap task is `ee09d943-5a11-430a-b7a2-971b4e9b01b5`: `gpt-5.4-pro` score ratio `0.0`, `gpt-4o-mini` score ratio `0.23728813559322035`; treat this as diagnostic only because grading robustness and task runnability remain the limiting factors
+  - current 5-case usable gap task is `ee09d943-5a11-430a-b7a2-971b4e9b01b5`: `gpt-5.4-pro` score ratio `0.0`, `gpt-4o-mini` score ratio `0.23728813559322035`; treat this as diagnostic only because later inspection showed the `gpt-5.4-pro` side had no deliverable after E2B sandbox timeout
+  - Phase 14.3 should now proceed one task at a time through `Test/run_v3_gdpval_single_case_eval.py`, which writes `single_case_report.json`, `deliverable_diagnostic_report.json`, `sanitized_regrade_report.json`, `case_gap_profile.json`, and `continue_decision.json`
+  - current repaired single-case result under `artifacts/phase14/gdpval_single_case_runs/regrade_7b08/`: Fall Music Tour P&L (`7b08cd4d-df60-41ae-9102-8aaa49306ba2`) has sanitized regrade scores `gpt-5.4-pro = 78 / 89` (`0.8764044943820225`) and `gpt-4o-mini = 8 / 89` (`0.0898876404494382`), `score_gap = 0.7865168539325843`, `decision = ready_for_next_case`
+  - model provider probes now confirm Tuzi `gemini-3-pro-preview` and DeepSeek official `deepseek-v4-pro` both return non-empty chat and parseable JSON on small probes; reports live under `artifacts/phase14/model_provider_probes/` and do not include secrets
 - currently planned next-stage files:
   - richer production batch quality distribution / failure reporting plus post-diversification template/deliverable concentration controls after the first production promotion slice
   - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first
