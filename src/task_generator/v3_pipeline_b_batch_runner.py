@@ -40,6 +40,7 @@ class PipelineBBatchRunRequest(BaseModel):
     allow_caution: bool = False
     workflow_archetype: Optional[str] = None
     motif_grammar_path: Optional[str] = None
+    phase15_reform_spec_path: Optional[str] = None
     target_difficulty_profile: Optional[str] = None
     model: str = "gpt-5.4-pro"
     workers: int = 1
@@ -128,6 +129,7 @@ class PipelineBBatchRunner:
         allow_caution: bool = False,
         workflow_archetype: Optional[str] = None,
         motif_grammar_path: Optional[str | Path] = None,
+        phase15_reform_spec_path: Optional[str | Path] = None,
         target_difficulty_profile: Optional[str] = None,
         model: str = "gpt-5.4-pro",
         workers: int = 1,
@@ -147,6 +149,7 @@ class PipelineBBatchRunner:
             allow_caution=allow_caution,
             workflow_archetype=workflow_archetype,
             motif_grammar_path=str(motif_grammar_path) if motif_grammar_path else None,
+            phase15_reform_spec_path=str(phase15_reform_spec_path) if phase15_reform_spec_path else None,
             target_difficulty_profile=target_difficulty_profile,
             model=model,
             workers=workers,
@@ -175,6 +178,7 @@ class PipelineBBatchRunner:
                         allow_caution=allow_caution,
                         workflow_archetype=workflow_archetype,
                         motif_grammar_path=motif_grammar_path,
+                        phase15_reform_spec_path=phase15_reform_spec_path,
                         target_difficulty_profile=target_difficulty_profile,
                         model=model,
                         workers=workers,
@@ -228,6 +232,7 @@ class PipelineBBatchRunner:
         allow_caution: bool,
         workflow_archetype: Optional[str],
         motif_grammar_path: Optional[str | Path],
+        phase15_reform_spec_path: Optional[str | Path],
         target_difficulty_profile: Optional[str],
         model: str,
         workers: int,
@@ -270,6 +275,7 @@ class PipelineBBatchRunner:
         prototype_report = prototype.build_report_from_subgraph_report(
             subgraph_report_path=subgraph_report_path,
             registry_path=registry_path,
+            phase15_reform_spec_path=phase15_reform_spec_path,
         )
         prototype.write_outputs(prototype_report, prototype_dir)
         blueprint_path = prototype_dir / "draft_task_blueprint.json"

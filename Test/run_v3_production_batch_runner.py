@@ -33,6 +33,7 @@ def main() -> None:
     parser.add_argument("--seed-report", type=Path, default=DEFAULT_SEED_REPORT_PATH)
     parser.add_argument("--workflow-asset-path", type=Path, default=DEFAULT_WORKFLOW_ASSET_PATH)
     parser.add_argument("--motif-grammar-path", type=Path, default=DEFAULT_MOTIF_GRAMMAR_PATH)
+    parser.add_argument("--phase15-reform-spec-path", type=Path, default=None)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--domain-scope", default="finance_audit")
     parser.add_argument("--file-type", action="append", default=None)
@@ -64,6 +65,7 @@ def main() -> None:
         seed_report_path=args.seed_report,
         workflow_asset_path=args.workflow_asset_path,
         motif_grammar_path=args.motif_grammar_path,
+        phase15_reform_spec_path=args.phase15_reform_spec_path,
         output_dir=output_dir,
         domain_scope=args.domain_scope,
         file_type_scope=args.file_type or ["xlsx", "docx", "md", "txt"],

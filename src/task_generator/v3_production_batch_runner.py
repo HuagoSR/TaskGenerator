@@ -34,6 +34,7 @@ class ProductionBatchRequest(BaseModel):
     seed_report_path: str
     workflow_asset_path: Optional[str] = None
     motif_grammar_path: Optional[str] = None
+    phase15_reform_spec_path: Optional[str] = None
     output_dir: str
     domain_scope: str = "finance_audit"
     file_type_scope: List[str] = Field(default_factory=lambda: ["xlsx", "docx", "md", "txt"])
@@ -125,6 +126,7 @@ class ProductionBatchRunner:
         output_dir: str | Path,
         workflow_asset_path: str | Path | None = None,
         motif_grammar_path: str | Path | None = None,
+        phase15_reform_spec_path: str | Path | None = None,
         domain_scope: str = "finance_audit",
         file_type_scope: Optional[List[str]] = None,
         motifs: Optional[List[str]] = None,
@@ -150,6 +152,7 @@ class ProductionBatchRunner:
             seed_report_path=str(seed_report_path),
             workflow_asset_path=str(workflow_asset_path) if workflow_asset_path else None,
             motif_grammar_path=str(motif_grammar_path) if motif_grammar_path else None,
+            phase15_reform_spec_path=str(phase15_reform_spec_path) if phase15_reform_spec_path else None,
             output_dir=str(output_path),
             domain_scope=domain_scope,
             file_type_scope=file_type_scope or ["xlsx", "docx", "md", "txt"],
@@ -189,6 +192,7 @@ class ProductionBatchRunner:
                 allow_caution=allow_caution,
                 workflow_archetype=workflow_archetype,
                 motif_grammar_path=motif_grammar_path,
+                phase15_reform_spec_path=phase15_reform_spec_path,
                 target_difficulty_profile=target_difficulty_profile,
                 model=model,
                 workers=workers,

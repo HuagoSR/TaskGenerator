@@ -113,6 +113,7 @@ class PipelineBPrototypeBuilder:
         seed_report_path: str | Path,
         motif: Optional[str] = None,
         skill_count: int = 4,
+        phase15_reform_spec_path: Optional[str | Path] = None,
     ) -> Dict[str, Any]:
         entries = self.registry_builder.load_registry(registry_path)
         entry_by_id = {entry.skill_id: entry for entry in entries}
@@ -125,7 +126,8 @@ class PipelineBPrototypeBuilder:
             for record in selected_records
             if record.get("skill_id") in entry_by_id
         ]
-        blueprint = self._build_blueprint(selected_motif, selected_records, selected_entries)
+        reform_spec = self._load_phase15_reform_spec(phase15_reform_spec_path, selected_motif)
+        blueprint = self._build_blueprint(selected_motif, selected_records, selected_entries, reform_spec)
         diagnostics = self._diagnose_signals(selected_motif, selected_records, selected_entries)
 
         return {
@@ -138,6 +140,7 @@ class PipelineBPrototypeBuilder:
             "selected_skill_count": len(selected_records),
             "selected_skills": selected_records,
             "draft_task_blueprint": blueprint.model_dump(),
+            "phase15_generator_reform": self._phase15_reform_metadata(reform_spec),
             "assembly_diagnostics": diagnostics,
             "next_pipeline_a_feedback": self._feedback_items(diagnostics),
             "notes": [
@@ -151,6 +154,7 @@ class PipelineBPrototypeBuilder:
         self,
         subgraph_report_path: str | Path,
         registry_path: Optional[str | Path] = None,
+        phase15_reform_spec_path: Optional[str | Path] = None,
     ) -> Dict[str, Any]:
         from task_generator.v3_pipeline_b_sampler import PipelineBSubgraph
 
@@ -165,7 +169,8 @@ class PipelineBPrototypeBuilder:
             for record in selected_records
             if record.get("skill_id") in entry_by_id
         ]
-        blueprint = self._build_blueprint(subgraph.selected_motif, selected_records, selected_entries)
+        reform_spec = self._load_phase15_reform_spec(phase15_reform_spec_path, subgraph.selected_motif)
+        blueprint = self._build_blueprint(subgraph.selected_motif, selected_records, selected_entries, reform_spec)
         self._apply_subgraph_context(blueprint, subgraph)
         diagnostics = self._diagnose_subgraph_signals(subgraph, selected_records)
 
@@ -184,6 +189,7 @@ class PipelineBPrototypeBuilder:
             "selected_skill_count": len(selected_records),
             "selected_skills": selected_records,
             "draft_task_blueprint": blueprint.model_dump(),
+            "phase15_generator_reform": self._phase15_reform_metadata(reform_spec),
             "assembly_diagnostics": diagnostics,
             "next_pipeline_a_feedback": self._feedback_items(diagnostics),
             "notes": [
@@ -350,6 +356,7 @@ class PipelineBPrototypeBuilder:
         motif: str,
         selected_records: List[Dict[str, Any]],
         selected_entries: List[SkillRegistryEntry],
+        phase15_reform_spec: Optional[Dict[str, Any]] = None,
     ) -> TaskBlueprint:
         hints = MOTIF_BLUEPRINT_HINTS.get(motif, MOTIF_BLUEPRINT_HINTS["evidence_to_deliverable"])
         skill_names = [record.get("canonical_name", "") for record in selected_records]
@@ -358,7 +365,7 @@ class PipelineBPrototypeBuilder:
         primary_domain = domain_counts.most_common(1)[0][0] if domain_counts else "finance"
         occupation = self._infer_occupation(primary_domain, selected_entries)
 
-        return TaskBlueprint(
+        blueprint = TaskBlueprint(
             blueprint_id=f"bp_pipeline_b_{uuid.uuid4().hex[:8]}",
             template_family=hints["template_family"],
             task_metadata=TaskMetadata(
@@ -403,6 +410,9 @@ class PipelineBPrototypeBuilder:
                 required_final_checks=self._final_checks(motif, selected_entries),
             ),
         )
+        if phase15_reform_spec:
+            self._apply_phase15_generator_reform(blueprint, motif, phase15_reform_spec)
+        return blueprint
 
     def _reference_files(self, motif: str, entries: List[SkillRegistryEntry]) -> List[FileSpec]:
         files = [
@@ -460,6 +470,144 @@ class PipelineBPrototypeBuilder:
                 )
             )
         return files
+
+    def _load_phase15_reform_spec(
+        self,
+        phase15_reform_spec_path: Optional[str | Path],
+        motif: str,
+    ) -> Optional[Dict[str, Any]]:
+        if not phase15_reform_spec_path:
+            return None
+        spec = load_json_file(str(phase15_reform_spec_path))
+        if spec.get("target_motif") != motif:
+            return None
+        if spec.get("reform_status") != "proposal_ready_for_controlled_experiment":
+            return None
+        return spec
+
+    def _phase15_reform_metadata(self, reform_spec: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        if not reform_spec:
+            return {
+                "enabled": False,
+                "application_status": "not_requested",
+                "applied_change_ids": [],
+            }
+        return {
+            "enabled": True,
+            "application_status": "applied_experiment_flag",
+            "target_motif": reform_spec.get("target_motif"),
+            "applied_change_ids": [
+                str(change.get("change_id"))
+                for change in reform_spec.get("deterministic_changes", [])
+                if change.get("change_id")
+            ],
+            "constraints": reform_spec.get("constraints") or [],
+        }
+
+    def _apply_phase15_generator_reform(
+        self,
+        blueprint: TaskBlueprint,
+        motif: str,
+        reform_spec: Dict[str, Any],
+    ) -> None:
+        if motif != "evidence_to_deliverable":
+            return
+        blueprint.template_family = "evidence_package_to_reviewer_decision_memo_phase15"
+        blueprint.task_metadata.scenario_title = "Reviewer decision memo from mixed evidence"
+        blueprint.task_metadata.task_goal = (
+            "Prepare a reviewer-facing decision memo that separates confirmed findings, unresolved support gaps, "
+            "and bounded severity judgments from the visible evidence package."
+        )
+        blueprint.scenario_spec.role = (
+            "You are a finance audit analyst preparing a manager review memo for a controller sign-off meeting."
+        )
+        blueprint.scenario_spec.business_context = (
+            blueprint.scenario_spec.business_context
+            + " A manager has asked for a sign-off-ready memo because one evidence item may affect quarter-end review priority."
+        )
+        blueprint.scenario_spec.time_context = (
+            "Current-period review; the controller needs a concise decision memo before the next review checkpoint."
+        )
+        for file_spec in blueprint.data_spec.reference_files:
+            if file_spec.file_name == "source_evidence.xlsx":
+                for sheet in file_spec.sheet_specs:
+                    if sheet.sheet_name == "Evidence_Items":
+                        existing = {column.name for column in sheet.columns}
+                        for column_name, semantic_type in [
+                            ("Reviewer_Concern", "free_text_description"),
+                            ("Severity_Indicator", "decision_category"),
+                            ("Support_Status", "status_label"),
+                        ]:
+                            if column_name not in existing:
+                                sheet.columns.append(ColumnSpec(name=column_name, semantic_type=semantic_type))
+        if not any(file.file_name == "manager_followup.md" for file in blueprint.data_spec.reference_files):
+            blueprint.data_spec.reference_files.append(
+                FileSpec(
+                    file_name="manager_followup.md",
+                    file_role="reference_table",
+                    sheet_specs=[],
+                )
+            )
+        if not any(relationship.left.startswith("manager_followup.md") for relationship in blueprint.data_spec.data_relationships):
+            blueprint.data_spec.data_relationships.append(
+                DataRelationship(
+                    relation_type="manager_followup_alignment",
+                    left="manager_followup.md:decision_rules",
+                    right="final_deliverable:confirmed_unresolved_priority_split",
+                )
+            )
+        for deliverable in blueprint.deliverable_spec:
+            deliverable.file_name = "reviewer_decision_memo.docx"
+            deliverable.requirements = list(
+                dict.fromkeys(
+                    deliverable.requirements
+                    + [
+                        "write for a manager who must decide whether follow-up is required before sign-off",
+                        "separate confirmed findings, unresolved evidence gaps, and no-issue items",
+                        "assign a bounded severity of high, medium, or low using only visible evidence",
+                        "include a short recommended next action for each unresolved or higher-severity item",
+                    ]
+                )
+            )
+        reform_requirements = [
+            "State the business trigger and reviewer decision needed in the opening context.",
+            "Use only these severity labels: `High`, `Medium`, or `Low`; define the evidence basis for each label in the memo.",
+            "Create a `Confirmed findings` section, an `Unresolved support gaps` section, and a `Review priority` section before `Follow-up`.",
+            "For every unresolved support gap, cite the visible evidence ID and explain what support is missing without inventing facts.",
+            "Use `manager_followup.md` as reviewer context; do not treat it as hidden truth.",
+        ]
+        blueprint.prompt_spec.visible_requirements = list(
+            dict.fromkeys(blueprint.prompt_spec.visible_requirements + reform_requirements)
+        )
+        blueprint.prompt_spec.hidden_requirements = list(
+            dict.fromkeys(
+                blueprint.prompt_spec.hidden_requirements
+                + [
+                    "Do not reward severity labels that are not grounded in a candidate-visible evidence item.",
+                    "Do not reward memos that collapse confirmed findings and unresolved support gaps into one undifferentiated list.",
+                ]
+            )
+        )
+        blueprint.golden_plan.required_intermediate_states = list(
+            dict.fromkeys(
+                blueprint.golden_plan.required_intermediate_states
+                + [
+                    "phase15_confirmed_vs_unresolved_split",
+                    "phase15_severity_classification_review",
+                    "phase15_manager_followup_alignment",
+                ]
+            )
+        )
+        blueprint.golden_plan.required_final_checks = list(
+            dict.fromkeys(
+                blueprint.golden_plan.required_final_checks
+                + [
+                    "severity labels are bounded and evidence-grounded",
+                    "confirmed findings and unresolved gaps are separated",
+                    "manager follow-up recommendation is supported by visible evidence",
+                ]
+            )
+        )
 
     def _data_relationships(self, motif: str, entries: List[SkillRegistryEntry]) -> List[DataRelationship]:
         relationships = [

@@ -97,7 +97,7 @@ class Phase15AbExperimentRunner:
             next_actions=self._next_actions(arms),
             notes=[
                 "This experiment runner is report-first and does not promote generator reforms into the default production chain.",
-                "The reform-only arm currently executes a deterministic proxy batch plus an explicit reform-application ledger; it is not yet a clean A/B treatment.",
+                "The reform-only arm executes the current production chain with an explicit Phase 15 reform-spec experiment flag.",
                 "The guarded LLM candidate arm remains blocked unless the candidate layer reports approved candidate roles.",
             ],
         )
@@ -138,7 +138,7 @@ class Phase15AbExperimentRunner:
     ) -> Phase15ArmSummary:
         batch_id = f"{request.experiment_id}_reform_proxy"
         arm_dir = output_dir / "generator_reform_only"
-        artifact = self._run_production_batch(request, arm_dir, batch_id)
+        artifact = self._run_production_batch(request, arm_dir, batch_id, phase15_reform_spec_path=request.reform_spec_path)
         overlay_path = arm_dir / "reform_application_ledger.json"
         deterministic_changes = reform_spec.get("deterministic_changes") or []
         overlay = {
@@ -147,22 +147,22 @@ class Phase15AbExperimentRunner:
             "target_motif": request.target_motif,
             "production_batch_manifest_path": artifact.manifest_path,
             "reform_spec_path": request.reform_spec_path,
-            "application_status": "proxy_executed_no_artifact_mutation",
-            "clean_ab_treatment_ready": False,
+            "application_status": "applied_experiment_flag",
+            "clean_ab_treatment_ready": artifact.manifest.summary.candidate_ready_count >= request.max_cases_per_arm,
             "deterministic_change_count": len(deterministic_changes),
             "deterministic_changes": [
                 {
                     "change_id": change.get("change_id"),
                     "change_type": change.get("change_type"),
-                    "application_state": "not_applied_to_generator_code",
-                    "required_before_clean_ab_eval": True,
+                    "application_state": "applied_by_experiment_flag",
+                    "required_before_clean_ab_eval": False,
                 }
                 for change in deterministic_changes
             ],
             "guardrails": reform_spec.get("constraints") or [],
             "notes": [
                 "This ledger makes the Phase 15 reform boundary explicit.",
-                "The batch artifacts are current-generator outputs; they are useful for path smoke and baseline parity, not clean reform impact measurement.",
+                "The batch artifacts were generated with an explicit Phase 15 reform spec path and should remain isolated from the default chain until promotion review.",
             ],
         }
         overlay_path.write_text(self._json_dumps(overlay), encoding="utf-8")
@@ -176,12 +176,12 @@ class Phase15AbExperimentRunner:
             completed_case_count=artifact.manifest.summary.completed_case_count,
             failed_case_count=artifact.manifest.summary.failed_case_count,
             task_state_counts=artifact.manifest.summary.task_state_counts,
-            comparable_for_clean_paired_eval=False,
-            reform_application_status="proxy_executed_no_artifact_mutation",
-            reason_codes=["reform_spec_not_applied_to_generator_code"],
+            comparable_for_clean_paired_eval=artifact.manifest.summary.candidate_ready_count >= request.max_cases_per_arm,
+            reform_application_status="applied_experiment_flag",
+            reason_codes=[],
             notes=[
                 f"Reform application ledger written to {overlay_path}.",
-                "Do not use this arm as clean reform evidence until deterministic changes are applied behind an experiment flag.",
+                "This arm uses an explicit experiment flag; do not promote the same changes into the default chain without later review.",
             ],
         )
 
@@ -257,6 +257,7 @@ class Phase15AbExperimentRunner:
         request: Phase15AbExperimentRequest,
         output_dir: Path,
         batch_id: str,
+        phase15_reform_spec_path: Optional[str] = None,
     ):
         return ProductionBatchRunner().run(
             production_batch_id=batch_id,
@@ -265,6 +266,7 @@ class Phase15AbExperimentRunner:
             seed_report_path=request.seed_report_path,
             workflow_asset_path=request.workflow_asset_path,
             motif_grammar_path=request.motif_grammar_path,
+            phase15_reform_spec_path=phase15_reform_spec_path,
             output_dir=output_dir,
             motifs=[request.target_motif],
             skill_count=request.skill_count,
@@ -291,8 +293,8 @@ class Phase15AbExperimentRunner:
     def _next_actions(self, arms: List[Phase15ArmSummary]) -> List[str]:
         reason_codes = {code for arm in arms for code in arm.reason_codes}
         actions = []
-        if "reform_spec_not_applied_to_generator_code" in reason_codes:
-            actions.append("Implement deterministic generator reform behind an explicit experiment flag before clean A/B/C eval.")
+        if not any(arm.arm_id == "generator_reform_only" and arm.comparable_for_clean_paired_eval for arm in arms):
+            actions.append("Bring the deterministic reform arm to candidate-ready parity before clean A/B/C eval.")
         if "no_llm_roles_approved_for_candidate_experiment" in reason_codes:
             actions.append("Keep LLM candidate arm blocked; use diagnostic-only realism critic signals only if needed for reviewer triage.")
         if any(arm.arm_id == "baseline_deterministic" and arm.candidate_ready_count > 0 for arm in arms):
