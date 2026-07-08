@@ -24,6 +24,7 @@ class Phase15CloseoutRequest(BaseModel):
     production_dashboard_report_path: str
     release_readiness_report_path: str
     output_dir: str
+    external_eval_authorization_status: str = "not_recorded"
 
 
 class Phase15PromotionProposal(BaseModel):
@@ -65,7 +66,7 @@ class Phase15CloseoutBuilder:
         readiness = load_json_file(request.release_readiness_report_path)
 
         deterministic_evidence = self._deterministic_evidence(ab_report)
-        eval_evidence = self._eval_evidence(queue, eval_run)
+        eval_evidence = self._eval_evidence(queue, eval_run, request.external_eval_authorization_status)
         production_evidence = self._production_evidence(dashboard, readiness)
         recommendation = self._recommendation(deterministic_evidence, eval_evidence, production_evidence)
         proposal = Phase15PromotionProposal(
@@ -138,14 +139,16 @@ class Phase15CloseoutBuilder:
         self,
         queue: Dict[str, Any],
         eval_run: Dict[str, Any],
+        external_eval_authorization_status: str,
     ) -> Dict[str, Any]:
         queue_summary = queue.get("summary") or {}
         command_records = eval_run.get("command_records") or []
+        inspected_text = self._eval_run_inspected_text(eval_run)
         connection_failed = any(
             "All connection attempts failed" in str(record.get("stderr_excerpt") or "")
             or "All connection attempts failed" in str(record.get("stdout_excerpt") or "")
             for record in command_records
-        )
+        ) or "All connection attempts failed" in inspected_text
         return {
             "queue_item_count": queue_summary.get("queue_item_count"),
             "prepared_item_count": queue_summary.get("prepared_item_count"),
@@ -154,8 +157,24 @@ class Phase15CloseoutBuilder:
             "attempted_case_id": eval_run.get("case_id") if eval_run else None,
             "attempted_model": eval_run.get("model") if eval_run else None,
             "external_connection_failed": connection_failed,
+            "external_eval_authorization_status": external_eval_authorization_status,
             "clean_paired_eval_completed": False,
         }
+
+    def _eval_run_inspected_text(self, eval_run: Dict[str, Any]) -> str:
+        snippets: List[str] = []
+        for inspection in eval_run.get("output_inspections") or []:
+            if not isinstance(inspection, dict):
+                continue
+            for sample in inspection.get("sample_files") or []:
+                sample_path = Path(str(sample))
+                if not sample_path.exists() or sample_path.is_dir():
+                    continue
+                try:
+                    snippets.append(sample_path.read_text(encoding="utf-8", errors="replace")[:20000])
+                except Exception:
+                    continue
+        return "\n".join(snippets)
 
     def _production_evidence(
         self,
@@ -260,6 +279,8 @@ class Phase15CloseoutBuilder:
         reasons = []
         if eval_evidence.get("external_connection_failed"):
             reasons.append("external_eval_connection_failed_in_sandbox")
+        if eval_evidence.get("external_eval_authorization_status") in {"approval_rejected", "requires_explicit_user_approval"}:
+            reasons.append("external_eval_authorization_not_available")
         if not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("clean_paired_eval_not_completed")
         if production.get("release_readiness_status") != "release_ready":

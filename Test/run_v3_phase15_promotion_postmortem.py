@@ -32,6 +32,11 @@ def main() -> None:
     parser.add_argument("--production-dashboard-report-path", type=Path, default=DEFAULT_DASHBOARD)
     parser.add_argument("--release-readiness-report-path", type=Path, default=DEFAULT_READINESS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--external-eval-authorization-status",
+        default="not_recorded",
+        choices=["not_recorded", "approval_rejected", "requires_explicit_user_approval", "approved"],
+    )
     args = parser.parse_args()
 
     request = Phase15CloseoutRequest(
@@ -41,6 +46,7 @@ def main() -> None:
         production_dashboard_report_path=str(args.production_dashboard_report_path),
         release_readiness_report_path=str(args.release_readiness_report_path),
         output_dir=str(args.output_dir),
+        external_eval_authorization_status=args.external_eval_authorization_status,
     )
     proposal, postmortem = Phase15CloseoutBuilder().build(request)
     print(
