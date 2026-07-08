@@ -84,6 +84,32 @@ def extract_json_payload(value: Any) -> Dict[str, Any]:
     raise ValueError("Could not parse Stirrup finish params as JSON.")
 
 
+def artifact_failure_report(
+    *,
+    output_dir: Path,
+    request: object,
+    search_backend: str,
+    history_turn_count: int,
+    metadata: Dict[str, Any],
+    finish_params: Any,
+    error_message: str,
+) -> None:
+    write_json(
+        output_dir / "artifacts" / "stirrup_collection_failure_report.json",
+        {
+            "status": "failed",
+            "collector_backend": "stirrup",
+            "search_backend": search_backend,
+            "history_turn_count": history_turn_count,
+            "metadata": metadata,
+            "finish_params": finish_params,
+            "error": error_message,
+            "request": request.model_dump(mode="json") if hasattr(request, "model_dump") else request,
+            "note": "Stirrup finished without a usable manifest. Inspect artifact and metadata files before retrying.",
+        },
+    )
+
+
 def load_artifact_manifest(artifacts_dir: Path) -> Dict[str, Any] | None:
     for name in ("source_manifest.json", "collection_manifest.json", "sources.json"):
         path = artifacts_dir / name
@@ -177,7 +203,7 @@ def main() -> None:
     parser.add_argument("--e2b-template", default=DEFAULT_E2B_TEMPLATE)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
-    parser.add_argument("--max-turns", type=int, default=16)
+    parser.add_argument("--max-turns", type=int, default=32)
     parser.add_argument("--max-tokens", type=int, default=6000)
     parser.add_argument("--e2b-timeout-seconds", type=int, default=1800)
     parser.add_argument("--web-timeout-seconds", type=int, default=180)
@@ -223,7 +249,24 @@ def main() -> None:
             "search_backend": args.search_backend,
         },
     )
-    payload = load_artifact_manifest(args.output_dir / "artifacts") or extract_json_payload(run_result["finish_params"])
+    payload = load_artifact_manifest(args.output_dir / "artifacts")
+    if payload is None:
+        try:
+            payload = extract_json_payload(run_result["finish_params"])
+        except Exception as exc:
+            artifact_failure_report(
+                output_dir=args.output_dir,
+                request=request,
+                search_backend=args.search_backend,
+                history_turn_count=run_result["history_turn_count"],
+                metadata=run_result["metadata"],
+                finish_params=run_result["finish_params"].model_dump() if hasattr(run_result["finish_params"], "model_dump") else run_result["finish_params"],
+                error_message=str(exc),
+            )
+            raise RuntimeError(
+                "Stirrup collector did not produce a usable source manifest. "
+                "See artifacts/stirrup_collection_failure_report.json for details."
+            ) from exc
     write_json(args.output_dir / "artifacts" / "source_manifest_from_finish.json", payload)
     records = records_from_payload(payload)
     report = write_collected_sources(args.output_dir, request, records)
@@ -233,6 +276,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
 

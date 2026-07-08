@@ -30,6 +30,14 @@ Current implementation scope in this repo:
   - the `phase13_pilot8_diversified_smoke` result preserves `8 / 8 candidate_ready` while dropping `duplicate_subgraph_count` from `4` to `0` and `duplicate_skill_signature_count` to `0`
   - after that fix, the remaining concentration is mainly duplicate deliverable signatures at the motif-template layer rather than exact subgraph reuse
   - the same diversified 8-case batch now also proves the governed review path still scales: the existing reviewer policy promotes `3 / 8` cases to `approved_production_candidate`, and a strict reviewed release now packages those `3` cases without including the remaining `5 review_required` cases
+- the current closure pass now strengthens the same path further:
+  - full grammar coverage now exists for all four active production motifs
+  - repeated motif occurrences now widen the deterministic diversification window enough to swap in bounded second-tier alternatives instead of only permuting the same top skill clique
+  - the resulting `phase13_pilot8_diversity_final_smoke` preserves `8 / 8 candidate_ready` and `8 / 8 verifier pass` while keeping `duplicate_subgraph_count = 0` and lifting `unique_skill_signature_count` to `8`
+  - the reviewed production promotion path on that final batch now yields `8 / 8 approved_production_candidate`
+  - the strict reviewed release bundle `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversity_final_reviewed_strict/` now packages all `8` tasks
+  - the reviewed production dashboard now reports `release_readiness_status = release_ready`
+  - at the current governed finance/audit scope, this document should therefore be read as an implemented MVP contract rather than only a forward-looking shell
 
 ## Scope
 

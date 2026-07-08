@@ -21,6 +21,7 @@ class RwTaskEvalRunRequest(BaseModel):
     run_eval: bool = False
     allow_draft_eval: bool = False
     command_timeout_seconds: int = 0
+    grader_model: Optional[str] = None
 
 
 class RwTaskEvalCommandRecord(BaseModel):
@@ -85,6 +86,7 @@ class RwTaskEvalRunner:
         run_eval: bool = False,
         allow_draft_eval: bool = False,
         command_timeout_seconds: int = 0,
+        grader_model: Optional[str] = None,
     ) -> RwTaskEvalRunReport:
         prep_path = Path(prep_report_path)
         output_path = Path(output_dir)
@@ -96,6 +98,7 @@ class RwTaskEvalRunner:
             run_eval=run_eval,
             allow_draft_eval=allow_draft_eval,
             command_timeout_seconds=command_timeout_seconds,
+            grader_model=grader_model,
         )
         blocking_reasons: List[str] = []
         warnings: List[str] = []
@@ -177,7 +180,8 @@ class RwTaskEvalRunner:
             commands=prep_report.would_run_commands if prep_report else [],
             output_dir=output_path,
             timeout_seconds=command_timeout_seconds,
-            grading_model=prep_report.request.model if prep_report else "",
+            grading_model=grader_model or (prep_report.request.model if prep_report else ""),
+            rw_task_root=prep_report.request.rw_task_root if prep_report else "",
         )
         output_inspections = self._inspect_output_dirs(output_dirs)
         run_status = self._run_status(executed_records)
@@ -265,6 +269,7 @@ class RwTaskEvalRunner:
         output_dir: Path,
         timeout_seconds: int,
         grading_model: str,
+        rw_task_root: str,
     ) -> List[RwTaskEvalCommandRecord]:
         records: List[RwTaskEvalCommandRecord] = []
         log_dir = output_dir / "command_logs"
@@ -282,7 +287,7 @@ class RwTaskEvalRunner:
             cleanup_note = ""
             command_name = self._command_name(command)
             try:
-                env = self._command_env(command, grading_model)
+                env = self._command_env(command, grading_model, rw_task_root)
                 completed = subprocess.run(
                     command,
                     capture_output=True,
@@ -290,6 +295,7 @@ class RwTaskEvalRunner:
                     timeout=timeout,
                     check=False,
                     env=env,
+                    cwd=rw_task_root or None,
                 )
                 exit_code = completed.returncode
                 stdout = completed.stdout or ""
@@ -346,18 +352,27 @@ class RwTaskEvalRunner:
             return "partial_failed" if succeeded_count else "failed"
         return "completed"
 
-    def _command_env(self, command: List[str], grading_model: str) -> dict[str, str]:
+    def _command_env(self, command: List[str], grading_model: str, rw_task_root: str) -> dict[str, str]:
         env = dict(os.environ)
         command_name = self._command_name(command)
+        repo_src = Path(__file__).resolve().parents[1]
+        pythonpath_parts: List[str] = []
+        if rw_task_root:
+            env["RW_TASK_ROOT"] = rw_task_root
+            pythonpath_parts.append(rw_task_root)
+        if command_name in {
+            "task_generator.v3_rw_task_eval_stirrup_wrapper",
+            "task_generator.v3_rw_task_stirrup_entrypoint",
+            "bench_standalone.grade_deliverables",
+        }:
+            pythonpath_parts.insert(0, str(repo_src))
         if command_name == "bench_standalone.grade_deliverables" and grading_model:
             env["GRADER_MODEL"] = grading_model
-        if command_name == "task_generator.v3_rw_task_eval_stirrup_wrapper":
-            repo_src = Path(__file__).resolve().parents[1]
-            existing_pythonpath = env.get("PYTHONPATH", "").strip()
+        existing_pythonpath = env.get("PYTHONPATH", "").strip()
+        if pythonpath_parts:
             if existing_pythonpath:
-                env["PYTHONPATH"] = f"{repo_src}{os.pathsep}{existing_pythonpath}"
-            else:
-                env["PYTHONPATH"] = str(repo_src)
+                pythonpath_parts.append(existing_pythonpath)
+            env["PYTHONPATH"] = os.pathsep.join(pythonpath_parts)
         return env
 
     def _output_dirs(self, prep_report: Optional[RwTaskEvalPrepReport]) -> List[str]:

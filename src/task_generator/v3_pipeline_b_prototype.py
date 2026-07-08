@@ -12,11 +12,14 @@ from task_generator.v2_schema import (
     DeliverableSpec,
     FileSpec,
     GoldenPlan,
+    InjectionPolicy,
+    InjectionTarget,
     PromptSpec,
     ScenarioSpec,
     SheetSpec,
     TaskBlueprint,
     TaskMetadata,
+    TrapSpec,
 )
 from task_generator.v3_skill_registry import SkillRegistryBuilder
 from task_generator.v3_source_schema import SkillRegistryEntry, load_json_file
@@ -376,7 +379,7 @@ class PipelineBPrototypeBuilder:
                 reference_files=self._reference_files(motif, selected_entries),
                 data_relationships=self._data_relationships(motif, selected_entries),
             ),
-            trap_spec=[],
+            trap_spec=self._trap_spec(motif, selected_skill_ids),
             deliverable_spec=[
                 DeliverableSpec(
                     file_name=hints["deliverable_name"],
@@ -430,6 +433,14 @@ class PipelineBPrototypeBuilder:
                     sheet_specs=[],
                 )
             )
+        if motif == "evidence_to_deliverable":
+            files.append(
+                FileSpec(
+                    file_name="manager_request.md",
+                    file_role="reference_table",
+                    sheet_specs=[],
+                )
+            )
         if motif in {"fan_in_reconciliation", "cross_check_validation"}:
             files.append(
                 FileSpec(
@@ -472,6 +483,14 @@ class PipelineBPrototypeBuilder:
                     relation_type="policy_lookup",
                     left="source_evidence.xlsx:Evidence_Items.Entity_or_Item",
                     right="policy_reference.docx:applicable_requirements",
+                )
+            )
+        if motif == "evidence_to_deliverable":
+            relationships.append(
+                DataRelationship(
+                    relation_type="review_instruction_alignment",
+                    left="manager_request.md:decision_rules",
+                    right="final_deliverable:deliverable_outline",
                 )
             )
         return relationships
@@ -569,6 +588,87 @@ class PipelineBPrototypeBuilder:
             hidden.append("Exact grading anchors must be traceable to visible policy or requirement evidence.")
             hidden.append("Policy-grounded claims should cite explicit clause IDs together with the evidence they govern.")
         return hidden
+
+    def _trap_spec(self, motif: str, selected_skill_ids: List[str]) -> List[TrapSpec]:
+        source_skill_id = selected_skill_ids[0] if selected_skill_ids else "skill_unknown"
+        traps = [
+            TrapSpec(
+                trap_id=f"trap_{motif}_ambiguity",
+                source_skill_id=source_skill_id,
+                trap_type="ambiguous_support",
+                injection_target=InjectionTarget(
+                    file_name="source_evidence.xlsx",
+                    sheet_name="Evidence_Items",
+                    columns=["Observed_Value", "Source"],
+                ),
+                injection_policy=InjectionPolicy(
+                    pattern="conflicting_supporting_signal",
+                    severity="medium",
+                    affected_row_count=2,
+                    affected_entities=["material_line_item", "exception_candidate"],
+                ),
+                expected_solver_behavior="Identify the ambiguous or conflicting evidence, avoid false certainty, and keep unresolved items separate from supported conclusions.",
+            )
+        ]
+        if motif in {"cross_check_validation", "fan_in_reconciliation"}:
+            traps.append(
+                TrapSpec(
+                    trap_id=f"trap_{motif}_cross_file_mismatch",
+                    source_skill_id=source_skill_id,
+                    trap_type="cross_file_mismatch",
+                    injection_target=InjectionTarget(
+                        file_name="control_totals.xlsx",
+                        sheet_name="Control_Totals",
+                        columns=["Expected_Total", "Basis"],
+                    ),
+                    injection_policy=InjectionPolicy(
+                        pattern="basis_mismatch_requires_follow_up",
+                        severity="medium",
+                        affected_row_count=1,
+                        affected_entities=["control_total"],
+                    ),
+                    expected_solver_behavior="Surface the mismatch explicitly and explain whether it reflects a true exception, a basis difference, or missing support.",
+                )
+            )
+        if motif == "policy_application":
+            traps.append(
+                TrapSpec(
+                    trap_id="trap_policy_application_clause_overlap",
+                    source_skill_id=source_skill_id,
+                    trap_type="policy_clause_overlap",
+                    injection_target=InjectionTarget(
+                        file_name="policy_reference.docx",
+                        sheet_name="",
+                        columns=["POL-002", "POL-003"],
+                    ),
+                    injection_policy=InjectionPolicy(
+                        pattern="partially_overlapping_policy_clauses",
+                        severity="medium",
+                        affected_entities=["policy_clause_pair"],
+                    ),
+                    expected_solver_behavior="Resolve which clause governs the case, or mark the policy interpretation as uncertain instead of flattening the ambiguity.",
+                )
+            )
+        if motif == "evidence_to_deliverable":
+            traps.append(
+                TrapSpec(
+                    trap_id="trap_evidence_to_deliverable_manager_request_gap",
+                    source_skill_id=source_skill_id,
+                    trap_type="instruction_vs_evidence_gap",
+                    injection_target=InjectionTarget(
+                        file_name="manager_request.md",
+                        sheet_name="",
+                        columns=["Requested output", "Known evidence gaps"],
+                    ),
+                    injection_policy=InjectionPolicy(
+                        pattern="manager_request_demands_missing_support",
+                        severity="medium",
+                        affected_entities=["follow_up_request"],
+                    ),
+                    expected_solver_behavior="Acknowledge where the manager request cannot be fully satisfied from current evidence and convert the gap into explicit follow-up rather than inventing support.",
+                )
+            )
+        return traps
 
     def _intermediate_states(self, motif: str, entries: List[SkillRegistryEntry]) -> List[str]:
         states = ["evidence_inventory", "deliverable_outline", "evidence_to_conclusion_map"]

@@ -1,0 +1,32 @@
+name: taskgenerator
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pandas
+  - openpyxl
+  - pydantic>=2
+  - requests
+  - httpx
+  - trafilatura
+  - python-dotenv
+  - datasets
+  - numpy
+  - scipy
+  - scikit-learn
+  - beautifulsoup4
+  - lxml
+  - pyyaml
+  - tqdm
+  - pillow
+  - python-docx
+  - reportlab
+  - pypdf
+  - pdfplumber
+  - matplotlib
+  - pip:
+      - "stirrup[e2b]==0.1.8"
+      - "e2b==2.20.0"
+      - "e2b-code-interpreter==2.6.0"

@@ -449,12 +449,16 @@ Current Pipeline A starting files:
   - `src/task_generator/v3_gdpval_subset_selector.py`
   - `src/task_generator/v3_gdpval_rw_task_eval_adapter.py`
   - `src/task_generator/v3_gdpval_single_case_eval.py`
+  - `src/task_generator/v3_gdpval_clean_baseline.py`
+  - `src/task_generator/v3_gdpval_task_anatomy.py`
   - `src/task_generator/v3_rw_task_stirrup_entrypoint.py`
   - `Test/run_v3_phase14_baseline.py`
   - `Test/run_v3_gdpval_local_mirror.py`
   - `Test/run_v3_gdpval_subset_selector.py`
   - `Test/run_v3_gdpval_rw_task_eval_adapter.py`
   - `Test/run_v3_gdpval_single_case_eval.py`
+  - `Test/run_v3_gdpval_clean_baseline.py`
+  - `Test/run_v3_gdpval_task_anatomy.py`
   - `Test/probe_v3_model_provider.py`
   - `artifacts/phase14/gdpval_local_mirror/` is calibration-only and must not be used as Pipeline A source material or training generation input
   - `artifacts/phase14/gdpval_subset/` is the reviewed finance/audit calibration slice over that mirror
@@ -466,11 +470,47 @@ Current Pipeline A starting files:
   - the rw-task entrypoint now also exposes `--case-timeout-seconds` and `--sandbox-timeout-seconds`; the outer case timeout can be larger, but the observed E2B sandbox cap is 3600 seconds and larger sandbox values are rejected
   - Phase 14.3 grading defaults `--grader-model gpt-5.4-pro`; `--model` is the evaluated model, not necessarily the grader model
   - current Phase 14.3 execute smoke result under `artifacts/phase14/gdpval_eval_baseline_execute_smoke/`: 1 GDPVal case, evaluated model `gpt-4o-mini`, grader `gpt-5.4-pro`, run completed, grade completed, score `8 / 63` (`score_ratio ~= 0.127`), failure_count 0
-  - current Phase 14.3 5-case executed baseline result under `artifacts/phase14/gdpval_eval_baseline_5case_execute/`: 5 GDPVal cases prepared, 0 blocked, both `gpt-5.4-pro` and `gpt-4o-mini` attempted; `gpt-5.4-pro` produced 2 completed task scores and 3 grading failures, `gpt-4o-mini` produced 4 completed task scores and 1 grading failure, and only 1 task is currently usable for two-model gap analysis
-  - current 5-case usable gap task is `ee09d943-5a11-430a-b7a2-971b4e9b01b5`: `gpt-5.4-pro` score ratio `0.0`, `gpt-4o-mini` score ratio `0.23728813559322035`; treat this as diagnostic only because later inspection showed the `gpt-5.4-pro` side had no deliverable after E2B sandbox timeout
+  - raw Phase 14.3 5-case executed baseline under `artifacts/phase14/gdpval_eval_baseline_5case_execute/` is toolchain evidence only: it prepared 5 GDPVal cases and attempted both `gpt-5.4-pro` and `gpt-4o-mini`, but its apparent `ee09` gap is superseded because missing deliverables after sandbox timeout had been counted like usable zero-score outputs
   - Phase 14.3 should now proceed one task at a time through `Test/run_v3_gdpval_single_case_eval.py`, which writes `single_case_report.json`, `deliverable_diagnostic_report.json`, `sanitized_regrade_report.json`, `case_gap_profile.json`, and `continue_decision.json`
   - current repaired single-case result under `artifacts/phase14/gdpval_single_case_runs/regrade_7b08/`: Fall Music Tour P&L (`7b08cd4d-df60-41ae-9102-8aaa49306ba2`) has sanitized regrade scores `gpt-5.4-pro = 78 / 89` (`0.8764044943820225`) and `gpt-4o-mini = 8 / 89` (`0.0898876404494382`), `score_gap = 0.7865168539325843`, `decision = ready_for_next_case`
+  - current Phase 14.3 clean baseline command: `python Test/run_v3_gdpval_clean_baseline.py --task-limit 5`
+  - current Phase 14.3 clean baseline result under `artifacts/phase14/gdpval_clean_baseline/`: 5 tasks summarized, 4 usable for gap analysis, 1 needs model rerun; usable tasks are `83d10`, `7b08`, `7d7f`, and `87da`; `ee09` remains unusable because the `gpt-5.4-pro` side has no deliverable
+  - current clean gap distribution: 3 high-gap tasks, 1 medium-gap task, 1 unusable task; missing-deliverable zero scores must not be treated as model-quality evidence
+  - Phase 14.4 deterministic anatomy command: `python Test/run_v3_gdpval_task_anatomy.py`
+  - current Phase 14.4 anatomy outputs under `artifacts/phase14/gdpval_anatomy/`: 10 selected GDPVal profiles, `gdpval_task_anatomy.jsonl`, `gdpval_anatomy_summary_report.json`, `gdpval_task_anatomy_distribution.json`, and `good_task_profiler_input.json`
+  - current anatomy distribution: 7 spreadsheet workbooks, 1 slide deck, 2 document/report tasks; clean eval status is 4 usable, 1 needs model rerun, and 5 not yet evaluated
   - model provider probes now confirm Tuzi `gemini-3-pro-preview` and DeepSeek official `deepseek-v4-pro` both return non-empty chat and parseable JSON on small probes; reports live under `artifacts/phase14/model_provider_probes/` and do not include secrets
+  - Phase 14 route correction as of 2026-07-08: 4 clean GDPVal paired comparisons have initial calibration value, but are not enough to justify a fixed weighted `GoodTaskScore`
+  - implement `GoodTaskProfiler-Observational V1` first: record task anatomy, clean model gaps, runtime, deliverable/grading status, productive-vs-frictional complexity, and gap hypotheses; do not emit a weighted total score yet
+  - Phase 14.4A gap autopsy is implemented by `src/task_generator/v3_gdpval_gap_autopsy.py` and `Test/run_v3_gdpval_gap_autopsy.py`; current smoke writes `artifacts/phase14/gdpval_gap_autopsy/gdpval_gap_autopsy_report.json` and `gdpval_gap_hypothesis_ledger.json` with 5 cases, 4 usable, and gap bands `3 high / 1 medium / 1 unusable`
+  - Phase 14.4B runnable slice is implemented by `src/task_generator/v3_gdpval_runnable_slice.py` and `Test/run_v3_gdpval_runnable_slice.py`; current smoke writes `artifacts/phase14/gdpval_runnable_slice_v2_manifest.json`, `gdpval_next_eval_queue.json`, and `taskgenerator_comparison_eval_plan.json`
+  - current 14.4B next GDPVal eval queue contains `58ac`, `b39a`, `4de6`, and `c657`; current TaskGenerator comparison plan selects one Phase 13 reviewed strict release task from each motif: `evidence_to_deliverable`, `cross_check_validation`, `fan_in_reconciliation`, and `policy_application`
+  - runnable slice target is now 12 clean paired comparisons before any scored profiler or 30-task expansion
+  - Phase 14.5 GoodTaskProfiler-Observational V1 is implemented by `src/task_generator/v3_good_task_profiler_observational.py` and `Test/run_v3_good_task_profiler_observational.py`; current smoke writes `artifacts/phase14/good_task_profiler_observational/good_task_profiler_observational_report.json`, `good_task_observational_profiles.jsonl`, and `good_task_observational_distribution_report.json`
+  - current 14.5 smoke result after GDPVal and generated-task eval: 14 profiles total, 10 GDPVal profiles, 4 TaskGenerator profiles, 12 clean evaluated profiles, 2 needs-rerun profiles, and `weighted_good_task_score_emitted=false`
+  - GoodTaskProfiler-Observational records evidence dimensions only; do not add or consume a weighted `GoodTaskScore` until both GDPVal and TaskGenerator generated tasks have enough clean paired comparison evidence
+  - Phase 14.6 generated-vs-GDPVal comparison V1 is implemented by `src/task_generator/v3_generated_vs_gdpval_comparison.py` and `Test/run_v3_generated_vs_gdpval_comparison.py`; current smoke writes `artifacts/phase14/generated_vs_gdpval/` reports
+  - current 14.6 result after GDPVal/generated eval: `gdpval_profile_count=10`, `generated_profile_count=4`, `gdpval_clean_eval_count=8`, `generated_clean_eval_count=4`, `comparison_readiness=clean_pair_comparison_available`, and `blocked_reason=null`
+  - Phase 14.6B generated TaskGenerator comparison eval prep is implemented by `src/task_generator/v3_generated_task_comparison_eval.py` and `Test/run_v3_generated_task_comparison_eval.py`; current dry-run writes `artifacts/phase14/generated_task_comparison_eval/`
+  - current 14.6B executed generated-task result uses `gemini-3-pro-preview` as alternate strong model, `gpt-4o-mini` as weak model, and `gpt-5.4-pro` as grader; the four selected Phase 13 release tasks all completed clean paired eval
+  - current generated-task summary writes `artifacts/phase14/generated_task_comparison_eval_summary/` and reports 4 generated tasks, 8 model records, 8 completed model scores, 4 clean generated pairs, and 0 blocked generated pairs
+  - generated task gaps are: `pipeline_b_batch_01_evidence_to_deliverable=0.0189`, `pipeline_b_batch_02_cross_check_validation=0.3846`, `pipeline_b_batch_03_fan_in_reconciliation=0.6909`, and `pipeline_b_batch_04_policy_application=0.4127`
+  - current generated-vs-GDPVal gap bands are GDPVal `6 high / 2 medium / 2 unusable` and generated tasks `1 high / 2 medium / 1 low`; this is diagnostic evidence, not benchmark-grade proof or a basis for weighted GoodTaskScore
+  - the 12-clean-pair target is now met: 8 GDPVal clean pairs plus 4 TaskGenerator generated clean pairs
+  - Phase 14.7A LLM Shadow prepare layer is implemented by `src/task_generator/v3_llm_shadow_common.py`, `src/task_generator/v3_llm_shadow_goldenrun.py`, `src/task_generator/v3_llm_shadow_rubric.py`, `src/task_generator/v3_llm_realism_critic.py`, and `src/task_generator/v3_llm_reference_narrative_suggestion.py`, with CLIs under `Test/run_v3_llm_*`
+  - current 14.7/14.8 shadow run writes `artifacts/phase14/llm_shadow/` and has executed 5 production-ready tasks for each shadow kind: GoldenRun, rubric, realism critic, and reference narrative suggestion
+  - the shadow layer remains diagnostic-only: outputs may inform Phase 15 Candidate Mode review, but they do not mutate registry, release status, or weighted GoodTaskScore
+  - Phase 14.8 LLM Impact Evaluation shell is implemented by `src/task_generator/v3_llm_impact_evaluation.py` and `Test/run_v3_llm_impact_evaluation.py`; current smoke writes `artifacts/phase14/llm_impact/`
+  - `src/task_generator/v3_llm_shadow_executor.py` and `Test/run_v3_llm_shadow_executor.py` now execute prepared LLM shadow packages through an approved OpenAI-compatible model and update shadow/comparison reports; outputs remain diagnostic-only and not release artifacts
+  - current 14.8 result: 4 shadow kinds, 20 prepared task shadows, 0 awaiting LLM output, 20 completed metrics, `impact_readiness=ready_for_impact_analysis`, and adoption recommendation `review_shadow_metrics_before_candidate_mode`
+  - do not treat completed LLM shadow metrics as automatic proof that LLM improves task quality; Phase 15 must review metric alignment and run a candidate-mode risk gate before promotion
+  - Phase 14.9 GoodTask Dashboard V1 is implemented by `src/task_generator/v3_good_task_dashboard.py` and `Test/run_v3_good_task_dashboard.py`; current smoke writes `artifacts/phase14/good_task_dashboard/`
+  - current 14.9 result: `overall_status=ready_for_phase14_postmortem`, `phase14_readiness=partial_diagnostic_dashboard_ready`, `weighted_good_task_score_emitted=false`, generated-vs-GDPVal comparison available, and primary blockers `[]`
+  - Phase 14.10 postmortem / Phase 15 decision layer is implemented by `src/task_generator/v3_phase14_postmortem.py` and `Test/run_v3_phase14_postmortem.py`; current smoke writes `artifacts/phase14/postmortem/phase14_postmortem_report.json` and the current handoff `docs/handoffs/PHASE_14_GDPTASK_CALIBRATION_SUCCESS_2026-07-08.md`
+  - current 14.10 decision is `phase14_decision=success` and `phase15_recommendation=phase15_candidate_mode_or_generator_reform_review`; the current success handoff is `docs/handoffs/PHASE_14_GDPTASK_CALIBRATION_SUCCESS_2026-07-08.md`
+  - minimum Phase 14 calibration/reporting criteria are met, the 12-clean-pair target is met, and LLM shadow metrics are complete enough for review; `ideal_2_llm_positive_impact` remains `partial` because positive adoption still requires human review
+  - `83d10` should be kept as a useful low/medium-gap counterexample; `ee09` should stay a runnability/friction sample until the strong-model side has a usable deliverable
+  - compare TaskGenerator release tasks against GDPVal through clean paired comparisons and `artifacts/phase14/generated_vs_gdpval_gap_probe.json`; do not compare generated tasks to raw, unclean GDPVal batch scores
 - currently planned next-stage files:
   - richer production batch quality distribution / failure reporting plus post-diversification template/deliverable concentration controls after the first production promotion slice
   - any later canonical reviewed promotion batch should build on `source_promotion_key`-tracked scratch evidence first

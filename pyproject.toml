@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "taskgenerator"
+version = "0.1.0"
+description = "Report-first GDPVal-style real-world task generation pipeline."
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2",
+  "pandas",
+  "openpyxl",
+  "requests",
+  "httpx",
+  "trafilatura",
+  "python-dotenv",
+  "datasets",
+  "stirrup[e2b]==0.1.8",
+  "e2b==2.20.0",
+  "e2b-code-interpreter==2.6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

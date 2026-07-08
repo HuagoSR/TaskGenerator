@@ -1,5 +1,7 @@
 .env
 deepseek-key.txt
+.agents/
+.codex/
 __pycache__/
 *.pyc
 .idea/
@@ -7,7 +9,13 @@ Skill/*.log
 Skill/agent_logs/
 Skill/debate_logs/
 artifacts/tmp/
+artifacts/end_to_end_runs/
 artifacts/pipeline_b/scratch/
+artifacts/manual_collection/
+artifacts/phase14/
+artifacts/production_batches/
+artifacts/pycache_smoke/
+artifacts/releases/
 Test/v2_outputs/
 Test/v3_source_demo_inputs/
 Test/v3_public_smoke_package/*_extraction/
@@ -15,3 +23,7 @@ Test/v3_public_smoke_package/*_registry/
 Test/v3_public_smoke_package/deepseek_guard_check/
 Test/v3_gdpval_prompt_sources/
 Test/v3_web_source_collections/
+.cache/
+*.egg-info/
+src/task_generator/Skill/agent_logs/
+src/task_generator/Skill/debate_logs/

@@ -80,8 +80,14 @@ def collection_dir_for_topic(output_root: Path, topic: str) -> Path:
     return output_root / slugify(topic)
 
 
-def run_collector(args: argparse.Namespace, topic: str, collection_dir: Path) -> Dict[str, object]:
-    if args.reuse_existing and collection_is_ready(collection_dir):
+def run_collector(
+    args: argparse.Namespace,
+    topic: str,
+    collection_dir: Path,
+    *,
+    prefer_existing: bool = False,
+) -> Dict[str, object]:
+    if (args.reuse_existing or prefer_existing) and collection_is_ready(collection_dir):
         return {
             "status": "reused_existing",
             "collection_dir": str(collection_dir),
@@ -90,27 +96,46 @@ def run_collector(args: argparse.Namespace, topic: str, collection_dir: Path) ->
     if not args.allow_web_collection:
         raise RuntimeError("Web collection requires --allow-web-collection unless --reuse-existing can reuse a ready collection.")
 
+    collector_script = (
+        "run_v3_direct_source_collector.py"
+        if args.collector_backend == "direct"
+        else "run_v3_stirrup_source_collector.py"
+    )
     cmd = [
         sys.executable,
-        str(TEST_DIR / "run_v3_stirrup_source_collector.py"),
+        str(TEST_DIR / collector_script),
         "--topic",
         topic,
         "--limit",
         str(args.limit),
-        "--search-backend",
-        args.search_backend,
         "--output-dir",
         str(collection_dir),
         "--env-path",
         str(args.env_path),
-        "--model",
-        args.collector_model,
-        "--max-turns",
-        str(args.collector_max_turns),
-        "--max-tokens",
-        str(args.collector_max_tokens),
         "--allow-web-collection",
     ]
+    if args.collector_backend == "stirrup":
+        cmd.extend(
+            [
+                "--search-backend",
+                args.search_backend,
+                "--model",
+                args.collector_model,
+                "--max-turns",
+                str(args.collector_max_turns),
+                "--max-tokens",
+                str(args.collector_max_tokens),
+            ]
+        )
+    else:
+        cmd.extend(
+            [
+                "--search-timeout-seconds",
+                str(args.collector_timeout_seconds),
+                "--fetch-timeout-seconds",
+                str(args.collector_timeout_seconds),
+            ]
+        )
     for domain in args.domain:
         cmd.extend(["--domain", domain])
     for query in args.query:
@@ -242,9 +267,19 @@ def batch_warnings(summary: Dict[str, object], source_quality: Optional[Dict[str
 
 
 def run_topic_batch(args: argparse.Namespace, topic: str, collection_dir: Path) -> Dict[str, object]:
+    return run_topic_batch_with_mode(args, topic, collection_dir, prefer_existing=False)
+
+
+def run_topic_batch_with_mode(
+    args: argparse.Namespace,
+    topic: str,
+    collection_dir: Path,
+    *,
+    prefer_existing: bool,
+) -> Dict[str, object]:
     batch_id = slugify(topic)
     pipeline_output_dir = collection_dir / "pipeline_a_run"
-    collector_report = run_collector(args, topic, collection_dir)
+    collector_report = run_collector(args, topic, collection_dir, prefer_existing=prefer_existing)
     if collector_report["status"] == "failed":
         return {
             "batch_id": batch_id,
@@ -357,11 +392,20 @@ def aggregate_report(
     for batch in batch_summaries:
         warning_counts.update(warning["code"] for warning in batch.get("warnings", []))
         reason_counts.update(batch.get("review_reason_code_counts", {}))
+    status_counts = Counter(str(batch.get("status") or "unknown") for batch in batch_summaries)
+    successful_batches = sum(
+        1 for batch in batch_summaries if batch.get("status") in {"success", "dry_run_complete"}
+    )
+    collection_failures = sum(1 for batch in batch_summaries if batch.get("status") == "collection_failed")
 
     effective_registry_count_after = registry_count_before if args.skip_registry_update else registry_count_after
     return {
         "status": "success" if all(batch.get("status") in {"success", "dry_run_complete"} for batch in batch_summaries) else "partial_failure",
         "batch_count": len(batch_summaries),
+        "batch_status_counts": dict(sorted(status_counts.items())),
+        "successful_batch_count": successful_batches,
+        "failed_batch_count": len(batch_summaries) - successful_batches,
+        "collection_failed_batch_count": collection_failures,
         "output_root": str(args.output_root),
         "registry_path": str(args.registry_path),
         "report_path": str(args.batch_report_path),
@@ -411,6 +455,15 @@ def aggregate_report(
         "graph_extraction_summary": aggregate_graph_extraction(batch_summaries),
         "warning_counts": dict(sorted(warning_counts.items())),
         "review_reason_code_counts": dict(sorted(reason_counts.items())),
+        "next_step_suggestion": (
+            "At least one collection succeeded. Inspect failed topics, but downstream generation may continue from the successful topics."
+            if successful_batches and successful_batches < len(batch_summaries)
+            else (
+                "All collections failed or downstream extraction failed. Inspect per-topic collection and source-quality reports before retrying."
+                if not successful_batches
+                else "All requested topic batches completed successfully."
+            )
+        ),
         "batches": batch_summaries,
     }
 
@@ -429,9 +482,10 @@ def main() -> None:
     parser.add_argument("--audit-report-path", type=Path, default=DEFAULT_AUDIT_REPORT_PATH)
     parser.add_argument("--readiness-report-path", type=Path, default=ROOT / "SkillRegistry" / "v3_registry_sampling_readiness_report.json")
     parser.add_argument("--search-backend", choices=["serper", "brave"], default="serper")
+    parser.add_argument("--collector-backend", choices=["direct", "stirrup"], default="direct")
     parser.add_argument("--serper-api-key-env", default="SERPER_API_KEY")
     parser.add_argument("--collector-model", default="gpt-5-mini")
-    parser.add_argument("--collector-max-turns", type=int, default=16)
+    parser.add_argument("--collector-max-turns", type=int, default=32)
     parser.add_argument("--collector-max-tokens", type=int, default=6000)
     parser.add_argument("--collector-timeout-seconds", type=int, default=2400)
     parser.add_argument("--provider", choices=["auto", "tuzi", "deepseek"], default="deepseek")
@@ -455,14 +509,16 @@ def main() -> None:
     if args.calibration_only:
         args.skip_registry_update = True
         args.build_transition_graph = True
+    if args.collector_backend == "direct" and args.search_backend != "serper":
+        raise RuntimeError("collector-backend direct currently supports only search-backend serper.")
 
     args.output_root.mkdir(parents=True, exist_ok=True)
     batch_inputs = []
     for topic in args.topic or ([] if args.collection_dir else DEFAULT_TOPICS):
-        batch_inputs.append((topic, collection_dir_for_topic(args.output_root, topic)))
+        batch_inputs.append({"topic": topic, "collection_dir": collection_dir_for_topic(args.output_root, topic), "prefer_existing": False})
     for collection_dir in args.collection_dir:
         resolved = collection_dir.resolve()
-        batch_inputs.append((infer_topic_from_collection(resolved), resolved))
+        batch_inputs.append({"topic": infer_topic_from_collection(resolved), "collection_dir": resolved, "prefer_existing": True})
 
     if not batch_inputs:
         raise RuntimeError("No topics or collection directories were provided.")
@@ -471,8 +527,13 @@ def main() -> None:
 
     registry_count_before = registry_entry_count(args.registry_path)
     batch_summaries = [
-        run_topic_batch(args, topic=topic, collection_dir=collection_dir)
-        for topic, collection_dir in batch_inputs
+        run_topic_batch_with_mode(
+            args,
+            topic=batch["topic"],
+            collection_dir=batch["collection_dir"],
+            prefer_existing=bool(batch["prefer_existing"]),
+        )
+        for batch in batch_inputs
     ]
     registry_count_after = registry_entry_count(args.registry_path)
     report = aggregate_report(args, batch_summaries, registry_count_before, registry_count_after)
@@ -482,7 +543,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
 
 

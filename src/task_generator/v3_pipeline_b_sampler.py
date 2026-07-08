@@ -747,10 +747,11 @@ class PipelineBSubgraphSampler:
             return []
         if motif_occurrence_index <= 0:
             return candidates[:1]
+        effective_tolerance = tolerance + min(0.16, 0.06 * motif_occurrence_index)
         near_top = [
             candidate
             for candidate in candidates
-            if float(candidate["candidate_score"]) >= max(0.35, top_score - tolerance)
+            if float(candidate["candidate_score"]) >= max(0.35, top_score - effective_tolerance)
         ]
         if not near_top:
             near_top = candidates

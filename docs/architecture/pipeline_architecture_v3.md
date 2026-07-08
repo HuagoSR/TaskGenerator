@@ -59,7 +59,12 @@ Current live status has moved beyond the old `revise_only` baseline:
   - the new `phase13_pilot8_diversified_smoke` preserves `8 / 8 candidate_ready` and `8 / 8 verifier pass` while reducing `duplicate_subgraph_count` from `4` to `0` and removing repeated skill-signature warnings
   - after that fix, the current scale-up bottleneck shifts upward: remaining concentration is mostly duplicate deliverable signatures within motif families
   - applying the existing explicit reviewer policy to that diversified 8-case batch now yields `3 / 8 approved_production_candidate` and a strict reviewed release bundle with `task_count = 3`
-  - the remaining live gap is therefore not basic batch closure or exact subgraph reuse, but higher-level production gating and broader template-family diversity
+  - the remaining live gap after that pilot was therefore not basic batch closure or exact subgraph reuse, but higher-level production gating and broader template-family diversity
+  - the current closure pass has now advanced that governed path further: full motif-grammar coverage plus stronger repeated-motif diversification produce `phase13_pilot8_diversity_final_smoke` with `8 / 8 candidate_ready`, `8 / 8 verifier pass`, `duplicate_subgraph_count = 0`, and `duplicate_skill_signature_count = 0`
+  - applying the explicit reviewer policy to that final diversified 8-case batch now yields `8 / 8 approved_production_candidate`
+  - the strict reviewed release bundle `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversity_final_reviewed_strict/` now contains `task_count = 8`
+  - the reviewed production dashboard for that batch reports `production_ready_count = 8` and `release_readiness_status = release_ready`
+  - at the current finance/audit governed MVP scope, Phase 13 should therefore be treated as complete
 
 For current state, prefer reading this roadmap together with:
 
