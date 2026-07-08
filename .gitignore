@@ -13,6 +13,7 @@ artifacts/end_to_end_runs/
 artifacts/pipeline_b/scratch/
 artifacts/manual_collection/
 artifacts/phase14/
+artifacts/phase15/
 artifacts/production_batches/
 artifacts/pycache_smoke/
 artifacts/releases/
