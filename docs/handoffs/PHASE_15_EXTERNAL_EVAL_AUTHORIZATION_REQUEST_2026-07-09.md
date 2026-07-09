@@ -147,3 +147,19 @@ Expected status:
 - `blocking_reasons = []`
 
 This check verifies runbook/script/template consistency only; it does not call external APIs and does not make the current tenant permitted to export the task package.
+
+## Completion Audit
+
+Use the completion audit to avoid mistaking scaffolding for Phase 15 completion:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_completion_audit.py
+```
+
+Current expected status before external results are imported:
+
+- `completion_status = not_complete`
+- proven items: Phase 15.0 through deterministic A/B and runbook readiness layers
+- unresolved items: clean paired eval, governed production approval/release impact, and final success postmortem
+
+The audit writes `artifacts/phase15/completion_audit/phase15_completion_audit_report.json`.
