@@ -281,6 +281,8 @@ class Phase15CloseoutBuilder:
             reasons.append("external_eval_connection_failed_in_sandbox")
         if eval_evidence.get("external_eval_authorization_status") in {"approval_rejected", "requires_explicit_user_approval"}:
             reasons.append("external_eval_authorization_not_available")
+        if eval_evidence.get("external_eval_authorization_status") == "tenant_policy_denied":
+            reasons.append("external_eval_tenant_policy_denied")
         if not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("clean_paired_eval_not_completed")
         if production.get("release_readiness_status") != "release_ready":

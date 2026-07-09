@@ -19,6 +19,8 @@ The first attempted local run failed because the sandbox could not connect to th
 
 Two external-execution escalation attempts were rejected by policy review because the visible chat did not contain explicit approval for this exact Phase 15 task-package export.
 
+After the user provided explicit visible approval for the exact single item, a third escalation attempt was still rejected because the current tenant policy denies exporting a private workspace task package to an untrusted third-party model/API even with explicit user approval.
+
 ## Minimal Explicit Authorization Needed
 
 To continue Phase 15 clean paired eval, the user should explicitly approve the following in a normal chat message:
@@ -87,3 +89,5 @@ Keep the generator reform behind the explicit experiment flag until:
 2. grading output is available for both arms,
 3. Phase 15 closeout is regenerated with actual eval results,
 4. promotion recommendation changes from `keep_experiment_flag_only` only if evidence supports it.
+
+If this tenant policy remains in force, complete Phase 15 clean eval in a separately permitted environment using the exact command above, then copy only sanitized result summaries and grader outputs back into this repository.

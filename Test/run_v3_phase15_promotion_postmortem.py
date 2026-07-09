@@ -35,7 +35,13 @@ def main() -> None:
     parser.add_argument(
         "--external-eval-authorization-status",
         default="not_recorded",
-        choices=["not_recorded", "approval_rejected", "requires_explicit_user_approval", "approved"],
+        choices=[
+            "not_recorded",
+            "approval_rejected",
+            "requires_explicit_user_approval",
+            "approved",
+            "tenant_policy_denied",
+        ],
     )
     args = parser.parse_args()
 
