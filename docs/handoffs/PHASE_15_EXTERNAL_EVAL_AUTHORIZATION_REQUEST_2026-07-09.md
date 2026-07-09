@@ -210,6 +210,7 @@ Current expected status before external results are imported:
 - `phase15_completion_status = not_complete`
 - `phase15_decision = still_open`
 - `external_eval_package_readiness = ready_for_permitted_environment`
+- `permitted_eval_bundle_status = ready_for_permitted_environment`
 - `external_eval_import_status = blocked`
 - `tenant_policy_status = tenant_policy_denied`
 

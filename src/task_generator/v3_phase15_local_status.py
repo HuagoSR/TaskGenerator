@@ -16,6 +16,7 @@ class Phase15LocalStatusRequest(BaseModel):
     completion_audit_report_path: str
     postmortem_report_path: str
     external_eval_readiness_report_path: str
+    permitted_eval_bundle_report_path: str
     external_eval_import_report_path: str
     external_eval_runbook_path: str
     external_eval_script_path: str
@@ -31,6 +32,7 @@ class Phase15LocalStatusReport(BaseModel):
     phase15_completion_status: Optional[str] = None
     phase15_decision: Optional[str] = None
     external_eval_package_readiness: Optional[str] = None
+    permitted_eval_bundle_status: Optional[str] = None
     external_eval_import_status: Optional[str] = None
     tenant_policy_status: TenantPolicyStatus
     evidence_presence: Dict[str, bool] = Field(default_factory=dict)
@@ -51,6 +53,7 @@ class Phase15LocalStatusBuilder:
         completion_audit = self._load_optional(request.completion_audit_report_path)
         postmortem = self._load_optional(request.postmortem_report_path)
         readiness = self._load_optional(request.external_eval_readiness_report_path)
+        bundle = self._load_optional(request.permitted_eval_bundle_report_path)
         eval_import = self._load_optional(request.external_eval_import_report_path)
         runbook = self._load_optional(request.external_eval_runbook_path)
 
@@ -58,6 +61,7 @@ class Phase15LocalStatusBuilder:
             "completion_audit": bool(completion_audit),
             "postmortem": bool(postmortem),
             "external_eval_readiness": bool(readiness),
+            "permitted_eval_bundle": bool(bundle),
             "external_eval_import": bool(eval_import),
             "external_eval_runbook": bool(runbook),
             "external_eval_script": Path(request.external_eval_script_path).exists(),
@@ -77,10 +81,11 @@ class Phase15LocalStatusBuilder:
             phase15_completion_status=completion_audit.get("completion_status"),
             phase15_decision=postmortem.get("phase15_decision"),
             external_eval_package_readiness=readiness.get("readiness_status"),
+            permitted_eval_bundle_status=bundle.get("bundle_status"),
             external_eval_import_status=eval_import.get("import_status"),
             tenant_policy_status=tenant_policy_status,
             evidence_presence=evidence_presence,
-            summary=self._summary(completion_audit, postmortem, readiness, eval_import, runbook),
+            summary=self._summary(completion_audit, postmortem, readiness, bundle, eval_import, runbook),
             blocking_reasons=blocking_reasons,
             next_local_command_sequence=[
                 "D:\\miniconda3\\envs\\taskgenerator\\python.exe Test\\run_v3_phase15_external_eval_importer.py",
@@ -93,6 +98,7 @@ class Phase15LocalStatusBuilder:
                 "This local status report does not call external APIs.",
                 "This local status report does not read .env or print secret values.",
                 "A ready runbook means the package is structurally prepared for a separately permitted environment, not that this tenant is allowed to export it.",
+                "A ready permitted-eval bundle is transfer logistics evidence, not clean eval completion evidence.",
             ],
         )
         (output_dir / "phase15_local_status_report.json").write_text(
@@ -130,6 +136,7 @@ class Phase15LocalStatusBuilder:
                 "completion_audit",
                 "postmortem",
                 "external_eval_readiness",
+                "permitted_eval_bundle",
                 "external_eval_import",
                 "external_eval_runbook",
                 "external_eval_script",
@@ -165,6 +172,7 @@ class Phase15LocalStatusBuilder:
         completion_audit: Dict[str, Any],
         postmortem: Dict[str, Any],
         readiness: Dict[str, Any],
+        bundle: Dict[str, Any],
         eval_import: Dict[str, Any],
         runbook: Dict[str, Any],
     ) -> Dict[str, Any]:
@@ -178,6 +186,9 @@ class Phase15LocalStatusBuilder:
             "postmortem_recommendation": postmortem.get("recommendation"),
             "readiness_item_count": readiness.get("item_count"),
             "readiness_blocking_reasons": readiness.get("blocking_reasons") or [],
+            "permitted_eval_bundle_item_count": bundle.get("item_count"),
+            "permitted_eval_bundle_zip_path": bundle.get("zip_path"),
+            "permitted_eval_bundle_blocking_reasons": bundle.get("blocking_reasons") or [],
             "import_complete_pair_count": import_summary.get("complete_pair_count"),
             "import_mean_reform_minus_baseline_delta": import_summary.get("mean_reform_minus_baseline_delta"),
             "runbook_item_count": len(runbook_items),
