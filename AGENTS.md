@@ -237,8 +237,20 @@ Current status snapshot as of `2026-07-06`:
   - explicit reviewed promotion on that batch now yields `8 / 8 approved_production_candidate`
   - the strict reviewed release bundle now exists at `artifacts/releases/finance_audit_mvp_v0_1_pilot8_diversity_final_reviewed_strict/` with `task_count = 8`
   - the reviewed production dashboard for that batch now reports `production_ready_count = 8` and `release_readiness_status = release_ready`
-- The user has explicitly authorized reading `E:\THU\2026Spring\SRT\rw-task\.env` and sending selected Phase 12 case packages to external model APIs for evaluation. Treat this as permission for the guarded executed-eval mini-campaign only; do not print secret values or stage `.env`.
-- However, the current Codex execution environment still enforces a tenant policy that blocks sending private workspace task-package contents to external third-party model APIs. If the real Phase 12 mini-campaign is needed, prepare the exact command and run it in a separately permitted environment rather than attempting a workaround here.
+- Phase 14 is complete as a calibration / evidence-maturation phase:
+  - `phase14_decision = success`
+  - `phase15_recommendation = phase15_candidate_mode_or_generator_reform_review`
+  - GDPVal remains `eval_calibration_only`
+  - GoodTaskProfiler remains observational; do not enable weighted GoodTaskScore
+  - LLM shadow metrics are complete enough for review, but do not prove automatic LLM benefit
+- Phase 15A is complete, but Phase 15 is not complete under the original Phase 15 plan:
+  - completed scope: `baseline_deterministic` vs `generator_reform_only` on four `evidence_to_deliverable` cases with `gpt-4o-mini`
+  - weak-model eval result: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs
+  - correct interpretation: weak-model decline is neither good nor bad by itself; it only blocks immediate promotion
+  - current action: `do_not_promote_pending_strong_model_eval`
+  - current plan: `docs/architecture/phase15_completion_plan_2026-07-09.md`
+  - do not enter Phase 16 until strong-model paired eval, gap-delta analysis, and case-level failure autopsy are complete
+- The user explicitly authorized a scoped Phase 15 external eval run for the named task packages during the Phase 15A clean eval work. Treat this as historical, task-scoped permission, not blanket future authorization. Do not print secret values or stage `.env`.
 - Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
 
 Pipeline A-to-B bridge work remains important, but it is now one layer inside a broader architecture:
@@ -258,7 +270,7 @@ Pipeline A should no longer only accumulate isolated atomic skills. It should pr
 Near-term priority order:
 
 1. Keep the existing Pipeline A and Pipeline B runners working.
-2. Continue Phase 12 hardening with deterministic regression expansion, negative controls, substrate repair, and workflow-context strengthening.
+2. Complete Phase 15B before Phase 16: run/import strong-model baseline/reform eval for the same four cases, compute `gap_delta`, and autopsy the weak-model score drops.
 3. Keep promotion/apply reviewable and explicit; prefer scratch validation before any canonical registry mutation.
 4. Treat executed eval and model-separation outputs as diagnostic evidence until repeated comparison evidence is available.
 5. Keep all registry, readiness, transition-prior, and sampler-weight changes explicit and reviewable.

@@ -8,6 +8,52 @@
 
 ---
 
+## 0. 2026-07-09 状态修正
+
+当前不能把 Phase 15 判定为完整完成。
+
+已经完成的是 Phase 15A 子实验：
+
+```text
+target_motif = evidence_to_deliverable
+arms = baseline_deterministic vs generator_reform_only
+model = gpt-4o-mini
+complete_weak_model_pairs = 4 / 4
+mean_reform_minus_baseline_delta = -0.2553
+```
+
+这个结果只说明：测试过的 reform-only 版本让 `gpt-4o-mini` 分数下降。它不说明 reform 是好现象或坏现象，因为缺少同一四个 case 的 strong-model paired eval 和 gap-delta 对照。
+
+因此当前正确状态是：
+
+```text
+phase15_status = open
+phase15a_status = completed
+current_safe_action = do_not_promote_pending_strong_model_eval
+```
+
+旧的 local closeout / completion audit 里出现的 `phase15_decision = success`、`completion_status = complete` 应解释为旧实现验收口径下“本地脚手架和已注册检查项完成”，不能解释为原 Phase 15 大目标完成。
+
+当前补完计划见：
+
+```text
+docs/architecture/phase15_completion_plan_2026-07-09.md
+```
+
+Phase 15B 的最低补齐项是：
+
+```text
+1. 对同一 4 个 evidence_to_deliverable case 补 strong-model baseline/reform eval。
+2. 计算 baseline_gap、reform_gap、gap_delta。
+3. 对 case01 / case03 等降分 case 做逐题 failure autopsy。
+4. 区分 productive difficulty increased 与 instruction/rubric/evidence/deliverable friction。
+5. 再决定 promote_reform、rollback_reform 或 hold_for_redesign。
+```
+
+在这些证据补齐前，不应进入 Phase 16，也不应把当前 reform 并入默认生成器。
+
+---
+
 ## 1. 阶段背景
 
 Phase 14 已经完成，可以收口。它建立了一个新的证据框架：

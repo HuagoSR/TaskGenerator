@@ -1,5 +1,21 @@
 # Phase 15 External Eval Authorization Request - 2026-07-09
 
+## Status Correction After Phase 15A
+
+The 4-case `gpt-4o-mini` clean eval has now been imported, but it completes only the Phase 15A weak-model sub-experiment. It does not complete the original Phase 15 plan.
+
+Current corrected interpretation:
+
+```text
+phase15_status = open
+phase15a_status = completed
+phase15a_scope = weak-model baseline vs reform-only clean eval
+current_safe_action = do_not_promote_pending_strong_model_eval
+next_plan = docs/architecture/phase15_completion_plan_2026-07-09.md
+```
+
+Any older `phase15_decision = success` or `completion_status = complete` fields should be treated as local runner/audit status under the old completion scope, not as the final research conclusion for Phase 15.
+
 ## Current State
 
 Phase 15 deterministic work is ready for clean paired evaluation:
@@ -133,18 +149,33 @@ After copying results or bundled grades back, refresh the full closeout chain wi
 
 This command runs the sanitized result builder, result importer, production impact review, promotion/postmortem builder, completion audit, and local status summary in sequence. It writes `artifacts/phase15/closeout_refresh/phase15_closeout_refresh_report.json` and still does not call external APIs or read secrets.
 
-Final status after the 4-case `gpt-4o-mini` clean eval run:
+Imported status after the 4-case `gpt-4o-mini` clean eval run:
 
 - result builder: `record_count = 8`, `completed_count = 8`, `missing_count = 0`
 - importer: `import_status = ready_for_closeout`
 - clean paired eval: `complete_pair_count = 4`
 - production impact review: `decision = review_complete_keep_experiment_flag`
-- postmortem: `phase15_decision = success`
-- promotion recommendation: `rollback_reform_experiment`
-- completion audit: `completion_status = complete`, with `9 / 9` requirements proven
+- legacy postmortem field: `phase15_decision = success`
+- legacy promotion recommendation: `rollback_reform_experiment`
+- legacy completion audit field: `completion_status = complete`, with `9 / 9` old-scope requirements proven
 - local status: `ready_for_local_followup`
 
-The 4-case eval result is negative for the tested reform: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs. The correct Phase 15 closeout action is rollback or redesign, not default-chain promotion.
+The 4-case eval result is negative for the tested reform on `gpt-4o-mini`: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs. This is enough to block default-chain promotion, but not enough to decide whether the reform is inherently bad or whether it increases productive model separation.
+
+Correct current action:
+
+```text
+do_not_promote_pending_strong_model_eval
+```
+
+Required continuation:
+
+```text
+run/import strong-model paired eval for the same four cases
+compute baseline/reform gap_delta
+autopsy case-level failures, especially case01 and case03
+then decide promote_reform vs rollback_reform vs hold_for_redesign
+```
 
 ## Permitted-Environment Runbook
 
