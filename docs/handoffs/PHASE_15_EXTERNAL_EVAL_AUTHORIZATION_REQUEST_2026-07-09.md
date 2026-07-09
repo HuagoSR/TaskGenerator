@@ -123,6 +123,8 @@ If the permitted environment preserves runbook output directories, build the san
 
 This writes `artifacts/phase15/external_eval_import/phase15_external_eval_results.json`, which can then be consumed by `Test\run_v3_phase15_external_eval_importer.py`. If run reports or grade scores are missing, generated records remain non-complete and the importer will continue to block closeout.
 
+The result builder also reads `artifacts/phase15/permitted_eval_bundle/phase15_permitted_eval_bundle_report.json` by default. If the portable bundle is executed in a permitted environment and copied back with its `grades/` directory, the builder can recover sanitized completed records from the bundled grade outputs even when `rw_task_eval_run_report.json` is absent.
+
 ## Permitted-Environment Runbook
 
 To reduce manual command drift, generate a sequential first-pair runbook before moving to a permitted environment:

@@ -14,6 +14,7 @@ class Phase15ExternalEvalResultBuilderRequest(BaseModel):
     runbook_path: str
     output_dir: str
     result_output_path: str
+    permitted_eval_bundle_report_path: Optional[str] = None
 
 
 class Phase15ExternalEvalResultBuilderRecord(BaseModel):
@@ -49,7 +50,13 @@ class Phase15ExternalEvalResultBuilder:
         output_dir = Path(request.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         runbook = load_json_file(request.runbook_path)
-        records = [self._record_for_item(item) for item in runbook.get("items") or [] if isinstance(item, dict)]
+        bundle = self._load_optional(request.permitted_eval_bundle_report_path)
+        bundle_items = self._bundle_items_by_id(bundle)
+        records = [
+            self._record_for_item(item, bundle_items.get(str(item.get("item_id") or "")))
+            for item in runbook.get("items") or []
+            if isinstance(item, dict)
+        ]
         result_output_path = Path(request.result_output_path)
         result_output_path.parent.mkdir(parents=True, exist_ok=True)
         result_output_path.write_text(
@@ -66,6 +73,7 @@ class Phase15ExternalEvalResultBuilder:
                 "This builder reads local run reports and grade outputs only; it does not call external APIs.",
                 "Generated records intentionally omit raw prompts, API keys, bearer tokens, and provider logs.",
                 "If scores cannot be located, records remain failed or missing and the importer will block closeout.",
+                "When a permitted-eval bundle report is provided, bundled grades are used as a fallback if run reports are absent.",
             ],
         )
         (output_dir / "phase15_external_eval_result_builder_report.json").write_text(
@@ -74,7 +82,40 @@ class Phase15ExternalEvalResultBuilder:
         )
         return report
 
-    def _record_for_item(self, item: Dict[str, Any]) -> Phase15ExternalEvalResultBuilderRecord:
+    def _load_optional(self, path: Optional[str]) -> Dict[str, Any]:
+        if not path:
+            return {}
+        payload_path = Path(path)
+        if not payload_path.exists() or payload_path.is_dir():
+            return {}
+        try:
+            return json.loads(payload_path.read_text(encoding="utf-8-sig"))
+        except Exception:
+            return {}
+
+    def _bundle_items_by_id(self, bundle: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        bundle_dir = Path(str(bundle.get("bundle_dir") or ""))
+        items_by_id: Dict[str, Dict[str, Any]] = {}
+        for item in bundle.get("bundled_items") or []:
+            if not isinstance(item, dict):
+                continue
+            item_id = str(item.get("item_id") or "")
+            if not item_id:
+                continue
+            enriched = dict(item)
+            if bundle_dir:
+                grade_dir = Path(str(item.get("bundled_grade_dir") or ""))
+                result_dir = Path(str(item.get("bundled_result_dir") or ""))
+                enriched["resolved_bundled_grade_dir"] = str(bundle_dir / grade_dir)
+                enriched["resolved_bundled_result_dir"] = str(bundle_dir / result_dir)
+            items_by_id[item_id] = enriched
+        return items_by_id
+
+    def _record_for_item(
+        self,
+        item: Dict[str, Any],
+        bundled_item: Optional[Dict[str, Any]] = None,
+    ) -> Phase15ExternalEvalResultBuilderRecord:
         run_output_dir = Path(str(item.get("run_output_dir") or ""))
         run_report_path = run_output_dir / "rw_task_eval_run_report.json"
         warnings: List[str] = []
@@ -84,14 +125,26 @@ class Phase15ExternalEvalResultBuilder:
         run_status = str(run_report.get("run_status") or "missing")
         grade_dir_value = str(run_report.get("grade_output_dir") or "")
         grade_dir = Path(grade_dir_value) if grade_dir_value else None
+        score_source = "run_report_grade_dir"
         score = self._score_from_grade_dir(grade_dir) if grade_dir is not None else None
+        bundled_grade_dir = self._bundled_grade_dir(bundled_item)
+        if score is None and bundled_grade_dir is not None:
+            bundle_score = self._score_from_grade_dir(bundled_grade_dir)
+            if bundle_score is not None:
+                score = bundle_score
+                grade_dir = bundled_grade_dir
+                score_source = "permitted_eval_bundle_grade_dir"
+                warnings.append("score_loaded_from_permitted_eval_bundle")
         if score is None and grade_dir is not None:
             warnings.append("score_not_found")
-        completed = run_status == "completed" and score is not None
+        completed = (run_status == "completed" and score is not None) or (
+            run_status == "missing" and score is not None and bundled_grade_dir is not None
+        )
         status = "completed" if completed else ("failed" if run_report else "missing")
         summary_parts = [
             f"run_status={run_status}",
             f"grade_output_dir={grade_dir}" if grade_dir is not None else "grade_output_dir=missing",
+            f"score_source={score_source}",
         ]
         if score is not None:
             summary_parts.append(f"score={score}")
@@ -104,18 +157,38 @@ class Phase15ExternalEvalResultBuilder:
             score=score,
             grade_status="completed" if score is not None else "missing",
             result_summary="; ".join(summary_parts),
-            source_record_id=str(run_report_path) if run_report_path.exists() else "",
+            source_record_id=self._source_record_id(run_report_path, bundled_grade_dir, score),
             contains_secret=False,
             raw_prompt_included=False,
             warnings=warnings,
         )
+
+    def _bundled_grade_dir(self, bundled_item: Optional[Dict[str, Any]]) -> Optional[Path]:
+        if not bundled_item:
+            return None
+        grade_dir_value = str(bundled_item.get("resolved_bundled_grade_dir") or "")
+        if not grade_dir_value:
+            return None
+        return Path(grade_dir_value)
+
+    def _source_record_id(
+        self,
+        run_report_path: Path,
+        bundled_grade_dir: Optional[Path],
+        score: Optional[float],
+    ) -> str:
+        if run_report_path.exists():
+            return str(run_report_path)
+        if score is not None and bundled_grade_dir is not None:
+            return str(bundled_grade_dir)
+        return ""
 
     def _score_from_grade_dir(self, grade_dir: Path) -> Optional[float]:
         if not grade_dir.exists() or not grade_dir.is_dir():
             return None
         for path in sorted(grade_dir.rglob("*.json")):
             try:
-                payload = load_json_file(str(path))
+                payload = json.loads(path.read_text(encoding="utf-8-sig"))
             except Exception:
                 continue
             score = self._find_score(payload)
