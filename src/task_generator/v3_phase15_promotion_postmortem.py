@@ -293,7 +293,7 @@ class Phase15CloseoutBuilder:
         production: Dict[str, Any],
     ) -> List[str]:
         reasons = []
-        if eval_evidence.get("external_connection_failed"):
+        if eval_evidence.get("external_connection_failed") and not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("external_eval_connection_failed_in_sandbox")
         if eval_evidence.get("external_eval_authorization_status") in {"approval_rejected", "requires_explicit_user_approval"}:
             reasons.append("external_eval_authorization_not_available")

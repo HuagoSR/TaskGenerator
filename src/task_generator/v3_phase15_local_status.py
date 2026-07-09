@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 LocalStatus = Literal["ready_for_local_followup", "blocked_on_external_eval", "missing_local_evidence"]
-TenantPolicyStatus = Literal["tenant_policy_denied", "not_recorded"]
+TenantPolicyStatus = Literal["tenant_policy_denied", "external_results_imported_after_policy_denial", "not_recorded"]
 
 
 class Phase15LocalStatusRequest(BaseModel):
@@ -66,7 +66,7 @@ class Phase15LocalStatusBuilder:
             "external_eval_runbook": bool(runbook),
             "external_eval_script": Path(request.external_eval_script_path).exists(),
         }
-        tenant_policy_status = self._tenant_policy_status(postmortem)
+        tenant_policy_status = self._tenant_policy_status(postmortem, eval_import)
         blocking_reasons = self._blocking_reasons(
             evidence_presence=evidence_presence,
             completion_audit=completion_audit,
@@ -112,14 +112,20 @@ class Phase15LocalStatusBuilder:
         if not payload_path.exists() or payload_path.is_dir():
             return {}
         try:
-            return json.loads(payload_path.read_text(encoding="utf-8"))
+            return json.loads(payload_path.read_text(encoding="utf-8-sig"))
         except Exception:
             return {}
 
-    def _tenant_policy_status(self, postmortem: Dict[str, Any]) -> TenantPolicyStatus:
+    def _tenant_policy_status(self, postmortem: Dict[str, Any], eval_import: Dict[str, Any]) -> TenantPolicyStatus:
         blockers = [str(item) for item in postmortem.get("blocking_reasons") or []]
         eval_evidence = ((postmortem.get("evidence_summary") or {}).get("eval") or {})
         authorization_status = str(eval_evidence.get("external_eval_authorization_status") or "")
+        import_ready = eval_import.get("import_status") == "ready_for_closeout"
+        imported_pair_count = int((eval_import.get("summary") or {}).get("complete_pair_count") or 0)
+        if import_ready and imported_pair_count > 0:
+            if "external_eval_tenant_policy_denied" in blockers or "tenant_policy_denied" in authorization_status:
+                return "external_results_imported_after_policy_denial"
+            return "not_recorded"
         if "external_eval_tenant_policy_denied" in blockers or "tenant_policy_denied" in authorization_status:
             return "tenant_policy_denied"
         return "not_recorded"

@@ -141,6 +141,8 @@ Current expected status before real returned grades are present:
 - completion audit: `completion_status = not_complete`
 - local status: `blocked_on_external_eval`
 
+When real returned grades are present and imported as a complete first pair, the local status should move from `blocked_on_external_eval` to `ready_for_local_followup`. A previous sandbox connection failure or tenant-policy denial should not override successfully imported clean-eval evidence; remaining blockers should then come from production QA, release readiness, or promotion review rather than external-eval availability.
+
 ## Permitted-Environment Runbook
 
 To reduce manual command drift, generate a sequential first-pair runbook before moving to a permitted environment:
