@@ -112,3 +112,5 @@ The default import scope is intentionally narrow:
 - arms: `baseline_deterministic` and `generator_reform_only`
 
 Fill the template in the permitted environment with sanitized item-level records only. Do not include API keys, bearer tokens, full raw prompts, or private provider logs. Once both baseline and reform records are present with numeric scores, re-run the importer and then regenerate Phase 15 closeout.
+
+`Test/run_v3_phase15_promotion_postmortem.py` now consumes `artifacts/phase15/external_eval_import/phase15_external_eval_import_report.json` by default, so a `ready_for_closeout` import report will be reflected in the Phase 15 promotion proposal and postmortem without manual JSON editing.

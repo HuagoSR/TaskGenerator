@@ -21,6 +21,7 @@ class Phase15CloseoutRequest(BaseModel):
     ab_experiment_report_path: str
     clean_eval_queue_report_path: str
     attempted_eval_run_report_path: Optional[str] = None
+    external_eval_import_report_path: Optional[str] = None
     production_dashboard_report_path: str
     release_readiness_report_path: str
     output_dir: str
@@ -62,11 +63,17 @@ class Phase15CloseoutBuilder:
         ab_report = load_json_file(request.ab_experiment_report_path)
         queue = load_json_file(request.clean_eval_queue_report_path)
         eval_run = self._load_optional(request.attempted_eval_run_report_path)
+        eval_import = self._load_optional(request.external_eval_import_report_path)
         dashboard = load_json_file(request.production_dashboard_report_path)
         readiness = load_json_file(request.release_readiness_report_path)
 
         deterministic_evidence = self._deterministic_evidence(ab_report)
-        eval_evidence = self._eval_evidence(queue, eval_run, request.external_eval_authorization_status)
+        eval_evidence = self._eval_evidence(
+            queue,
+            eval_run,
+            eval_import,
+            request.external_eval_authorization_status,
+        )
         production_evidence = self._production_evidence(dashboard, readiness)
         recommendation = self._recommendation(deterministic_evidence, eval_evidence, production_evidence)
         proposal = Phase15PromotionProposal(
@@ -139,9 +146,11 @@ class Phase15CloseoutBuilder:
         self,
         queue: Dict[str, Any],
         eval_run: Dict[str, Any],
+        eval_import: Dict[str, Any],
         external_eval_authorization_status: str,
     ) -> Dict[str, Any]:
         queue_summary = queue.get("summary") or {}
+        import_summary = eval_import.get("summary") or {}
         command_records = eval_run.get("command_records") or []
         inspected_text = self._eval_run_inspected_text(eval_run)
         connection_failed = any(
@@ -149,6 +158,8 @@ class Phase15CloseoutBuilder:
             or "All connection attempts failed" in str(record.get("stdout_excerpt") or "")
             for record in command_records
         ) or "All connection attempts failed" in inspected_text
+        import_status = eval_import.get("import_status")
+        clean_completed = import_status == "ready_for_closeout" and int(import_summary.get("complete_pair_count") or 0) > 0
         return {
             "queue_item_count": queue_summary.get("queue_item_count"),
             "prepared_item_count": queue_summary.get("prepared_item_count"),
@@ -158,7 +169,10 @@ class Phase15CloseoutBuilder:
             "attempted_model": eval_run.get("model") if eval_run else None,
             "external_connection_failed": connection_failed,
             "external_eval_authorization_status": external_eval_authorization_status,
-            "clean_paired_eval_completed": False,
+            "external_eval_import_status": import_status,
+            "external_eval_import_complete_pair_count": import_summary.get("complete_pair_count"),
+            "external_eval_import_mean_delta": import_summary.get("mean_reform_minus_baseline_delta"),
+            "clean_paired_eval_completed": clean_completed,
         }
 
     def _eval_run_inspected_text(self, eval_run: Dict[str, Any]) -> str:
@@ -224,7 +238,7 @@ class Phase15CloseoutBuilder:
     def _phase15_decision(self, proposal: Phase15PromotionProposal) -> Phase15Decision:
         if proposal.recommendation == "promote_reform_to_default":
             return "success"
-        if "complete clean paired eval for matched baseline/reform cases" in proposal.required_before_promotion:
+        if proposal.recommendation == "keep_experiment_flag_only":
             return "still_open"
         return "blocked"
 
@@ -253,6 +267,8 @@ class Phase15CloseoutBuilder:
             steps.append("15.6 controlled deterministic A/B scaffold")
         if eval_evidence.get("prepared_item_count"):
             steps.append("15.7 clean eval queue preparation")
+        if eval_evidence.get("clean_paired_eval_completed"):
+            steps.append("15.7 clean paired eval imported evidence")
         if production.get("case_count"):
             steps.append("15.8 deterministic production impact check")
         steps.append("15.9 promotion/rollback proposal")
@@ -281,7 +297,7 @@ class Phase15CloseoutBuilder:
             reasons.append("external_eval_connection_failed_in_sandbox")
         if eval_evidence.get("external_eval_authorization_status") in {"approval_rejected", "requires_explicit_user_approval"}:
             reasons.append("external_eval_authorization_not_available")
-        if eval_evidence.get("external_eval_authorization_status") == "tenant_policy_denied":
+        if eval_evidence.get("external_eval_authorization_status") == "tenant_policy_denied" and not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("external_eval_tenant_policy_denied")
         if not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("clean_paired_eval_not_completed")
