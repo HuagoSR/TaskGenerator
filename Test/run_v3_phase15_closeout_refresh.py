@@ -29,6 +29,10 @@ def main() -> None:
     parser.add_argument("--ab-experiment-report-path", type=Path, default=PHASE15 / "ab_experiment" / "phase15_ab_experiment_report.json")
     parser.add_argument("--attempted-eval-run-report-path", type=Path, default=PHASE15 / "clean_eval_runs" / "baseline_case01_gpt4omini" / "rw_task_eval_run_report.json")
     parser.add_argument("--production-dashboard-report-path", type=Path, default=PHASE15 / "production_impact" / "reform_dashboard" / "production_dashboard_report.json")
+    parser.add_argument("--production-qa-gate-report-path", type=Path, default=PHASE15 / "production_impact" / "reform_qa" / "production_qa_gate_report.json")
+    parser.add_argument("--production-diversity-report-path", type=Path, default=PHASE15 / "production_impact" / "reform_diversity" / "production_batch_diversity_report.json")
+    parser.add_argument("--production-impact-review-report-path", type=Path, default=PHASE15 / "production_impact" / "phase15_review" / "phase15_production_impact_review_report.json")
+    parser.add_argument("--production-impact-review-output-dir", type=Path, default=PHASE15 / "production_impact" / "phase15_review")
     parser.add_argument("--release-readiness-report-path", type=Path, default=PHASE15 / "production_impact" / "reform_dashboard" / "release_readiness_report.json")
     parser.add_argument("--closeout-output-dir", type=Path, default=PHASE15 / "closeout")
     parser.add_argument("--completion-audit-output-dir", type=Path, default=PHASE15 / "completion_audit")
@@ -65,6 +69,10 @@ def main() -> None:
         ab_experiment_report_path=str(args.ab_experiment_report_path),
         attempted_eval_run_report_path=str(args.attempted_eval_run_report_path),
         production_dashboard_report_path=str(args.production_dashboard_report_path),
+        production_qa_gate_report_path=str(args.production_qa_gate_report_path),
+        production_diversity_report_path=str(args.production_diversity_report_path),
+        production_impact_review_report_path=str(args.production_impact_review_report_path),
+        production_impact_review_output_dir=str(args.production_impact_review_output_dir),
         release_readiness_report_path=str(args.release_readiness_report_path),
         closeout_output_dir=str(args.closeout_output_dir),
         completion_audit_output_dir=str(args.completion_audit_output_dir),

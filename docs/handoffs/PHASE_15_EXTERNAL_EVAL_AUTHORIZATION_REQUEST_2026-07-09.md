@@ -131,14 +131,15 @@ After copying results or bundled grades back, refresh the full closeout chain wi
 & 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_closeout_refresh.py
 ```
 
-This command runs the sanitized result builder, result importer, promotion/postmortem builder, completion audit, and local status summary in sequence. It writes `artifacts/phase15/closeout_refresh/phase15_closeout_refresh_report.json` and still does not call external APIs or read secrets.
+This command runs the sanitized result builder, result importer, production impact review, promotion/postmortem builder, completion audit, and local status summary in sequence. It writes `artifacts/phase15/closeout_refresh/phase15_closeout_refresh_report.json` and still does not call external APIs or read secrets.
 
 Current expected status before real returned grades are present:
 
 - result builder: `record_count = 2`, `completed_count = 0`, `missing_count = 2`
 - importer: `import_status = blocked`
+- production impact review: `decision = review_complete_keep_experiment_flag`
 - postmortem: `phase15_decision = still_open`
-- completion audit: `completion_status = not_complete`
+- completion audit: `completion_status = not_complete`, with `7 / 9` requirements proven
 - local status: `blocked_on_external_eval`
 
 When real returned grades are present and imported as a complete first pair, the local status should move from `blocked_on_external_eval` to `ready_for_local_followup`. A previous sandbox connection failure or tenant-policy denial should not override successfully imported clean-eval evidence; remaining blockers should then come from production QA, release readiness, or promotion review rather than external-eval availability.

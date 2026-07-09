@@ -29,6 +29,7 @@ def main() -> None:
     parser.add_argument("--clean-eval-queue-report-path", type=Path, default=PHASE15 / "clean_eval_queue" / "phase15_clean_eval_queue_report.json")
     parser.add_argument("--external-eval-import-report-path", type=Path, default=PHASE15 / "external_eval_import" / "phase15_external_eval_import_report.json")
     parser.add_argument("--production-dashboard-report-path", type=Path, default=PHASE15 / "production_impact" / "reform_dashboard" / "production_dashboard_report.json")
+    parser.add_argument("--production-impact-review-report-path", type=Path, default=PHASE15 / "production_impact" / "phase15_review" / "phase15_production_impact_review_report.json")
     parser.add_argument("--phase15-postmortem-report-path", type=Path, default=PHASE15 / "closeout" / "phase15_postmortem_report.json")
     parser.add_argument("--output-dir", type=Path, default=PHASE15 / "completion_audit")
     args = parser.parse_args()
@@ -43,6 +44,7 @@ def main() -> None:
         clean_eval_queue_report_path=str(args.clean_eval_queue_report_path),
         external_eval_import_report_path=str(args.external_eval_import_report_path),
         production_dashboard_report_path=str(args.production_dashboard_report_path),
+        production_impact_review_report_path=str(args.production_impact_review_report_path),
         phase15_postmortem_report_path=str(args.phase15_postmortem_report_path),
         output_dir=str(args.output_dir),
     )

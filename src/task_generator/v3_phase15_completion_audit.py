@@ -23,6 +23,7 @@ class Phase15CompletionAuditRequest(BaseModel):
     clean_eval_queue_report_path: str
     external_eval_import_report_path: str
     production_dashboard_report_path: str
+    production_impact_review_report_path: Optional[str] = None
     phase15_postmortem_report_path: str
     output_dir: str
 
@@ -66,6 +67,7 @@ class Phase15CompletionAuditor:
         queue = self._load_optional(request.clean_eval_queue_report_path)
         eval_import = self._load_optional(request.external_eval_import_report_path)
         dashboard = self._load_optional(request.production_dashboard_report_path)
+        production_impact_review = self._load_optional(request.production_impact_review_report_path or "")
         postmortem = self._load_optional(request.phase15_postmortem_report_path)
 
         items = [
@@ -76,7 +78,7 @@ class Phase15CompletionAuditor:
             self._audit_reform_design(request, reform_spec),
             self._audit_ab_experiment(request, ab_experiment),
             self._audit_clean_eval(request, queue, eval_import, postmortem),
-            self._audit_production_impact(request, dashboard, postmortem),
+            self._audit_production_impact(request, dashboard, production_impact_review, postmortem),
             self._audit_promotion_postmortem(request, postmortem),
         ]
         completion_status: Phase15CompletionStatus = "complete" if all(item.status == "proven" for item in items) else "not_complete"
@@ -229,14 +231,20 @@ class Phase15CompletionAuditor:
         self,
         request: Phase15CompletionAuditRequest,
         dashboard: Dict[str, Any],
+        production_impact_review: Dict[str, Any],
         postmortem: Dict[str, Any],
     ) -> Phase15AuditItem:
         summary = dashboard.get("summary") or {}
         blocked_count = int(summary.get("blocked_count") or 0)
         candidate_ready = int(summary.get("candidate_ready_count") or 0)
         production_ready = int(summary.get("production_ready_count") or 0)
+        review_completed = bool(production_impact_review.get("explicit_review_completed"))
+        review_decision = production_impact_review.get("decision")
+        review_blockers = list(production_impact_review.get("blocking_reasons") or [])
         status: AuditStatus = "incomplete"
         if candidate_ready >= 4 and blocked_count == 0 and production_ready > 0:
+            status = "proven"
+        elif candidate_ready >= 4 and blocked_count == 0 and review_completed and not review_blockers:
             status = "proven"
         elif candidate_ready >= 4 and blocked_count == 0:
             status = "incomplete"
@@ -244,16 +252,26 @@ class Phase15CompletionAuditor:
             status = "missing"
         return Phase15AuditItem(
             requirement_id="15.8_production_qa_release_impact",
-            description="Reform arm production impact is reviewed without structural blockers and with explicit governed approval before release.",
+            description="Reform arm production impact is reviewed without structural blockers and has an explicit governed release or non-release decision.",
             status=status,
-            evidence_paths=[request.production_dashboard_report_path, request.phase15_postmortem_report_path],
+            evidence_paths=[
+                request.production_dashboard_report_path,
+                request.production_impact_review_report_path or "",
+                request.phase15_postmortem_report_path,
+            ],
             evidence_summary={
                 "candidate_ready_count": candidate_ready,
                 "production_ready_count": production_ready,
                 "review_required_count": summary.get("review_required_count"),
                 "blocked_count": blocked_count,
+                "production_impact_review_decision": review_decision,
+                "production_impact_review_completed": review_completed,
+                "production_impact_review_reasons": production_impact_review.get("review_reasons"),
             },
             blocking_reasons=[] if status == "proven" else ["production_approval_or_release_readiness_not_proven"],
+            notes=[
+                "A completed keep-experiment-flag review proves production impact was reviewed without structural regression; it does not imply release readiness."
+            ] if status == "proven" and not production_ready else [],
         )
 
     def _audit_promotion_postmortem(self, request: Phase15CompletionAuditRequest, postmortem: Dict[str, Any]) -> Phase15AuditItem:

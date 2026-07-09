@@ -26,6 +26,10 @@ from task_generator.v3_phase15_promotion_postmortem import (
     Phase15CloseoutBuilder,
     Phase15CloseoutRequest,
 )
+from task_generator.v3_phase15_production_impact_review import (
+    Phase15ProductionImpactReviewRequest,
+    Phase15ProductionImpactReviewer,
+)
 
 
 class Phase15CloseoutRefreshRequest(BaseModel):
@@ -38,6 +42,10 @@ class Phase15CloseoutRefreshRequest(BaseModel):
     ab_experiment_report_path: str
     attempted_eval_run_report_path: str
     production_dashboard_report_path: str
+    production_qa_gate_report_path: str
+    production_diversity_report_path: str
+    production_impact_review_report_path: str
+    production_impact_review_output_dir: str
     release_readiness_report_path: str
     closeout_output_dir: str
     completion_audit_output_dir: str
@@ -89,6 +97,14 @@ class Phase15CloseoutRefresher:
                 require_cases=request.require_cases,
             )
         )
+        production_impact_review = Phase15ProductionImpactReviewer().build(
+            Phase15ProductionImpactReviewRequest(
+                production_dashboard_report_path=request.production_dashboard_report_path,
+                production_qa_gate_report_path=request.production_qa_gate_report_path,
+                production_diversity_report_path=request.production_diversity_report_path,
+                output_dir=request.production_impact_review_output_dir,
+            )
+        )
         proposal, postmortem = Phase15CloseoutBuilder().build(
             Phase15CloseoutRequest(
                 ab_experiment_report_path=request.ab_experiment_report_path,
@@ -112,6 +128,7 @@ class Phase15CloseoutRefresher:
                 clean_eval_queue_report_path=request.queue_report_path,
                 external_eval_import_report_path=str(Path(request.external_import_output_dir) / "phase15_external_eval_import_report.json"),
                 production_dashboard_report_path=request.production_dashboard_report_path,
+                production_impact_review_report_path=request.production_impact_review_report_path,
                 phase15_postmortem_report_path=str(Path(request.closeout_output_dir) / "phase15_postmortem_report.json"),
                 output_dir=request.completion_audit_output_dir,
             )
@@ -139,6 +156,14 @@ class Phase15CloseoutRefresher:
                     "import_status": import_report.import_status,
                     "summary": import_report.summary,
                     "blocking_reasons": import_report.blocking_reasons,
+                },
+                {
+                    "step": "production_impact_review",
+                    "decision": production_impact_review.decision,
+                    "explicit_review_completed": production_impact_review.explicit_review_completed,
+                    "structural_regression_detected": production_impact_review.structural_regression_detected,
+                    "review_reasons": production_impact_review.review_reasons,
+                    "blocking_reasons": production_impact_review.blocking_reasons,
                 },
                 {
                     "step": "promotion_postmortem",
