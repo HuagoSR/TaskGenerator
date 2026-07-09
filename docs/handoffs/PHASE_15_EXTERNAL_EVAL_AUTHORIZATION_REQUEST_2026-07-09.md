@@ -114,3 +114,23 @@ The default import scope is intentionally narrow:
 Fill the template in the permitted environment with sanitized item-level records only. Do not include API keys, bearer tokens, full raw prompts, or private provider logs. Once both baseline and reform records are present with numeric scores, re-run the importer and then regenerate Phase 15 closeout.
 
 `Test/run_v3_phase15_promotion_postmortem.py` now consumes `artifacts/phase15/external_eval_import/phase15_external_eval_import_report.json` by default, so a `ready_for_closeout` import report will be reflected in the Phase 15 promotion proposal and postmortem without manual JSON editing.
+
+## Permitted-Environment Runbook
+
+To reduce manual command drift, generate a sequential first-pair runbook before moving to a permitted environment:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_external_eval_runbook.py
+```
+
+This writes:
+
+- `artifacts/phase15/external_eval_runbook/phase15_external_eval_runbook.json`
+- `artifacts/phase15/external_eval_runbook/run_phase15_first_pair_external_eval.ps1`
+
+The generated script runs only the first paired comparison in order:
+
+1. `baseline_deterministic / pipeline_b_batch_01_evidence_to_deliverable / gpt-4o-mini`
+2. `generator_reform_only / pipeline_b_batch_01_evidence_to_deliverable / gpt-4o-mini`
+
+It stops after a failed item instead of continuing into a batch.
