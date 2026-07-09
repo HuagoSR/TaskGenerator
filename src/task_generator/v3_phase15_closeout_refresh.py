@@ -83,9 +83,12 @@ class Phase15CloseoutRefresher:
         result_builder_report = Phase15ExternalEvalResultBuilder().build(
             Phase15ExternalEvalResultBuilderRequest(
                 runbook_path=request.runbook_path,
+                queue_report_path=request.queue_report_path,
                 output_dir=request.external_import_output_dir,
                 result_output_path=request.external_results_path,
                 permitted_eval_bundle_report_path=request.permitted_eval_bundle_report_path,
+                require_models=request.require_models,
+                require_cases=request.require_cases,
             )
         )
         import_report = Phase15ExternalEvalImporter().build(

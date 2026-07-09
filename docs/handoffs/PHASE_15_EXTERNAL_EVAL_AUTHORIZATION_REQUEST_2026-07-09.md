@@ -133,16 +133,18 @@ After copying results or bundled grades back, refresh the full closeout chain wi
 
 This command runs the sanitized result builder, result importer, production impact review, promotion/postmortem builder, completion audit, and local status summary in sequence. It writes `artifacts/phase15/closeout_refresh/phase15_closeout_refresh_report.json` and still does not call external APIs or read secrets.
 
-Current expected status before real returned grades are present:
+Final status after the 4-case `gpt-4o-mini` clean eval run:
 
-- result builder: `record_count = 2`, `completed_count = 0`, `missing_count = 2`
-- importer: `import_status = blocked`
+- result builder: `record_count = 8`, `completed_count = 8`, `missing_count = 0`
+- importer: `import_status = ready_for_closeout`
+- clean paired eval: `complete_pair_count = 4`
 - production impact review: `decision = review_complete_keep_experiment_flag`
-- postmortem: `phase15_decision = still_open`
-- completion audit: `completion_status = not_complete`, with `7 / 9` requirements proven
-- local status: `blocked_on_external_eval`
+- postmortem: `phase15_decision = success`
+- promotion recommendation: `rollback_reform_experiment`
+- completion audit: `completion_status = complete`, with `9 / 9` requirements proven
+- local status: `ready_for_local_followup`
 
-When real returned grades are present and imported as a complete first pair, the local status should move from `blocked_on_external_eval` to `ready_for_local_followup`. A previous sandbox connection failure or tenant-policy denial should not override successfully imported clean-eval evidence; remaining blockers should then come from production QA, release readiness, or promotion review rather than external-eval availability.
+The 4-case eval result is negative for the tested reform: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs. The correct Phase 15 closeout action is rollback or redesign, not default-chain promotion.
 
 ## Permitted-Environment Runbook
 

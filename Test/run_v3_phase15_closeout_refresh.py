@@ -16,6 +16,12 @@ from task_generator.v3_phase15_closeout_refresh import (  # noqa: E402
 
 
 PHASE15 = ROOT / "artifacts" / "phase15"
+DEFAULT_REQUIRE_CASES = [
+    "pipeline_b_batch_01_evidence_to_deliverable",
+    "pipeline_b_batch_02_evidence_to_deliverable",
+    "pipeline_b_batch_03_evidence_to_deliverable",
+    "pipeline_b_batch_04_evidence_to_deliverable",
+]
 
 
 def main() -> None:
@@ -48,7 +54,7 @@ def main() -> None:
     parser.add_argument("--require-case", action="append", default=None)
     parser.add_argument(
         "--external-eval-authorization-status",
-        default="tenant_policy_denied",
+        default="approved",
         choices=[
             "not_recorded",
             "approval_rejected",
@@ -85,7 +91,7 @@ def main() -> None:
         pattern_library_report_path=str(args.pattern_library_report_path),
         generator_reform_spec_path=str(args.generator_reform_spec_path),
         require_models=args.require_model or ["gpt-4o-mini"],
-        require_cases=args.require_case or ["pipeline_b_batch_01_evidence_to_deliverable"],
+        require_cases=args.require_case or DEFAULT_REQUIRE_CASES,
         external_eval_authorization_status=args.external_eval_authorization_status,
     )
     report = Phase15CloseoutRefresher().build(request)

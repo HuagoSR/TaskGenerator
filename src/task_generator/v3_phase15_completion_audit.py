@@ -210,7 +210,7 @@ class Phase15CompletionAuditor:
         queue_summary = queue.get("summary") or {}
         import_summary = eval_import.get("summary") or {}
         complete_pair_count = int(import_summary.get("complete_pair_count") or 0)
-        status: AuditStatus = "proven" if eval_import.get("import_status") == "ready_for_closeout" and complete_pair_count > 0 else "blocked"
+        status: AuditStatus = "proven" if eval_import.get("import_status") == "ready_for_closeout" and complete_pair_count >= 4 else "blocked"
         return Phase15AuditItem(
             requirement_id="15.7_clean_paired_eval",
             description="Clean paired eval is completed and imported for matched baseline/reform cases.",
@@ -223,8 +223,10 @@ class Phase15CompletionAuditor:
                 "complete_pair_count": complete_pair_count,
                 "postmortem_clean_paired_eval_completed": (postmortem.get("evidence_summary") or {}).get("eval", {}).get("clean_paired_eval_completed"),
             },
-            blocking_reasons=["external_eval_results_missing_or_not_ready_for_closeout"] if status != "proven" else [],
-            notes=["Current tenant policy blocks external task-package export; importer is ready for sanitized results from a permitted environment."],
+            blocking_reasons=["external_eval_results_missing_or_below_four_pair_floor"] if status != "proven" else [],
+            notes=[
+                "Phase 15 clean eval requires the four-case gpt-4o-mini baseline/reform floor before closeout."
+            ],
         )
 
     def _audit_production_impact(

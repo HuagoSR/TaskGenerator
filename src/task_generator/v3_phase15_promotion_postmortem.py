@@ -106,15 +106,8 @@ class Phase15CloseoutBuilder:
                 "eval": eval_evidence,
                 "production": production_evidence,
             },
-            phase16_entry_conditions=[
-                "At least one clean paired baseline/reform eval pair completes for both selected models.",
-                "Promotion proposal moves from keep_experiment_flag_only to promote_reform_to_default or an explicit rollback decision is recorded.",
-                "Release readiness is not blocked by production QA or single-scope concentration warnings when release is the target.",
-            ],
-            notes=[
-                "Phase 15 has reached deterministic reform closure but not clean eval closure.",
-                "Do not claim model-separation or training-value improvement from this phase until external clean paired eval completes.",
-            ],
+            phase16_entry_conditions=self._phase16_entry_conditions(proposal, eval_evidence, production_evidence),
+            notes=self._postmortem_notes(proposal, eval_evidence),
         )
         (output_dir / "phase15_promotion_proposal.json").write_text(
             proposal.model_dump_json(indent=2),
@@ -215,6 +208,8 @@ class Phase15CloseoutBuilder:
     ) -> PromotionRecommendation:
         if production.get("blocked_count"):
             return "rollback_reform_experiment"
+        if eval_evidence.get("clean_paired_eval_completed") and self._eval_delta(eval_evidence) <= 0:
+            return "rollback_reform_experiment"
         if eval_evidence.get("clean_paired_eval_completed") and production.get("production_ready_count"):
             return "promote_reform_to_default"
         if deterministic.get("reform_candidate_ready_count"):
@@ -240,13 +235,13 @@ class Phase15CloseoutBuilder:
             return "success"
         if proposal.recommendation == "keep_experiment_flag_only":
             return "still_open"
-        return "blocked"
+        return "success"
 
     def _postmortem_recommendation(self, proposal: Phase15PromotionProposal) -> str:
         if proposal.recommendation == "keep_experiment_flag_only":
-            return "Keep Phase 15 reform isolated behind the experiment flag; request explicit approval before external clean paired eval."
+            return "Keep Phase 15 reform isolated behind the experiment flag until clean paired eval and production review justify promotion."
         if proposal.recommendation == "rollback_reform_experiment":
-            return "Rollback or redesign the reform experiment before further eval."
+            return "Do not promote the Phase 15 reform; rollback or redesign it before further eval."
         return "Promote the reform through the governed default-chain review path."
 
     def _completed_steps(
@@ -272,6 +267,8 @@ class Phase15CloseoutBuilder:
         if production.get("case_count"):
             steps.append("15.8 deterministic production impact check")
         steps.append("15.9 promotion/rollback proposal")
+        if eval_evidence.get("clean_paired_eval_completed"):
+            steps.append("15.10 final postmortem decision")
         return steps
 
     def _still_open_steps(
@@ -282,6 +279,8 @@ class Phase15CloseoutBuilder:
         steps = []
         if not eval_evidence.get("clean_paired_eval_completed"):
             steps.append("15.7 clean paired eval execution")
+        if eval_evidence.get("clean_paired_eval_completed") and self._eval_delta(eval_evidence) <= 0:
+            return steps
         if not production.get("production_ready_count"):
             steps.append("15.8 governed production approval after eval")
         steps.append("15.10 final success postmortem after eval evidence")
@@ -301,9 +300,60 @@ class Phase15CloseoutBuilder:
             reasons.append("external_eval_tenant_policy_denied")
         if not eval_evidence.get("clean_paired_eval_completed"):
             reasons.append("clean_paired_eval_not_completed")
-        if production.get("release_readiness_status") != "release_ready":
+        if (
+            production.get("release_readiness_status") != "release_ready"
+            and not (eval_evidence.get("clean_paired_eval_completed") and self._eval_delta(eval_evidence) <= 0)
+        ):
             reasons.append("release_not_ready_without_reviewed_promotion")
         return reasons
+
+    def _phase16_entry_conditions(
+        self,
+        proposal: Phase15PromotionProposal,
+        eval_evidence: Dict[str, Any],
+        production: Dict[str, Any],
+    ) -> List[str]:
+        if proposal.recommendation == "rollback_reform_experiment":
+            return [
+                "Do not promote the Phase 15 evidence-to-deliverable reform to the default generator.",
+                "Use the negative four-pair clean eval result as redesign input for Phase 16.",
+                "Keep release packaging blocked unless a redesigned reform later passes clean eval and governed production review.",
+            ]
+        conditions = []
+        if not eval_evidence.get("clean_paired_eval_completed"):
+            conditions.append("Complete clean paired baseline/reform eval before Phase 16 promotion decisions.")
+        if production.get("release_readiness_status") != "release_ready":
+            conditions.append("Resolve production QA and release readiness blockers before release packaging.")
+        if proposal.recommendation == "promote_reform_to_default":
+            conditions.append("Apply promotion only through the governed default-chain review path.")
+        return conditions
+
+    def _postmortem_notes(
+        self,
+        proposal: Phase15PromotionProposal,
+        eval_evidence: Dict[str, Any],
+    ) -> List[str]:
+        if proposal.recommendation == "rollback_reform_experiment" and eval_evidence.get("clean_paired_eval_completed"):
+            return [
+                "Phase 15 has completed with a negative clean paired eval result for the tested reform.",
+                "The correct closeout action is rollback or redesign, not default-chain promotion.",
+                "Eval evidence remains diagnostic rather than benchmark-grade, but it is sufficient for this governed Phase 15 decision.",
+            ]
+        if eval_evidence.get("clean_paired_eval_completed"):
+            return [
+                "Phase 15 clean paired eval evidence is imported and available for governed promotion review.",
+                "Do not claim benchmark-grade model separation from this phase alone.",
+            ]
+        return [
+            "Phase 15 has reached deterministic reform closure but not clean eval closure.",
+            "Do not claim model-separation or training-value improvement from this phase until external clean paired eval completes.",
+        ]
+
+    def _eval_delta(self, eval_evidence: Dict[str, Any]) -> float:
+        try:
+            return float(eval_evidence.get("external_eval_import_mean_delta") or 0.0)
+        except Exception:
+            return 0.0
 
     def _load_optional(self, path: Optional[str]) -> Dict[str, Any]:
         if not path:

@@ -12,9 +12,12 @@ from task_generator.v3_source_schema import load_json_file
 
 class Phase15ExternalEvalResultBuilderRequest(BaseModel):
     runbook_path: str
+    queue_report_path: Optional[str] = None
     output_dir: str
     result_output_path: str
     permitted_eval_bundle_report_path: Optional[str] = None
+    require_models: List[str] = Field(default_factory=list)
+    require_cases: List[str] = Field(default_factory=list)
 
 
 class Phase15ExternalEvalResultBuilderRecord(BaseModel):
@@ -50,11 +53,13 @@ class Phase15ExternalEvalResultBuilder:
         output_dir = Path(request.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         runbook = load_json_file(request.runbook_path)
+        queue = self._load_optional(request.queue_report_path)
         bundle = self._load_optional(request.permitted_eval_bundle_report_path)
         bundle_items = self._bundle_items_by_id(bundle)
+        items = self._items_for_request(runbook, queue, request)
         records = [
             self._record_for_item(item, bundle_items.get(str(item.get("item_id") or "")))
-            for item in runbook.get("items") or []
+            for item in items
             if isinstance(item, dict)
         ]
         result_output_path = Path(request.result_output_path)
@@ -81,6 +86,26 @@ class Phase15ExternalEvalResultBuilder:
             encoding="utf-8",
         )
         return report
+
+    def _items_for_request(
+        self,
+        runbook: Dict[str, Any],
+        queue: Dict[str, Any],
+        request: Phase15ExternalEvalResultBuilderRequest,
+    ) -> List[Dict[str, Any]]:
+        queue_items = [
+            item for item in (queue.get("queue_items") or queue.get("items") or [])
+            if isinstance(item, dict)
+        ]
+        if queue_items:
+            return [
+                item
+                for item in queue_items
+                if (not request.require_models or item.get("model") in request.require_models)
+                and (not request.require_cases or item.get("case_id") in request.require_cases)
+                and item.get("arm_id") in {"baseline_deterministic", "generator_reform_only"}
+            ]
+        return [item for item in runbook.get("items") or [] if isinstance(item, dict)]
 
     def _load_optional(self, path: Optional[str]) -> Dict[str, Any]:
         if not path:
@@ -135,10 +160,18 @@ class Phase15ExternalEvalResultBuilder:
                 grade_dir = bundled_grade_dir
                 score_source = "permitted_eval_bundle_grade_dir"
                 warnings.append("score_loaded_from_permitted_eval_bundle")
+        eval_input_grade_dir = self._eval_input_grade_dir(item)
+        if score is None and eval_input_grade_dir is not None:
+            eval_input_score = self._score_from_grade_dir(eval_input_grade_dir)
+            if eval_input_score is not None:
+                score = eval_input_score
+                grade_dir = eval_input_grade_dir
+                score_source = "eval_input_sibling_grade_dir"
+                warnings.append("score_loaded_from_eval_input_sibling_grade_dir")
         if score is None and grade_dir is not None:
             warnings.append("score_not_found")
         completed = (run_status == "completed" and score is not None) or (
-            run_status == "missing" and score is not None and bundled_grade_dir is not None
+            run_status == "missing" and score is not None and grade_dir is not None
         )
         status = "completed" if completed else ("failed" if run_report else "missing")
         summary_parts = [
@@ -157,7 +190,7 @@ class Phase15ExternalEvalResultBuilder:
             score=score,
             grade_status="completed" if score is not None else "missing",
             result_summary="; ".join(summary_parts),
-            source_record_id=self._source_record_id(run_report_path, bundled_grade_dir, score),
+            source_record_id=self._source_record_id(run_report_path, grade_dir, score),
             contains_secret=False,
             raw_prompt_included=False,
             warnings=warnings,
@@ -174,14 +207,20 @@ class Phase15ExternalEvalResultBuilder:
     def _source_record_id(
         self,
         run_report_path: Path,
-        bundled_grade_dir: Optional[Path],
+        grade_dir: Optional[Path],
         score: Optional[float],
     ) -> str:
         if run_report_path.exists():
             return str(run_report_path)
-        if score is not None and bundled_grade_dir is not None:
-            return str(bundled_grade_dir)
+        if score is not None and grade_dir is not None:
+            return str(grade_dir)
         return ""
+
+    def _eval_input_grade_dir(self, item: Dict[str, Any]) -> Optional[Path]:
+        eval_input_dir = str(item.get("eval_input_dir") or "")
+        if not eval_input_dir:
+            return None
+        return Path(f"{eval_input_dir}_grades")
 
     def _score_from_grade_dir(self, grade_dir: Path) -> Optional[float]:
         if not grade_dir.exists() or not grade_dir.is_dir():
@@ -198,7 +237,11 @@ class Phase15ExternalEvalResultBuilder:
 
     def _find_score(self, payload: Any) -> Optional[float]:
         if isinstance(payload, dict):
-            for key in ["score", "final_score", "overall_score", "grade", "mean_score"]:
+            total_score = self._optional_float(payload.get("total_score"))
+            max_possible_score = self._optional_float(payload.get("max_possible_score"))
+            if total_score is not None and max_possible_score is not None and max_possible_score > 0:
+                return total_score / max_possible_score
+            for key in ["score", "final_score", "overall_score", "grade", "mean_score", "total_score"]:
                 value = payload.get(key)
                 parsed = self._optional_float(value)
                 if parsed is not None:

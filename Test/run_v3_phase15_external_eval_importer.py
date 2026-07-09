@@ -19,6 +19,12 @@ PHASE15 = ROOT / "artifacts" / "phase15"
 DEFAULT_QUEUE_REPORT = PHASE15 / "clean_eval_queue" / "phase15_clean_eval_queue_report.json"
 DEFAULT_EXTERNAL_RESULTS = PHASE15 / "external_eval_import" / "phase15_external_eval_results.json"
 DEFAULT_OUTPUT = PHASE15 / "external_eval_import"
+DEFAULT_REQUIRE_CASES = [
+    "pipeline_b_batch_01_evidence_to_deliverable",
+    "pipeline_b_batch_02_evidence_to_deliverable",
+    "pipeline_b_batch_03_evidence_to_deliverable",
+    "pipeline_b_batch_04_evidence_to_deliverable",
+]
 
 
 def main() -> None:
@@ -35,7 +41,7 @@ def main() -> None:
         external_results_path=str(args.external_results_path),
         output_dir=str(args.output_dir),
         require_models=args.require_model or ["gpt-4o-mini"],
-        require_cases=args.require_case or ["pipeline_b_batch_01_evidence_to_deliverable"],
+        require_cases=args.require_case or DEFAULT_REQUIRE_CASES,
     )
     report = Phase15ExternalEvalImporter().build(request)
     print(
