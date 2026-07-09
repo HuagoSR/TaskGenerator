@@ -2,19 +2,75 @@
 
 ## Status Correction
 
-Phase 15 should remain open.
+Phase 15B has now completed the missing evidence pass.
 
-The current run completed a useful controlled sub-experiment, but it did not complete the original Phase 15 research question. The precise status is:
+Current status:
 
 ```text
-phase15_status = open
+phase15_status = closed_for_current_reform
 phase15a_status = completed
 phase15a_scope = weak-model baseline vs reform-only clean eval for evidence_to_deliverable
-phase15b_status = planned
-current_safe_action = do_not_promote_pending_strong_model_eval
+phase15b_status = completed
+phase15b_decision = hold_for_redesign
+promotion_decision = do_not_promote_default_chain
 ```
 
-The previous local closeout artifacts report `phase15_decision = success` and `completion_status = complete`. Those values should be read as the old implementation-level audit result: the implemented local Phase 15 scaffolding reached its then-registered closeout path. They must not be read as proof that the full Phase 15 plan has answered whether the reform improves training value or model separation.
+The previous local closeout artifacts report `phase15_decision = success` and `completion_status = complete`. Those values should be read as the old implementation-level audit result: the implemented local Phase 15 scaffolding reached its then-registered closeout path. The Phase 15B evidence below is now the stricter closeout evidence for the current reform.
+
+## Phase 15B Completion Evidence
+
+Phase 15B completed the missing strong-model and fixed-grader evidence pass:
+
+```text
+strong_model = gemini-3-pro-preview
+weak_model = gpt-4o-mini
+fixed_grader = gpt-5.4-pro
+strong_records_completed = 8 / 8
+weak_outputs_regraded_with_fixed_grader = 8 / 8
+case_count = 4
+```
+
+Core results:
+
+```text
+mean_baseline_strong_score = 0.5275
+mean_baseline_weak_score = 0.2463
+mean_reform_strong_score = 0.4727
+mean_reform_weak_score = 0.0916
+mean_strong_score_delta = -0.0548
+mean_weak_score_delta = -0.1547
+mean_baseline_gap = 0.2812
+mean_reform_gap = 0.3812
+mean_gap_delta = 0.1000
+positive_gap_delta_case_count = 2
+negative_gap_delta_case_count = 2
+```
+
+Interpretation:
+
+```text
+The reform creates a partial separation signal, because weak-model scores drop more than strong-model scores on average.
+However, strong-model scores are only moderate and decline in all four cases.
+Only 2 / 4 cases improve gap delta.
+The failure autopsy shows deliverable/rubric/evidence friction mixed into the weak-model decline.
+Therefore the current reform is not promotable.
+```
+
+Final current-reform decision:
+
+```text
+hold_for_redesign
+```
+
+Evidence paths:
+
+```text
+artifacts/phase15/eval_results/phase15_strong_model_eval_report.json
+artifacts/phase15/eval_results/phase15_gap_delta_report.json
+artifacts/phase15/failure_autopsy/phase15_reform_failure_autopsy_report.json
+artifacts/phase15/phase15b_closeout/phase15b_postmortem_report.json
+docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md
+```
 
 ## What Phase 15A Proved
 
@@ -53,9 +109,9 @@ The safe conclusion is narrower:
 
 > Do not promote this reform into the default generator until strong-model paired eval, gap-delta analysis, and case-level failure autopsy are complete.
 
-## Missing Evidence
+## Previously Missing Evidence Now Satisfied
 
-The full Phase 15 plan still needs these missing pieces before closeout:
+Phase 15B was created to satisfy these missing pieces:
 
 1. Strong-model paired eval for the same four cases and both arms.
 2. Baseline/reform gap comparison:
@@ -70,6 +126,8 @@ gap_delta = reform_gap - baseline_gap
 4. Classification of score drops into productive difficulty versus task/rubric/evidence friction.
 5. A guarded LLM candidate decision. The current LLM candidate layer keeps artifact-mutating candidate mode disabled because no role is approved for candidate experiment.
 6. A final promotion decision that distinguishes `promote_reform`, `rollback_reform`, and `hold_for_redesign`.
+
+All six items now have current evidence. The resulting decision is `hold_for_redesign`, not promotion.
 
 ## Phase 15B Work Packages
 
@@ -227,4 +285,4 @@ Should the default generator change, stay unchanged, or receive a redesigned exp
 
 Do not start Phase 16 yet.
 
-Start Phase 15B by running or importing strong-model paired eval for the already prepared four-case baseline/reform queue, then build the gap-delta report and failure autopsy. Until that is done, keep the reform behind the explicit experiment flag and keep the default generator unchanged.
+Phase 15B is complete for the current reform. The default generator should remain unchanged. The next useful work is a redesigned `evidence_to_deliverable` reform that directly addresses deliverable contract clarity, rubric alignment, and evidence-use friction before any second clean eval.

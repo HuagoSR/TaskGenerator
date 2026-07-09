@@ -39,6 +39,11 @@ def main() -> None:
         default=0,
         help="Optional per-command timeout. 0 means no timeout.",
     )
+    parser.add_argument(
+        "--grader-model",
+        default=None,
+        help="Optional grader model for grade_deliverables; defaults to the evaluated model.",
+    )
     args = parser.parse_args()
 
     runner = RwTaskEvalRunner()
@@ -48,6 +53,7 @@ def main() -> None:
         run_eval=args.run_eval,
         allow_draft_eval=args.allow_draft_eval,
         command_timeout_seconds=args.command_timeout_seconds,
+        grader_model=args.grader_model,
     )
     print(
         json.dumps(

@@ -10,7 +10,7 @@
 
 ## 0. 2026-07-09 状态修正
 
-当前不能把 Phase 15 判定为完整完成。
+Phase 15B 已经补齐原先缺失的 strong-model paired eval、gap-delta 与逐题 failure autopsy。当前 reform 的结论不是 promotion，而是 `hold_for_redesign`。
 
 已经完成的是 Phase 15A 子实验：
 
@@ -27,12 +27,14 @@ mean_reform_minus_baseline_delta = -0.2553
 因此当前正确状态是：
 
 ```text
-phase15_status = open
+phase15_status = closed_for_current_reform
 phase15a_status = completed
-current_safe_action = do_not_promote_pending_strong_model_eval
+phase15b_status = completed
+phase15b_decision = hold_for_redesign
+promotion_decision = do_not_promote_default_chain
 ```
 
-旧的 local closeout / completion audit 里出现的 `phase15_decision = success`、`completion_status = complete` 应解释为旧实现验收口径下“本地脚手架和已注册检查项完成”，不能解释为原 Phase 15 大目标完成。
+旧的 local closeout / completion audit 里出现的 `phase15_decision = success`、`completion_status = complete` 应解释为旧实现验收口径下“本地脚手架和已注册检查项完成”。Phase 15B 的 fixed-grader strong/weak evidence 是当前 reform 的最终判断依据。
 
 当前补完计划见：
 
@@ -50,7 +52,17 @@ Phase 15B 的最低补齐项是：
 5. 再决定 promote_reform、rollback_reform 或 hold_for_redesign。
 ```
 
-在这些证据补齐前，不应进入 Phase 16，也不应把当前 reform 并入默认生成器。
+这些证据现在已经补齐，结论是：
+
+```text
+mean_gap_delta = 0.1000
+positive_gap_delta_case_count = 2
+negative_gap_delta_case_count = 2
+mean_strong_score_delta = -0.0548
+mean_reform_strong_score = 0.4727
+```
+
+因此当前 reform 不应并入默认生成器。下一步应重新设计 `evidence_to_deliverable` reform，而不是推广当前版本。
 
 ---
 

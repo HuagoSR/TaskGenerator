@@ -1,16 +1,28 @@
 # Phase 15A Partial Handoff - 2026-07-09
 
+## Superseded By Phase 15B
+
+This Phase 15A correction remains useful history, but the current closeout for the reform is now:
+
+```text
+docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md
+phase15b_decision = hold_for_redesign
+promotion_decision = do_not_promote_default_chain
+```
+
+Phase 15B has since completed the strong-model paired eval, fixed-grader gap-delta analysis, and case-level failure autopsy that this file listed as missing.
+
 ## Correction
 
 This file corrects the earlier interpretation of the Phase 15 closeout.
 
-Phase 15 is **not** complete under the original Phase 15 plan. What is complete is a controlled Phase 15A sub-experiment:
+At the time this Phase 15A handoff was written, Phase 15 was **not** complete under the original Phase 15 plan. What was complete was a controlled Phase 15A sub-experiment:
 
 ```text
-phase15_status = open
+phase15_status_at_phase15a = open
 phase15a_status = completed
 phase15a_scope = weak-model baseline vs reform-only clean eval for evidence_to_deliverable
-current_safe_action = do_not_promote_pending_strong_model_eval
+phase15a_safe_action = do_not_promote_pending_strong_model_eval
 next_plan = docs/architecture/phase15_completion_plan_2026-07-09.md
 ```
 
@@ -108,9 +120,11 @@ Current completion plan:
 
 ## Next Step
 
-Do not enter Phase 16 yet. Continue Phase 15B:
+Historical Phase 15A next step, now completed by Phase 15B:
 
 1. Run or import strong-model paired eval for the four prepared baseline/reform cases.
 2. Compute `baseline_gap`, `reform_gap`, and `gap_delta`.
 3. Autopsy the score drops by rubric criterion, deliverable behavior, evidence use, and task clarity.
 4. Then regenerate the promotion/postmortem decision using the stricter Phase 15B criteria.
+
+Current result: see `docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md`.

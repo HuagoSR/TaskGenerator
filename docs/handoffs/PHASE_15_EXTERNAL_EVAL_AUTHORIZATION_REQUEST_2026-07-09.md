@@ -2,16 +2,27 @@
 
 ## Status Correction After Phase 15A
 
+Update after Phase 15B: strong-model paired eval and fixed-grader gap-delta are now complete. The current reform decision is `hold_for_redesign`; see `docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md`.
+
 The 4-case `gpt-4o-mini` clean eval has now been imported, but it completes only the Phase 15A weak-model sub-experiment. It does not complete the original Phase 15 plan.
 
-Current corrected interpretation:
+Phase 15A corrected interpretation at that time:
 
 ```text
-phase15_status = open
+phase15_status_at_phase15a = open
 phase15a_status = completed
 phase15a_scope = weak-model baseline vs reform-only clean eval
-current_safe_action = do_not_promote_pending_strong_model_eval
+phase15a_safe_action = do_not_promote_pending_strong_model_eval
 next_plan = docs/architecture/phase15_completion_plan_2026-07-09.md
+```
+
+Current Phase 15B interpretation:
+
+```text
+phase15_status = closed_for_current_reform
+phase15b_status = completed
+phase15b_decision = hold_for_redesign
+promotion_decision = do_not_promote_default_chain
 ```
 
 Any older `phase15_decision = success` or `completion_status = complete` fields should be treated as local runner/audit status under the old completion scope, not as the final research conclusion for Phase 15.
@@ -162,7 +173,7 @@ Imported status after the 4-case `gpt-4o-mini` clean eval run:
 
 The 4-case eval result is negative for the tested reform on `gpt-4o-mini`: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs. This is enough to block default-chain promotion, but not enough to decide whether the reform is inherently bad or whether it increases productive model separation.
 
-Correct current action:
+Correct Phase 15A action at that time:
 
 ```text
 do_not_promote_pending_strong_model_eval

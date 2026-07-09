@@ -1,0 +1,102 @@
+{
+  "report_version": "v3.phase15b_gap_delta.1",
+  "created_at": "2026-07-09T16:22:59.799002+00:00",
+  "diagnostic_only": true,
+  "strong_model": "gemini-3-pro-preview",
+  "weak_model": "gpt-4o-mini",
+  "grader_model": "gpt-5.4-pro",
+  "case_count": 4,
+  "cases": [
+    {
+      "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+      "baseline_strong_score": 0.5283018867924528,
+      "baseline_weak_score": 0.37735849056603776,
+      "baseline_gap": 0.15094339622641506,
+      "reform_strong_score": 0.4852941176470588,
+      "reform_weak_score": 0.029411764705882353,
+      "reform_gap": 0.45588235294117646,
+      "strong_score_delta": -0.043007769145394004,
+      "weak_score_delta": -0.3479467258601554,
+      "gap_delta": 0.3049389567147614,
+      "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+      "interpretation": "Gap increased mainly because the weak model dropped while the strong model was roughly preserved, but strong absolute score remains only moderate."
+    },
+    {
+      "case_id": "pipeline_b_batch_02_evidence_to_deliverable",
+      "baseline_strong_score": 0.6031746031746031,
+      "baseline_weak_score": 0.0,
+      "baseline_gap": 0.6031746031746031,
+      "reform_strong_score": 0.6025641025641025,
+      "reform_weak_score": 0.02564102564102564,
+      "reform_gap": 0.5769230769230769,
+      "strong_score_delta": -0.0006105006105006083,
+      "weak_score_delta": 0.02564102564102564,
+      "gap_delta": -0.02625152625152627,
+      "outcome_pattern": "quality_or_contract_regression",
+      "interpretation": "Strong-model score or gap delta worsened enough that the reform cannot be treated as productive separation."
+    },
+    {
+      "case_id": "pipeline_b_batch_03_evidence_to_deliverable",
+      "baseline_strong_score": 0.47058823529411764,
+      "baseline_weak_score": 0.27450980392156865,
+      "baseline_gap": 0.196078431372549,
+      "reform_strong_score": 0.4696969696969697,
+      "reform_weak_score": 0.10606060606060606,
+      "reform_gap": 0.36363636363636365,
+      "strong_score_delta": -0.0008912655971479166,
+      "weak_score_delta": -0.16844919786096257,
+      "gap_delta": 0.16755793226381466,
+      "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+      "interpretation": "Gap increased mainly because the weak model dropped while the strong model was roughly preserved, but strong absolute score remains only moderate."
+    },
+    {
+      "case_id": "pipeline_b_batch_04_evidence_to_deliverable",
+      "baseline_strong_score": 0.5079365079365079,
+      "baseline_weak_score": 0.3333333333333333,
+      "baseline_gap": 0.1746031746031746,
+      "reform_strong_score": 0.3333333333333333,
+      "reform_weak_score": 0.20512820512820512,
+      "reform_gap": 0.1282051282051282,
+      "strong_score_delta": -0.1746031746031746,
+      "weak_score_delta": -0.1282051282051282,
+      "gap_delta": -0.0463980463980464,
+      "outcome_pattern": "quality_or_contract_regression",
+      "interpretation": "Strong-model score or gap delta worsened enough that the reform cannot be treated as productive separation."
+    }
+  ],
+  "summary": {
+    "mean_baseline_strong_score": 0.5275003082994204,
+    "mean_baseline_weak_score": 0.24630040695523492,
+    "mean_reform_strong_score": 0.47272213081036607,
+    "mean_reform_weak_score": 0.09156040038392979,
+    "mean_strong_score_delta": -0.05477817748905428,
+    "mean_weak_score_delta": -0.15474000657130513,
+    "mean_baseline_gap": 0.28119990134418543,
+    "mean_reform_gap": 0.3811617304264363,
+    "mean_gap_delta": 0.09996182908225085,
+    "positive_gap_delta_case_count": 2,
+    "negative_gap_delta_case_count": 2,
+    "positive_strong_delta_case_count": 0,
+    "negative_strong_delta_case_count": 4,
+    "outcome_pattern_counts": {
+      "productive_separation_signal_with_redesign_risk": 2,
+      "quality_or_contract_regression": 2
+    }
+  },
+  "decision_signal": {
+    "promote_ready": false,
+    "default_chain_change_allowed": false,
+    "recommended_decision": "hold_for_redesign",
+    "rationale": [
+      "Only two of four cases improved gap delta.",
+      "mean_strong_score_delta=-0.0548",
+      "mean_reform_strong_score=0.4727",
+      "Strong-model absolute scores are not high enough to prove productive difficulty.",
+      "The reform should stay behind the explicit experiment flag."
+    ]
+  },
+  "notes": [
+    "Weak-model outputs were regraded into separate Phase 15B grade directories with the same fixed grader.",
+    "Gap delta is diagnostic and must be interpreted with failure autopsy and production impact review."
+  ]
+}

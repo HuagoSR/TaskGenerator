@@ -1,0 +1,478 @@
+{
+  "report_version": "v3.phase15b_failure_autopsy.1",
+  "created_at": "2026-07-09T16:22:59.799002+00:00",
+  "diagnostic_only": true,
+  "case_count": 4,
+  "all_cases_labeled": true,
+  "priority_cases": [
+    "pipeline_b_batch_01_evidence_to_deliverable",
+    "pipeline_b_batch_03_evidence_to_deliverable"
+  ],
+  "cases": [
+    {
+      "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+      "priority": "high",
+      "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+      "reason_labels": [
+        "productive_difficulty_increased",
+        "deliverable_mismatch",
+        "rubric_or_goldenrun_alignment_risk"
+      ],
+      "score_evidence": {
+        "case_id": "pipeline_b_batch_01_evidence_to_deliverable",
+        "baseline_strong_score": 0.5283018867924528,
+        "baseline_weak_score": 0.37735849056603776,
+        "baseline_gap": 0.15094339622641506,
+        "reform_strong_score": 0.4852941176470588,
+        "reform_weak_score": 0.029411764705882353,
+        "reform_gap": 0.45588235294117646,
+        "strong_score_delta": -0.043007769145394004,
+        "weak_score_delta": -0.3479467258601554,
+        "gap_delta": 0.3049389567147614,
+        "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+        "interpretation": "Gap increased mainly because the weak model dropped while the strong model was roughly preserved, but strong absolute score remains only moderate."
+      },
+      "weak_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_004",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that every material conclusion bullet carries local bracketed support with exact candidate-visible Evidence_ID values rather than source labels."
+        },
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Handle Exceptions in Control Testing to classify exceptions and unresolved items."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Map Statutory Requirements to Binary Compliance Test Questions to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_021",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        }
+      ],
+      "strong_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_021",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_015",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_016",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Use Handle Exceptions in Control Testing to classify exceptions and unresolved items."
+        }
+      ],
+      "criterion_level_interpretation": "Low reform scores include deliverable-structure and evidence-support failures; this is not clean proof of productive difficulty."
+    },
+    {
+      "case_id": "pipeline_b_batch_02_evidence_to_deliverable",
+      "priority": "normal",
+      "outcome_pattern": "quality_or_contract_regression",
+      "reason_labels": [
+        "deliverable_mismatch",
+        "difficulty_without_separation_gain"
+      ],
+      "score_evidence": {
+        "case_id": "pipeline_b_batch_02_evidence_to_deliverable",
+        "baseline_strong_score": 0.6031746031746031,
+        "baseline_weak_score": 0.0,
+        "baseline_gap": 0.6031746031746031,
+        "reform_strong_score": 0.6025641025641025,
+        "reform_weak_score": 0.02564102564102564,
+        "reform_gap": 0.5769230769230769,
+        "strong_score_delta": -0.0006105006105006083,
+        "weak_score_delta": 0.02564102564102564,
+        "gap_delta": -0.02625152625152627,
+        "outcome_pattern": "quality_or_contract_regression",
+        "interpretation": "Strong-model score or gap delta worsened enough that the reform cannot be treated as productive separation."
+      },
+      "weak_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_004",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that every material conclusion bullet carries local bracketed support with exact candidate-visible Evidence_ID values rather than source labels."
+        },
+        {
+          "rubric_item_id": "R_017",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Map Statutory Requirements to Binary Compliance Test Questions and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Handle Exceptions in Control Testing and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Consolidate Period Financial Data from Multiple Sources and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Convert Foreign Currency to USD for Reporting and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        }
+      ],
+      "strong_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_017",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Apply Map Statutory Requirements to Binary Compliance Test Questions and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Apply Consolidate Period Financial Data from Multiple Sources and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Apply Convert Foreign Currency to USD for Reporting and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_022",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Include a populated Policy clause mapping in its named section, not after Follow-up, and ensure each policy-sensitive conclusion carries local bracketed policy support plus exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_023",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        }
+      ],
+      "criterion_level_interpretation": "Low reform scores include deliverable-structure and evidence-support failures; this is not clean proof of productive difficulty."
+    },
+    {
+      "case_id": "pipeline_b_batch_03_evidence_to_deliverable",
+      "priority": "high",
+      "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+      "reason_labels": [
+        "productive_difficulty_increased",
+        "deliverable_mismatch",
+        "rubric_or_goldenrun_alignment_risk"
+      ],
+      "score_evidence": {
+        "case_id": "pipeline_b_batch_03_evidence_to_deliverable",
+        "baseline_strong_score": 0.47058823529411764,
+        "baseline_weak_score": 0.27450980392156865,
+        "baseline_gap": 0.196078431372549,
+        "reform_strong_score": 0.4696969696969697,
+        "reform_weak_score": 0.10606060606060606,
+        "reform_gap": 0.36363636363636365,
+        "strong_score_delta": -0.0008912655971479166,
+        "weak_score_delta": -0.16844919786096257,
+        "gap_delta": 0.16755793226381466,
+        "outcome_pattern": "productive_separation_signal_with_redesign_risk",
+        "interpretation": "Gap increased mainly because the weak model dropped while the strong model was roughly preserved, but strong absolute score remains only moderate."
+      },
+      "weak_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_004",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that every material conclusion bullet carries local bracketed support with exact candidate-visible Evidence_ID values rather than source labels."
+        },
+        {
+          "rubric_item_id": "R_017",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Map Statutory Requirements to Binary Compliance Test Questions to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Quarterly Period Aggregation and Reporting to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_022",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that each supported conclusion, confirmed exception, and unresolved item is locally supported by exact visible evidence IDs rather than hidden assumptions or source labels."
+        }
+      ],
+      "strong_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_017",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_012",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Use Reconcile Source Totals to Report Line Items to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_013",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Use Map Statutory Requirements to Binary Compliance Test Questions to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        }
+      ],
+      "criterion_level_interpretation": "Low reform scores include deliverable-structure and evidence-support failures; this is not clean proof of productive difficulty."
+    },
+    {
+      "case_id": "pipeline_b_batch_04_evidence_to_deliverable",
+      "priority": "normal",
+      "outcome_pattern": "quality_or_contract_regression",
+      "reason_labels": [
+        "instruction_or_contract_friction",
+        "rubric_or_goldenrun_alignment_risk",
+        "difficulty_without_separation_gain"
+      ],
+      "score_evidence": {
+        "case_id": "pipeline_b_batch_04_evidence_to_deliverable",
+        "baseline_strong_score": 0.5079365079365079,
+        "baseline_weak_score": 0.3333333333333333,
+        "baseline_gap": 0.1746031746031746,
+        "reform_strong_score": 0.3333333333333333,
+        "reform_weak_score": 0.20512820512820512,
+        "reform_gap": 0.1282051282051282,
+        "strong_score_delta": -0.1746031746031746,
+        "weak_score_delta": -0.1282051282051282,
+        "gap_delta": -0.0463980463980464,
+        "outcome_pattern": "quality_or_contract_regression",
+        "interpretation": "Strong-model score or gap delta worsened enough that the reform cannot be treated as productive separation."
+      },
+      "weak_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_018",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Convert Foreign Currency to USD for Reporting to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_019",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Map Statutory Requirements to Binary Compliance Test Questions to produce the deliverable outline and manager-ready section structure whose conclusion bullets carry exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Apply Foreign Tax Withholding to Revenue and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_022",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Include a populated Policy clause mapping in its named section, not after Follow-up, and ensure each policy-sensitive conclusion carries local bracketed policy support plus exact Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_024",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check that every policy-sensitive conclusion bullet carries local bracketed policy clause IDs together with exact supporting Evidence_ID values."
+        },
+        {
+          "rubric_item_id": "R_028",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check `manager follow-up recommendation is supported by visible evidence`."
+        }
+      ],
+      "strong_reform_low_criteria": [
+        {
+          "rubric_item_id": "R_017",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Use Consolidate Period Financial Data from Multiple Sources to create and populate the first substantive Evidence inventory section with Evidence_ID, Source file, Observed item/value, and Intended use before writing conclusions; do not leave a placeholder heading."
+        },
+        {
+          "rubric_item_id": "R_020",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Apply Apply Foreign Tax Withholding to Revenue and write policy-sensitive bullets with local bracketed policy-clause IDs and exact workbook Evidence_ID support."
+        },
+        {
+          "rubric_item_id": "R_028",
+          "awarded": 0.0,
+          "max": 3.0,
+          "loss": 3.0,
+          "criterion": "Check `manager follow-up recommendation is supported by visible evidence`."
+        },
+        {
+          "rubric_item_id": "R_003",
+          "awarded": 1.0,
+          "max": 3.0,
+          "loss": 2.0,
+          "criterion": "Check that the deliverable follows the required section order, populates required sections in place, places Evidence inventory before conclusions and Follow-up, and keeps conclusion bullets locally supported. Explicit deliverable requirements: summarize the evidence reviewed; state the conclusion supported by the evide"
+        },
+        {
+          "rubric_item_id": "R_005",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Place the Evidence inventory as the first substantive section, populate it immediately, and format it with Evidence_ID, Source file, Observed item/value, and Intended use for every material item."
+        },
+        {
+          "rubric_item_id": "R_006",
+          "awarded": 0.0,
+          "max": 2.0,
+          "loss": 2.0,
+          "criterion": "Include a Deliverable outline section after Evidence inventory, then populate each required section in place instead of using placeholder headings."
+        }
+      ],
+      "criterion_level_interpretation": "Strong-model decline suggests the reform may have added contract or rubric friction."
+    }
+  ],
+  "summary": {
+    "label_counts": {
+      "productive_difficulty_increased": 2,
+      "deliverable_mismatch": 3,
+      "rubric_or_goldenrun_alignment_risk": 3,
+      "difficulty_without_separation_gain": 2,
+      "instruction_or_contract_friction": 1
+    },
+    "primary_finding": "The reform creates some separation signal, but the score losses are mixed with deliverable/rubric/evidence friction and do not justify promotion."
+  },
+  "notes": [
+    "Criterion snippets are extracted from fixed-grader JSON.",
+    "Labels are diagnostic and should be reviewed before designing a second reform."
+  ]
+}

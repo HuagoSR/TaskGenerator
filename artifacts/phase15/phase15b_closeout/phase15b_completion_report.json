@@ -1,0 +1,32 @@
+{
+  "report_version": "v3.phase15b_completion.1",
+  "created_at": "2026-07-09T16:22:59.807488+00:00",
+  "diagnostic_only": true,
+  "request": {
+    "clean_eval_queue_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\clean_eval_queue",
+    "clean_eval_runs_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\clean_eval_runs",
+    "production_impact_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\production_impact\\phase15_review\\phase15_production_impact_review_report.json",
+    "llm_candidate_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\llm_candidate_layer\\llm_candidate_layer_report.json",
+    "eval_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\eval_results",
+    "autopsy_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\failure_autopsy",
+    "closeout_output_dir": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\phase15b_closeout"
+  },
+  "strong_model_eval_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\eval_results\\phase15_strong_model_eval_report.json",
+  "gap_delta_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\eval_results\\phase15_gap_delta_report.json",
+  "failure_autopsy_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\failure_autopsy\\phase15_reform_failure_autopsy_report.json",
+  "postmortem_report_path": "E:\\THU\\2026Spring\\SRT\\TaskGenerator\\artifacts\\phase15\\phase15b_closeout\\phase15b_postmortem_report.json",
+  "summary": {
+    "score_record_count": 16,
+    "strong_record_count": 8,
+    "case_count": 4,
+    "phase15b_decision": "hold_for_redesign",
+    "promotion_decision": "do_not_promote_default_chain",
+    "mean_gap_delta": 0.09996182908225085,
+    "positive_gap_delta_case_count": 2,
+    "negative_gap_delta_case_count": 2
+  },
+  "notes": [
+    "This builder does not call external APIs; it reads completed model outputs and grade JSON only.",
+    "The reports preserve Phase 15A raw evidence while adding fixed-grader Phase 15B evidence."
+  ]
+}

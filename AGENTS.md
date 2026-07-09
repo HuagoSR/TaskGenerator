@@ -243,13 +243,17 @@ Current status snapshot as of `2026-07-06`:
   - GDPVal remains `eval_calibration_only`
   - GoodTaskProfiler remains observational; do not enable weighted GoodTaskScore
   - LLM shadow metrics are complete enough for review, but do not prove automatic LLM benefit
-- Phase 15A is complete, but Phase 15 is not complete under the original Phase 15 plan:
+- Phase 15A and Phase 15B are complete for the current `evidence_to_deliverable` reform:
   - completed scope: `baseline_deterministic` vs `generator_reform_only` on four `evidence_to_deliverable` cases with `gpt-4o-mini`
   - weak-model eval result: `mean_reform_minus_baseline_delta = -0.2553`, with `0` positive pairs, `1` zero-delta pair, and `3` negative pairs
-  - correct interpretation: weak-model decline is neither good nor bad by itself; it only blocks immediate promotion
-  - current action: `do_not_promote_pending_strong_model_eval`
+  - Phase 15B added `gemini-3-pro-preview` strong-model paired eval and regraded weak outputs with fixed grader `gpt-5.4-pro`
+  - Phase 15B fixed-grader result: `mean_gap_delta = 0.1000`, with `2` positive gap-delta cases and `2` negative gap-delta cases
+  - strong-model solvability was not strong enough for promotion: `mean_strong_score_delta = -0.0548` and `mean_reform_strong_score = 0.4727`
+  - failure autopsy found mixed signal: `productive_difficulty_increased = 2`, but `deliverable_mismatch = 3` and `rubric_or_goldenrun_alignment_risk = 3`
+  - current action: `hold_for_redesign`; do not promote the reform into the default generator
   - current plan: `docs/architecture/phase15_completion_plan_2026-07-09.md`
-  - do not enter Phase 16 until strong-model paired eval, gap-delta analysis, and case-level failure autopsy are complete
+  - current completion handoff: `docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md`
+  - next work should redesign `evidence_to_deliverable` before another clean eval; do not treat the current reform as successful
 - The user explicitly authorized a scoped Phase 15 external eval run for the named task packages during the Phase 15A clean eval work. Treat this as historical, task-scoped permission, not blanket future authorization. Do not print secret values or stage `.env`.
 - Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
 
@@ -270,7 +274,7 @@ Pipeline A should no longer only accumulate isolated atomic skills. It should pr
 Near-term priority order:
 
 1. Keep the existing Pipeline A and Pipeline B runners working.
-2. Complete Phase 15B before Phase 16: run/import strong-model baseline/reform eval for the same four cases, compute `gap_delta`, and autopsy the weak-model score drops.
+2. Use the Phase 15B `hold_for_redesign` evidence to redesign `evidence_to_deliverable` before any second clean eval or default-chain promotion.
 3. Keep promotion/apply reviewable and explicit; prefer scratch validation before any canonical registry mutation.
 4. Treat executed eval and model-separation outputs as diagnostic evidence until repeated comparison evidence is available.
 5. Keep all registry, readiness, transition-prior, and sampler-weight changes explicit and reviewable.
