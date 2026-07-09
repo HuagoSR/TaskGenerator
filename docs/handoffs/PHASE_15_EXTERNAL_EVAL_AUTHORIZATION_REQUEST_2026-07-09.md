@@ -91,3 +91,24 @@ Keep the generator reform behind the explicit experiment flag until:
 4. promotion recommendation changes from `keep_experiment_flag_only` only if evidence supports it.
 
 If this tenant policy remains in force, complete Phase 15 clean eval in a separately permitted environment using the exact command above, then copy only sanitized result summaries and grader outputs back into this repository.
+
+## Sanitized Result Import Path
+
+This repository now includes a report-only importer for results produced in a separately permitted environment:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_external_eval_importer.py
+```
+
+The importer writes:
+
+- `artifacts/phase15/external_eval_import/phase15_external_eval_results_template.json`
+- `artifacts/phase15/external_eval_import/phase15_external_eval_import_report.json`
+
+The default import scope is intentionally narrow:
+
+- case: `pipeline_b_batch_01_evidence_to_deliverable`
+- model: `gpt-4o-mini`
+- arms: `baseline_deterministic` and `generator_reform_only`
+
+Fill the template in the permitted environment with sanitized item-level records only. Do not include API keys, bearer tokens, full raw prompts, or private provider logs. Once both baseline and reform records are present with numeric scores, re-run the importer and then regenerate Phase 15 closeout.
