@@ -171,3 +171,22 @@ Current expected status before external results are imported:
 - unresolved items: clean paired eval, governed production approval/release impact, and final success postmortem
 
 The audit writes `artifacts/phase15/completion_audit/phase15_completion_audit_report.json`.
+
+## Local Status Summary
+
+Use the local status runner as the last local check after importing external eval results and regenerating closeout/audit reports:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_local_status.py
+```
+
+Current expected status before external results are imported:
+
+- `local_status = blocked_on_external_eval`
+- `phase15_completion_status = not_complete`
+- `phase15_decision = still_open`
+- `external_eval_package_readiness = ready_for_permitted_environment`
+- `external_eval_import_status = blocked`
+- `tenant_policy_status = tenant_policy_denied`
+
+The runner writes `artifacts/phase15/local_status/phase15_local_status_report.json`. It only reads existing local reports and writes a summary; it does not call external APIs, read `.env`, or print secret values.
