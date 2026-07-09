@@ -125,6 +125,22 @@ This writes `artifacts/phase15/external_eval_import/phase15_external_eval_result
 
 The result builder also reads `artifacts/phase15/permitted_eval_bundle/phase15_permitted_eval_bundle_report.json` by default. If the portable bundle is executed in a permitted environment and copied back with its `grades/` directory, the builder can recover sanitized completed records from the bundled grade outputs even when `rw_task_eval_run_report.json` is absent.
 
+After copying results or bundled grades back, refresh the full closeout chain with one local command:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_closeout_refresh.py
+```
+
+This command runs the sanitized result builder, result importer, promotion/postmortem builder, completion audit, and local status summary in sequence. It writes `artifacts/phase15/closeout_refresh/phase15_closeout_refresh_report.json` and still does not call external APIs or read secrets.
+
+Current expected status before real returned grades are present:
+
+- result builder: `record_count = 2`, `completed_count = 0`, `missing_count = 2`
+- importer: `import_status = blocked`
+- postmortem: `phase15_decision = still_open`
+- completion audit: `completion_status = not_complete`
+- local status: `blocked_on_external_eval`
+
 ## Permitted-Environment Runbook
 
 To reduce manual command drift, generate a sequential first-pair runbook before moving to a permitted environment:
