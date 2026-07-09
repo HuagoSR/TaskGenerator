@@ -156,6 +156,30 @@ Expected status:
 
 This check verifies runbook/script/template consistency only; it does not call external APIs and does not make the current tenant permitted to export the task package.
 
+## Portable Permitted-Environment Bundle
+
+To reduce path drift when moving the first-pair eval to a separately permitted environment, build a portable bundle:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_permitted_eval_bundle.py
+```
+
+Current expected status:
+
+- `bundle_status = ready_for_permitted_environment`
+- `item_count = 2`
+- bundled items:
+  - `baseline_deterministic / pipeline_b_batch_01_evidence_to_deliverable / gpt-4o-mini`
+  - `generator_reform_only / pipeline_b_batch_01_evidence_to_deliverable / gpt-4o-mini`
+
+The builder writes:
+
+- `artifacts/phase15/permitted_eval_bundle/phase15_permitted_eval_bundle_report.json`
+- `artifacts/phase15/permitted_eval_bundle/phase15_first_pair_gpt4omini_permitted_eval_bundle/`
+- `artifacts/phase15/permitted_eval_bundle/phase15_first_pair_gpt4omini_permitted_eval_bundle.zip`
+
+The generated bundle includes a relative-path script, copied eval input directories, a result template, README, and checksums. It intentionally excludes `.env`, API key files, provider logs, and generated model outputs. Configure secrets separately in the permitted environment.
+
 ## Completion Audit
 
 Use the completion audit to avoid mistaking scaffolding for Phase 15 completion:
