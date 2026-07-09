@@ -115,6 +115,14 @@ Fill the template in the permitted environment with sanitized item-level records
 
 `Test/run_v3_phase15_promotion_postmortem.py` now consumes `artifacts/phase15/external_eval_import/phase15_external_eval_import_report.json` by default, so a `ready_for_closeout` import report will be reflected in the Phase 15 promotion proposal and postmortem without manual JSON editing.
 
+If the permitted environment preserves runbook output directories, build the sanitized results file from local run reports and grade JSON:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_external_eval_result_builder.py
+```
+
+This writes `artifacts/phase15/external_eval_import/phase15_external_eval_results.json`, which can then be consumed by `Test\run_v3_phase15_external_eval_importer.py`. If run reports or grade scores are missing, generated records remain non-complete and the importer will continue to block closeout.
+
 ## Permitted-Environment Runbook
 
 To reduce manual command drift, generate a sequential first-pair runbook before moving to a permitted environment:
