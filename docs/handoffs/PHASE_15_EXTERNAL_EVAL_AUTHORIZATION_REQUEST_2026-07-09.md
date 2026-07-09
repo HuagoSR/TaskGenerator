@@ -134,3 +134,16 @@ The generated script runs only the first paired comparison in order:
 2. `generator_reform_only / pipeline_b_batch_01_evidence_to_deliverable / gpt-4o-mini`
 
 It stops after a failed item instead of continuing into a batch.
+
+Before moving the package to a permitted environment, run the local structural readiness check:
+
+```powershell
+& 'D:\miniconda3\envs\taskgenerator\python.exe' Test\run_v3_phase15_external_eval_readiness.py
+```
+
+Expected status:
+
+- `readiness_status = ready_for_permitted_environment`
+- `blocking_reasons = []`
+
+This check verifies runbook/script/template consistency only; it does not call external APIs and does not make the current tenant permitted to export the task package.
