@@ -1,10 +1,10 @@
-# Milestone E 仓储库存运营垂直切片
+# Milestone E 仓储库存运营垂直切片完成报告
 
-> 状态：`active / awaiting_external_authorization`
+> 状态：`historical / completed`
 >
 > 项目级状态源：[`../../项目概要.md`](../../项目概要.md)
 >
-> 本文职责：记录里程碑 E 的局部实验合同、离线证据和下一授权门。
+> 本文职责：记录里程碑 E 的最终实验合同、离线证据、真实 LLM 证据和服务器激活结果。
 
 ## 决策与边界
 
@@ -74,9 +74,9 @@ candidate = milestone-e-ed0568e
 
 nginx 与既有 Minecraft 容器未重启，未新增端口。
 
-## 下一授权门
+## 真实公开来源 LLM 验收
 
-下一步需要用户单独授权一次公开 source prompt package 的 DeepSeek official extraction，并允许一次同配置重试：
+用户已单独授权公开 source prompt package 的 DeepSeek official extraction，并允许一次同配置重试。首次运行即成功，未消耗重试额度：
 
 ```text
 model = deepseek-v4-flash
@@ -88,4 +88,40 @@ external_eval = false
 mock_fallback = false
 ```
 
-只允许上传 O*NET/FEMA 公开 source package；生成任务包、GDPVal 和私有材料不得上传。真实 LLM 验收通过后才能激活 candidate release、归档本文并将路线切换到 F。
+真实运行 `milestone_e_warehouse_llm_01` 得到：
+
+| 指标 | 结果 |
+| --- | ---: |
+| candidates / accepted / sample-ready | 4 / 4 / 3 |
+| generated / candidate-ready | 3 / 3 |
+| verifier / export compatible | 3 / 3 |
+| QA blocked | 0 |
+| eval prepared / executed | 1 / 0 |
+
+Provider 诊断：
+
+```text
+provider = deepseek
+model = deepseek-v4-flash
+finish_reason = stop
+response_chars = 13364
+prompt_tokens = 3446
+completion_tokens = 4231
+total_tokens = 7677
+likely_truncated = false
+response_sha256 = 30bd63239c3fe9cfe1bb42995c53d59816dcc1e40b7ba222a363676760d7d004
+```
+
+External-effects ledger 仅有 `external_source_upload=true`、`llm_extraction=true` 和 `eval_preparation=true`；`web_collection=false`、`external_eval=false`。真实 LLM artifacts 再次通过 GDPVal 污染审计，真实 key 扫描命中数为 0。
+
+## 最终决策
+
+```text
+milestone_e_status = completed
+domain_slice_decision = warehouse_inventory_vertical_slice_passed
+broad_cross_domain_generalization_claim = false
+server_release = milestone-e-ed0568e
+next_milestone = F_training_data_readiness
+```
+
+`milestone-e-ed0568e` 已原子激活为服务器 `current`，`milestone-d-094c6cb` 保留为 `previous`。没有重启 nginx/Minecraft，没有新增端口。里程碑 E 只证明一个受控第二领域垂直切片成立，不代表多领域或训练价值已经得到验证。

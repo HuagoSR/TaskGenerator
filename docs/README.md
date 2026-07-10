@@ -33,4 +33,4 @@
 
 未来如需详细 workstream 计划，可在执行期创建局部文档并由《项目概要》链接；workstream 完成后必须迁入 archive，不能继续占用活跃架构目录。
 
-当前 workstream：[`handoffs/MILESTONE_E_WORKSTREAM_2026-07-10.md`](handoffs/MILESTONE_E_WORKSTREAM_2026-07-10.md)，状态为 `awaiting_external_authorization`。
+Milestone E 已完成并归档至 [`archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md`](archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md)。当前下一主线由根目录《项目概要》管理。
