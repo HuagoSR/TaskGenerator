@@ -81,6 +81,8 @@ def main() -> None:
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash")
     parser.add_argument("--extractor-model", default=None)
     parser.add_argument("--max-candidates", type=int, default=8)
+    parser.add_argument("--extractor-max-tokens", type=int, default=6000)
+    parser.add_argument("--extractor-output-profile", choices=["standard", "bounded_smoke"], default="standard")
     parser.add_argument("--review-spec-path")
     parser.add_argument(
         "--eval-mode",
@@ -144,6 +146,9 @@ def main() -> None:
         args.registry_mode = "fresh_scratch"
         args.extractor_mode = "llm"
         args.max_cases = 2
+        args.max_candidates = 4
+        args.extractor_max_tokens = 6000
+        args.extractor_output_profile = "bounded_smoke"
         args.eval_mode = "prepare_only"
         args.model = ["gpt-4o-mini"]
         if not args.allow_external_source_upload:
@@ -196,6 +201,8 @@ def main() -> None:
         model=args.extractor_model,
         deepseek_model=args.deepseek_model,
         max_candidates=args.max_candidates,
+        extractor_max_tokens=args.extractor_max_tokens,
+        extractor_output_profile=args.extractor_output_profile,
         reuse_existing=args.reuse_existing,
         force_stage=args.force_stage,
         review_spec_path=args.review_spec_path,

@@ -216,15 +216,27 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None) -> N
         run(["scp", str(deepseek_key), f"{host}:{remote_tmp}"])
         ssh(host, f"chmod 600 '{remote_tmp}' && mv '{remote_tmp}' '{remote_home}/taskgenerator-secrets/deepseek_api_key'")
     ssh(host, f"gzip -dc '{remote_release}/{release_id}.image.tar.gz' | docker load >/dev/null")
+    ssh(host, f"cd '{remote_home}/taskgenerator-deploy' && ln -sfn '{remote_release}' candidate")
+
+
+def compose_command(host: str, release_id: str, service: str, arguments: Iterable[str]) -> subprocess.CompletedProcess[str]:
+    quoted = " ".join("'" + item.replace("'", "'\\''") + "'" for item in arguments)
+    return ssh(host, f"cd ~/taskgenerator-deploy/releases/{release_id} && docker compose --env-file release.env -f compose.yaml run --rm {service} {quoted}")
+
+
+def activate_release(release_id: str, host: str) -> None:
+    remote_home = ssh(host, "printf %s \"$HOME\"").stdout.strip()
+    remote_release = f"{remote_home}/taskgenerator-deploy/releases/{release_id}"
     ssh(
         host,
-        f"cd '{remote_home}/taskgenerator-deploy' && if [ -L current ]; then ln -sfn \"$(readlink -f current)\" previous; fi && ln -sfn '{remote_release}' current",
+        (
+            f"test -f '{remote_release}/release_manifest.json' && "
+            f"docker image inspect 'taskgenerator:{release_id}' >/dev/null && "
+            f"cd '{remote_home}/taskgenerator-deploy' && "
+            "if [ -L current ]; then ln -sfn \"$(readlink -f current)\" previous; fi && "
+            f"ln -sfn '{remote_release}' current"
+        ),
     )
-
-
-def compose_command(host: str, service: str, arguments: Iterable[str]) -> subprocess.CompletedProcess[str]:
-    quoted = " ".join("'" + item.replace("'", "'\\''") + "'" for item in arguments)
-    return ssh(host, f"cd ~/taskgenerator-deploy/current && docker compose --env-file release.env -f compose.yaml run --rm {service} {quoted}")
 
 
 def local_compose(release_dir: Path, service: str, arguments: Iterable[str]) -> subprocess.CompletedProcess[str]:
@@ -277,7 +289,7 @@ def pipeline_args(action: str, run_id: str, mode: str, from_stage: str | None = 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build, deploy, and verify the Milestone D immutable Docker release.")
-    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback"])
+    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback"])
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
@@ -303,21 +315,25 @@ def main() -> None:
         return
     if args.action == "deploy":
         deploy_release(release_dir, args.ssh_host, args.deepseek_key_file)
-        print(json.dumps({"deployed": release_id, "host": args.ssh_host}, ensure_ascii=False))
+        print(json.dumps({"deployed_candidate": release_id, "host": args.ssh_host, "activated": False}, ensure_ascii=False))
+        return
+    if args.action == "activate":
+        activate_release(release_id, args.ssh_host)
+        print(json.dumps({"activated": release_id, "host": args.ssh_host}, ensure_ascii=False))
         return
     if args.action in {"demo-offline", "demo-llm", "batch"}:
         if not args.run_id:
             parser.error("--run-id is required")
         service = "online" if args.action == "demo-llm" else "offline"
         command = pipeline_args("run", args.run_id, args.action)
-        result = local_compose(release_dir, service, command) if args.target == "local" else compose_command(args.ssh_host, service, command)
+        result = local_compose(release_dir, service, command) if args.target == "local" else compose_command(args.ssh_host, release_id, service, command)
         print(result.stdout)
         return
     if args.action in {"status", "resume", "rerun"}:
         if not args.run_id:
             parser.error("--run-id is required")
         command = pipeline_args(args.action, args.run_id, "demo-offline", args.from_stage)
-        result = local_compose(release_dir, args.service, command) if args.target == "local" else compose_command(args.ssh_host, args.service, command)
+        result = local_compose(release_dir, args.service, command) if args.target == "local" else compose_command(args.ssh_host, release_id, args.service, command)
         print(result.stdout)
         return
     if args.action == "fetch":

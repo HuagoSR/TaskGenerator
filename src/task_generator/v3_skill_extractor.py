@@ -336,6 +336,18 @@ class ProviderConfig:
     timeout_seconds: int = 180
     temperature: float = 0.2
     max_tokens: int = 6000
+    output_profile: str = "standard"
+
+
+@dataclass
+class ProviderResponseDiagnostics:
+    finish_reason: Optional[str] = None
+    response_char_count: int = 0
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    response_sha256: Optional[str] = None
+    likely_truncated: bool = False
 
 
 @dataclass
@@ -346,6 +358,16 @@ class ProviderAttempt:
     candidate_count: int = 0
     error_type: Optional[str] = None
     error_message: Optional[str] = None
+    finish_reason: Optional[str] = None
+    response_char_count: int = 0
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    response_sha256: Optional[str] = None
+    likely_truncated: bool = False
+    max_candidates: Optional[int] = None
+    max_tokens: Optional[int] = None
+    output_profile: Optional[str] = None
 
     def to_report(self) -> Dict[str, object]:
         payload: Dict[str, object] = {
@@ -358,6 +380,14 @@ class ProviderAttempt:
             payload["error_type"] = self.error_type
         if self.error_message:
             payload["error_message"] = self.error_message[:1000]
+        for key in (
+            "finish_reason", "response_char_count", "prompt_tokens", "completion_tokens",
+            "total_tokens", "response_sha256", "likely_truncated", "max_candidates",
+            "max_tokens", "output_profile",
+        ):
+            value = getattr(self, key)
+            if value is not None:
+                payload[key] = value
         return payload
 
 
@@ -372,6 +402,7 @@ class LLMSkillExtractor(BaseSkillExtractor):
         self.prompt_char_limit = prompt_char_limit
         self.last_trace_edges: List[SkillTraceEdge] = []
         self.last_motif_hints: List[SkillMotifHint] = []
+        self.last_response_diagnostics = ProviderResponseDiagnostics()
 
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
         response_text = self._call_model(package, max_candidates)
@@ -379,6 +410,8 @@ class LLMSkillExtractor(BaseSkillExtractor):
         raw_candidates = payload.get("candidates")
         if not isinstance(raw_candidates, list):
             raise SkillExtractionError("LLM response JSON must contain a top-level candidates array.")
+        if self.config.output_profile == "bounded_smoke" and len(raw_candidates) > max_candidates:
+            raise SkillExtractionError("Bounded smoke response exceeded max_candidates.")
 
         valid_source_ids, valid_block_ids = self._valid_evidence_ids(package)
         candidates = []
@@ -477,6 +510,17 @@ class LLMSkillExtractor(BaseSkillExtractor):
         content = response.choices[0].message.content
         if not content:
             raise SkillExtractionError("LLM returned empty content.")
+        usage = getattr(response, "usage", None)
+        finish_reason = getattr(response.choices[0], "finish_reason", None)
+        self.last_response_diagnostics = ProviderResponseDiagnostics(
+            finish_reason=str(finish_reason) if finish_reason is not None else None,
+            response_char_count=len(content),
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+            completion_tokens=getattr(usage, "completion_tokens", None),
+            total_tokens=getattr(usage, "total_tokens", None),
+            response_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            likely_truncated=str(finish_reason).lower() == "length",
+        )
         return content
 
     def _build_prompt(self, package: SkillExtractionPromptPackage, max_candidates: int) -> str:
@@ -563,6 +607,18 @@ class LLMSkillExtractor(BaseSkillExtractor):
                 }
             ],
         }
+        bounded_constraints = ""
+        if self.config.output_profile == "bounded_smoke":
+            bounded_constraints = (
+                "\nBounded smoke output budget:\n"
+                "- Return no more than 4 candidates and obey the requested max_candidates exactly.\n"
+                "- Every list field may contain at most 4 items.\n"
+                "- Every required_resources, optional_resources, or provided_resources list may contain at most 2 items.\n"
+                "- Every candidate may contain exactly 1 evidence object with at most 1 supporting span.\n"
+                "- Keep every free-text string at or below 240 characters.\n"
+                "- Return at most 5 trace_edges and at most 2 motif_hints.\n"
+                "- Prefer compact semantic identifiers; do not repeat explanations across fields.\n"
+            )
         return (
             "Return JSON only. The top-level JSON object must be {\"candidates\": [...], \"trace_edges\": [...], \"motif_hints\": [...]}.\n"
             "trace_edges and motif_hints are allowed to be empty only when there is exactly one candidate or no source-supported local relationship.\n"
@@ -602,6 +658,7 @@ class LLMSkillExtractor(BaseSkillExtractor):
             "- Do not infer global successors across the whole registry. Only report local source-supported trace edges and motif hints.\n"
             "- Use concise English identifiers and tags.\n"
             "- Include the word json in your reasoning only internally; output JSON only.\n\n"
+            f"{bounded_constraints}\n"
             f"Expected JSON shape:\n{json.dumps(schema_hint, ensure_ascii=False, indent=2)}\n\n"
             f"Extraction instructions:\n{package.instructions}\n\n"
             f"Constraints from package:\n{json.dumps(package.constraints, ensure_ascii=False, indent=2)}\n\n"
@@ -644,6 +701,16 @@ class LLMSkillExtractor(BaseSkillExtractor):
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
+            diagnostics = self.last_response_diagnostics
+            if diagnostics.likely_truncated:
+                raise SkillExtractionError(
+                    f"LLM response was truncated before valid JSON completed: finish_reason={diagnostics.finish_reason}, "
+                    f"response_chars={diagnostics.response_char_count}, error={exc}"
+                ) from exc
+            if diagnostics.finish_reason == "stop":
+                raise SkillExtractionError(
+                    f"Provider contract violation: finish_reason=stop but response was not valid JSON: {exc}"
+                ) from exc
             raise SkillExtractionError(f"LLM response was not valid JSON: {exc}") from exc
         if not isinstance(payload, dict):
             raise SkillExtractionError("LLM response must be a JSON object.")
@@ -699,6 +766,8 @@ class FallbackSkillExtractor(BaseSkillExtractor):
                         model=model,
                         success=True,
                         candidate_count=len(candidates),
+                        max_candidates=max_candidates,
+                        **self._diagnostic_kwargs(extractor),
                     )
                 )
                 self.last_trace_edges = list(getattr(extractor, "last_trace_edges", []))
@@ -713,9 +782,26 @@ class FallbackSkillExtractor(BaseSkillExtractor):
                         success=False,
                         error_type=type(exc).__name__,
                         error_message=str(exc),
+                        max_candidates=max_candidates,
+                        **self._diagnostic_kwargs(extractor),
                     )
                 )
         raise SkillExtractionError(f"All extraction providers failed. Last error: {last_error}")
+
+    def _diagnostic_kwargs(self, extractor: BaseSkillExtractor) -> Dict[str, Any]:
+        diagnostics = getattr(extractor, "last_response_diagnostics", ProviderResponseDiagnostics())
+        config = getattr(extractor, "config", None)
+        return {
+            "finish_reason": diagnostics.finish_reason,
+            "response_char_count": diagnostics.response_char_count,
+            "prompt_tokens": diagnostics.prompt_tokens,
+            "completion_tokens": diagnostics.completion_tokens,
+            "total_tokens": diagnostics.total_tokens,
+            "response_sha256": diagnostics.response_sha256,
+            "likely_truncated": diagnostics.likely_truncated,
+            "max_tokens": getattr(config, "max_tokens", None),
+            "output_profile": getattr(config, "output_profile", None),
+        }
 
     def _extractor_model(self, extractor: BaseSkillExtractor) -> str:
         config = getattr(extractor, "config", None)

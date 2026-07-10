@@ -45,6 +45,7 @@ RegistryMode = Literal["existing", "fresh_scratch", "snapshot_scratch"]
 StageState = Literal["pending", "running", "skipped", "completed", "failed", "reused", "invalidated"]
 CollectorBackend = Literal["direct", "stirrup"]
 ExtractorMode = Literal["none", "mock", "llm"]
+ExtractorOutputProfile = Literal["standard", "bounded_smoke"]
 RunAction = Literal["run", "resume", "status", "rerun"]
 RunProfile = Literal[
     "custom",
@@ -134,6 +135,8 @@ class EndToEndRequest(BaseModel):
     model: Optional[str] = None
     deepseek_model: str = "deepseek-v4-flash"
     max_candidates: int = 8
+    extractor_max_tokens: int = 6000
+    extractor_output_profile: ExtractorOutputProfile = "standard"
     reuse_existing: bool = False
     force_stage: bool = False
     review_spec_path: Optional[str] = None
@@ -286,6 +289,11 @@ class EndToEndPipeline:
                 raise RuntimeError(str(exc))
             except Exception as exc:
                 failed = manifest.stages.get(stage) or running
+                failure_report = run_dir / self._stage_dir_name(stage) / "extraction" / "skill_extraction_failure_report.json"
+                if failure_report.is_file():
+                    failed.artifact_paths["skill_extraction_failure_report"] = str(failure_report)
+                    failed.artifact_checksums[str(failure_report)] = self._sha256_file(failure_report)
+                    failed.logical_artifact_paths["skill_extraction_failure_report"] = self._logical_path(failure_report, run_dir)
                 failed.state = "failed"
                 failed.finished_at = self._now()
                 failed.attempt_count = attempt_number
@@ -499,8 +507,12 @@ class EndToEndPipeline:
             str(prompt_package),
             "--output-dir",
             str(extraction_dir),
-            "--max-candidates",
-            str(request.max_candidates),
+                    "--max-candidates",
+                    str(request.max_candidates),
+                    "--max-tokens",
+                    str(request.extractor_max_tokens),
+                    "--output-profile",
+                    request.extractor_output_profile,
         ]
         if request.extractor_mode == "llm":
             if not (request.allow_external_source_upload or request.allow_external_upload):

@@ -41,6 +41,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
         )
         if tuzi_config is not None:
             tuzi_config.max_tokens = args.max_tokens
+            tuzi_config.output_profile = args.output_profile
             if not args.allow_external_upload:
                 raise RuntimeError("Tuzi provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("tuzi", LLMSkillExtractor(tuzi_config)))
@@ -65,6 +66,7 @@ def build_extractor(args: argparse.Namespace) -> tuple[FallbackSkillExtractor, L
         )
         if deepseek_config is not None:
             deepseek_config.max_tokens = args.max_tokens
+            deepseek_config.output_profile = args.output_profile
             if not args.allow_external_upload:
                 raise RuntimeError("DeepSeek provider would upload prompt-package content externally. Re-run with --allow-external-upload if this source package is approved for external API use.")
             extractors.append(("deepseek", LLMSkillExtractor(deepseek_config)))
@@ -161,6 +163,32 @@ def write_outputs(
     print(json.dumps(report_payload, ensure_ascii=False, indent=2))
 
 
+def write_failure_report(
+    output_dir: Path,
+    package: SkillExtractionPromptPackage,
+    attempts: List[ProviderAttempt],
+    error: Exception,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "failure_report_version": "v3.skill_extraction_failure.1",
+        "request_id": package.request_id,
+        "status": "failed",
+        "error_type": type(error).__name__,
+        "error_message": str(error)[:2000],
+        "attempts": [attempt.to_report() for attempt in attempts],
+        "raw_response_included": False,
+        "secret_value_included": False,
+    }
+    (output_dir / "skill_extraction_failure_report.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (output_dir / "provider_attempts.json").write_text(
+        json.dumps({"request_id": package.request_id, "attempts": payload["attempts"]}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run V3 LLM-backed skill extraction with provider fallback.")
     parser.add_argument("--prompt-package", type=Path, required=True, help="Path to skill_extraction_prompt_package.json.")
@@ -170,6 +198,7 @@ def main() -> None:
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash", help="DeepSeek official model.")
     parser.add_argument("--max-candidates", type=int, default=30)
     parser.add_argument("--max-tokens", type=int, default=6000, help="Maximum completion tokens for LLM providers.")
+    parser.add_argument("--output-profile", choices=["standard", "bounded_smoke"], default="standard")
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument("--allow-mock-fallback", action="store_true")
     parser.add_argument("--allow-external-upload", action="store_true", help="Required before sending prompt-package content to Tuzi or DeepSeek.")
@@ -179,7 +208,11 @@ def main() -> None:
 
     package = SkillExtractionPromptPackage.model_validate(load_json_file(str(args.prompt_package)))
     extractor, setup_attempts = build_extractor(args)
-    candidates = extractor.extract(package, max_candidates=args.max_candidates)
+    try:
+        candidates = extractor.extract(package, max_candidates=args.max_candidates)
+    except Exception as exc:
+        write_failure_report(args.output_dir, package, setup_attempts + extractor.attempts, exc)
+        raise
     provider_used = next(
         (attempt.provider_name for attempt in extractor.attempts if attempt.success),
         "unknown",
@@ -197,5 +230,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
