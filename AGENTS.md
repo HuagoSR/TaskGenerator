@@ -37,7 +37,7 @@ The current roadmap is:
 - A. Phase 16 evidence closure — complete.
 - B. Documentation and project-state governance — complete.
 - C. Local end-to-end automation — complete.
-- D. Server reproduction — next.
+- D. Server reproduction — blocked only on the required public DeepSeek smoke; Docker, offline equivalence, resume, and batch passed.
 - E. Second-domain vertical slice — planned.
 - F. Training-data readiness — planned.
 
@@ -137,4 +137,4 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Milestone D should reproduce this exact contract on the server: fixed environment, injected secrets, portable runtime paths, and local/server structural equivalence. It must not replace the local orchestrator or broaden authorization into external eval, RL training, default-chain promotion, or cross-domain expansion.
+Milestone D has a fixed Docker release and passing offline/server equivalence, resume, and batch evidence. Its required public DeepSeek smoke failed twice because both responses contained truncated JSON, so the milestone is blocked under its frozen retry contract. Do not add a third same-configuration attempt or claim completion. The next approved slice must first address bounded output or validated JSON continuation/repair, then run a new public-only smoke. This does not authorize external eval, RL training, default-chain promotion, or cross-domain expansion.

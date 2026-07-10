@@ -93,7 +93,7 @@ def compare_environments(
     suspicious: list[str] = []
     for path in remote_text.rglob("*.json"):
         text = path.read_text(encoding="utf-8", errors="replace")
-        if re.search(r"[A-Za-z]:\\", text):
+        if re.search(r"(?<![A-Za-z0-9_])[A-Za-z]:\\", text):
             suspicious.append(f"windows_path:{path.name}")
         if re.search(r"(?i)(bearer\s+[a-z0-9._-]{12,}|api[_-]?key\s*[=:]\s*['\"]?[a-z0-9._-]{12,})", text):
             suspicious.append(f"possible_secret:{path.name}")

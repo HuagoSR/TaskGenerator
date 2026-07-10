@@ -284,6 +284,7 @@ def main() -> None:
     parser.add_argument("--ssh-host", default=DEFAULT_SSH_HOST)
     parser.add_argument("--deepseek-key-file", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--target", choices=["local", "server"], default="server")
+    parser.add_argument("--service", choices=["offline", "online"], default="offline", help="Use online only when resuming an explicitly approved LLM run.")
     parser.add_argument("--run-id")
     parser.add_argument("--from-stage", choices=["source_to_skills", "registry_prepare", "task_generation", "production_review", "rw_task_eval"])
     parser.add_argument("--local-manifest", type=Path)
@@ -316,7 +317,7 @@ def main() -> None:
         if not args.run_id:
             parser.error("--run-id is required")
         command = pipeline_args(args.action, args.run_id, "demo-offline", args.from_stage)
-        result = local_compose(release_dir, "offline", command) if args.target == "local" else compose_command(args.ssh_host, "offline", command)
+        result = local_compose(release_dir, args.service, command) if args.target == "local" else compose_command(args.ssh_host, args.service, command)
         print(result.stdout)
         return
     if args.action == "fetch":

@@ -14,6 +14,7 @@
 - `phases/phase15/`：generator reform 与 Phase 15B `hold_for_redesign`。
 - `phases/phase16/`：Contract V2 redesign、真实四案例评测和 `redesign_again` 收口。
 - `phases/milestone_c/`：本地端到端自动化、Manifest V2、恢复测试和 public smoke 收口。
+- `phases/milestone_d/`：Docker 服务器复现、结构等价证据和公开 LLM smoke 阻塞收口。
 - `reports/`：早期阶段性报告、Phase 14 报告和配套图片。
 
 ## 使用规则
