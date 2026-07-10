@@ -153,7 +153,7 @@ def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Pa
         temporary_path = Path(temporary.name)
     try:
         run(["docker", "save", "-o", str(temporary_path), image])
-        with temporary_path.open("rb") as source, gzip.open(archive_path, "wb", compresslevel=6) as destination:
+        with temporary_path.open("rb") as source, gzip.open(archive_path, "wb", compresslevel=1) as destination:
             shutil.copyfileobj(source, destination, length=1024 * 1024)
     finally:
         temporary_path.unlink(missing_ok=True)
