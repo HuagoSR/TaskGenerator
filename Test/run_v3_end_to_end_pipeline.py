@@ -11,6 +11,7 @@ if str(SRC) not in sys.path:
 
 from task_generator.v3_end_to_end_pipeline import (  # noqa: E402
     DEFAULT_ENV_PATH,
+    DEFAULT_DEEPSEEK_KEY_PATH,
     DEFAULT_OUTPUT_ROOT,
     DEFAULT_RW_TASK_ROOT,
     STAGE_ORDER,
@@ -91,6 +92,7 @@ def main() -> None:
     parser.add_argument("--model", action="append", default=[])
     parser.add_argument("--rw-task-root", default=str(DEFAULT_RW_TASK_ROOT))
     parser.add_argument("--env-path", default=str(DEFAULT_ENV_PATH))
+    parser.add_argument("--deepseek-key-path", default=str(DEFAULT_DEEPSEEK_KEY_PATH))
     parser.add_argument("--python-exe", default=sys.executable)
     parser.add_argument("--timeout-seconds", type=int, default=0)
     parser.add_argument("--reuse-existing", action="store_true")
@@ -203,6 +205,7 @@ def main() -> None:
         models=args.model,
         rw_task_root=args.rw_task_root,
         env_path=args.env_path,
+        deepseek_key_path=args.deepseek_key_path,
         python_exe=args.python_exe,
         timeout_seconds=args.timeout_seconds,
     )

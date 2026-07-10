@@ -1,0 +1,44 @@
+name: taskgenerator-d
+
+x-taskgenerator-common: &taskgenerator-common
+  image: ${TASKGEN_IMAGE:?must_set}
+  user: "1000:1000"
+  read_only: true
+  cap_drop: ["ALL"]
+  security_opt:
+    - no-new-privileges:true
+  mem_limit: 2560m
+  cpus: 1.5
+  pids_limit: 256
+  init: true
+  environment:
+    TASKGEN_IMAGE_ID: ${TASKGEN_IMAGE_ID:-unknown}
+    TASKGEN_RELEASE_ID: ${TASKGEN_RELEASE_ID:-unknown}
+    TASKGEN_SOURCE_COMMIT: ${TASKGEN_SOURCE_COMMIT:-unknown}
+    TASKGEN_RW_TASK_SNAPSHOT: ${TASKGEN_RW_TASK_SNAPSHOT:-unknown}
+    TASKGEN_OUTPUT_ROOT: /data/runs
+    TASKGEN_RW_TASK_ROOT: /opt/rw-task
+    TASKGEN_ENV_PATH: /run/secrets/provider_env
+    TASKGEN_DEEPSEEK_KEY_PATH: /run/secrets/deepseek_api_key
+  volumes:
+    - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
+    - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
+  tmpfs:
+    - /tmp:size=268435456,mode=1777
+  logging:
+    driver: local
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  offline:
+    <<: *taskgenerator-common
+    network_mode: none
+
+  online:
+    <<: *taskgenerator-common
+    volumes:
+      - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
+      - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
+      - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro

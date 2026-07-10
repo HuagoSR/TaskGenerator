@@ -22,12 +22,15 @@ from task_generator.v3_skill_registry import SkillRegistryBuilder
 
 ROOT = Path(__file__).resolve().parents[2]
 TEST_DIR = ROOT / "Test"
-DEFAULT_OUTPUT_ROOT = ROOT / "artifacts" / "end_to_end_runs"
+DEFAULT_OUTPUT_ROOT = Path(os.environ.get("TASKGEN_OUTPUT_ROOT", str(ROOT / "artifacts" / "end_to_end_runs")))
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
 DEFAULT_MOTIF_GRAMMAR_PATH = ROOT / "SkillRegistry" / "v3_motif_graph_grammar.experimental.json"
 DEFAULT_WORKFLOW_ASSET_PATH = ROOT / "SkillRegistry" / "v3_workflow_archetype_registry.experimental.json"
-DEFAULT_ENV_PATH = ROOT.parent / "rw-task" / ".env"
-DEFAULT_RW_TASK_ROOT = ROOT.parent / "rw-task"
+DEFAULT_ENV_PATH = Path(os.environ.get("TASKGEN_ENV_PATH", str(ROOT.parent / "rw-task" / ".env")))
+DEFAULT_RW_TASK_ROOT = Path(os.environ.get("TASKGEN_RW_TASK_ROOT", str(ROOT.parent / "rw-task")))
+DEFAULT_DEEPSEEK_KEY_PATH = Path(
+    os.environ.get("TASKGEN_DEEPSEEK_KEY_PATH", str(ROOT / "deepseek-key.txt"))
+)
 
 PipelineStage = Literal[
     "source_to_skills",
@@ -140,6 +143,7 @@ class EndToEndRequest(BaseModel):
     models: List[str] = Field(default_factory=list)
     rw_task_root: str = str(DEFAULT_RW_TASK_ROOT)
     env_path: str = str(DEFAULT_ENV_PATH)
+    deepseek_key_path: str = str(DEFAULT_DEEPSEEK_KEY_PATH)
     python_exe: str = sys.executable
     timeout_seconds: int = 0
     generation_seed: int = 0
@@ -509,6 +513,8 @@ class EndToEndPipeline:
                     request.deepseek_model,
                     "--env-path",
                     request.env_path,
+                    "--deepseek-key-path",
+                    request.deepseek_key_path,
                     "--allow-external-upload",
                 ]
             )
@@ -1602,6 +1608,14 @@ class EndToEndPipeline:
             "repo_root": str(self.root),
             "run_root": str(run_dir),
             "dependencies": packages,
+            "container": {
+                "image_id": os.environ.get("TASKGEN_IMAGE_ID", "not_set"),
+                "release_id": os.environ.get("TASKGEN_RELEASE_ID", "not_set"),
+                "cpu_limit": os.environ.get("TASKGEN_CPU_LIMIT", "not_set"),
+                "memory_limit": os.environ.get("TASKGEN_MEMORY_LIMIT", "not_set"),
+                "execution_platform": os.environ.get("TASKGEN_EXECUTION_PLATFORM", "host"),
+                "rw_task_snapshot": os.environ.get("TASKGEN_RW_TASK_SNAPSHOT", "not_set"),
+            },
         }
 
     def _hash_json(self, payload: Any) -> str:
@@ -1653,6 +1667,9 @@ class EndToEndPipeline:
         os.replace(temporary, path)
 
     def _git_commit(self) -> str:
+        injected = os.environ.get("TASKGEN_SOURCE_COMMIT")
+        if injected:
+            return injected
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=str(self.root),
