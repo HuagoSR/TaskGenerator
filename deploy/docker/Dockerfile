@@ -23,7 +23,6 @@ ENV LANG=C.UTF-8 \
     TASKGEN_OUTPUT_ROOT=/data/runs \
     TASKGEN_RW_TASK_ROOT=/opt/rw-task \
     TASKGEN_ENV_PATH=/run/secrets/provider_env \
-    TASKGEN_DEEPSEEK_KEY_PATH=/run/secrets/deepseek_api_key \
     TASKGEN_RELEASE_ID=${RELEASE_ID} \
     TASKGEN_SOURCE_COMMIT=${SOURCE_COMMIT} \
     TASKGEN_RW_TASK_SNAPSHOT=${RW_TASK_SNAPSHOT} \
