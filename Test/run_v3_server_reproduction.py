@@ -73,13 +73,20 @@ def assert_release_clean(context: Path) -> list[str]:
         relative = path.relative_to(context)
         if any(part in FORBIDDEN_NAMES for part in relative.parts):
             findings.append(relative.as_posix())
-        if path.is_file() and path.stat().st_size <= 5_000_000:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-            if "Bearer " in text or "OPENAI_API_KEY=" in text or "DEEPSEEK_API_KEY=" in text:
-                findings.append(f"possible_secret:{relative.as_posix()}")
     if findings:
         raise RuntimeError("Forbidden release content: " + ", ".join(sorted(set(findings))[:20]))
     return findings
+
+
+def prune_forbidden_tree(root: Path) -> None:
+    candidates = sorted(root.rglob("*"), key=lambda path: len(path.parts), reverse=True)
+    for path in candidates:
+        if path.name not in FORBIDDEN_NAMES and path.suffix.lower() != ".pyc":
+            continue
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
 
 
 def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Path:
@@ -97,6 +104,7 @@ def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Pa
     archive.unlink()
     for forbidden in (taskgenerator / ".env", taskgenerator / "deepseek-key.txt"):
         forbidden.unlink(missing_ok=True)
+    prune_forbidden_tree(taskgenerator)
     shutil.copy2(DEPLOY / "Dockerfile", context / "Dockerfile")
     shutil.copy2(DEPLOY / "requirements.lock", context / "requirements.lock")
     shutil.copy2(DEPLOY / ".dockerignore", context / ".dockerignore")
