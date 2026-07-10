@@ -147,7 +147,9 @@ def summarize_wave(campaign_root: Path, wave: int, spec: dict) -> dict:
             source_counts.append(int(report.get("accepted_source_count") or report.get("source_count") or 0))
     target = int(wave_spec(spec, wave)["target_ready"])
     reference_hashes: dict[str, list[str]] = {}
-    for path in wave_dir.glob("03_task_generation/**/reference_files/*"):
+    # Count each candidate-visible file once. Export/eval-input copies are transport
+    # replicas of the package, not cross-case duplicate evidence.
+    for path in wave_dir.glob("03_task_generation/**/package/reference_files/*"):
         if path.is_file():
             reference_hashes.setdefault(sha256_file(path), []).append(str(path.relative_to(wave_dir)))
     duplicate_reference_groups = [paths for paths in reference_hashes.values() if len(paths) > 1]
