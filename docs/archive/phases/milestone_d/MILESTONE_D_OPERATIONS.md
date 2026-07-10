@@ -10,6 +10,7 @@
 --action preflight
 --action build --release-id <release>
 --action deploy --release-id <release>
+--action activate --release-id <release>  # 仅在 candidate 验收通过后执行
 --action demo-offline --target server --release-id <release> --run-id <run>
 --action demo-llm --target server --release-id <release> --run-id <run>
 --action batch --target server --release-id <release> --run-id <run>
@@ -25,6 +26,8 @@
 
 ```text
 ~/taskgenerator-deploy/current
+~/taskgenerator-deploy/candidate
+~/taskgenerator-deploy/previous
 ~/taskgenerator-deploy/releases/<release_id>
 ~/taskgenerator-data/runs
 ~/taskgenerator-data/inputs
@@ -33,4 +36,4 @@
 
 `offline` Compose service 使用 `network_mode: none`；`online` 仅用于显式批准的公开 source LLM extraction。两个服务均不映射端口，默认 `allow_web_collection=false`、`allow_external_eval=false`。
 
-回滚只交换 `current` 与 `previous` symlink。不得使用全局 Docker prune，也不得修改服务器现有 nginx、Minecraft、Docker daemon、防火墙或 swap。
+`deploy` 只更新 `candidate`；server smoke 直接按 `--release-id` 运行。验收通过后由 `activate` 将旧 `current` 保存为 `previous`。回滚只交换 `current` 与 `previous` symlink。不得使用全局 Docker prune，也不得修改服务器现有 nginx、Minecraft、Docker daemon、防火墙或 swap。

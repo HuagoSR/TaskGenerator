@@ -1,6 +1,8 @@
 # 里程碑 D 阻塞收口 - 2026-07-10
 
-> 状态：`historical blocked handoff`
+> 状态：`superseded historical blocked handoff`
+>
+> 本文记录第一次服务器 campaign 的真实阻塞。该阻塞已由 bounded-output release 解除，最终结论以 `MILESTONE_D_COMPLETION_2026-07-10.md` 为准。
 
 ## 最终判断
 

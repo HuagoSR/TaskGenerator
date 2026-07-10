@@ -34,7 +34,7 @@ class DocumentationGovernanceTests(unittest.TestCase):
             "D. 服务器复现",
             "E. 第二领域垂直切片",
             "F. 训练数据准备度",
-            "下一主线是里程碑 D",
+            "下一主线是里程碑 E",
         ]
         missing = [token for token in required if token not in overview]
         self.assertEqual(missing, [])
