@@ -63,6 +63,7 @@ def safe_copy_rw_task(source: Path, target: Path) -> dict[str, str]:
             )
         else:
             shutil.copy2(item, destination)
+    prune_forbidden_tree(target)
     files = sorted(path for path in target.rglob("*") if path.is_file())
     return {path.relative_to(target).as_posix(): sha256_file(path) for path in files}
 
