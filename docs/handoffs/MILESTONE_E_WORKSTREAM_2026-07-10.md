@@ -51,6 +51,29 @@ Warehouse content fingerprint 为 `f4091ea1ee548b245fffc15b4c34cc71d5db7d1c51a6d
 
 污染台账结论为 `pass`：task ID、GDPVal URI、prompt hash、reference-file hash 和连续 12-token 指纹均无命中。warehouse artifacts 中也没有 profile 禁止的 finance/audit persona 词汇。离线比较只允许表述为 `offline_vertical_slice_passed`，不能扩张为广泛跨领域泛化。
 
+## Docker candidate
+
+授权前 candidate 已构建并部署，但未激活：
+
+```text
+release_id = milestone-e-ed0568e
+source_commit = ed0568e3e56fa725858d6c33e0cfb04bbec043d8
+image_archive_sha256 = b8cbd71e12de43f933083615821fdf6f84ab4676167d7bae549bb89ac2e615ed
+archive_config_digest = sha256:d1e51a5442f2e1f5410674c5b4bdffbbe4b8bb9a286975af77891d1eab18c4f6
+server_runtime_image_id = sha256:9f3f731c2492999a2a547b9a34fdea0d6682aa41e725a594f2106d60e0b5faf5
+```
+
+本地和服务器读取的是 SHA-256 完全一致的 image archive，其 manifest config digest 均为 `d1e51a...c4f6`；服务器 Docker 29 load 后报告了不同的 runtime image ID，作为激活前待解释诊断保留，不用结果 fingerprint 掩盖。候选的本地/服务器旧 public smoke 均复现 `722497...1173`，本地/服务器 warehouse smoke 均复现 `f4091e...bab3` 和 `4 / 4 / 4 / 3 / 3 / 0 / 1 / 0`。
+
+服务器 symlink 保持：
+
+```text
+current = milestone-d-094c6cb
+candidate = milestone-e-ed0568e
+```
+
+nginx 与既有 Minecraft 容器未重启，未新增端口。
+
 ## 下一授权门
 
 下一步需要用户单独授权一次公开 source prompt package 的 DeepSeek official extraction，并允许一次同配置重试：
