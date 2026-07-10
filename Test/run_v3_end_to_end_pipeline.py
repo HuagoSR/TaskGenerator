@@ -72,6 +72,7 @@ def main() -> None:
     parser.add_argument("--domain-profile-path", default=str(DEFAULT_DOMAIN_PROFILE_PATH))
     parser.add_argument("--motif", action="append", default=[])
     parser.add_argument("--case-index-offset", type=int, default=0)
+    parser.add_argument("--target-difficulty-profile", default=None)
     parser.add_argument("--motif-occurrence-offset", action="append", default=[])
     parser.add_argument("--apply-registry-update", action="store_true")
     parser.add_argument("--skip-registry-update", action="store_true")
@@ -250,6 +251,7 @@ def main() -> None:
         domain_profile_path=args.domain_profile_path,
         motifs=args.motif,
         case_index_offset=args.case_index_offset,
+        target_difficulty_profile=args.target_difficulty_profile,
         motif_occurrence_offsets=motif_occurrence_offsets,
     )
     if args.action in {"resume", "rerun"} and manifest_path.exists():

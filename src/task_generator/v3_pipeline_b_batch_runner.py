@@ -296,6 +296,7 @@ class PipelineBBatchRunner:
             registry_path=registry_path,
             phase15_reform_spec_path=phase15_reform_spec_path,
             domain_profile=load_domain_profile(domain_profile, domain_profile_path),
+            production_profile=target_difficulty_profile,
         )
         prototype.write_outputs(prototype_report, prototype_dir)
         blueprint_path = prototype_dir / "draft_task_blueprint.json"

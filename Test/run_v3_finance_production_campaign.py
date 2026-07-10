@@ -89,6 +89,7 @@ def build_command(args: argparse.Namespace, spec: dict, campaign_root: Path) -> 
         "--registry-mode", "existing",
         "--registry-path", str(registry),
         "--domain-profile", "finance_audit",
+        "--target-difficulty-profile", "finance_production_v1",
         "--max-cases", str(wave_spec(spec, wave)["target_ready"]),
         "--case-index-offset", str(wave_spec(spec, wave)["case_offset"]),
         "--rw-task-root", args.rw_task_root,
@@ -145,6 +146,11 @@ def summarize_wave(campaign_root: Path, wave: int, spec: dict) -> dict:
             report = item.get("collector", {}).get("collection_report", {})
             source_counts.append(int(report.get("accepted_source_count") or report.get("source_count") or 0))
     target = int(wave_spec(spec, wave)["target_ready"])
+    reference_hashes: dict[str, list[str]] = {}
+    for path in wave_dir.glob("03_task_generation/**/reference_files/*"):
+        if path.is_file():
+            reference_hashes.setdefault(sha256_file(path), []).append(str(path.relative_to(wave_dir)))
+    duplicate_reference_groups = [paths for paths in reference_hashes.values() if len(paths) > 1]
     requirements = {
         "target_ready": len(ready) == target,
         "verifier_all_pass": all(case.get("verifier_status") == "pass" for case in ready),
@@ -153,6 +159,7 @@ def summarize_wave(campaign_root: Path, wave: int, spec: dict) -> dict:
         "no_eval_stage": "rw_task_eval" not in manifest.get("stages", {}),
         "no_external_eval": not manifest.get("external_effects", {}).get("external_eval", False),
         "no_eval_preparation": not manifest.get("external_effects", {}).get("eval_preparation", False),
+        "no_exact_reference_duplicates": not duplicate_reference_groups,
     }
     if wave == 1:
         requirements.update({
@@ -169,6 +176,7 @@ def summarize_wave(campaign_root: Path, wave: int, spec: dict) -> dict:
         "source_counts": source_counts,
         "accepted_skill_count": int(source.get("accepted_count") or 0),
         "sample_ready_count": int(registry.get("selected_count") or 0),
+        "duplicate_reference_groups": duplicate_reference_groups,
         "requirements": requirements,
         "decision": "pass" if requirements and all(requirements.values()) else "blocked",
     }

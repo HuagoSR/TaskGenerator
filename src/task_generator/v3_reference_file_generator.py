@@ -1,4 +1,5 @@
 import json
+import hashlib
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -124,7 +125,9 @@ class ReferenceFileGenerator:
         }
 
         for planned_file in plan.planned_files:
-            record, mappings, trace = self._generate_file(planned_file, reference_dir)
+            record, mappings, trace = self._generate_file(
+                planned_file, reference_dir, plan.blueprint_id, plan.template_family.startswith("finance_")
+            )
             dossier_role = dossier_role_by_file_id.get(planned_file.file_id)
             if dossier_role is not None:
                 trace["dossier_role"] = dossier_role.role
@@ -158,6 +161,8 @@ class ReferenceFileGenerator:
         self,
         planned_file: PlannedReferenceFile,
         reference_dir: Path,
+        blueprint_id: str,
+        production_mode: bool,
     ) -> tuple[GeneratedFileRecord, List[GeneratedEvidenceMapping], Dict[str, Any]]:
         if planned_file.generator_status != "ready_for_deterministic_generation":
             return (
@@ -188,17 +193,17 @@ class ReferenceFileGenerator:
 
         try:
             if file_format == "xlsx":
-                table_frames = self._table_frames(planned_file.tables)
-                self._write_xlsx(target_path, table_frames)
+                table_frames = self._table_frames(planned_file.tables, blueprint_id)
+                self._write_xlsx(target_path, table_frames, production_mode)
                 mappings = self._xlsx_evidence_mappings(planned_file, table_frames)
                 record = self._validate_generated_file(planned_file, target_path, table_frames)
             elif file_format == "csv":
-                table_frames = self._table_frames(planned_file.tables)
+                table_frames = self._table_frames(planned_file.tables, blueprint_id)
                 self._write_csv(target_path, table_frames, planned_file.file_name)
                 mappings = self._csv_evidence_mappings(planned_file, table_frames)
                 record = self._validate_generated_file(planned_file, target_path, table_frames)
             elif file_format == "json":
-                table_frames = self._table_frames(planned_file.tables)
+                table_frames = self._table_frames(planned_file.tables, blueprint_id)
                 self._write_json(target_path, table_frames)
                 mappings = self._json_evidence_mappings(planned_file, table_frames)
                 record = self._validate_generated_file(planned_file, target_path, table_frames)
@@ -207,7 +212,7 @@ class ReferenceFileGenerator:
                 mappings = self._text_evidence_mappings(planned_file)
                 record = self._validate_text_file(planned_file, target_path)
             elif file_format == "docx":
-                support_artifacts = self._write_docx_reference(target_path, planned_file)
+                support_artifacts = self._write_docx_reference(target_path, planned_file, production_mode)
                 mappings = self._text_evidence_mappings(planned_file)
                 record = self._validate_docx_file(planned_file, target_path, support_artifacts)
             else:
@@ -270,10 +275,13 @@ class ReferenceFileGenerator:
         }
         return record, mappings, trace
 
-    def _table_frames(self, tables: List[PlannedTable]) -> Dict[str, pd.DataFrame]:
-        return {table.sheet_name: self._build_table_frame(table) for table in tables}
+    def _table_frames(self, tables: List[PlannedTable], blueprint_id: str) -> Dict[str, pd.DataFrame]:
+        return {table.sheet_name: self._build_table_frame(table, blueprint_id) for table in tables}
 
-    def _build_table_frame(self, table: PlannedTable) -> pd.DataFrame:
+    def _build_table_frame(self, table: PlannedTable, blueprint_id: str) -> pd.DataFrame:
+        production = self._finance_production_frame(table, blueprint_id)
+        if production is not None:
+            return production
         rows = []
         for row_index in range(table.row_count_target):
             row = {}
@@ -286,6 +294,50 @@ class ReferenceFileGenerator:
                 )
             rows.append(row)
         return pd.DataFrame(rows, columns=[column.name for column in table.columns])
+
+    def _finance_production_frame(self, table: PlannedTable, blueprint_id: str) -> Optional[pd.DataFrame]:
+        columns = [column.name for column in table.columns]
+        names = set(columns)
+        variant = int(hashlib.sha256(blueprint_id.encode("utf-8")).hexdigest()[:6], 16) % 700
+        if names == {"Bank_ID", "Transaction_Date", "Reference", "Description", "Amount"}:
+            rows = []
+            for i in range(12):
+                ref = f"PAY-{variant + i + 101:04d}" if i < 10 else f"BANK-{variant + i:04d}"
+                amount = round((185 + variant / 10 + i * 73.25) * (-1 if i % 3 else 1), 2)
+                rows.append({"Bank_ID": f"B-{i+1:03d}", "Transaction_Date": f"2026-06-{i+2:02d}", "Reference": ref,
+                             "Description": "Customer receipt" if amount > 0 else "Electronic payment", "Amount": amount})
+            return pd.DataFrame(rows, columns=columns)
+        if names == {"Ledger_ID", "Posting_Date", "Reference", "Description", "Amount"}:
+            rows = []
+            for i in range(12):
+                ref = f"PAY-{variant + i + 101:04d}" if i < 10 else f"BOOK-{variant + i:04d}"
+                amount = round((185 + variant / 10 + i * 73.25) * (-1 if i % 3 else 1), 2)
+                rows.append({"Ledger_ID": f"L-{i+1:03d}", "Posting_Date": f"2026-06-{i+2:02d}", "Reference": ref,
+                             "Description": "Cash receipt entry" if amount > 0 else "Cash disbursement entry", "Amount": amount})
+            return pd.DataFrame(rows, columns=columns)
+        if names == {"PO_ID", "Item_ID", "Ordered_Qty", "Unit_Price"}:
+            return pd.DataFrame([{"PO_ID": f"PO-{variant+i+1:04d}", "Item_ID": f"ITEM-{i+1:03d}",
+                                  "Ordered_Qty": 5 + i, "Unit_Price": round(18.5 + i * 4.25 + variant / 100, 2)} for i in range(10)], columns=columns)
+        if names == {"Receipt_ID", "PO_ID", "Item_ID", "Received_Qty"}:
+            return pd.DataFrame([{"Receipt_ID": f"GR-{variant+i+1:04d}", "PO_ID": f"PO-{variant+i+1:04d}",
+                                  "Item_ID": f"ITEM-{i+1:03d}", "Received_Qty": 5 + i - (1 if i == 7 else 0)} for i in range(10)], columns=columns)
+        if names == {"Invoice_ID", "PO_ID", "Item_ID", "Invoiced_Qty", "Unit_Price"}:
+            rows = [{"Invoice_ID": f"INV-{variant+i+1:04d}", "PO_ID": f"PO-{variant+i+1:04d}", "Item_ID": f"ITEM-{i+1:03d}",
+                     "Invoiced_Qty": 5 + i + (2 if i == 7 else 0),
+                     "Unit_Price": round(18.5 + i * 4.25 + variant / 100 + (3 if i == 4 else 0), 2)} for i in range(10)]
+            rows.append(dict(rows[2], Invoice_ID=f"INV-{variant+99:04d}"))
+            return pd.DataFrame(rows, columns=columns)
+        if {"Transaction_ID", "Employee_ID", "Category", "Amount", "Receipt_Available"}.issubset(names):
+            categories = ["Meals", "Hotel", "Airfare", "Office Supplies", "Entertainment"]
+            rows = []
+            for i in range(14):
+                amount = round(35 + variant / 20 + i * 61.4, 2)
+                rows.append({"Transaction_ID": f"TX-{variant+i+1:04d}", "Employee_ID": f"EMP-{(i%5)+1:03d}",
+                             "Expense_Date": f"2026-06-{i+1:02d}", "Category": categories[i % len(categories)], "Amount": amount,
+                             "Receipt_Available": "No" if i in {3, 9} else "Yes", "Approval_Level": "Director" if i in {6, 12} else "Manager",
+                             "Business_Purpose": f"Client or operating activity {variant+i+1}"})
+            return pd.DataFrame(rows, columns=columns)
+        return None
 
     def _column_value(self, column_name: str, semantic_type: str, row_index: int, column_index: int) -> Any:
         lowered_name = column_name.lower()
@@ -318,10 +370,25 @@ class ReferenceFileGenerator:
             return f"Apply rule set {row_index + 1:02d} to the referenced item."
         return f"{column_name}_{row_index + 1:03d}"
 
-    def _write_xlsx(self, target_path: Path, table_frames: Dict[str, pd.DataFrame]) -> None:
-        with pd.ExcelWriter(target_path) as writer:
+    def _write_xlsx(self, target_path: Path, table_frames: Dict[str, pd.DataFrame], production_mode: bool = False) -> None:
+        with pd.ExcelWriter(target_path, engine="openpyxl" if production_mode else None) as writer:
             for sheet_name, frame in table_frames.items():
                 frame.to_excel(writer, sheet_name=sheet_name, index=False)
+                if not production_mode:
+                    continue
+                sheet = writer.book[sheet_name]
+                sheet.freeze_panes = "A2"
+                sheet.auto_filter.ref = sheet.dimensions
+                for cell in sheet[1]:
+                    cell.font = cell.font.copy(bold=True, color="FFFFFF")
+                    cell.fill = cell.fill.copy(fill_type="solid", fgColor="1F4E78")
+                for index, column in enumerate(frame.columns, 1):
+                    width = min(42, max(12, len(str(column)) + 2, *(len(str(value)) + 2 for value in frame[column].head(30))))
+                    sheet.column_dimensions[sheet.cell(1, index).column_letter].width = width
+                    if "Amount" in str(column) or "Price" in str(column):
+                        for cell in sheet.iter_cols(min_col=index, max_col=index, min_row=2):
+                            for item in cell:
+                                item.number_format = '#,##0.00;[Red]-#,##0.00'
 
     def _write_csv(self, target_path: Path, table_frames: Dict[str, pd.DataFrame], file_name: str) -> None:
         if len(table_frames) != 1:
@@ -351,9 +418,25 @@ class ReferenceFileGenerator:
         self,
         target_path: Path,
         planned_file: PlannedReferenceFile,
+        production_mode: bool = False,
     ) -> List[str]:
-        paragraphs = [planned_file.file_name]
-        for section in planned_file.text_sections:
+        if planned_file.file_name == "expense_policy.docx":
+            paragraphs = [
+                "Expense and Corporate Card Policy",
+                "Purpose", "Define the evidence and approval rules for employee expenses.",
+                "Applicable Guidance", "Apply POL-001 through POL-004 to every supplied transaction.",
+                "Evidence Interpretation", "Use the receipt, approval, category, amount, and business-purpose fields as supplied.",
+                "Decision Rules", "Classify a transaction as an exception when any applicable clause is not satisfied.",
+                "POL-001 Receipt requirement", "A receipt is required for every transaction of 75.00 or more.",
+                "POL-002 Meal threshold", "Meals above 100.00 per person require Director approval.",
+                "POL-003 Entertainment", "Entertainment transactions require Director approval and a stated business purpose.",
+                "POL-004 Missing evidence", "A missing receipt or business purpose must be classified as an exception pending follow-up.",
+            ]
+        else:
+            paragraphs = [planned_file.file_name]
+        if production_mode:
+            paragraphs.append(f"Control package ID: {planned_file.file_id}")
+        for section in ([] if planned_file.file_name == "expense_policy.docx" else planned_file.text_sections):
             title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
             paragraphs.append(title)
             if section.clause_id:
@@ -361,11 +444,12 @@ class ReferenceFileGenerator:
             else:
                 paragraphs.append(f"This section is planned deterministically for {section.evidence_role}.")
 
-        self._write_minimal_docx(target_path, paragraphs)
+        self._write_minimal_docx(target_path, paragraphs, production_mode)
         clause_map_name = f"{Path(planned_file.file_name).stem}_clause_map.json"
         clause_map_path = target_path.parent / clause_map_name
         clause_map_payload = {
             "file_name": planned_file.file_name,
+            **({"control_package_id": planned_file.file_id} if production_mode else {}),
             "clauses": [
                 {
                     "clause_id": section.clause_id,
@@ -654,7 +738,7 @@ class ReferenceFileGenerator:
             )
         return f"This clause provides deterministic guidance for {section.heading.lower()}."
 
-    def _write_minimal_docx(self, target_path: Path, paragraphs: List[str]) -> None:
+    def _write_minimal_docx(self, target_path: Path, paragraphs: List[str], production_mode: bool = False) -> None:
         content_types = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -689,7 +773,7 @@ class ReferenceFileGenerator:
   <Application>TaskGenerator</Application>
 </Properties>
 """
-        document_xml = self._document_xml(paragraphs)
+        document_xml = self._document_xml(paragraphs, production_mode)
         with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("[Content_Types].xml", content_types)
             archive.writestr("_rels/.rels", relationships)
@@ -698,7 +782,7 @@ class ReferenceFileGenerator:
             archive.writestr("docProps/core.xml", core_xml)
             archive.writestr("docProps/app.xml", app_xml)
 
-    def _document_xml(self, paragraphs: List[str]) -> str:
+    def _document_xml(self, paragraphs: List[str], production_mode: bool = False) -> str:
         body = []
         for paragraph in paragraphs:
             body.append(
@@ -706,7 +790,10 @@ class ReferenceFileGenerator:
                 + escape(paragraph)
                 + "</w:t></w:r></w:p>"
             )
-        body.append("<w:sectPr/>")
+        body.append(
+            '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>'
+            if production_mode else "<w:sectPr/>"
+        )
         return (
             "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
             "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"

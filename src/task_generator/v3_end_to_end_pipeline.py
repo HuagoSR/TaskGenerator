@@ -157,6 +157,7 @@ class EndToEndRequest(BaseModel):
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
     motifs: List[str] = Field(default_factory=list)
     case_index_offset: int = 0
+    target_difficulty_profile: Optional[str] = None
     motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
 
 
@@ -772,6 +773,8 @@ class EndToEndPipeline:
             "--case-index-offset",
             str(request.case_index_offset),
         ]
+        if request.target_difficulty_profile:
+            cmd.extend(["--target-difficulty-profile", request.target_difficulty_profile])
         for motif, offset in sorted(request.motif_occurrence_offsets.items()):
             cmd.extend(["--motif-occurrence-offset", f"{motif}={offset}"])
         domain_profile = load_domain_profile(request.domain_profile, request.domain_profile_path)

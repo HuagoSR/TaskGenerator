@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from task_generator.v2_schema import (
     ColumnSpec,
     DataRelationship,
+    DataRelationship,
     DataSpec,
     DeliverableSpec,
     FileSpec,
@@ -161,6 +162,7 @@ class PipelineBPrototypeBuilder:
         registry_path: Optional[str | Path] = None,
         phase15_reform_spec_path: Optional[str | Path] = None,
         domain_profile: Optional[DomainProfile] = None,
+        production_profile: Optional[str] = None,
     ) -> Dict[str, Any]:
         from task_generator.v3_pipeline_b_sampler import PipelineBSubgraph
 
@@ -180,6 +182,8 @@ class PipelineBPrototypeBuilder:
         blueprint = self._build_blueprint(subgraph.selected_motif, selected_records, selected_entries, reform_spec)
         self._apply_domain_profile(blueprint, subgraph.selected_motif, domain_profile)
         self._apply_subgraph_context(blueprint, subgraph)
+        if production_profile == "finance_production_v1":
+            self._apply_finance_production_profile(blueprint, subgraph.selected_motif)
         diagnostics = self._diagnose_subgraph_signals(subgraph, selected_records)
 
         return {
@@ -194,6 +198,7 @@ class PipelineBPrototypeBuilder:
             "subgraph_missing_signals": subgraph.diagnostics.missing_or_weak_pipeline_a_signals,
             "motif": subgraph.selected_motif,
             "domain_profile_id": domain_profile.profile_id,
+            **({"production_profile": production_profile} if production_profile else {}),
             "requested_skill_count": subgraph.request.skill_count,
             "selected_skill_count": len(selected_records),
             "selected_skills": selected_records,
@@ -207,6 +212,117 @@ class PipelineBPrototypeBuilder:
                 "Subgraph confidence and missing signals are preserved for downstream generators.",
             ],
         }
+
+    def _apply_finance_production_profile(self, blueprint: TaskBlueprint, motif: str) -> None:
+        """Use auditable, motif-specific evidence instead of the generic prototype tables."""
+        if motif == "fan_in_reconciliation":
+            blueprint.template_family = "finance_cash_reconciliation_v1"
+            blueprint.task_metadata.scenario_title = "Month-end cash reconciliation"
+            blueprint.task_metadata.task_goal = "Reconcile bank activity to the cash ledger and explain every difference."
+            blueprint.scenario_spec.business_context = (
+                "The controller needs a month-end cash reconciliation before close. Match bank transactions "
+                "to the cash ledger, identify timing items and errors, and calculate the adjusted balances."
+            )
+            blueprint.data_spec.reference_files = [
+                FileSpec(file_name="bank_statement.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Bank_Activity", row_count_target=12, columns=[
+                        ColumnSpec(name="Bank_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Transaction_Date", semantic_type="date"),
+                        ColumnSpec(name="Reference", semantic_type="identifier"),
+                        ColumnSpec(name="Description", semantic_type="free_text_description"),
+                        ColumnSpec(name="Amount", semantic_type="amount"),
+                    ])]),
+                FileSpec(file_name="cash_ledger.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Cash_Ledger", row_count_target=12, columns=[
+                        ColumnSpec(name="Ledger_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Posting_Date", semantic_type="date"),
+                        ColumnSpec(name="Reference", semantic_type="identifier"),
+                        ColumnSpec(name="Description", semantic_type="free_text_description"),
+                        ColumnSpec(name="Amount", semantic_type="amount"),
+                    ])]),
+                FileSpec(file_name="policy_reference.docx", file_role="reference_table", sheet_specs=[]),
+            ]
+            deliverable = ("cash_reconciliation.xlsx", [
+                "match bank and ledger items by reference and amount",
+                "list bank-only and ledger-only items with evidence IDs",
+                "calculate adjusted bank and ledger balances and explain whether they agree",
+            ])
+            relationships = [
+                DataRelationship(relation_type="match_key", left="bank_statement.xlsx:Bank_Activity.Reference", right="cash_ledger.xlsx:Cash_Ledger.Reference"),
+                DataRelationship(relation_type="cross_check", left="bank_statement.xlsx:Bank_Activity.Amount", right="cash_ledger.xlsx:Cash_Ledger.Amount"),
+            ]
+        elif motif == "cross_check_validation":
+            blueprint.template_family = "finance_three_way_match_v1"
+            blueprint.task_metadata.scenario_title = "Accounts payable three-way match review"
+            blueprint.task_metadata.task_goal = "Validate supplier invoices against purchase orders and receipts."
+            blueprint.scenario_spec.business_context = (
+                "Accounts payable has queued invoices for payment. Perform a line-level three-way match and "
+                "identify quantity, price, duplicate, and missing-receipt exceptions."
+            )
+            blueprint.data_spec.reference_files = [
+                FileSpec(file_name="purchase_orders.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="PO_Lines", row_count_target=10, columns=[
+                        ColumnSpec(name="PO_ID", semantic_type="identifier"), ColumnSpec(name="Item_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Ordered_Qty", semantic_type="amount_or_count"), ColumnSpec(name="Unit_Price", semantic_type="amount"),
+                    ])]),
+                FileSpec(file_name="goods_receipts.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Receipt_Lines", row_count_target=10, columns=[
+                        ColumnSpec(name="Receipt_ID", semantic_type="identifier"), ColumnSpec(name="PO_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Item_ID", semantic_type="identifier"), ColumnSpec(name="Received_Qty", semantic_type="amount_or_count"),
+                    ])]),
+                FileSpec(file_name="supplier_invoices.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Invoice_Lines", row_count_target=11, columns=[
+                        ColumnSpec(name="Invoice_ID", semantic_type="identifier"), ColumnSpec(name="PO_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Item_ID", semantic_type="identifier"), ColumnSpec(name="Invoiced_Qty", semantic_type="amount_or_count"),
+                        ColumnSpec(name="Unit_Price", semantic_type="amount"),
+                    ])]),
+                FileSpec(file_name="policy_reference.docx", file_role="reference_table", sheet_specs=[]),
+            ]
+            deliverable = ("three_way_match_review.xlsx", [
+                "join invoice lines to purchase orders and goods receipts",
+                "calculate quantity and unit-price variances",
+                "classify every invoice line as clear, hold, or investigate and cite source row IDs",
+            ])
+            relationships = [
+                DataRelationship(relation_type="match_key", left="supplier_invoices.xlsx:Invoice_Lines.PO_ID", right="purchase_orders.xlsx:PO_Lines.PO_ID"),
+                DataRelationship(relation_type="cross_check", left="supplier_invoices.xlsx:Invoice_Lines.Invoiced_Qty", right="goods_receipts.xlsx:Receipt_Lines.Received_Qty"),
+            ]
+        else:
+            blueprint.template_family = "finance_expense_policy_review_v1"
+            blueprint.task_metadata.scenario_title = "Expense and corporate card policy review"
+            blueprint.task_metadata.task_goal = "Apply candidate-visible policy rules to expense transactions."
+            blueprint.scenario_spec.business_context = (
+                "The finance operations manager needs a review of employee expense and corporate-card transactions. "
+                "Apply the supplied thresholds and documentation rules and prepare an exception memo."
+            )
+            blueprint.data_spec.reference_files = [
+                FileSpec(file_name="expense_transactions.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Transactions", row_count_target=14, columns=[
+                        ColumnSpec(name="Transaction_ID", semantic_type="identifier"), ColumnSpec(name="Employee_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Expense_Date", semantic_type="date"), ColumnSpec(name="Category", semantic_type="status_label"),
+                        ColumnSpec(name="Amount", semantic_type="amount"), ColumnSpec(name="Receipt_Available", semantic_type="status_label"),
+                        ColumnSpec(name="Approval_Level", semantic_type="status_label"), ColumnSpec(name="Business_Purpose", semantic_type="free_text_description"),
+                    ])]),
+                FileSpec(file_name="expense_policy.docx", file_role="reference_table", sheet_specs=[]),
+            ]
+            deliverable = ("expense_exception_memo.docx", [
+                "classify every transaction against the supplied policy clauses",
+                "state the exception reason and required follow-up with transaction and clause citations",
+                "summarize exception counts and amounts without inventing missing facts",
+            ])
+            relationships = [
+                DataRelationship(relation_type="policy_lookup", left="expense_transactions.xlsx:Transactions.Category", right="expense_policy.docx:POL-001"),
+            ]
+        blueprint.data_spec.data_relationships = relationships
+        blueprint.trap_spec = []
+        blueprint.deliverable_spec = [DeliverableSpec(file_name=deliverable[0], file_role="final_deliverable", requirements=deliverable[1])]
+        blueprint.prompt_spec.visible_requirements = list(deliverable[1])
+        blueprint.prompt_spec.hidden_requirements = []
+        blueprint.prompt_spec.style_constraints = ["professional workpaper style", "use only supplied evidence", "preserve source identifiers"]
+        blueprint.golden_plan = GoldenPlan(
+            required_intermediate_states=["source_normalization", "record_matching", "exception_classification", "deliverable_reconciliation"],
+            required_final_checks=list(deliverable[1]),
+        )
 
     def write_outputs(self, report: Dict[str, Any], output_dir: str | Path) -> Dict[str, str]:
         output_path = Path(output_dir)

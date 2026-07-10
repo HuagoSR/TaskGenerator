@@ -1,6 +1,9 @@
 import json
+import json
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
+
+import pandas as pd
 
 from pydantic import BaseModel, Field
 
@@ -73,6 +76,7 @@ class GoldenRun(BaseModel):
     intermediate_states: List[GoldenIntermediateState] = Field(default_factory=list)
     steps: List[GoldenStep] = Field(default_factory=list)
     final_checks: List[GoldenFinalCheck] = Field(default_factory=list)
+    deterministic_results: Dict[str, object] = Field(default_factory=dict, exclude=True)
     unresolved_gaps: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
 
@@ -142,6 +146,7 @@ class TeacherRunner:
             intermediate_states=intermediate_states,
             steps=steps,
             final_checks=final_checks,
+            deterministic_results=self._deterministic_results(manifest),
             unresolved_gaps=unresolved_gaps,
             notes=[
                 "TeacherRunner V1 is deterministic and scaffold-oriented.",
@@ -166,6 +171,61 @@ class TeacherRunner:
         )
         return golden_run, report
 
+    def _deterministic_results(self, manifest: TeacherInputManifest) -> Dict[str, object]:
+        """Recompute production answers from candidate-visible files; never invent hidden truth."""
+        if not manifest.template_family.startswith("finance_"):
+            return {}
+        generated_manifest_path = Path(manifest.request.generated_file_manifest_path)
+        reference_dir = generated_manifest_path.parent / "reference_files"
+        if manifest.template_family == "finance_cash_reconciliation_v1":
+            bank = pd.read_excel(reference_dir / "bank_statement.xlsx")
+            ledger = pd.read_excel(reference_dir / "cash_ledger.xlsx")
+            bank_by_ref = dict(zip(bank["Reference"], bank["Amount"]))
+            ledger_by_ref = dict(zip(ledger["Reference"], ledger["Amount"]))
+            common = sorted(set(bank_by_ref) & set(ledger_by_ref))
+            return {
+                "matched_references": common,
+                "bank_only": sorted(set(bank_by_ref) - set(ledger_by_ref)),
+                "ledger_only": sorted(set(ledger_by_ref) - set(bank_by_ref)),
+                "matched_amount_difference": round(sum(bank_by_ref[r] - ledger_by_ref[r] for r in common), 2),
+                "bank_activity_total": round(float(bank["Amount"].sum()), 2),
+                "ledger_activity_total": round(float(ledger["Amount"].sum()), 2),
+            }
+        if manifest.template_family == "finance_three_way_match_v1":
+            po = pd.read_excel(reference_dir / "purchase_orders.xlsx")
+            receipts = pd.read_excel(reference_dir / "goods_receipts.xlsx")
+            invoices = pd.read_excel(reference_dir / "supplier_invoices.xlsx")
+            joined = invoices.merge(po, on=["PO_ID", "Item_ID"], suffixes=("_Invoice", "_PO"), how="left").merge(
+                receipts[["PO_ID", "Item_ID", "Received_Qty"]], on=["PO_ID", "Item_ID"], how="left"
+            )
+            joined["quantity_variance"] = joined["Invoiced_Qty"] - joined["Received_Qty"]
+            joined["price_variance"] = joined["Unit_Price_Invoice"] - joined["Unit_Price_PO"]
+            duplicate_mask = joined.duplicated(["PO_ID", "Item_ID", "Invoiced_Qty", "Unit_Price_Invoice"], keep=False)
+            exceptions = joined[(joined["quantity_variance"] != 0) | (joined["price_variance"] != 0) | duplicate_mask]
+            return {
+                "invoice_line_count": int(len(joined)),
+                "clear_line_count": int(len(joined) - len(exceptions)),
+                "exception_invoice_ids": sorted(exceptions["Invoice_ID"].astype(str).tolist()),
+                "quantity_variance_total": float(exceptions["quantity_variance"].fillna(0).sum()),
+                "price_variance_total": round(float(exceptions["price_variance"].fillna(0).sum()), 2),
+            }
+        transactions = pd.read_excel(reference_dir / "expense_transactions.xlsx")
+        exceptions = []
+        for row in transactions.to_dict(orient="records"):
+            clauses = []
+            if float(row["Amount"]) >= 75 and row["Receipt_Available"] != "Yes":
+                clauses.append("POL-001")
+            if row["Category"] == "Meals" and float(row["Amount"]) > 100 and row["Approval_Level"] != "Director":
+                clauses.append("POL-002")
+            if row["Category"] == "Entertainment" and row["Approval_Level"] != "Director":
+                clauses.append("POL-003")
+            if not str(row["Business_Purpose"]).strip():
+                clauses.append("POL-004")
+            if clauses:
+                exceptions.append({"transaction_id": row["Transaction_ID"], "clauses": clauses, "amount": float(row["Amount"])})
+        return {"transaction_count": int(len(transactions)), "exception_count": len(exceptions),
+                "exception_amount": round(sum(item["amount"] for item in exceptions), 2), "exceptions": exceptions}
+
     def write_outputs(
         self,
         golden_run: GoldenRun,
@@ -178,9 +238,15 @@ class TeacherRunner:
         report_path = output_path / "teacher_runner_report.json"
         golden_run_path.write_text(golden_run.model_dump_json(indent=2), encoding="utf-8")
         report_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        answer_key_path = output_path / "deterministic_answer_key.json"
+        if golden_run.deterministic_results:
+            answer_key_path.write_text(
+                json.dumps(golden_run.deterministic_results, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         return {
             "golden_run_path": str(golden_run_path),
             "teacher_runner_report_path": str(report_path),
+            **({"deterministic_answer_key_path": str(answer_key_path)} if golden_run.deterministic_results else {}),
         }
 
     def _build_intermediate_states(self, manifest: TeacherInputManifest) -> List[GoldenIntermediateState]:

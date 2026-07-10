@@ -66,6 +66,7 @@ class FinanceProductionCampaignTests(unittest.TestCase):
             self.assertNotIn("rw_task_eval", joined)
             self.assertNotIn("--allow-external-eval", joined)
             self.assertIn("bounded_production", joined)
+            self.assertIn("--target-difficulty-profile finance_production_v1", joined)
 
     def test_bounded_production_prompt_is_compact_and_explicit(self) -> None:
         config = ProviderConfig(provider_name="test", api_key="x", base_url="https://example.com", model="model", output_profile="bounded_production")
