@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from task_generator.v3_source_schema import load_json_file
 from task_generator.v3_skill_registry import SkillRegistryBuilder
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH, load_domain_profile
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -150,6 +151,9 @@ class EndToEndRequest(BaseModel):
     python_exe: str = sys.executable
     timeout_seconds: int = 0
     generation_seed: int = 0
+    domain_profile: str = "finance_audit"
+    domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
+    motifs: List[str] = Field(default_factory=list)
 
 
 class ExternalEffectsLedger(BaseModel):
@@ -392,6 +396,9 @@ class EndToEndPipeline:
                 "--output-dir",
                 str(output_dir),
             ]
+            domain_profile = load_domain_profile(request.domain_profile, request.domain_profile_path)
+            for domain_tag in domain_profile.domain_tags:
+                cmd.extend(["--domain-tag", domain_tag])
             result = self._run_command("local_source_to_skill", cmd, stage_dir, request.timeout_seconds)
             status.command_results.append(result)
             status.artifact_paths["local_prompt_package"] = str(output_dir / "skill_extraction_prompt_package.json")
@@ -656,6 +663,10 @@ class EndToEndPipeline:
                     str(readiness_report),
                     "--output-path",
                     str(seed_report),
+                    "--domain-profile",
+                    request.domain_profile,
+                    "--domain-profile-path",
+                    request.domain_profile_path,
                 ],
             ),
         ]
@@ -732,7 +743,18 @@ class EndToEndPipeline:
             request.rw_task_root,
             "--python-exe",
             request.python_exe,
+            "--domain-scope",
+            load_domain_profile(request.domain_profile, request.domain_profile_path).domain_scope,
+            "--domain-profile",
+            request.domain_profile,
+            "--domain-profile-path",
+            request.domain_profile_path,
         ]
+        domain_profile = load_domain_profile(request.domain_profile, request.domain_profile_path)
+        for file_type in domain_profile.allowed_input_file_types:
+            cmd.extend(["--file-type", file_type])
+        for motif in (request.motifs or domain_profile.allowed_motifs):
+            cmd.extend(["--motif", motif])
         motif_grammar_path = self.root / "SkillRegistry" / "v3_motif_graph_grammar.experimental.json"
         workflow_asset_path = self.root / "SkillRegistry" / "v3_workflow_archetype_registry.experimental.json"
         if motif_grammar_path.exists():
@@ -1604,6 +1626,7 @@ class EndToEndPipeline:
             "public_acceptance_contract": Path(request.public_package_path).parent / "acceptance_contract.json",
             "motif_grammar": self.root / "SkillRegistry" / "v3_motif_graph_grammar.experimental.json",
             "workflow_asset": self.root / "SkillRegistry" / "v3_workflow_archetype_registry.experimental.json",
+            "domain_profiles": Path(request.domain_profile_path),
         }
         if request.review_spec_path:
             inputs["review_spec"] = Path(request.review_spec_path)

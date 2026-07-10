@@ -153,7 +153,7 @@ class TaskVerifier:
         policy_visible_evidence_ids = {
             item.evidence_id
             for item in teacher_input.teacher_view.evidence_contract
-            if item.file_name == "policy_reference.docx"
+            if "policy" in item.file_name.lower()
             or item.semantic_type in {"policy_rule", "decision_rule"}
         }
         candidate_criteria = self._candidate_criteria(rubric)

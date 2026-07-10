@@ -296,7 +296,7 @@ class TeacherRunner:
             supporting_evidence_ids = list(evidence_ids)
 
             if check_name == "deliverable_presence":
-                if "source_evidence.xlsx" not in generated_file_names:
+                if not any(name.lower().endswith((".xlsx", ".csv", ".docx", ".md", ".txt")) for name in generated_file_names):
                     status = "blocked"
                     blocking_reasons.append("missing_generated_reference_file")
                 else:
@@ -316,7 +316,8 @@ class TeacherRunner:
             elif check_name == "policy_clause_traceability":
                 relationship_check = warning_checks.get("relationship:policy_lookup")
                 has_policy_evidence = any(
-                    item.file_name == "policy_reference.docx" for item in manifest.teacher_view.evidence_contract
+                    "policy" in item.file_name.lower() or item.semantic_type in {"policy_rule", "decision_rule"}
+                    for item in manifest.teacher_view.evidence_contract
                 )
                 if not has_policy_evidence:
                     status = "blocked"

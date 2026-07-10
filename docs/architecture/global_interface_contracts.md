@@ -8,6 +8,12 @@ This document records implementation-facing interface contracts for the current 
 
 These contracts are intentionally schema-first and report-only. They should help future work add global diagnostics without changing existing Pipeline A registry state, Pipeline B sampling behavior, package readiness, rw-task export semantics, or sampler weights.
 
+## Domain Profile And GDPVal Isolation
+
+The unified pipeline freezes `domain_profile` and `domain_profile_path` in each request. A profile owns domain tags, allowed motifs, actor role, typed-resource aliases, reference schema, deliverable contract, and forbidden vocabulary. `finance_audit` is the compatibility default; a new profile must preserve the established public-smoke fingerprint before it can be used as evidence.
+
+GDPVal remains `eval_calibration_only`. Domain selection may inspect aggregate sector, occupation, and file-extension metadata, but generation and external providers must not receive GDPVal prompts, rubrics, attachments, task IDs, or URIs. The post-generation contamination ledger is an isolated release gate: it records hashes, hit counts, and artifact paths without storing protected GDPVal text, and its output must not be used to tune or rewrite generated tasks.
+
 ## Priority Rules
 
 - Preserve the current Pipeline A and Pipeline B runners.

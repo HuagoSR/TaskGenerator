@@ -23,7 +23,7 @@
 
 ## 放置规则
 
-- 宏观目标、阶段台账、当前瓶颈和 A–D 路线只写入根目录《项目概要》。
+- 宏观目标、阶段台账、当前瓶颈和 A–F 路线只写入根目录《项目概要》。
 - 当前稳定架构与接口放在 `docs/architecture/`。
 - 小型静态示例放在 `docs/examples/`。
 - 已完成阶段材料统一放在 `docs/archive/phases/phaseXX/`。
@@ -32,3 +32,5 @@
 - 运行生成物、日志、任务包、grader 输出和临时报告只写入 `artifacts/`。
 
 未来如需详细 workstream 计划，可在执行期创建局部文档并由《项目概要》链接；workstream 完成后必须迁入 archive，不能继续占用活跃架构目录。
+
+当前 workstream：[`handoffs/MILESTONE_E_WORKSTREAM_2026-07-10.md`](handoffs/MILESTONE_E_WORKSTREAM_2026-07-10.md)，状态为 `awaiting_external_authorization`。

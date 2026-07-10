@@ -18,6 +18,7 @@ from task_generator.v3_end_to_end_pipeline import (  # noqa: E402
     EndToEndPipeline,
     EndToEndRequest,
 )
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH
 
 
 def main() -> None:
@@ -66,6 +67,9 @@ def main() -> None:
     parser.add_argument("--collector-backend", choices=["direct", "stirrup"], default="direct")
     parser.add_argument("--collector-max-turns", type=int, default=32)
     parser.add_argument("--max-cases", type=int, default=4)
+    parser.add_argument("--domain-profile", choices=["finance_audit", "warehouse_inventory"], default="finance_audit")
+    parser.add_argument("--domain-profile-path", default=str(DEFAULT_DOMAIN_PROFILE_PATH))
+    parser.add_argument("--motif", action="append", default=[])
     parser.add_argument("--apply-registry-update", action="store_true")
     parser.add_argument("--skip-registry-update", action="store_true")
     parser.add_argument("--allow-web-collection", action="store_true")
@@ -215,6 +219,9 @@ def main() -> None:
         deepseek_key_path=args.deepseek_key_path,
         python_exe=args.python_exe,
         timeout_seconds=args.timeout_seconds,
+        domain_profile=args.domain_profile,
+        domain_profile_path=args.domain_profile_path,
+        motifs=args.motif,
     )
     if args.action in {"resume", "rerun"} and manifest_path.exists():
         stored_payload = json.loads(manifest_path.read_text(encoding="utf-8"))

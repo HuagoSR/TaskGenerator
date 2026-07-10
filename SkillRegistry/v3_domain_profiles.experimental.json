@@ -1,0 +1,72 @@
+{
+  "domain_profile_registry_version": "v3.domain_profiles.1",
+  "profiles": [
+    {
+      "profile_id": "finance_audit",
+      "profile_version": "finance_audit.compat.1",
+      "domain_scope": "finance_audit",
+      "domain_tags": ["finance", "audit"],
+      "target_domains": ["audit", "compliance", "finance", "accounting", "tax", "reporting"],
+      "allowed_motifs": ["evidence_to_deliverable", "cross_check_validation", "fan_in_reconciliation", "policy_application"],
+      "allowed_input_file_types": ["xlsx", "docx", "md", "txt"],
+      "allowed_output_file_types": ["xlsx", "docx"],
+      "occupation": "Financial Analyst",
+      "actor_role": "finance audit analyst",
+      "business_context": "The team has received a compact evidence package and needs a review-ready conclusion with clear provenance.",
+      "resource_aliases": {
+        "audit": "ControlEvidence", "compliance": "ComplianceRequirement", "control": "ControlEvidence",
+        "evidence": "ControlEvidence", "exception": "ExceptionRecord", "finding": "AuditFinding",
+        "financial": "FinancialMetric", "policy": "PolicyRule", "reconcile": "ReconciliationDifference",
+        "reconciliation": "ReconciliationDifference", "variance": "ReconciliationDifference"
+      },
+      "typed_resources": ["ControlEvidence", "ComplianceRequirement", "ExceptionRecord", "AuditFinding", "FinancialMetric", "PolicyRule", "ReconciliationDifference"],
+      "forbidden_terms": [],
+      "reference_schema": {
+        "source_file_name": "source_evidence.xlsx", "source_sheet_name": "Evidence_Items",
+        "source_columns": ["Evidence_ID", "Source", "Entity_or_Item", "Observed_Value", "Period"],
+        "control_file_name": "control_totals.xlsx", "control_sheet_name": "Control_Totals",
+        "control_columns": ["Control_ID", "Expected_Total", "Basis"],
+        "policy_file_name": "policy_reference.docx"
+      },
+      "motif_hints": {
+        "evidence_to_deliverable": {"template_family": "evidence_package_to_business_deliverable", "deliverable_name": "evidence_review_memo.docx", "scenario_goal": "Prepare a concise evidence-backed deliverable for manager review.", "deliverable_requirements": ["summarize the evidence reviewed", "state the conclusion supported by the evidence", "flag unresolved exceptions or missing support"]},
+        "cross_check_validation": {"template_family": "cross_source_validation_workpaper", "deliverable_name": "validation_workpaper.xlsx", "scenario_goal": "Validate a business conclusion by cross-checking independent evidence paths.", "deliverable_requirements": ["show independent checks used to validate the conclusion", "separate matched, unmatched, and unresolved items", "document judgment calls and follow-up needs"]},
+        "fan_in_reconciliation": {"template_family": "multi_source_reconciliation_workpaper", "deliverable_name": "reconciliation_workpaper.xlsx", "scenario_goal": "Reconcile multiple evidence sources into one review-ready workpaper.", "deliverable_requirements": ["reconcile source totals to the requested reporting view", "explain material differences", "identify evidence gaps that affect confidence"]},
+        "policy_application": {"template_family": "policy_application_review", "deliverable_name": "policy_application_memo.docx", "scenario_goal": "Apply stated policy requirements to concrete evidence and document exceptions.", "deliverable_requirements": ["identify the applicable policy or requirement", "apply the rule to the provided cases", "separate compliant, exception, and uncertain items"]}
+      }
+    },
+    {
+      "profile_id": "warehouse_inventory",
+      "profile_version": "warehouse_inventory.slice.1",
+      "domain_scope": "warehouse_inventory",
+      "domain_tags": ["operations", "logistics", "warehouse", "inventory", "shipping", "receiving"],
+      "target_domains": ["operations", "logistics", "warehouse", "inventory", "shipping", "receiving"],
+      "allowed_motifs": ["fan_in_reconciliation", "cross_check_validation", "policy_application"],
+      "allowed_input_file_types": ["xlsx", "docx", "md", "txt"],
+      "allowed_output_file_types": ["xlsx", "docx"],
+      "occupation": "Shipping, Receiving, and Inventory Clerk",
+      "actor_role": "shipping, receiving, and inventory clerk",
+      "business_context": "A warehouse team must verify inbound and outbound records, maintain accurate item and location balances, and document discrepancies for an operations supervisor.",
+      "resource_aliases": {
+        "shipment": "ShipmentRecord", "manifest": "ShipmentRecord", "inventory": "InventoryItem",
+        "item": "InventoryItem", "location": "StorageLocation", "movement": "StockMovement",
+        "receiving": "ReceivingDiscrepancy", "discrepancy": "ReceivingDiscrepancy",
+        "damage": "ReceivingDiscrepancy", "policy": "HandlingRule", "summary": "InventorySummary"
+      },
+      "typed_resources": ["ShipmentRecord", "InventoryItem", "StorageLocation", "StockMovement", "ReceivingDiscrepancy", "HandlingRule", "InventorySummary"],
+      "forbidden_terms": ["finance audit analyst", "ledger revenue", "controller sign-off", "audit finding", "quarter-end review"],
+      "reference_schema": {
+        "source_file_name": "warehouse_activity.xlsx", "source_sheet_name": "Activity_Records",
+        "source_columns": ["Evidence_ID", "Shipment_ID", "Item_ID", "Location_ID", "Quantity", "Condition_Status", "Recorded_At"],
+        "control_file_name": "expected_inventory.xlsx", "control_sheet_name": "Expected_Records",
+        "control_columns": ["Record_ID", "Shipment_ID", "Item_ID", "Expected_Quantity", "Expected_Location", "Rule_Basis"],
+        "policy_file_name": "receiving_policy.docx"
+      },
+      "motif_hints": {
+        "fan_in_reconciliation": {"template_family": "warehouse_receiving_reconciliation", "deliverable_name": "receiving_reconciliation.xlsx", "scenario_goal": "Reconcile purchase, shipment, receiving, and location records into a review-ready inventory workpaper.", "deliverable_requirements": ["reconcile expected and received quantities by shipment and item", "separate matched, short, over, damaged, and unresolved records", "show the resulting accepted inventory and location updates"]},
+        "cross_check_validation": {"template_family": "inventory_movement_location_validation", "deliverable_name": "inventory_validation.xlsx", "scenario_goal": "Validate item balances and storage locations by cross-checking independent movement records.", "deliverable_requirements": ["recalculate ending quantity from opening, receipt, and issue movements", "compare calculated balances with location records", "document every unresolved difference with evidence IDs"]},
+        "policy_application": {"template_family": "receiving_discrepancy_policy_application", "deliverable_name": "receiving_exception_memo.docx", "scenario_goal": "Apply the provided receiving rules to shipment exceptions and prepare an actionable operations memo.", "deliverable_requirements": ["classify shortages, overages, damage, wrong items, and location discrepancies", "apply only the candidate-visible receiving rules", "state the required hold, correction, escalation, or acceptance action"]}
+      }
+    }
+  ]
+}

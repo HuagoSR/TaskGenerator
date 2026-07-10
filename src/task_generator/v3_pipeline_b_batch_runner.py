@@ -25,6 +25,7 @@ from task_generator.v3_teacher_input_builder import TeacherInputBuilder
 from task_generator.v3_teacher_runner import TeacherRunner
 from task_generator.v3_task_verifier import TaskVerifier
 from task_generator.v3_training_annotation_builder import TrainingAnnotationBuilder
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH, load_domain_profile
 
 
 BatchCaseStatus = Literal["completed", "failed"]
@@ -46,6 +47,8 @@ class PipelineBBatchRunRequest(BaseModel):
     workers: int = 1
     rw_task_root: str = str(DEFAULT_RW_TASK_ROOT)
     python_exe: str = str(DEFAULT_REAL_WORLD_TASK_PYTHON)
+    domain_profile: str = "finance_audit"
+    domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
 
 
 class PipelineBBatchCaseSummary(BaseModel):
@@ -135,6 +138,8 @@ class PipelineBBatchRunner:
         workers: int = 1,
         rw_task_root: str | Path = DEFAULT_RW_TASK_ROOT,
         python_exe: str | Path = DEFAULT_REAL_WORLD_TASK_PYTHON,
+        domain_profile: str = "finance_audit",
+        domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
     ) -> PipelineBBatchRunReport:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -155,6 +160,8 @@ class PipelineBBatchRunner:
             workers=workers,
             rw_task_root=str(rw_task_root),
             python_exe=str(python_exe),
+            domain_profile=domain_profile,
+            domain_profile_path=str(domain_profile_path),
         )
 
         cases: List[PipelineBBatchCaseSummary] = []
@@ -184,6 +191,8 @@ class PipelineBBatchRunner:
                         workers=workers,
                         rw_task_root=rw_task_root,
                         python_exe=python_exe,
+                        domain_profile=domain_profile,
+                        domain_profile_path=domain_profile_path,
                     )
                 )
             except Exception as exc:
@@ -238,6 +247,8 @@ class PipelineBBatchRunner:
         workers: int,
         rw_task_root: str | Path,
         python_exe: str | Path,
+        domain_profile: str,
+        domain_profile_path: str | Path,
     ) -> PipelineBBatchCaseSummary:
         subgraph_dir = case_dir / "subgraph_sampler"
         prototype_dir = case_dir / "prototype"
@@ -276,6 +287,7 @@ class PipelineBBatchRunner:
             subgraph_report_path=subgraph_report_path,
             registry_path=registry_path,
             phase15_reform_spec_path=phase15_reform_spec_path,
+            domain_profile=load_domain_profile(domain_profile, domain_profile_path),
         )
         prototype.write_outputs(prototype_report, prototype_dir)
         blueprint_path = prototype_dir / "draft_task_blueprint.json"

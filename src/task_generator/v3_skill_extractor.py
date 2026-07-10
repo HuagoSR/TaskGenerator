@@ -161,6 +161,61 @@ SKILL_PATTERNS = [
     ),
 ]
 
+WAREHOUSE_SKILL_PATTERNS = [
+    SkillPattern(
+        name="Reconcile Inbound Shipment Records",
+        keywords=["manifest", "purchase order", "receiving record", "verify accuracy"],
+        capability_tags=["receiving_reconciliation", "cross_source_validation"],
+        difficulty_tags=["multi_source_matching", "quantity_variance"],
+        requires_semantics=["Shipment:ExpectedRecord", "Shipment:ReceivedRecord"],
+        provides_semantics=["Receiving:ReconciliationResult", "Receiving:DiscrepancyRecord"],
+        business_meaning="Compare expected shipment records with received quantities and condition observations.",
+        hidden_difficulty="Identifiers, quantities, and condition evidence can disagree across otherwise plausible records.",
+        common_failure_modes=["matches on item description instead of identifier", "drops partial receipts", "hides unresolved quantity differences"],
+        common_deliverables=["receiving reconciliation workbook", "discrepancy register"],
+        assembly_hints=["Require shipment and item level traceability.", "Separate matched and unresolved records."],
+    ),
+    SkillPattern(
+        name="Validate Inventory Movement Rollforward",
+        keywords=["inventory", "location", "inbound", "outbound", "stock"],
+        capability_tags=["inventory_control", "location_tracking"],
+        difficulty_tags=["movement_rollforward", "location_consistency"],
+        requires_semantics=["Inventory:OpeningBalance", "Inventory:StockMovement"],
+        provides_semantics=["Inventory:EndingBalance", "Inventory:LocationBalance"],
+        business_meaning="Roll forward item quantities and maintain consistent storage-location records from verified movements.",
+        hidden_difficulty="The arithmetic balance can appear correct while the item is assigned to the wrong location.",
+        common_failure_modes=["ignores issue movements", "updates quantity without location", "accepts negative or duplicate movements"],
+        common_deliverables=["inventory validation workbook", "location exception list"],
+        assembly_hints=["Preserve opening-plus-inbound-minus-outbound checks.", "Validate item and location together."],
+    ),
+    SkillPattern(
+        name="Classify Receiving Discrepancies",
+        keywords=["shortage", "overage", "damage", "wrong item", "discrepancy"],
+        capability_tags=["exception_classification", "receiving_control"],
+        difficulty_tags=["rule_application", "ambiguous_exception"],
+        requires_semantics=["Receiving:ObservedException", "Policy:HandlingRule"],
+        provides_semantics=["Receiving:DiscrepancyClass", "Receiving:RequiredAction"],
+        business_meaning="Classify receiving exceptions and select the documented hold, correction, escalation, or acceptance action.",
+        hidden_difficulty="Multiple exception signals may apply, but only candidate-visible rules can justify the action.",
+        common_failure_modes=["collapses all exceptions into shortage", "invented escalation rule", "fails to preserve unresolved status"],
+        common_deliverables=["receiving exception register", "operations memo"],
+        assembly_hints=["Keep the rule locator visible.", "Separate classification from disposition."],
+    ),
+    SkillPattern(
+        name="Map Receiving Exceptions To Follow-Up Actions",
+        keywords=["report", "supervisor", "exception", "inventory status"],
+        capability_tags=["exception_follow_up", "evidence_mapping"],
+        difficulty_tags=["evidence_traceability", "action_mapping"],
+        requires_semantics=["Inventory:ValidationResult", "Receiving:DiscrepancyRecord"],
+        provides_semantics=["Inventory:StatusSummary", "Operations:FollowUpAction"],
+        business_meaning="Map each verified receiving exception to a supported follow-up action and evidence reference.",
+        hidden_difficulty="Each action must preserve record-level support and remain within the candidate-visible handling rules.",
+        common_failure_modes=["maps totals instead of individual exceptions", "omits unresolved records", "assigns actions unsupported by policy"],
+        common_deliverables=["exception follow-up register", "action mapping"],
+        assembly_hints=["Link every material exception to evidence IDs.", "Keep verified status separate from follow-up."],
+    ),
+]
+
 
 class BaseSkillExtractor:
     last_trace_edges: List[SkillTraceEdge] = []
@@ -175,7 +230,11 @@ class MockSkillExtractor(BaseSkillExtractor):
 
     def extract(self, package: SkillExtractionPromptPackage, max_candidates: int = 8) -> List[ExtractedSkillCandidate]:
         candidates = []
-        for pattern in SKILL_PATTERNS:
+        package_domains = {
+            tag for source in package.normalized_sources for tag in source.domain_tags
+        }
+        patterns = WAREHOUSE_SKILL_PATTERNS if "warehouse" in package_domains else SKILL_PATTERNS
+        for pattern in patterns:
             evidence_blocks = self._find_evidence_blocks(package.normalized_sources, pattern)
             if not evidence_blocks:
                 continue

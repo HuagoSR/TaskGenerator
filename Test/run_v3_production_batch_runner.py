@@ -10,6 +10,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from task_generator.v3_production_batch_runner import ProductionBatchRunner  # noqa: E402
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH  # noqa: E402
 
 
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
@@ -36,6 +37,8 @@ def main() -> None:
     parser.add_argument("--phase15-reform-spec-path", type=Path, default=None)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--domain-scope", default="finance_audit")
+    parser.add_argument("--domain-profile", default="finance_audit")
+    parser.add_argument("--domain-profile-path", type=Path, default=DEFAULT_DOMAIN_PROFILE_PATH)
     parser.add_argument("--file-type", action="append", default=None)
     parser.add_argument("--motif", action="append", default=None)
     parser.add_argument("--skill-count", type=int, default=4)
@@ -79,6 +82,8 @@ def main() -> None:
         workers=args.workers,
         rw_task_root=args.rw_task_root,
         python_exe=args.python_exe,
+        domain_profile=args.domain_profile,
+        domain_profile_path=args.domain_profile_path,
     )
 
     print(

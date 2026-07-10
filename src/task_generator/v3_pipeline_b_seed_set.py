@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from task_generator.v3_skill_registry import SkillRegistryBuilder
 from task_generator.v3_source_schema import SkillRegistryEntry, load_json_file
+from task_generator.v3_domain_profile import DomainProfile, load_domain_profile
 
 
 TARGET_MOTIFS = [
@@ -29,7 +30,9 @@ class PipelineBSeedSetBuilder:
         readiness_report_path: str | Path,
         target_count: int = 20,
         caution_limit: int = 5,
+        domain_profile: Optional[DomainProfile] = None,
     ) -> Dict[str, Any]:
+        domain_profile = domain_profile or load_domain_profile("finance_audit")
         entries = self.registry_builder.load_registry(registry_path)
         readiness_payload = load_json_file(str(readiness_report_path))
         readiness_by_skill = {
@@ -38,7 +41,7 @@ class PipelineBSeedSetBuilder:
             if record.get("skill_id")
         }
         scored = [
-            self._score_entry(entry, readiness_by_skill.get(entry.skill_id, {}))
+            self._score_entry(entry, readiness_by_skill.get(entry.skill_id, {}), domain_profile)
             for entry in entries
         ]
         selectable = [
@@ -81,6 +84,8 @@ class PipelineBSeedSetBuilder:
             "readiness_report_path": str(readiness_report_path),
             "target_count": target_count,
             "caution_limit": caution_limit,
+            "domain_profile_id": domain_profile.profile_id,
+            "domain_profile_version": domain_profile.profile_version,
             "registry_entry_count": len(entries),
             "selected_count": len(selected),
             "selected_readiness_counts": dict(sorted(Counter(r["readiness_decision"] for r in selected).items())),
@@ -96,13 +101,15 @@ class PipelineBSeedSetBuilder:
             ],
         }
 
-    def _score_entry(self, entry: SkillRegistryEntry, readiness: Dict[str, Any]) -> Dict[str, Any]:
+    def _score_entry(
+        self, entry: SkillRegistryEntry, readiness: Dict[str, Any], domain_profile: DomainProfile
+    ) -> Dict[str, Any]:
         readiness_decision = readiness.get("readiness_decision", "unknown")
         reason_codes = list(readiness.get("reason_codes", []))
         required_count = len(entry.input_contract.required_resources)
         provided_count = len(entry.output_contract.provided_resources)
         optional_count = len(entry.input_contract.optional_resources) + len(entry.output_contract.optional_resources)
-        motif_hints = self._motif_hints(entry)
+        motif_hints = self._motif_hints(entry, domain_profile)
         role_hints = self._role_hints(entry, required_count, provided_count)
 
         score = 0.0
@@ -115,7 +122,13 @@ class PipelineBSeedSetBuilder:
         if required_count and provided_count:
             score += 6.0
         score += min(optional_count, 2) * 1.0
-        score += len(set(entry.domain_tags) & TARGET_DOMAINS) * 1.5
+        domain_overlap = set(entry.domain_tags) & set(domain_profile.target_domains)
+        score += len(domain_overlap) * 1.5
+        if domain_profile.profile_id != "finance_audit":
+            if domain_overlap:
+                score += 12.0
+            else:
+                score -= 25.0
         score += min(len(motif_hints), 2) * 3.0
         score += min(len(role_hints), 2) * 1.5
         if "single_source_support" in reason_codes:
@@ -154,7 +167,7 @@ class PipelineBSeedSetBuilder:
             "risk_notes": self._risk_notes(readiness_decision, reason_codes, required_count, provided_count),
         }
 
-    def _motif_hints(self, entry: SkillRegistryEntry) -> List[str]:
+    def _motif_hints(self, entry: SkillRegistryEntry, domain_profile: DomainProfile) -> List[str]:
         text = " ".join(
             [
                 entry.canonical_name,
@@ -173,7 +186,7 @@ class PipelineBSeedSetBuilder:
             motifs.append("policy_application")
         if any(term in text for term in ["report", "deliverable", "document", "memo", "section", "summarize"]):
             motifs.append("evidence_to_deliverable")
-        return [motif for motif in TARGET_MOTIFS if motif in motifs]
+        return [motif for motif in domain_profile.allowed_motifs if motif in motifs]
 
     def _role_hints(self, entry: SkillRegistryEntry, required_count: int, provided_count: int) -> List[str]:
         text = " ".join([entry.canonical_name, " ".join(entry.capability_tags), entry.business_meaning]).lower()
@@ -237,4 +250,3 @@ class PipelineBSeedSetBuilder:
         if record["readiness_decision"] == "sample_with_caution":
             return "caution_limit_reached"
         return "lower_seed_score"
-

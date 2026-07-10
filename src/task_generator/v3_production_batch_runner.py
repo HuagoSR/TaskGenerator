@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 from task_generator.v3_source_schema import load_json_file
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH
 
 if TYPE_CHECKING:
     from task_generator.v3_pipeline_b_batch_runner import PipelineBBatchRunReport
@@ -49,6 +50,8 @@ class ProductionBatchRequest(BaseModel):
     rw_task_root: str
     python_exe: str
     selection_policy: str = "deterministic_pipeline_b_batch_v1"
+    domain_profile: str = "finance_audit"
+    domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
 
 
 class ProductionCaseRecord(BaseModel):
@@ -139,6 +142,8 @@ class ProductionBatchRunner:
         workers: int = 1,
         rw_task_root: str | Path = Path(r"E:\THU\2026Spring\SRT\rw-task"),
         python_exe: str | Path = Path(r"D:\miniconda3\envs\real-world-task\python.exe"),
+        domain_profile: str = "finance_audit",
+        domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
     ) -> ProductionBatchRunnerArtifact:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -166,6 +171,8 @@ class ProductionBatchRunner:
             workers=workers,
             rw_task_root=str(rw_task_root),
             python_exe=str(python_exe),
+            domain_profile=domain_profile,
+            domain_profile_path=str(domain_profile_path),
         )
 
         registry_payload = self._safe_load_json(registry_path)
@@ -198,6 +205,8 @@ class ProductionBatchRunner:
                 workers=workers,
                 rw_task_root=rw_task_root,
                 python_exe=python_exe,
+                domain_profile=domain_profile,
+                domain_profile_path=domain_profile_path,
             )
             batch_report_path = str(batch_output_dir / "pipeline_b_batch_report.json")
 

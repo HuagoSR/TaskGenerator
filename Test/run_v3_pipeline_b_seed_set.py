@@ -10,6 +10,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from task_generator.v3_pipeline_b_seed_set import PipelineBSeedSetBuilder  # noqa: E402
+from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH, load_domain_profile  # noqa: E402
 
 
 DEFAULT_REGISTRY_PATH = ROOT / "SkillRegistry" / "v3_skill_registry.json"
@@ -24,6 +25,8 @@ def main() -> None:
     parser.add_argument("--target-count", type=int, default=20)
     parser.add_argument("--caution-limit", type=int, default=5)
     parser.add_argument("--output-path", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument("--domain-profile", default="finance_audit")
+    parser.add_argument("--domain-profile-path", type=Path, default=DEFAULT_DOMAIN_PROFILE_PATH)
     args = parser.parse_args()
 
     report = PipelineBSeedSetBuilder().build_report(
@@ -31,6 +34,7 @@ def main() -> None:
         readiness_report_path=args.readiness_report,
         target_count=args.target_count,
         caution_limit=args.caution_limit,
+        domain_profile=load_domain_profile(args.domain_profile, args.domain_profile_path),
     )
     args.output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output_path, "w", encoding="utf-8") as f:
@@ -51,6 +55,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
 

@@ -23,6 +23,7 @@ from task_generator.v2_schema import (
 )
 from task_generator.v3_skill_registry import SkillRegistryBuilder
 from task_generator.v3_source_schema import SkillRegistryEntry, load_json_file
+from task_generator.v3_domain_profile import DomainProfile, load_domain_profile
 
 
 DEFAULT_MOTIF_PRIORITY = [
@@ -114,6 +115,7 @@ class PipelineBPrototypeBuilder:
         motif: Optional[str] = None,
         skill_count: int = 4,
         phase15_reform_spec_path: Optional[str | Path] = None,
+        domain_profile: Optional[DomainProfile] = None,
     ) -> Dict[str, Any]:
         entries = self.registry_builder.load_registry(registry_path)
         entry_by_id = {entry.skill_id: entry for entry in entries}
@@ -127,7 +129,9 @@ class PipelineBPrototypeBuilder:
             if record.get("skill_id") in entry_by_id
         ]
         reform_spec = self._load_phase15_reform_spec(phase15_reform_spec_path, selected_motif)
+        domain_profile = domain_profile or load_domain_profile("finance_audit")
         blueprint = self._build_blueprint(selected_motif, selected_records, selected_entries, reform_spec)
+        self._apply_domain_profile(blueprint, selected_motif, domain_profile)
         diagnostics = self._diagnose_signals(selected_motif, selected_records, selected_entries)
 
         return {
@@ -136,6 +140,7 @@ class PipelineBPrototypeBuilder:
             "registry_path": str(registry_path),
             "seed_report_path": str(seed_report_path),
             "motif": selected_motif,
+            "domain_profile_id": domain_profile.profile_id,
             "requested_skill_count": skill_count,
             "selected_skill_count": len(selected_records),
             "selected_skills": selected_records,
@@ -155,6 +160,7 @@ class PipelineBPrototypeBuilder:
         subgraph_report_path: str | Path,
         registry_path: Optional[str | Path] = None,
         phase15_reform_spec_path: Optional[str | Path] = None,
+        domain_profile: Optional[DomainProfile] = None,
     ) -> Dict[str, Any]:
         from task_generator.v3_pipeline_b_sampler import PipelineBSubgraph
 
@@ -170,7 +176,9 @@ class PipelineBPrototypeBuilder:
             if record.get("skill_id") in entry_by_id
         ]
         reform_spec = self._load_phase15_reform_spec(phase15_reform_spec_path, subgraph.selected_motif)
+        domain_profile = domain_profile or load_domain_profile("finance_audit")
         blueprint = self._build_blueprint(subgraph.selected_motif, selected_records, selected_entries, reform_spec)
+        self._apply_domain_profile(blueprint, subgraph.selected_motif, domain_profile)
         self._apply_subgraph_context(blueprint, subgraph)
         diagnostics = self._diagnose_subgraph_signals(subgraph, selected_records)
 
@@ -185,6 +193,7 @@ class PipelineBPrototypeBuilder:
             "subgraph_confidence": subgraph.diagnostics.confidence,
             "subgraph_missing_signals": subgraph.diagnostics.missing_or_weak_pipeline_a_signals,
             "motif": subgraph.selected_motif,
+            "domain_profile_id": domain_profile.profile_id,
             "requested_skill_count": subgraph.request.skill_count,
             "selected_skill_count": len(selected_records),
             "selected_skills": selected_records,
@@ -413,6 +422,75 @@ class PipelineBPrototypeBuilder:
         if phase15_reform_spec:
             self._apply_phase15_generator_reform(blueprint, motif, phase15_reform_spec)
         return blueprint
+
+    def _apply_domain_profile(
+        self, blueprint: TaskBlueprint, motif: str, domain_profile: DomainProfile
+    ) -> None:
+        if domain_profile.profile_id == "finance_audit":
+            return
+        hint = domain_profile.motif_hints[motif]
+        schema = domain_profile.reference_schema
+        blueprint.template_family = hint.template_family
+        blueprint.task_metadata.sector = self._title(domain_profile.domain_scope)
+        blueprint.task_metadata.occupation = domain_profile.occupation
+        blueprint.task_metadata.scenario_title = f"{self._title(domain_profile.domain_scope)} {self._title(motif)}"
+        blueprint.task_metadata.task_goal = hint.scenario_goal
+        blueprint.scenario_spec.role = f"You are a {domain_profile.actor_role} preparing an operations review package for a supervisor."
+        blueprint.scenario_spec.business_context = domain_profile.business_context
+        for deliverable in blueprint.deliverable_spec:
+            deliverable.file_name = hint.deliverable_name
+            deliverable.requirements = list(hint.deliverable_requirements)
+
+        file_map = {
+            "source_evidence.xlsx": schema.source_file_name,
+            "control_totals.xlsx": schema.control_file_name,
+            "policy_reference.docx": schema.policy_file_name,
+        }
+        sheet_map = {
+            "Evidence_Items": schema.source_sheet_name,
+            "Control_Totals": schema.control_sheet_name,
+        }
+        for file_spec in blueprint.data_spec.reference_files:
+            old_name = file_spec.file_name
+            file_spec.file_name = file_map.get(old_name, old_name)
+            for sheet in file_spec.sheet_specs:
+                old_sheet = sheet.sheet_name
+                sheet.sheet_name = sheet_map.get(old_sheet, old_sheet)
+                if old_name == "source_evidence.xlsx":
+                    sheet.columns = [self._domain_column(name) for name in schema.source_columns]
+                elif old_name == "control_totals.xlsx":
+                    sheet.columns = [self._domain_column(name) for name in schema.control_columns]
+
+        replacements = {**file_map, **sheet_map}
+        for relationship in blueprint.data_spec.data_relationships:
+            for old, new in replacements.items():
+                relationship.left = relationship.left.replace(old, new)
+                relationship.right = relationship.right.replace(old, new)
+        for trap in blueprint.trap_spec:
+            target = trap.injection_target
+            old_name = target.file_name
+            target.file_name = file_map.get(old_name, old_name)
+            target.sheet_name = sheet_map.get(target.sheet_name, target.sheet_name)
+            if old_name == "source_evidence.xlsx":
+                target.columns = schema.source_columns[-2:]
+            elif old_name == "control_totals.xlsx":
+                target.columns = schema.control_columns[-2:]
+            elif old_name == "policy_reference.docx":
+                target.columns = ["RULE-002", "RULE-003"]
+
+    def _domain_column(self, name: str) -> ColumnSpec:
+        lowered = name.lower()
+        if lowered.endswith("_id") or lowered in {"evidence_id", "record_id"}:
+            semantic = "identifier"
+        elif "quantity" in lowered:
+            semantic = "amount_or_count"
+        elif "at" in lowered or "date" in lowered:
+            semantic = "time_period"
+        elif "status" in lowered or "condition" in lowered:
+            semantic = "status_label"
+        else:
+            semantic = "free_text_description"
+        return ColumnSpec(name=name, semantic_type=semantic)
 
     def _reference_files(self, motif: str, entries: List[SkillRegistryEntry]) -> List[FileSpec]:
         files = [

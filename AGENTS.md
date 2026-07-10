@@ -10,7 +10,7 @@ The system should repeatedly produce tasks with realistic source context, reusab
 
 Read documents in this order:
 
-1. `项目概要.md` — the only project-level source of truth for current status, phase conclusions, bottlenecks, and the A–D roadmap.
+1. `项目概要.md` — the only project-level source of truth for current status, phase conclusions, bottlenecks, and the A–F roadmap.
 2. `docs/README.md` — documentation lifecycle and index.
 3. `docs/architecture/system_architecture.md` — current technical architecture.
 4. `docs/architecture/global_interface_contracts.md` — interface contracts.
@@ -38,8 +38,10 @@ The current roadmap is:
 - B. Documentation and project-state governance — complete.
 - C. Local end-to-end automation — complete.
 - D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
-- E. Second-domain vertical slice — next.
+- E. Warehouse-inventory vertical slice — offline acceptance complete; awaiting explicit authorization for public-source DeepSeek extraction.
 - F. Training-data readiness — planned.
+
+Milestone E must keep GDPVal outside generation. The active workstream is `docs/handoffs/MILESTONE_E_WORKSTREAM_2026-07-10.md`. Do not upload the warehouse public source package until the user grants the separate authorization described there. Mock results are structural evidence only, and the current server release remains unchanged.
 
 ## 4. Architecture Boundaries
 

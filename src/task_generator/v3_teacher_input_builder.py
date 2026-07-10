@@ -270,7 +270,7 @@ class TeacherInputBuilder:
         hidden_hints.extend(
             f"Deferred asset: {file_name}" for file_name in deferred_assets
         )
-        if any(item.file_name == "policy_reference.docx" for item in generated_manifest.evidence_index):
+        if any("policy" in item.file_name.lower() or item.semantic_type in {"policy_rule", "decision_rule"} for item in generated_manifest.evidence_index):
             hidden_hints.append(
                 "Policy clause IDs are candidate-visible and should be cited explicitly whenever policy logic is invoked."
             )

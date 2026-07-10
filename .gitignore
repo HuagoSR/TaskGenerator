@@ -16,6 +16,7 @@ artifacts/phase14/
 artifacts/phase15/
 artifacts/phase16/
 artifacts/historical_phase_runs/
+artifacts/milestone_e_*/
 artifacts/production_batches/
 artifacts/pycache_smoke/
 artifacts/releases/
