@@ -254,6 +254,14 @@ Current status snapshot as of `2026-07-06`:
   - current plan: `docs/architecture/phase15_completion_plan_2026-07-09.md`
   - current completion handoff: `docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md`
   - next work should redesign `evidence_to_deliverable` before another clean eval; do not treat the current reform as successful
+- Phase 16 is complete for the Contract V2 redesign experiment:
+  - the full production path generated `4 / 4 candidate_ready`, verifier-pass, export-compatible cases for each of three arms
+  - the governed rw-task campaign completed `24 / 24` records across four cases, three arms, and two evaluated models with fixed grader `gpt-5.4-pro`
+  - `contract_v2_only`: `mean_strong_score_delta = -0.0114`, `mean_gap_delta = -0.0090`, `1 / 4` positive gap-delta cases
+  - `contract_v2_plus_productive_complexity`: `mean_strong_score_delta = 0.0466`, `mean_gap_delta = -0.0175`, `2 / 4` positive gap-delta cases
+  - two weak-model executions required one same-configuration retry after context-overflow/no-deliverable failures; both retry records completed
+  - final decision: `redesign_again`; `do_not_promote_default_chain`; Phase 16 is closed even though the reform did not pass promotion thresholds
+  - authoritative handoff: `docs/handoffs/PHASE_16_COMPLETION_2026-07-10.md`
 - The user explicitly authorized a scoped Phase 15 external eval run for the named task packages during the Phase 15A clean eval work. Treat this as historical, task-scoped permission, not blanket future authorization. Do not print secret values or stage `.env`.
 - Treat executed eval evidence as diagnostic unless a case is both package-ready and backed by repeated comparison evidence; do not collapse this into a formal model-separation claim.
 
@@ -274,7 +282,7 @@ Pipeline A should no longer only accumulate isolated atomic skills. It should pr
 Near-term priority order:
 
 1. Keep the existing Pipeline A and Pipeline B runners working.
-2. Use the Phase 15B `hold_for_redesign` evidence to redesign `evidence_to_deliverable` before any second clean eval or default-chain promotion.
+2. Preserve the Phase 16 `redesign_again` result; do not continue local Contract V2 tuning or default-chain promotion without a later explicitly approved research slice.
 3. Keep promotion/apply reviewable and explicit; prefer scratch validation before any canonical registry mutation.
 4. Treat executed eval and model-separation outputs as diagnostic evidence until repeated comparison evidence is available.
 5. Keep all registry, readiness, transition-prior, and sampler-weight changes explicit and reviewable.

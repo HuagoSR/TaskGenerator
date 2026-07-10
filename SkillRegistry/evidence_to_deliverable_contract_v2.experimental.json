@@ -1,0 +1,85 @@
+{
+  "contract_id": "evidence_to_deliverable_contract_v2",
+  "contract_version": "experimental.v2",
+  "motif": "evidence_to_deliverable",
+  "status": "experimental_report_first",
+  "default_generator_change_allowed": false,
+  "required_sections": [
+    "evidence_inventory",
+    "support_strength_table",
+    "conclusion_map",
+    "unresolved_items",
+    "manager_facing_deliverable",
+    "traceability_appendix"
+  ],
+  "allowed_support_strength_labels": [
+    "strong_support",
+    "partial_support",
+    "conflicting",
+    "missing",
+    "not_relevant"
+  ],
+  "material_conclusion_rule": "Every material conclusion must cite at least one valid candidate-visible Evidence_ID.",
+  "uncertainty_rule": "Unsupported, incomplete, or conflicting conclusions must be marked as unresolved, not inferred as final.",
+  "deliverable_rule": "The final deliverable must be readable as a manager/reviewer-facing work product, not only a checklist.",
+  "no_llm_primary_truth": true,
+  "section_contracts": [
+    {
+      "section_id": "evidence_inventory",
+      "required_fields": [
+        "evidence_id",
+        "source_file",
+        "observed_item",
+        "intended_use"
+      ],
+      "purpose": "Make the evidence surface explicit before conclusions are written."
+    },
+    {
+      "section_id": "support_strength_table",
+      "required_fields": [
+        "evidence_id",
+        "claim_or_issue",
+        "support_strength",
+        "rationale"
+      ],
+      "purpose": "Reward evidence sufficiency judgment instead of raw summary."
+    },
+    {
+      "section_id": "conclusion_map",
+      "required_fields": [
+        "conclusion_id",
+        "conclusion",
+        "supporting_evidence_ids",
+        "status"
+      ],
+      "purpose": "Tie each material conclusion to evidence and a confirmed/unresolved status."
+    },
+    {
+      "section_id": "unresolved_items",
+      "required_fields": [
+        "item_id",
+        "reason_unresolved",
+        "needed_follow_up"
+      ],
+      "purpose": "Prevent unsupported inference from being written as final fact."
+    },
+    {
+      "section_id": "manager_facing_deliverable",
+      "required_fields": [
+        "summary",
+        "recommended_actions",
+        "limitations"
+      ],
+      "purpose": "Convert evidence judgment into a usable work product."
+    },
+    {
+      "section_id": "traceability_appendix",
+      "required_fields": [
+        "conclusion_id",
+        "evidence_ids",
+        "support_strength"
+      ],
+      "purpose": "Allow deterministic verifier and grader checks."
+    }
+  ]
+}

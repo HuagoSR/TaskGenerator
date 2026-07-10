@@ -512,6 +512,10 @@ class PipelineBPrototypeBuilder:
     ) -> None:
         if motif != "evidence_to_deliverable":
             return
+        phase16_mode = str(reform_spec.get("phase16_contract_mode") or "")
+        if phase16_mode:
+            self._apply_phase16_evidence_to_deliverable_contract(blueprint, phase16_mode)
+            return
         blueprint.template_family = "evidence_package_to_reviewer_decision_memo_phase15"
         blueprint.task_metadata.scenario_title = "Reviewer decision memo from mixed evidence"
         blueprint.task_metadata.task_goal = (
@@ -608,6 +612,128 @@ class PipelineBPrototypeBuilder:
                 ]
             )
         )
+
+    def _apply_phase16_evidence_to_deliverable_contract(
+        self,
+        blueprint: TaskBlueprint,
+        phase16_mode: str,
+    ) -> None:
+        productive_complexity = phase16_mode == "contract_v2_plus_productive_complexity"
+        blueprint.template_family = f"evidence_to_deliverable_{phase16_mode}"
+        blueprint.task_metadata.scenario_title = "Manager evidence review with explicit support mapping"
+        blueprint.task_metadata.task_goal = (
+            "Prepare a manager-facing evidence review that inventories candidate-visible evidence, "
+            "separates confirmed and unresolved conclusions, labels support strength, and maps every "
+            "material conclusion back to exact evidence IDs."
+        )
+        blueprint.scenario_spec.role = (
+            "You are a finance audit analyst preparing an evidence review for a manager who must decide "
+            "whether a finding can be closed or needs follow-up."
+        )
+        blueprint.scenario_spec.business_context = (
+            blueprint.scenario_spec.business_context
+            + " The manager needs a traceable deliverable, not an unsupported prose summary."
+        )
+        blueprint.scenario_spec.time_context = (
+            "Current review cycle; the manager needs a concise, traceable recommendation before sign-off."
+        )
+
+        section_requirements = [
+            "Create an `Evidence inventory` section listing every material Evidence_ID used in the answer.",
+            "Create a `Support-strength table` with one of `confirmed`, `partial`, `conflicting`, or `missing` for each material conclusion.",
+            "Create a `Conclusion map` that links each supported conclusion to exact candidate-visible Evidence_ID values.",
+            "Create an `Unresolved items` section for missing, partial, or conflicting support; do not convert these into confirmed findings.",
+            "Create a `Manager-facing deliverable` section with the final recommendation and caveats.",
+            "Create a `Traceability appendix` that repeats the Evidence_ID support for every material conclusion.",
+        ]
+        complexity_requirements = [
+            "When evidence is incomplete, state the missing support and the decision consequence.",
+            "When evidence conflicts, preserve the conflict and explain what cannot be concluded.",
+            "Do not infer values, policy conclusions, or closure status that are not supported by visible evidence.",
+            "Separate productive uncertainty from format caveats: unresolved evidence is part of the task, not a formatting failure.",
+        ]
+        blueprint.prompt_spec.visible_requirements = list(
+            dict.fromkeys(
+                blueprint.prompt_spec.visible_requirements
+                + section_requirements
+                + (complexity_requirements if productive_complexity else [])
+            )
+        )
+        blueprint.prompt_spec.hidden_requirements = list(
+            dict.fromkeys(
+                blueprint.prompt_spec.hidden_requirements
+                + [
+                    "Do not award credit for material conclusions without exact candidate-visible Evidence_ID support.",
+                    "Do not award credit when unresolved, partial, conflicting, or missing support is presented as confirmed.",
+                    "Do not require prose style beyond the candidate-visible deliverable contract.",
+                ]
+            )
+        )
+        blueprint.golden_plan.required_intermediate_states = list(
+            dict.fromkeys(
+                blueprint.golden_plan.required_intermediate_states
+                + [
+                    "phase16_evidence_inventory",
+                    "phase16_support_strength_table",
+                    "phase16_conclusion_map",
+                    "phase16_unresolved_item_register",
+                    "phase16_traceability_appendix",
+                ]
+                + (["phase16_conflict_and_missing_support_review"] if productive_complexity else [])
+            )
+        )
+        blueprint.golden_plan.required_final_checks = list(
+            dict.fromkeys(
+                blueprint.golden_plan.required_final_checks
+                + [
+                    "every material conclusion cites exact Evidence_ID support",
+                    "confirmed conclusions are separated from unresolved support gaps",
+                    "support-strength labels use only the allowed label set",
+                    "manager-facing recommendation preserves caveats from the evidence map",
+                    "traceability appendix matches the conclusion map",
+                ]
+                + (["missing or conflicting evidence is preserved instead of resolved by invention"] if productive_complexity else [])
+            )
+        )
+        for deliverable in blueprint.deliverable_spec:
+            deliverable.file_name = "manager_evidence_review.docx"
+            deliverable.requirements = list(
+                dict.fromkeys(
+                    deliverable.requirements
+                    + [
+                        "include Evidence inventory",
+                        "include Support-strength table",
+                        "include Conclusion map",
+                        "include Unresolved items",
+                        "include Manager-facing deliverable",
+                        "include Traceability appendix",
+                    ]
+                    + (
+                        [
+                            "preserve missing-support and conflict caveats in the recommendation",
+                            "state decision consequences for unresolved evidence",
+                        ]
+                        if productive_complexity
+                        else []
+                    )
+                )
+            )
+        if productive_complexity and not any(file.file_name == "manager_followup.md" for file in blueprint.data_spec.reference_files):
+            blueprint.data_spec.reference_files.append(
+                FileSpec(
+                    file_name="manager_followup.md",
+                    file_role="reference_table",
+                    sheet_specs=[],
+                )
+            )
+        if not any(relationship.relation_type == "phase16_traceability_contract" for relationship in blueprint.data_spec.data_relationships):
+            blueprint.data_spec.data_relationships.append(
+                DataRelationship(
+                    relation_type="phase16_traceability_contract",
+                    left="source_evidence.xlsx:Evidence_Items.Evidence_ID",
+                    right="final_deliverable:conclusion_map_and_traceability_appendix",
+                )
+            )
 
     def _data_relationships(self, motif: str, entries: List[SkillRegistryEntry]) -> List[DataRelationship]:
         relationships = [

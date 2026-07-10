@@ -71,6 +71,8 @@ def main() -> None:
             indent=2,
         )
     )
+    if report.run_status not in {"completed", "dry_run_ready"}:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
