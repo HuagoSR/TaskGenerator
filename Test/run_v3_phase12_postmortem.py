@@ -14,7 +14,7 @@ from task_generator.v3_phase12_postmortem import Phase12PostmortemBuilder  # noq
 
 SCRATCH = ROOT / "artifacts" / "pipeline_b" / "scratch"
 DEFAULT_DASHBOARD = SCRATCH / "phase12_hardening_phase1234_smoke_v2" / "phase12_global_dashboard" / "phase12_global_dashboard_report.json"
-DEFAULT_OUTPUT_DIR = ROOT / "docs" / "handoffs"
+DEFAULT_OUTPUT_DIR = ROOT / "artifacts" / "historical_phase_runs" / "phase12" / "postmortem"
 
 
 def main() -> None:

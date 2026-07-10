@@ -2,7 +2,9 @@
 
 ## Status
 
-This document turns `pipeline_next_stage_global_plan.md` into implementation-facing interface contracts.
+Document lifecycle: `active / reference`.
+
+This document records implementation-facing interface contracts for the current four-layer architecture. It was originally derived from the historical `pipeline_next_stage_global_plan.md`, which is now preserved under `docs/archive/foundations/`; current project status and priorities are maintained only in the root `项目概要.md`.
 
 These contracts are intentionally schema-first and report-only. They should help future work add global diagnostics without changing existing Pipeline A registry state, Pipeline B sampling behavior, package readiness, rw-task export semantics, or sampler weights.
 
@@ -380,7 +382,7 @@ Rules:
 
 ## Initial Implementation Order
 
-1. Keep this document and `pipeline_next_stage_global_plan.md` in sync.
+1. Keep this document aligned with implemented interfaces and `system_architecture.md`; do not use it to manage the project roadmap.
 2. Add Global Validity Report V1 as diagnostic-only output.
 3. Add WorkflowEpisode Proposal V1 from existing Pipeline A artifacts.
 4. Add experimental MotifGraphGrammar for `policy_application` and `fan_in_reconciliation`.

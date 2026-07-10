@@ -25,7 +25,13 @@ DEFAULT_GENERATED_VS_GDPVAL = PHASE14 / "generated_vs_gdpval" / "generated_vs_gd
 DEFAULT_LLM_IMPACT = PHASE14 / "llm_impact" / "llm_impact_evaluation_report.json"
 DEFAULT_LLM_ADOPTION = PHASE14 / "llm_impact" / "llm_adoption_recommendation_report.json"
 DEFAULT_OUTPUT = PHASE15 / "baseline"
-DEFAULT_HANDOFF = ROOT / "docs" / "handoffs" / "PHASE_15_BASELINE_2026-07-09.md"
+DEFAULT_HANDOFF = (
+    ROOT
+    / "artifacts"
+    / "historical_phase_runs"
+    / "phase15"
+    / "PHASE_15_BASELINE_2026-07-09.md"
+)
 
 
 def main() -> None:

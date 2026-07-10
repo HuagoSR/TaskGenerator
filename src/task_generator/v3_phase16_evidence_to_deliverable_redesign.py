@@ -40,16 +40,16 @@ REQUIRED_SECTIONS = [
 
 
 class Phase16RedesignRequest(BaseModel):
-    phase16_plan_path: str = "docs/architecture/phase16_evidence_to_deliverable_redesign_plan.md"
-    phase15_handoff_path: str = "docs/handoffs/PHASE_15B_COMPLETION_2026-07-09.md"
+    phase16_plan_path: str = "docs/archive/phases/phase16/phase16_evidence_to_deliverable_redesign_plan.md"
+    phase15_handoff_path: str = "docs/archive/phases/phase15/PHASE_15B_COMPLETION_2026-07-09.md"
     phase15_strong_eval_path: str = "artifacts/phase15/eval_results/phase15_strong_model_eval_report.json"
     phase15_gap_delta_path: str = "artifacts/phase15/eval_results/phase15_gap_delta_report.json"
     phase15_failure_autopsy_path: str = "artifacts/phase15/failure_autopsy/phase15_reform_failure_autopsy_report.json"
     phase15_postmortem_path: str = "artifacts/phase15/phase15b_closeout/phase15b_postmortem_report.json"
     output_root: str = "artifacts/phase16"
     contract_path: str = "SkillRegistry/evidence_to_deliverable_contract_v2.experimental.json"
-    baseline_handoff_path: str = "docs/handoffs/PHASE_16_BASELINE_2026-07-10.md"
-    completion_handoff_path: str = "docs/handoffs/PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md"
+    baseline_handoff_path: str = "artifacts/historical_phase_runs/phase16/PHASE_16_BASELINE_2026-07-10.md"
+    completion_handoff_path: str = "artifacts/historical_phase_runs/phase16/PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md"
     allow_external_eval: bool = False
     external_eval_results_path: Optional[str] = None
 
@@ -977,7 +977,7 @@ class Phase16EvidenceToDeliverableRedesignBuilder:
                 "proved",
                 [
                     "artifacts/phase16/baseline/phase16_baseline_manifest.json",
-                    "docs/handoffs/PHASE_16_BASELINE_2026-07-10.md",
+                    "artifacts/historical_phase_runs/phase16/PHASE_16_BASELINE_2026-07-10.md",
                 ],
                 "Phase 15B decision, gap summary, failure labels, and experiment-flag boundary are frozen.",
             ),
@@ -1085,7 +1085,7 @@ class Phase16EvidenceToDeliverableRedesignBuilder:
                 "16.10",
                 "Phase 16 Postmortem And Phase 17 Decision",
                 "proved_as_blocked_handoff",
-                ["docs/handoffs/PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md"],
+                ["artifacts/historical_phase_runs/phase16/PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md"],
                 "The postmortem answers all nine required questions and recommends continued redesign/eval gating.",
             ),
         ]

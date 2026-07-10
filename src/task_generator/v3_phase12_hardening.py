@@ -159,7 +159,11 @@ class Phase12HardeningRunner:
     ) -> Phase12HardeningReport:
         output_root_path = Path(output_root)
         output_root_path.mkdir(parents=True, exist_ok=True)
-        handoff_root = Path(handoff_dir) if handoff_dir else Path("docs") / "handoffs"
+        handoff_root = (
+            Path(handoff_dir)
+            if handoff_dir
+            else Path("artifacts") / "historical_phase_runs" / "phase12" / "handoffs"
+        )
         handoff_root.mkdir(parents=True, exist_ok=True)
 
         request = Phase12HardeningRequest(

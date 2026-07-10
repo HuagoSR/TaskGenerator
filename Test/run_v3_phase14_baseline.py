@@ -16,8 +16,8 @@ from task_generator.v3_phase14_baseline import (  # noqa: E402
 
 
 DEFAULT_OUTPUT_ROOT = ROOT / "artifacts" / "phase14"
-DEFAULT_SCOPE_DOC = ROOT / "docs" / "architecture" / "phase_14_scope.md"
-DEFAULT_HANDOFF_DOC = ROOT / "docs" / "handoffs" / "PHASE_14_BASELINE_2026-07-07.md"
+DEFAULT_SCOPE_DOC = ROOT / "artifacts" / "historical_phase_runs" / "phase14" / "phase_14_scope.md"
+DEFAULT_HANDOFF_DOC = ROOT / "artifacts" / "historical_phase_runs" / "phase14" / "PHASE_14_BASELINE_2026-07-07.md"
 
 
 def main() -> None:

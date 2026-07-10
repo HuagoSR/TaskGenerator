@@ -22,7 +22,13 @@ DEFAULT_DASHBOARD = PHASE14 / "good_task_dashboard" / "good_task_dashboard_repor
 DEFAULT_LLM_IMPACT = PHASE14 / "llm_impact" / "llm_impact_evaluation_report.json"
 DEFAULT_LLM_ADOPTION = PHASE14 / "llm_impact" / "llm_adoption_recommendation_report.json"
 DEFAULT_OUTPUT = PHASE14 / "postmortem"
-DEFAULT_HANDOFF = ROOT / "docs" / "handoffs" / "PHASE_14_GDPTASK_CALIBRATION_BLOCKED_2026-07-08.md"
+DEFAULT_HANDOFF = (
+    ROOT
+    / "artifacts"
+    / "historical_phase_runs"
+    / "phase14"
+    / "PHASE_14_GDPTASK_CALIBRATION_BLOCKED_2026-07-08.md"
+)
 
 
 def main() -> None:

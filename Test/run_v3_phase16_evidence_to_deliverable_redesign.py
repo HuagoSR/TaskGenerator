@@ -19,19 +19,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build Phase 16 evidence_to_deliverable redesign, alignment, pre-eval, and postmortem reports."
     )
-    parser.add_argument("--phase16-plan", type=Path, default=ROOT / "docs" / "architecture" / "phase16_evidence_to_deliverable_redesign_plan.md")
-    parser.add_argument("--phase15-handoff", type=Path, default=ROOT / "docs" / "handoffs" / "PHASE_15B_COMPLETION_2026-07-09.md")
+    parser.add_argument("--phase16-plan", type=Path, default=ROOT / "docs" / "archive" / "phases" / "phase16" / "phase16_evidence_to_deliverable_redesign_plan.md")
+    parser.add_argument("--phase15-handoff", type=Path, default=ROOT / "docs" / "archive" / "phases" / "phase15" / "PHASE_15B_COMPLETION_2026-07-09.md")
     parser.add_argument("--phase15-strong-eval", type=Path, default=ROOT / "artifacts" / "phase15" / "eval_results" / "phase15_strong_model_eval_report.json")
     parser.add_argument("--phase15-gap-delta", type=Path, default=ROOT / "artifacts" / "phase15" / "eval_results" / "phase15_gap_delta_report.json")
     parser.add_argument("--phase15-failure-autopsy", type=Path, default=ROOT / "artifacts" / "phase15" / "failure_autopsy" / "phase15_reform_failure_autopsy_report.json")
     parser.add_argument("--phase15-postmortem", type=Path, default=ROOT / "artifacts" / "phase15" / "phase15b_closeout" / "phase15b_postmortem_report.json")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts" / "phase16")
     parser.add_argument("--contract-path", type=Path, default=ROOT / "SkillRegistry" / "evidence_to_deliverable_contract_v2.experimental.json")
-    parser.add_argument("--baseline-handoff", type=Path, default=ROOT / "docs" / "handoffs" / "PHASE_16_BASELINE_2026-07-10.md")
+    parser.add_argument("--baseline-handoff", type=Path, default=ROOT / "artifacts" / "historical_phase_runs" / "phase16" / "PHASE_16_BASELINE_2026-07-10.md")
     parser.add_argument(
         "--completion-handoff",
         type=Path,
-        default=ROOT / "docs" / "handoffs" / "PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md",
+        default=ROOT / "artifacts" / "historical_phase_runs" / "phase16" / "PHASE_16_EVIDENCE_TO_DELIVERABLE_REDESIGN_BLOCKED_2026-07-10.md",
     )
     parser.add_argument(
         "--allow-external-eval",

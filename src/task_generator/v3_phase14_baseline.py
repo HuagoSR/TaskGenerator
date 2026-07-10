@@ -89,8 +89,17 @@ class Phase14BaselineBuilder:
         release_paths = [Path(path) for path in (release_manifest_paths or [DEFAULT_RELEASE_MANIFEST])]
         request = Phase14BaselineRequest(
             output_root=str(root),
-            docs_scope_path=str(docs_scope_path or Path("docs/architecture/phase_14_scope.md")),
-            handoff_path=str(handoff_path or Path(f"docs/handoffs/PHASE_14_BASELINE_{date.today().isoformat()}.md")),
+            docs_scope_path=str(
+                docs_scope_path
+                or Path("artifacts/historical_phase_runs/phase14/phase_14_scope.md")
+            ),
+            handoff_path=str(
+                handoff_path
+                or Path(
+                    f"artifacts/historical_phase_runs/phase14/"
+                    f"PHASE_14_BASELINE_{date.today().isoformat()}.md"
+                )
+            ),
             release_manifest_paths=[str(path) for path in release_paths],
             target_subset_count=target_subset_count,
             allow_network=allow_network,

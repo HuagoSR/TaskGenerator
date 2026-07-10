@@ -2,7 +2,11 @@
 
 ## Status
 
+Document lifecycle: `active / reference`.
+
 This document defines the first Phase 13 production contract for the finance/audit scope.
+
+It remains the current production-state reference, but project status and next-stage priorities are maintained only in the root `项目概要.md`.
 
 It does not replace the existing Pipeline B quality gate, verifier, or global validity diagnostics.
 Instead, it adds a production-facing state machine and batch-manifest contract on top of the current candidate-ready path.

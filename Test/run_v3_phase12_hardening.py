@@ -22,7 +22,7 @@ DEFAULT_READINESS_REPORT = ROOT / "SkillRegistry" / "v3_registry_sampling_readin
 DEFAULT_TRANSITION_GRAPH_REPORT = ROOT / "SkillRegistry" / "v3_skill_transition_graph_report.json"
 DEFAULT_COMPOSITION_READINESS_REPORT = ROOT / "SkillRegistry" / "v3_composition_readiness_report.json"
 DEFAULT_OUTPUT_ROOT = SCRATCH / "phase12_hardening"
-DEFAULT_HANDOFF_DIR = ROOT / "docs" / "handoffs"
+DEFAULT_HANDOFF_DIR = ROOT / "artifacts" / "historical_phase_runs" / "phase12" / "handoffs"
 DEFAULT_RW_TASK_ROOT = Path(r"E:\THU\2026Spring\SRT\rw-task")
 DEFAULT_PYTHON_EXE = Path(r"D:\miniconda3\envs\real-world-task\python.exe")
 
