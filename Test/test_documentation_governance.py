@@ -30,9 +30,11 @@ class DocumentationGovernanceTests(unittest.TestCase):
             "do_not_promote_default_chain",
             "A. Phase 16 证据收口",
             "B. 文档和项目状态治理",
-            "C. 端到端自动化与服务器部署",
-            "D. 跨领域泛化验证",
-            "下一主线是步骤 C",
+            "C. 本地端到端自动化",
+            "D. 服务器复现",
+            "E. 第二领域垂直切片",
+            "F. 训练数据准备度",
+            "下一主线是里程碑 D",
         ]
         missing = [token for token in required if token not in overview]
         self.assertEqual(missing, [])

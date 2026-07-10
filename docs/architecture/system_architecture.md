@@ -63,4 +63,8 @@ LLM 可以参与情境变化、教师候选和 prose-heavy 文件生成；确定
 - 外部 API 权限按实验授权，secret 只通过环境传递。
 - 生成报告和任务产物写入 `artifacts/`；活跃 docs 只保存人工确认的稳定结论。
 
+## 本地统一运行合同
+
+`v3_end_to_end_pipeline` 是本地 source-to-QA 的唯一编排入口。Manifest V2 将五个阶段组织为 scratch-first DAG，记录输入/输出指纹、attempt、checksum、external effects 和 lifecycle index。默认 profile 只进行 rw-task eval preparation，不执行外部评测；中断恢复必须验证 completed stage 的产物 checksum，重跑上游会使下游失效。
+
 接口字段和对象定义见 `global_interface_contracts.md`，finance/audit production contract 见 `production_mvp_definition.md`。

@@ -24,6 +24,13 @@ def main() -> None:
         description="Run the report-first V3 end-to-end source-to-eval pipeline hub."
     )
     parser.add_argument("--run-id", required=True)
+    parser.add_argument("--action", choices=["run", "resume", "status", "rerun"], default="run")
+    parser.add_argument(
+        "--profile",
+        choices=["custom", "public-smoke-offline", "public-smoke-llm", "local-existing", "local-source", "web-source"],
+        default=None,
+    )
+    parser.add_argument("--from-stage", choices=STAGE_ORDER, default=None)
     parser.add_argument(
         "--stage",
         choices=["all", *STAGE_ORDER],
@@ -32,12 +39,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--source-mode",
-        choices=["web", "local", "existing"],
+        choices=["web", "local", "existing", "public_fixture"],
         default="existing",
     )
     parser.add_argument(
         "--registry-mode",
-        choices=["existing", "fresh_scratch"],
+        choices=["existing", "fresh_scratch", "snapshot_scratch"],
         default=None,
         help="Registry source for this run. Defaults to existing for new runs and resumes from manifest for prior runs.",
     )
@@ -62,11 +69,22 @@ def main() -> None:
     parser.add_argument("--skip-registry-update", action="store_true")
     parser.add_argument("--allow-web-collection", action="store_true")
     parser.add_argument("--allow-external-upload", action="store_true")
+    parser.add_argument("--allow-external-source-upload", action="store_true")
+    parser.add_argument("--allow-external-eval", action="store_true")
+    parser.add_argument("--extractor-mode", choices=["none", "mock", "llm"], default="none")
+    parser.add_argument(
+        "--public-package-path",
+        default=str(ROOT / "Test" / "v3_public_smoke_package" / "skill_extraction_prompt_package.json"),
+    )
+    parser.add_argument("--provider", choices=["auto", "tuzi", "deepseek", "mock"], default="deepseek")
+    parser.add_argument("--deepseek-model", default="deepseek-v4-flash")
+    parser.add_argument("--extractor-model", default=None)
+    parser.add_argument("--max-candidates", type=int, default=8)
     parser.add_argument("--review-spec-path")
     parser.add_argument(
         "--eval-mode",
-        choices=["dry-run", "execute"],
-        default="dry-run",
+        choices=["dry-run", "prepare_only", "execute"],
+        default="prepare_only",
     )
     parser.add_argument("--run-eval", action="store_true")
     parser.add_argument("--allow-draft-eval", action="store_true")
@@ -80,10 +98,81 @@ def main() -> None:
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     args = parser.parse_args()
 
+    run_dir = Path(args.output_root) / args.run_id
+    manifest_path = run_dir / "end_to_end_run_manifest.json"
+    if args.action == "status":
+        if not manifest_path.exists():
+            raise SystemExit(f"Run manifest not found: {manifest_path}")
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        print(
+            json.dumps(
+                {
+                    "run_id": payload.get("run_id"),
+                    "manifest_version": payload.get("end_to_end_manifest_version"),
+                    "run_status": payload.get("run_status", "legacy_v1"),
+                    "stage_states": {key: value.get("state") for key, value in (payload.get("stages") or {}).items()},
+                    "manifest_path": str(manifest_path),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+
+    legacy_flags = {
+        "--stage", "--source-mode", "--registry-mode", "--registry-path", "--topic",
+        "--collection-dir", "--local-source-dir", "--apply-registry-update", "--run-eval",
+    }
+    legacy_invocation = args.profile is None and any(flag in sys.argv for flag in legacy_flags)
+    profile = args.profile or ("custom" if legacy_invocation else "public-smoke-offline")
+    if legacy_invocation:
+        print(
+            "DEPRECATED: flat end-to-end flags are running in custom compatibility mode; prefer --profile plus --action.",
+            file=sys.stderr,
+        )
+    if profile == "public-smoke-offline":
+        args.source_mode = "public_fixture"
+        args.registry_mode = "fresh_scratch"
+        args.extractor_mode = "mock"
+        args.max_cases = 2
+        args.eval_mode = "prepare_only"
+        args.model = ["gpt-4o-mini"]
+    elif profile == "public-smoke-llm":
+        args.source_mode = "public_fixture"
+        args.registry_mode = "fresh_scratch"
+        args.extractor_mode = "llm"
+        args.max_cases = 2
+        args.eval_mode = "prepare_only"
+        args.model = ["gpt-4o-mini"]
+        if not args.allow_external_source_upload:
+            parser.error("public-smoke-llm requires --allow-external-source-upload")
+    elif profile == "local-existing":
+        args.source_mode = "existing"
+        args.registry_mode = "snapshot_scratch"
+        args.eval_mode = "prepare_only"
+    elif profile == "local-source":
+        args.source_mode = "local"
+        args.registry_mode = "fresh_scratch"
+        args.extractor_mode = "llm"
+        args.eval_mode = "prepare_only"
+    elif profile == "web-source":
+        args.source_mode = "web"
+        args.registry_mode = "fresh_scratch"
+        args.extractor_mode = "llm"
+        args.eval_mode = "prepare_only"
+
+    if args.eval_mode == "execute" and not args.allow_external_eval:
+        parser.error("eval execution requires --allow-external-eval")
+    if profile != "custom":
+        args.apply_registry_update = False
+
     selected_stages = STAGE_ORDER if args.stage == "all" else [args.stage]
     request = EndToEndRequest(
         run_id=args.run_id,
         selected_stages=selected_stages,
+        action=args.action,
+        profile=profile,
+        from_stage=args.from_stage,
         source_mode=args.source_mode,
         registry_mode=args.registry_mode,
         registry_path=args.registry_path,
@@ -97,6 +186,14 @@ def main() -> None:
         apply_registry_update=args.apply_registry_update and not args.skip_registry_update,
         allow_web_collection=args.allow_web_collection,
         allow_external_upload=args.allow_external_upload,
+        allow_external_source_upload=args.allow_external_source_upload,
+        allow_external_eval=args.allow_external_eval,
+        extractor_mode=args.extractor_mode,
+        public_package_path=args.public_package_path,
+        provider=args.provider,
+        model=args.extractor_model,
+        deepseek_model=args.deepseek_model,
+        max_candidates=args.max_candidates,
         reuse_existing=args.reuse_existing,
         force_stage=args.force_stage,
         review_spec_path=args.review_spec_path,
@@ -109,6 +206,18 @@ def main() -> None:
         python_exe=args.python_exe,
         timeout_seconds=args.timeout_seconds,
     )
+    if args.action in {"resume", "rerun"} and manifest_path.exists():
+        stored_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if stored_payload.get("end_to_end_manifest_version") == "v3.end_to_end_pipeline.2":
+            request = EndToEndRequest.model_validate(stored_payload["request"]).model_copy(
+                update={
+                    "action": args.action,
+                    "from_stage": args.from_stage,
+                    "reuse_existing": True,
+                    "force_stage": args.action == "rerun",
+                    "timeout_seconds": args.timeout_seconds or int(stored_payload["request"].get("timeout_seconds") or 0),
+                }
+            )
 
     manifest = EndToEndPipeline(repo_root=ROOT).run(request, output_root=args.output_root)
     print(
@@ -122,6 +231,10 @@ def main() -> None:
                 "stage_states": {
                     stage: status.state for stage, status in manifest.stages.items()
                 },
+                "run_status": manifest.run_status,
+                "acceptance_report_path": manifest.acceptance_report_path,
+                "lifecycle_index_path": manifest.lifecycle_index_path,
+                "content_fingerprint": manifest.content_fingerprint,
             },
             ensure_ascii=False,
             indent=2,

@@ -1,0 +1,30 @@
+{
+  "contract_version": "v3.public_smoke_acceptance.1",
+  "fixture_id": "public_skill_extract_nonprofit_reconciliation",
+  "offline": {
+    "candidate_count": 4,
+    "accepted_count": 4,
+    "sample_ready_count": 3,
+    "generated_case_count": 2,
+    "candidate_ready_count": 2,
+    "verifier_pass_count": 2,
+    "export_compatible_count": 2,
+    "prepared_eval_count": 1,
+    "executed_eval_count": 0
+  },
+  "llm_minimum": {
+    "candidate_count": 3,
+    "accepted_count": 2,
+    "sample_ready_count": 2,
+    "candidate_ready_count": 1,
+    "verifier_pass_count": 1,
+    "export_compatible_count": 1,
+    "executed_eval_count": 0
+  },
+  "boundaries": {
+    "fixture_is_public_synthetic": true,
+    "mock_output_is_smoke_only": true,
+    "canonical_registry_mutation_allowed": false,
+    "external_eval_allowed": false
+  }
+}

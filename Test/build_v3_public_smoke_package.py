@@ -94,8 +94,42 @@ def build_public_package(output_dir: Path) -> None:
     with open(output_dir / "README.md", "w", encoding="utf-8") as f:
         f.write(
             "# Public V3 Skill Extraction Smoke Package\n\n"
-            "This package is synthetic and intentionally safe to send to external LLM APIs for smoke testing.\n"
+            "This package is synthetic and intentionally safe to send to external LLM APIs for smoke testing.\n\n"
+            "Milestone C uses `public-smoke-offline` and `public-smoke-llm`; mock output is smoke-only, "
+            "and external task evaluation remains disabled.\n"
         )
+    acceptance_contract = {
+            "contract_version": "v3.public_smoke_acceptance.1",
+            "fixture_id": "public_skill_extract_nonprofit_reconciliation",
+            "offline": {
+                "candidate_count": 4,
+                "accepted_count": 4,
+                "sample_ready_count": 3,
+                "generated_case_count": 2,
+                "candidate_ready_count": 2,
+                "verifier_pass_count": 2,
+                "export_compatible_count": 2,
+                "prepared_eval_count": 1,
+                "executed_eval_count": 0,
+            },
+            "llm_minimum": {
+                "candidate_count": 3,
+                "accepted_count": 2,
+                "sample_ready_count": 2,
+                "candidate_ready_count": 1,
+                "verifier_pass_count": 1,
+                "export_compatible_count": 1,
+                "executed_eval_count": 0,
+            },
+            "boundaries": {
+                "fixture_is_public_synthetic": True,
+                "mock_output_is_smoke_only": True,
+                "canonical_registry_mutation_allowed": False,
+                "external_eval_allowed": False,
+            },
+        }
+    with open(output_dir / "acceptance_contract.json", "w", encoding="utf-8") as f:
+        json.dump(acceptance_contract, f, ensure_ascii=False, indent=2)
     print(json.dumps({"output_dir": str(output_dir), "block_count": len(blocks)}, ensure_ascii=False, indent=2))
 
 
@@ -108,7 +142,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
 
 

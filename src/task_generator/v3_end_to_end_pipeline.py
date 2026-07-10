@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
+import platform
+import shutil
 import subprocess
 import sys
+import time
+import zipfile
+from importlib import metadata as importlib_metadata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
@@ -29,11 +36,21 @@ PipelineStage = Literal[
     "production_review",
     "rw_task_eval",
 ]
-SourceMode = Literal["web", "local", "existing"]
-EvalMode = Literal["dry-run", "execute"]
-RegistryMode = Literal["existing", "fresh_scratch"]
-StageState = Literal["pending", "skipped", "completed", "failed"]
+SourceMode = Literal["web", "local", "existing", "public_fixture"]
+EvalMode = Literal["dry-run", "prepare_only", "execute"]
+RegistryMode = Literal["existing", "fresh_scratch", "snapshot_scratch"]
+StageState = Literal["pending", "running", "skipped", "completed", "failed", "reused", "invalidated"]
 CollectorBackend = Literal["direct", "stirrup"]
+ExtractorMode = Literal["none", "mock", "llm"]
+RunAction = Literal["run", "resume", "status", "rerun"]
+RunProfile = Literal[
+    "custom",
+    "public-smoke-offline",
+    "public-smoke-llm",
+    "local-existing",
+    "local-source",
+    "web-source",
+]
 
 STAGE_ORDER: List[PipelineStage] = [
     "source_to_skills",
@@ -51,6 +68,15 @@ class StageCommandResult(BaseModel):
     stdout_path: str = ""
     stderr_path: str = ""
     parsed_stdout: Dict[str, Any] = Field(default_factory=dict)
+    duration_seconds: float = 0.0
+
+
+class StageAttempt(BaseModel):
+    attempt: int
+    started_at: str
+    finished_at: Optional[str] = None
+    outcome: str = "running"
+    failure_reason: Optional[str] = None
 
 
 class StageStatus(BaseModel):
@@ -63,6 +89,13 @@ class StageStatus(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     blocking_reasons: List[str] = Field(default_factory=list)
     summary: Dict[str, Any] = Field(default_factory=dict)
+    dependencies: List[str] = Field(default_factory=list)
+    attempt_count: int = 0
+    attempts: List[StageAttempt] = Field(default_factory=list)
+    input_fingerprint: str = ""
+    output_fingerprint: str = ""
+    artifact_checksums: Dict[str, str] = Field(default_factory=dict)
+    logical_artifact_paths: Dict[str, str] = Field(default_factory=dict)
 
 
 class StageFailure(RuntimeError):
@@ -74,6 +107,9 @@ class StageFailure(RuntimeError):
 class EndToEndRequest(BaseModel):
     run_id: str
     selected_stages: List[PipelineStage]
+    action: RunAction = "run"
+    profile: RunProfile = "custom"
+    from_stage: Optional[PipelineStage] = None
     source_mode: SourceMode = "existing"
     registry_mode: Optional[RegistryMode] = None
     registry_path: Optional[str] = None
@@ -87,6 +123,14 @@ class EndToEndRequest(BaseModel):
     apply_registry_update: bool = False
     allow_web_collection: bool = False
     allow_external_upload: bool = False
+    allow_external_source_upload: bool = False
+    allow_external_eval: bool = False
+    extractor_mode: ExtractorMode = "none"
+    public_package_path: str = str(ROOT / "Test" / "v3_public_smoke_package" / "skill_extraction_prompt_package.json")
+    provider: str = "deepseek"
+    model: Optional[str] = None
+    deepseek_model: str = "deepseek-v4-flash"
+    max_candidates: int = 8
     reuse_existing: bool = False
     force_stage: bool = False
     review_spec_path: Optional[str] = None
@@ -98,10 +142,19 @@ class EndToEndRequest(BaseModel):
     env_path: str = str(DEFAULT_ENV_PATH)
     python_exe: str = sys.executable
     timeout_seconds: int = 0
+    generation_seed: int = 0
+
+
+class ExternalEffectsLedger(BaseModel):
+    web_collection: bool = False
+    external_source_upload: bool = False
+    llm_extraction: bool = False
+    eval_preparation: bool = False
+    external_eval: bool = False
 
 
 class EndToEndManifest(BaseModel):
-    end_to_end_manifest_version: str = "v3.end_to_end_pipeline.1"
+    end_to_end_manifest_version: str = "v3.end_to_end_pipeline.2"
     run_id: str
     created_at: str
     updated_at: str
@@ -116,6 +169,17 @@ class EndToEndManifest(BaseModel):
     registry_entry_count_initial: int = 0
     stages: Dict[str, StageStatus] = Field(default_factory=dict)
     notes: List[str] = Field(default_factory=list)
+    run_status: str = "pending"
+    request_sha256: str = ""
+    git_commit: str = "unknown"
+    runtime_summary: Dict[str, Any] = Field(default_factory=dict)
+    input_fingerprints: Dict[str, str] = Field(default_factory=dict)
+    external_effects: ExternalEffectsLedger = Field(default_factory=ExternalEffectsLedger)
+    artifact_index: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+    content_fingerprint: str = ""
+    acceptance_report_path: str = ""
+    lifecycle_index_path: str = ""
+    training_candidate_index_path: str = ""
 
 
 class EndToEndPipeline:
@@ -129,39 +193,117 @@ class EndToEndPipeline:
         run_dir = Path(output_root) / request.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         manifest = self._load_or_create_manifest(request, run_dir)
+        if manifest.end_to_end_manifest_version != "v3.end_to_end_pipeline.2":
+            raise ValueError("Legacy V1 manifests are status-only; start a new V2 run instead of resuming in place.")
+        if manifest.stages and request.action == "run" and not request.reuse_existing:
+            raise ValueError("Run id already exists. Use --action resume or --action rerun instead of overwriting it.")
+        if request.action in {"resume", "rerun"}:
+            if not self._requests_resume_compatible(manifest.request, request):
+                raise ValueError("Resume configuration conflicts with the frozen request; start a new run id.")
+            request = manifest.request.model_copy(
+                update={
+                    "action": request.action,
+                    "from_stage": request.from_stage,
+                    "reuse_existing": True,
+                    "force_stage": request.action == "rerun",
+                    "timeout_seconds": request.timeout_seconds or manifest.request.timeout_seconds,
+                }
+            )
+        manifest.run_status = "running"
         manifest = self._prepare_registry_state(request, run_dir, manifest)
         selected_stages = self._expanded_stages(request.selected_stages)
 
+        if request.action == "rerun":
+            if not request.from_stage:
+                raise ValueError("--action rerun requires --from-stage.")
+            self._invalidate_from(manifest, request.from_stage)
+            selected_stages = STAGE_ORDER[STAGE_ORDER.index(request.from_stage) :]
+
         for stage in selected_stages:
             existing = manifest.stages.get(stage)
-            if existing and existing.state == "completed" and request.reuse_existing and not request.force_stage:
-                existing.warnings = sorted(set(existing.warnings + ["Stage reused from a previous completed run."]))
-                self._write_manifest(manifest)
-                self._write_summary(manifest)
-                continue
+            if existing and existing.state in {"completed", "reused"} and request.reuse_existing and not request.force_stage:
+                current_input_fingerprint = self._stage_input_fingerprint(stage, request, manifest)
+                if self._stage_artifacts_valid(existing) and existing.input_fingerprint == current_input_fingerprint:
+                    existing.state = "reused"
+                    existing.warnings = sorted(set(existing.warnings + ["Stage reused after checksum validation."]))
+                    self._write_manifest(manifest)
+                    self._write_summary(manifest)
+                    continue
+                existing.state = "invalidated"
+                existing.warnings = sorted(set(existing.warnings + ["Completed stage invalidated because input fingerprints or artifact checksums no longer match."]))
+
+            prior_attempts = list(existing.attempts) if existing else []
+            attempt_number = (existing.attempt_count if existing else 0) + 1
+            running = StageStatus(
+                stage=stage,
+                state="running",
+                started_at=self._now(),
+                dependencies=STAGE_ORDER[: STAGE_ORDER.index(stage)],
+                attempt_count=attempt_number,
+                attempts=prior_attempts + [StageAttempt(attempt=attempt_number, started_at=self._now())],
+                input_fingerprint=self._stage_input_fingerprint(stage, request, manifest),
+            )
+            manifest.stages[stage] = running
+            self._write_manifest(manifest)
+            self._write_summary(manifest)
             try:
-                manifest.stages[stage] = self._run_stage(stage, request, run_dir, manifest)
+                result = self._run_stage(stage, request, run_dir, manifest)
+                result.dependencies = running.dependencies
+                result.attempt_count = attempt_number
+                result.attempts = running.attempts
+                result.input_fingerprint = running.input_fingerprint
+                result.artifact_checksums = self._artifact_checksums(result.artifact_paths)
+                result.logical_artifact_paths = self._logical_paths(result.artifact_paths, run_dir)
+                result.output_fingerprint = self._hash_json(
+                    {"summary": result.summary, "checksums": result.artifact_checksums}
+                )
+                result.attempts[-1].finished_at = self._now()
+                result.attempts[-1].outcome = "completed"
+                manifest.stages[stage] = result
+                if existing and existing.output_fingerprint and existing.output_fingerprint != result.output_fingerprint:
+                    next_index = STAGE_ORDER.index(stage) + 1
+                    if next_index < len(STAGE_ORDER):
+                        self._invalidate_from(manifest, STAGE_ORDER[next_index])
             except StageFailure as exc:
                 failed = exc.status
                 failed.state = "failed"
                 failed.finished_at = self._now()
+                failed.dependencies = running.dependencies
+                failed.attempt_count = attempt_number
+                failed.attempts = running.attempts
+                failed.attempts[-1].finished_at = failed.finished_at
+                failed.attempts[-1].outcome = "failed"
+                failed.attempts[-1].failure_reason = str(exc)
                 failed.blocking_reasons = sorted(set(failed.blocking_reasons + [str(exc)]))
                 manifest.stages[stage] = failed
+                manifest.run_status = "failed"
                 self._write_manifest(manifest)
                 self._write_summary(manifest)
                 raise RuntimeError(str(exc))
             except Exception as exc:
-                failed = manifest.stages.get(stage) or StageStatus(stage=stage)
+                failed = manifest.stages.get(stage) or running
                 failed.state = "failed"
                 failed.finished_at = self._now()
+                failed.attempt_count = attempt_number
+                failed.attempts = running.attempts
+                failed.attempts[-1].finished_at = failed.finished_at
+                failed.attempts[-1].outcome = "failed"
+                failed.attempts[-1].failure_reason = str(exc)
                 failed.blocking_reasons = sorted(set(failed.blocking_reasons + [str(exc)]))
                 manifest.stages[stage] = failed
+                manifest.run_status = "failed"
                 self._write_manifest(manifest)
                 self._write_summary(manifest)
                 raise
             self._write_manifest(manifest)
             self._write_summary(manifest)
 
+        manifest.run_status = "completed_with_warnings" if any(s.warnings for s in manifest.stages.values()) else "completed"
+        if not self._write_closure_artifacts(manifest):
+            manifest.run_status = "failed"
+            self._write_manifest(manifest)
+            self._write_summary(manifest)
+            raise RuntimeError("End-to-end acceptance contract failed; inspect acceptance_report.json.")
         self._write_manifest(manifest)
         self._write_summary(manifest)
         return manifest
@@ -205,6 +347,18 @@ class EndToEndPipeline:
         manifest_registry_path = manifest.active_registry_path
         status.summary["active_registry_path"] = manifest_registry_path
         status.summary["registry_mode"] = manifest.registry_mode
+        if request.source_mode == "public_fixture":
+            package_path = Path(request.public_package_path)
+            if not package_path.exists():
+                raise ValueError(f"Public smoke prompt package does not exist: {package_path}")
+            return self._run_prompt_package_pipeline(
+                status,
+                request,
+                stage_dir,
+                manifest,
+                package_path,
+                smoke_only=request.extractor_mode == "mock",
+            )
         if request.source_mode == "existing":
             status.summary.update(
                 {
@@ -229,6 +383,15 @@ class EndToEndPipeline:
             result = self._run_command("local_source_to_skill", cmd, stage_dir, request.timeout_seconds)
             status.command_results.append(result)
             status.artifact_paths["local_prompt_package"] = str(output_dir / "skill_extraction_prompt_package.json")
+            if request.extractor_mode in {"mock", "llm"}:
+                return self._run_prompt_package_pipeline(
+                    status,
+                    request,
+                    stage_dir,
+                    manifest,
+                    output_dir / "skill_extraction_prompt_package.json",
+                    smoke_only=request.extractor_mode == "mock",
+                )
             status.summary.update(
                 {
                     "source_mode": "local",
@@ -269,8 +432,11 @@ class EndToEndPipeline:
             cmd.extend(["--collection-dir", collection_dir])
         if request.allow_web_collection:
             cmd.append("--allow-web-collection")
-        if request.allow_external_upload:
+            manifest.external_effects.web_collection = True
+        if request.allow_external_upload or request.allow_external_source_upload:
             cmd.append("--allow-external-upload")
+            manifest.external_effects.external_source_upload = True
+            manifest.external_effects.llm_extraction = True
         if request.reuse_existing:
             cmd.append("--reuse-existing")
         if not self._should_write_registry(request, manifest):
@@ -299,6 +465,124 @@ class EndToEndPipeline:
                 "registry_entry_count_before": payload.get("registry_entry_count_before"),
                 "registry_entry_count_after": payload.get("registry_entry_count_after"),
                 "registry_entry_delta_this_run": payload.get("registry_entry_delta_this_run"),
+            }
+        )
+        return status
+
+    def _run_prompt_package_pipeline(
+        self,
+        status: StageStatus,
+        request: EndToEndRequest,
+        stage_dir: Path,
+        manifest: EndToEndManifest,
+        prompt_package: Path,
+        *,
+        smoke_only: bool,
+    ) -> StageStatus:
+        if request.extractor_mode not in {"mock", "llm"}:
+            raise ValueError("Prompt-package source mode requires extractor_mode mock or llm.")
+        extraction_dir = stage_dir / "extraction"
+        review_dir = stage_dir / "review"
+        extractor_runner = (
+            "run_v3_mock_skill_extractor.py"
+            if request.extractor_mode == "mock"
+            else "run_v3_llm_skill_extractor.py"
+        )
+        cmd = [
+            request.python_exe,
+            str(self.test_dir / extractor_runner),
+            "--prompt-package",
+            str(prompt_package),
+            "--output-dir",
+            str(extraction_dir),
+            "--max-candidates",
+            str(request.max_candidates),
+        ]
+        if request.extractor_mode == "llm":
+            if not (request.allow_external_source_upload or request.allow_external_upload):
+                raise ValueError("LLM extraction requires --allow-external-source-upload.")
+            cmd.extend(
+                [
+                    "--provider",
+                    request.provider,
+                    "--deepseek-model",
+                    request.deepseek_model,
+                    "--env-path",
+                    request.env_path,
+                    "--allow-external-upload",
+                ]
+            )
+            if request.model:
+                cmd.extend(["--model", request.model])
+            manifest.external_effects.external_source_upload = True
+            manifest.external_effects.llm_extraction = True
+        status.command_results.append(
+            self._run_command("skill_extractor", cmd, stage_dir, request.timeout_seconds)
+        )
+        candidate_path = extraction_dir / "extracted_skill_candidates.json"
+        status.command_results.append(
+            self._run_command(
+                "skill_candidate_reviewer",
+                [
+                    request.python_exe,
+                    str(self.test_dir / "run_v3_skill_candidate_reviewer.py"),
+                    "--candidates",
+                    str(candidate_path),
+                    "--output-dir",
+                    str(review_dir),
+                ],
+                stage_dir,
+                request.timeout_seconds,
+            )
+        )
+        accepted_path = review_dir / "accepted_skill_candidates.json"
+        registry_report = stage_dir / "scratch_registry_update_report.json"
+        status.command_results.append(
+            self._run_command(
+                "scratch_registry_update",
+                [
+                    request.python_exe,
+                    str(self.test_dir / "run_v3_skill_registry_update.py"),
+                    "--candidates",
+                    str(accepted_path),
+                    "--registry-path",
+                    manifest.active_registry_path,
+                    "--report-path",
+                    str(registry_report),
+                ],
+                stage_dir,
+                request.timeout_seconds,
+            )
+        )
+        extraction = self._safe_load(extraction_dir / "skill_extraction_report.json")
+        review = self._safe_load(review_dir / "skill_candidate_review_report.json")
+        update = self._safe_load(registry_report)
+        final_count = self._registry_entry_count(Path(manifest.active_registry_path))
+        status.artifact_paths.update(
+            {
+                "prompt_package": str(prompt_package),
+                "extraction_dir": str(extraction_dir),
+                "review_dir": str(review_dir),
+                "extracted_candidates": str(candidate_path),
+                "accepted_candidates": str(accepted_path),
+                "registry_update_report": str(registry_report),
+            }
+        )
+        status.summary.update(
+            {
+                "source_mode": request.source_mode,
+                "extractor_mode": request.extractor_mode,
+                "provider_used": extraction.get("provider_used") or extraction.get("extractor") or request.extractor_mode,
+                "smoke_only": smoke_only,
+                "candidate_count": extraction.get("candidate_count"),
+                "accepted_count": review.get("accepted_count"),
+                "revise_count": review.get("revise_count"),
+                "rejected_count": review.get("rejected_count"),
+                "registry_update_mode": "updated",
+                "registry_entry_count_before": manifest.registry_entry_count_initial,
+                "registry_entry_count_after": final_count,
+                "registry_entry_delta_this_run": final_count - manifest.registry_entry_count_initial,
+                "registry_report": update,
             }
         )
         return status
@@ -431,10 +715,12 @@ class EndToEndPipeline:
             "--python-exe",
             request.python_exe,
         ]
-        if DEFAULT_MOTIF_GRAMMAR_PATH.exists():
-            cmd.extend(["--motif-grammar-path", str(DEFAULT_MOTIF_GRAMMAR_PATH)])
-        if DEFAULT_WORKFLOW_ASSET_PATH.exists():
-            cmd.extend(["--workflow-asset-path", str(DEFAULT_WORKFLOW_ASSET_PATH)])
+        motif_grammar_path = self.root / "SkillRegistry" / "v3_motif_graph_grammar.experimental.json"
+        workflow_asset_path = self.root / "SkillRegistry" / "v3_workflow_archetype_registry.experimental.json"
+        if motif_grammar_path.exists():
+            cmd.extend(["--motif-grammar-path", str(motif_grammar_path)])
+        if workflow_asset_path.exists():
+            cmd.extend(["--workflow-asset-path", str(workflow_asset_path)])
         result = self._run_command("production_batch_runner", cmd, stage_dir, request.timeout_seconds)
         status.command_results.append(result)
         batch_dir = stage_dir / request.run_id
@@ -598,8 +884,8 @@ class EndToEndPipeline:
         stage_dir: Path,
         manifest: EndToEndManifest,
     ) -> StageStatus:
-        if request.eval_mode == "execute" and not request.run_eval:
-            raise ValueError("--eval-mode execute requires explicit --run-eval.")
+        if request.eval_mode == "execute" and not (request.run_eval and request.allow_external_eval):
+            raise ValueError("External eval requires eval_mode=execute, --run-eval, and --allow-external-eval.")
         manifest_path = self._artifact(manifest, "task_generation", "production_batch_manifest")
         if not manifest_path:
             raise ValueError("task_generation must run before rw_task_eval.")
@@ -620,8 +906,10 @@ class EndToEndPipeline:
         ]
         for model in models:
             cmd.extend(["--model", model])
+        manifest.external_effects.eval_preparation = True
         if request.eval_mode == "execute":
             cmd.append("--run-eval")
+            manifest.external_effects.external_eval = True
             if request.allow_draft_eval:
                 cmd.append("--allow-draft-eval")
         status.command_results.append(self._run_command("eval_orchestrator", cmd, stage_dir, request.timeout_seconds))
@@ -650,6 +938,7 @@ class EndToEndPipeline:
         command_dir.mkdir(parents=True, exist_ok=True)
         stdout_path = command_dir / f"{label}.stdout.txt"
         stderr_path = command_dir / f"{label}.stderr.txt"
+        started = time.monotonic()
         result = subprocess.run(
             cmd,
             cwd=str(self.root),
@@ -664,11 +953,12 @@ class EndToEndPipeline:
         parsed = self._parse_json_stdout(result.stdout or "")
         command_result = StageCommandResult(
             label=label,
-            command=cmd,
+            command=self._redact_command(cmd),
             returncode=result.returncode,
             stdout_path=str(stdout_path),
             stderr_path=str(stderr_path),
             parsed_stdout=parsed,
+            duration_seconds=round(time.monotonic() - started, 6),
         )
         if result.returncode != 0:
             tail = (result.stderr or result.stdout or "")[-1200:]
@@ -677,16 +967,17 @@ class EndToEndPipeline:
 
     def _write_manifest(self, manifest: EndToEndManifest) -> None:
         manifest.updated_at = self._now()
-        Path(manifest.stage_status_path).write_text(
-            json.dumps(
-                {stage: status.model_dump(mode="json") for stage, status in manifest.stages.items()},
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
+        manifest.artifact_index = {
+            stage: dict(status.logical_artifact_paths)
+            for stage, status in manifest.stages.items()
+            if status.logical_artifact_paths
+        }
+        self._atomic_write_json(
+            Path(manifest.stage_status_path),
+            {stage: status.model_dump(mode="json") for stage, status in manifest.stages.items()},
         )
         manifest_path = Path(manifest.run_dir) / "end_to_end_run_manifest.json"
-        manifest_path.write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+        self._atomic_write_json(manifest_path, manifest.model_dump(mode="json"))
 
     def _write_summary(self, manifest: EndToEndManifest) -> None:
         task_summary = self._task_summary(manifest)
@@ -694,8 +985,10 @@ class EndToEndPipeline:
         eval_summary = self._summary_for(manifest, "rw_task_eval")
         source_summary = self._summary_for(manifest, "source_to_skills")
         payload = {
-            "end_to_end_summary_version": "v3.end_to_end_summary.1",
+            "end_to_end_summary_version": "v3.end_to_end_summary.2",
             "run_id": manifest.run_id,
+            "profile": manifest.request.profile,
+            "run_status": manifest.run_status,
             "updated_at": self._now(),
             "stage_states": {stage: status.state for stage, status in manifest.stages.items()},
             "registry_summary": self._registry_summary(manifest),
@@ -718,12 +1011,17 @@ class EndToEndPipeline:
             "blocking_reasons": {
                 stage: status.blocking_reasons for stage, status in manifest.stages.items() if status.blocking_reasons
             },
+            "external_effects": manifest.external_effects.model_dump(mode="json"),
+            "content_fingerprint": manifest.content_fingerprint,
+            "acceptance_report_path": manifest.acceptance_report_path,
+            "lifecycle_index_path": manifest.lifecycle_index_path,
+            "training_candidate_index_path": manifest.training_candidate_index_path,
             "notes": [
                 "This is a report-first end-to-end summary; it does not mutate registry state unless apply_registry_update was explicitly enabled.",
                 "External model evaluation remains dry-run unless eval_mode=execute and run_eval are both set.",
             ],
         }
-        Path(manifest.summary_report_path).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._atomic_write_json(Path(manifest.summary_report_path), payload)
 
     def _load_or_create_manifest(self, request: EndToEndRequest, run_dir: Path) -> EndToEndManifest:
         now = self._now()
@@ -731,17 +1029,21 @@ class EndToEndPipeline:
         if manifest_path.exists():
             payload = load_json_file(str(manifest_path))
             if isinstance(payload, dict):
-                payload["request"] = request.model_dump(mode="json")
                 payload["updated_at"] = now
                 payload["run_dir"] = str(run_dir)
                 payload["stage_status_path"] = str(run_dir / "stage_status.json")
                 payload["summary_report_path"] = str(run_dir / "end_to_end_summary_report.json")
-                return EndToEndManifest.model_validate(payload)
-        return EndToEndManifest(
+                loaded = EndToEndManifest.model_validate(payload)
+                loaded.input_fingerprints.update(self._collect_input_fingerprints(loaded.request))
+                loaded.runtime_summary.update(self._runtime_summary(run_dir))
+                return loaded
+        frozen = request.model_copy(update={"action": "run", "from_stage": None, "reuse_existing": False, "force_stage": False})
+        request_sha = self._request_sha(frozen)
+        manifest = EndToEndManifest(
             run_id=request.run_id,
             created_at=now,
             updated_at=now,
-            request=request,
+            request=frozen,
             run_dir=str(run_dir),
             stage_status_path=str(run_dir / "stage_status.json"),
             summary_report_path=str(run_dir / "end_to_end_summary_report.json"),
@@ -754,12 +1056,18 @@ class EndToEndPipeline:
                 "The central pipeline reuses existing report-first runners and records their original artifacts.",
                 "Use --force-stage to rerun a completed stage, and --reuse-existing to avoid rerunning completed stages.",
             ],
+            request_sha256=request_sha,
+            git_commit=self._git_commit(),
+            runtime_summary=self._runtime_summary(run_dir),
         )
+        manifest.input_fingerprints.update(self._collect_input_fingerprints(request))
+        return manifest
 
     def _expanded_stages(self, stages: List[PipelineStage]) -> List[PipelineStage]:
         if not stages:
             return STAGE_ORDER
-        return stages
+        furthest = max(STAGE_ORDER.index(stage) for stage in stages)
+        return STAGE_ORDER[: furthest + 1]
 
     def _artifact(self, manifest: EndToEndManifest, stage: str, key: str) -> Optional[str]:
         status = manifest.stages.get(stage)
@@ -876,6 +1184,25 @@ class EndToEndPipeline:
         if registry_mode == "fresh_scratch" and request.registry_path:
             raise ValueError("--registry-path cannot be combined with --registry-mode fresh_scratch.")
 
+        canonical_path = self.root / "SkillRegistry" / "v3_skill_registry.json"
+        if canonical_path.exists():
+            manifest.input_fingerprints["canonical_registry_before"] = self._sha256_file(canonical_path)
+
+        if registry_mode == "snapshot_scratch":
+            if request.registry_path:
+                raise ValueError("--registry-path cannot be combined with --registry-mode snapshot_scratch.")
+            active_path = run_dir / "00_run_state" / "v3_skill_registry.snapshot.json"
+            if not active_path.exists():
+                active_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(canonical_path, active_path)
+            manifest.registry_mode = "snapshot_scratch"
+            manifest.active_registry_path = str(active_path)
+            manifest.canonical_registry_path = str(canonical_path)
+            manifest.scratch_registry_initialized = True
+            if not manifest.stages:
+                manifest.registry_entry_count_initial = self._registry_entry_count(active_path)
+            return manifest
+
         if registry_mode == "fresh_scratch":
             active_path = run_dir / "00_run_state" / "v3_skill_registry.scratch.json"
             scratch_initialized = self._initialize_scratch_registry(active_path)
@@ -883,7 +1210,7 @@ class EndToEndPipeline:
                 manifest.registry_entry_count_initial = 0
             manifest.registry_mode = "fresh_scratch"
             manifest.active_registry_path = str(active_path)
-            manifest.canonical_registry_path = str(DEFAULT_REGISTRY_PATH)
+            manifest.canonical_registry_path = str(canonical_path)
             manifest.scratch_registry_initialized = manifest.scratch_registry_initialized or scratch_initialized or active_path.exists()
             return manifest
 
@@ -892,13 +1219,13 @@ class EndToEndPipeline:
             registry_mode = "fresh_scratch"
             manifest.registry_mode = registry_mode
             manifest.active_registry_path = str(active_path)
-            manifest.canonical_registry_path = str(DEFAULT_REGISTRY_PATH)
+            manifest.canonical_registry_path = str(canonical_path)
             manifest.scratch_registry_initialized = active_path.exists()
             if manifest.registry_entry_count_initial == 0 and not active_path.exists():
                 manifest.registry_entry_count_initial = 0
             return manifest
 
-        active_path = Path(request.registry_path) if request.registry_path else Path(DEFAULT_REGISTRY_PATH)
+        active_path = Path(request.registry_path) if request.registry_path else canonical_path
         initial_count = manifest.registry_entry_count_initial
         if active_path != resumed_active_path:
             initial_count = self._registry_entry_count(active_path)
@@ -908,7 +1235,7 @@ class EndToEndPipeline:
             initial_count = self._registry_entry_count(active_path)
         manifest.registry_mode = registry_mode
         manifest.active_registry_path = str(active_path)
-        manifest.canonical_registry_path = str(DEFAULT_REGISTRY_PATH)
+        manifest.canonical_registry_path = str(canonical_path)
         manifest.scratch_registry_initialized = False
         manifest.registry_entry_count_initial = initial_count
         return manifest
@@ -961,7 +1288,11 @@ class EndToEndPipeline:
                     "fresh_scratch requires source_to_skills to extract new skills; source-mode existing cannot populate an empty registry.",
                     status,
                 )
-            if manifest.registry_mode == "fresh_scratch" and request.source_mode == "local":
+            if (
+                manifest.registry_mode == "fresh_scratch"
+                and request.source_mode == "local"
+                and request.extractor_mode == "none"
+            ):
                 raise StageFailure(
                     "fresh_scratch cannot continue from source-mode local yet because local mode only builds a prompt package and does not populate a registry.",
                     status,
@@ -1006,9 +1337,344 @@ class EndToEndPipeline:
         request: EndToEndRequest,
         manifest: EndToEndManifest,
     ) -> bool:
-        if manifest.registry_mode == "fresh_scratch":
+        if manifest.registry_mode in {"fresh_scratch", "snapshot_scratch"}:
             return True
         return request.apply_registry_update
+
+    def _write_closure_artifacts(self, manifest: EndToEndManifest) -> bool:
+        run_dir = Path(manifest.run_dir)
+        production_manifest_path = self._artifact(manifest, "task_generation", "production_batch_manifest")
+        production = self._safe_load(production_manifest_path) if production_manifest_path else {}
+        cases = [case for case in (production.get("cases") or []) if isinstance(case, dict)]
+        source = self._summary_for(manifest, "source_to_skills")
+        registry = self._summary_for(manifest, "registry_prepare")
+        tasks = self._summary_for(manifest, "task_generation")
+        review = self._summary_for(manifest, "production_review")
+        eval_summary = self._summary_for(manifest, "rw_task_eval")
+        metrics = {
+            "candidate_count": int(source.get("candidate_count") or 0),
+            "accepted_count": int(source.get("accepted_count") or 0),
+            "sample_ready_count": int(registry.get("selected_count") or 0),
+            "generated_case_count": int(tasks.get("completed_case_count") or 0),
+            "candidate_ready_count": int(tasks.get("candidate_ready_count") or 0),
+            "verifier_pass_count": sum(case.get("verifier_status") == "pass" for case in cases),
+            "export_compatible_count": sum("compatible" in str(case.get("validation_status") or "") for case in cases),
+            "qa_blocked_count": int(review.get("blocked_count") or 0),
+            "prepared_eval_count": int(eval_summary.get("prepared_model_count") or 0),
+            "executed_eval_count": int(eval_summary.get("executed_model_count") or 0),
+        }
+        requirements: Dict[str, bool] = {"executed_eval_count_is_zero": metrics["executed_eval_count"] == 0}
+        contract = self._safe_load(Path(manifest.request.public_package_path).parent / "acceptance_contract.json")
+        if manifest.request.profile == "public-smoke-offline":
+            expected = contract.get("offline") or {}
+            requirements.update(
+                {
+                    "candidate_count_exact": metrics["candidate_count"] == int(expected.get("candidate_count", 4)),
+                    "accepted_count_exact": metrics["accepted_count"] == int(expected.get("accepted_count", 4)),
+                    "sample_ready_count_exact": metrics["sample_ready_count"] == int(expected.get("sample_ready_count", 3)),
+                    "candidate_ready_exact": metrics["candidate_ready_count"] == int(expected.get("candidate_ready_count", 2)),
+                    "verifier_exact": metrics["verifier_pass_count"] == int(expected.get("verifier_pass_count", 2)),
+                    "export_exact": metrics["export_compatible_count"] == int(expected.get("export_compatible_count", 2)),
+                    "qa_non_blocking": metrics["qa_blocked_count"] == 0,
+                    "prepared_eval_exact": metrics["prepared_eval_count"] == 1,
+                    "no_external_source_effect": not manifest.external_effects.external_source_upload,
+                    "no_external_eval": not manifest.external_effects.external_eval,
+                }
+            )
+        elif manifest.request.profile == "public-smoke-llm":
+            expected = contract.get("llm_minimum") or {}
+            requirements.update(
+                {
+                    "candidate_count_min": metrics["candidate_count"] >= int(expected.get("candidate_count", 3)),
+                    "accepted_count_min": metrics["accepted_count"] >= int(expected.get("accepted_count", 2)),
+                    "sample_ready_count_min": metrics["sample_ready_count"] >= int(expected.get("sample_ready_count", 2)),
+                    "candidate_ready_min": metrics["candidate_ready_count"] >= int(expected.get("candidate_ready_count", 1)),
+                    "verifier_min": metrics["verifier_pass_count"] >= int(expected.get("verifier_pass_count", 1)),
+                    "export_min": metrics["export_compatible_count"] >= int(expected.get("export_compatible_count", 1)),
+                    "qa_non_blocking": metrics["qa_blocked_count"] == 0,
+                    "llm_extraction_recorded": manifest.external_effects.llm_extraction,
+                    "no_external_eval": not manifest.external_effects.external_eval,
+                }
+            )
+
+        canonical = Path(manifest.canonical_registry_path)
+        canonical_after = self._sha256_file(canonical) if canonical.exists() else ""
+        canonical_before = manifest.input_fingerprints.get("canonical_registry_before", "")
+        requirements["canonical_registry_unchanged"] = bool(canonical_before) and canonical_before == canonical_after
+
+        manifest.content_fingerprint = self._content_fingerprint(manifest, cases)
+        acceptance_path = run_dir / "acceptance_report.json"
+        acceptance = {
+            "acceptance_version": "v3.end_to_end_acceptance.1",
+            "run_id": manifest.run_id,
+            "profile": manifest.request.profile,
+            "passed": all(requirements.values()),
+            "metrics": metrics,
+            "requirements": requirements,
+            "content_fingerprint": manifest.content_fingerprint,
+            "external_effects": manifest.external_effects.model_dump(mode="json"),
+            "canonical_registry_before_sha256": canonical_before,
+            "canonical_registry_after_sha256": canonical_after,
+        }
+        self._atomic_write_json(acceptance_path, acceptance)
+        manifest.acceptance_report_path = str(acceptance_path)
+
+        training_index_path = run_dir / "training_candidate_index.json"
+        training_rows = []
+        for case in cases:
+            if not case.get("training_pool_candidate_eligible"):
+                continue
+            case_dir = Path(str(case.get("case_dir") or ""))
+            training_rows.append(
+                {
+                    "case_id": case.get("case_id"),
+                    "motif": case.get("motif"),
+                    "case_dir": self._logical_path(case_dir, run_dir),
+                    "training_annotation": self._logical_path(case_dir / "training_annotation" / "training_annotation.json", run_dir),
+                    "dataset_row": self._logical_path(case_dir / "rw_task_export" / "dataset_row.json", run_dir),
+                    "formal_training_export_ready": False,
+                }
+            )
+        self._atomic_write_json(
+            training_index_path,
+            {"version": "v3.training_candidate_index.1", "count": len(training_rows), "candidates": training_rows},
+        )
+        manifest.training_candidate_index_path = str(training_index_path)
+
+        lifecycle_path = run_dir / "lifecycle_index.json"
+        lifecycle = self._lifecycle_index(manifest, cases[0] if cases else None)
+        self._atomic_write_json(lifecycle_path, lifecycle)
+        manifest.lifecycle_index_path = str(lifecycle_path)
+        return bool(acceptance["passed"])
+
+    def _lifecycle_index(self, manifest: EndToEndManifest, case: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        run_dir = Path(manifest.run_dir)
+        if not case:
+            return {"version": "v3.lifecycle_index.1", "run_id": manifest.run_id, "status": "no_task"}
+        case_dir = Path(str(case.get("case_dir") or ""))
+        paths = {
+            "source_evidence": self._artifact(manifest, "source_to_skills", "prompt_package") or "",
+            "accepted_skills": self._artifact(manifest, "source_to_skills", "accepted_candidates") or "",
+            "subgraph": str(case_dir / "subgraph_sampler" / "pipeline_b_subgraph_report.json"),
+            "blueprint": str(case_dir / "prototype" / "draft_task_blueprint.json"),
+            "reference_files": str(case_dir / "reference_file_generation" / "reference_files"),
+            "golden_run": str(case_dir / "teacher_runner" / "golden_run.json"),
+            "training_annotation": str(case_dir / "training_annotation" / "training_annotation.json"),
+            "rubric": str(case_dir / "rubric" / "rubric.json"),
+            "quality_report": str(case_dir / "quality_gate" / "pipeline_b_quality_report.json"),
+            "rw_task_export": str(case_dir / "rw_task_export"),
+        }
+        return {
+            "version": "v3.lifecycle_index.1",
+            "run_id": manifest.run_id,
+            "case_id": case.get("case_id"),
+            "task_state": case.get("task_state"),
+            "verifier_status": case.get("verifier_status"),
+            "validation_status": case.get("validation_status"),
+            "paths": {key: self._logical_path(Path(value), run_dir) if value else "" for key, value in paths.items()},
+        }
+
+    def _content_fingerprint(self, manifest: EndToEndManifest, cases: List[Dict[str, Any]]) -> str:
+        payload: Dict[str, Any] = {
+            "source": {
+                key: value
+                for key, value in self._summary_for(manifest, "source_to_skills").items()
+                if key in {"extractor_mode", "candidate_count", "accepted_count", "revise_count", "rejected_count"}
+            },
+            "registry": {
+                key: value
+                for key, value in self._summary_for(manifest, "registry_prepare").items()
+                if key in {"selected_count", "selected_readiness_counts", "selected_motif_counts"}
+            },
+            "cases": [],
+        }
+        for case in cases:
+            case_dir = Path(str(case.get("case_dir") or ""))
+            row = self._safe_load(case_dir / "rw_task_export" / "dataset_row.json")
+            normalized_row = {
+                "prompt": row.get("prompt"),
+                "rubric_json": row.get("rubric_json"),
+                "deliverable_files": row.get("deliverable_files"),
+                "reference_file_names": sorted(Path(str(item)).name for item in (row.get("reference_files") or [])),
+            }
+            reference_hashes = []
+            for path in sorted((case_dir / "rw_task_export" / "reference_files").glob("*")):
+                if path.is_file():
+                    reference_hashes.append({"name": path.name, "sha256": self._semantic_file_hash(path)})
+            payload["cases"].append(
+                {
+                    "motif": case.get("motif"),
+                    "selected_skill_ids": sorted(case.get("selected_skill_ids") or []),
+                    "row": normalized_row,
+                    "reference_hashes": reference_hashes,
+                }
+            )
+        return self._hash_json(payload)
+
+    def _invalidate_from(self, manifest: EndToEndManifest, stage: PipelineStage) -> None:
+        start = STAGE_ORDER.index(stage)
+        for name in STAGE_ORDER[start:]:
+            if name in manifest.stages:
+                manifest.stages[name].state = "invalidated"
+                manifest.stages[name].warnings = sorted(
+                    set(manifest.stages[name].warnings + [f"Invalidated by rerun from {stage}."])
+                )
+
+    def _stage_artifacts_valid(self, status: StageStatus) -> bool:
+        if not status.artifact_checksums:
+            return False
+        for value, expected in status.artifact_checksums.items():
+            path = Path(value)
+            if not path.is_file() or self._sha256_file(path) != expected:
+                return False
+        return True
+
+    def _artifact_checksums(self, paths: Dict[str, str]) -> Dict[str, str]:
+        return {
+            value: self._sha256_file(Path(value))
+            for value in paths.values()
+            if value and Path(value).is_file()
+        }
+
+    def _logical_paths(self, paths: Dict[str, str], run_dir: Path) -> Dict[str, str]:
+        return {key: self._logical_path(Path(value), run_dir) for key, value in paths.items() if value}
+
+    def _logical_path(self, path: Path, run_dir: Path) -> str:
+        try:
+            return str(path.resolve().relative_to(run_dir.resolve())).replace("\\", "/")
+        except (ValueError, OSError):
+            try:
+                return "repo://" + str(path.resolve().relative_to(self.root.resolve())).replace("\\", "/")
+            except (ValueError, OSError):
+                return "runtime://" + path.name
+
+    def _stage_input_fingerprint(
+        self, stage: PipelineStage, request: EndToEndRequest, manifest: EndToEndManifest
+    ) -> str:
+        dependencies = {
+            name: manifest.stages[name].output_fingerprint
+            for name in STAGE_ORDER[: STAGE_ORDER.index(stage)]
+            if name in manifest.stages
+        }
+        return self._hash_json(
+            {
+                "stage": stage,
+                "request_sha256": manifest.request_sha256,
+                "dependencies": dependencies,
+                "input_fingerprints": manifest.input_fingerprints,
+            }
+        )
+
+    def _request_sha(self, request: EndToEndRequest) -> str:
+        return self._hash_json(request.model_dump(mode="json"))
+
+    def _requests_resume_compatible(self, frozen: EndToEndRequest, supplied: EndToEndRequest) -> bool:
+        ignored = {"action", "from_stage", "reuse_existing", "force_stage", "timeout_seconds"}
+        left = frozen.model_dump(mode="json")
+        right = supplied.model_dump(mode="json")
+        for key in ignored:
+            left.pop(key, None)
+            right.pop(key, None)
+        return left == right
+
+    def _collect_input_fingerprints(self, request: EndToEndRequest) -> Dict[str, str]:
+        inputs = {
+            "public_package": Path(request.public_package_path),
+            "public_acceptance_contract": Path(request.public_package_path).parent / "acceptance_contract.json",
+            "motif_grammar": self.root / "SkillRegistry" / "v3_motif_graph_grammar.experimental.json",
+            "workflow_asset": self.root / "SkillRegistry" / "v3_workflow_archetype_registry.experimental.json",
+        }
+        if request.review_spec_path:
+            inputs["review_spec"] = Path(request.review_spec_path)
+        return {name: self._sha256_file(path) for name, path in inputs.items() if path.is_file()}
+
+    def _runtime_summary(self, run_dir: Path) -> Dict[str, Any]:
+        packages = {}
+        for name in ("pydantic", "pandas", "openpyxl", "httpx", "trafilatura", "stirrup", "e2b"):
+            try:
+                packages[name] = importlib_metadata.version(name)
+            except importlib_metadata.PackageNotFoundError:
+                packages[name] = "not_installed"
+        return {
+            "python_version": platform.python_version(),
+            "platform": platform.platform(),
+            "python_executable": sys.executable,
+            "repo_root": str(self.root),
+            "run_root": str(run_dir),
+            "dependencies": packages,
+        }
+
+    def _hash_json(self, payload: Any) -> str:
+        text = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _sha256_file(self, path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _semantic_file_hash(self, path: Path) -> str:
+        suffix = path.suffix.lower()
+        if suffix == ".xlsx":
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(path, data_only=False, read_only=True)
+            payload = []
+            for sheet in workbook.worksheets:
+                rows = []
+                for row in sheet.iter_rows():
+                    cells = [
+                        {"coordinate": cell.coordinate, "value": cell.value, "data_type": cell.data_type}
+                        for cell in row
+                        if cell.value is not None
+                    ]
+                    if cells:
+                        rows.append(cells)
+                payload.append({"title": sheet.title, "rows": rows})
+            workbook.close()
+            return self._hash_json(payload)
+        if suffix == ".docx":
+            with zipfile.ZipFile(path) as archive:
+                members = [
+                    name
+                    for name in archive.namelist()
+                    if name.startswith("word/") and name.endswith(".xml")
+                ]
+                payload = {name: archive.read(name).decode("utf-8", errors="replace") for name in sorted(members)}
+            return self._hash_json(payload)
+        return self._sha256_file(path)
+
+    def _atomic_write_json(self, path: Path, payload: Any) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + ".tmp")
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temporary, path)
+
+    def _git_commit(self) -> str:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(self.root),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+        )
+        return result.stdout.strip() if result.returncode == 0 else "unknown"
+
+    def _redact_command(self, command: List[str]) -> List[str]:
+        redacted: List[str] = []
+        hide_next = False
+        secret_flags = {"--api-key", "--token", "--secret", "--bearer-token"}
+        for value in command:
+            if hide_next:
+                redacted.append("<redacted>")
+                hide_next = False
+            else:
+                redacted.append(value)
+                hide_next = value.lower() in secret_flags
+        return redacted
 
     def _stage_dir_name(self, stage: PipelineStage) -> str:
         index = STAGE_ORDER.index(stage) + 1

@@ -36,8 +36,10 @@ The current roadmap is:
 
 - A. Phase 16 evidence closure — complete.
 - B. Documentation and project-state governance — complete.
-- C. End-to-end automation and server deployment — next.
-- D. Cross-domain generalization — planned after the automation baseline.
+- C. Local end-to-end automation — complete.
+- D. Server reproduction — next.
+- E. Second-domain vertical slice — planned.
+- F. Training-data readiness — planned.
 
 ## 4. Architecture Boundaries
 
@@ -133,6 +135,6 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 ## 10. Next Workstream Boundary
 
-Step C should establish an observable, resumable end-to-end contract from source collection through training-candidate packaging and eval preparation, then deploy that contract to the server. It should begin with stage manifests, configuration boundaries, failure recovery, and local replay before remote deployment.
+Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Step C does not authorize new external eval campaigns, RL training, default-chain promotion, or cross-domain expansion by itself. Those actions require their own explicit scope and evidence plan.
+Milestone D should reproduce this exact contract on the server: fixed environment, injected secrets, portable runtime paths, and local/server structural equivalence. It must not replace the local orchestrator or broaden authorization into external eval, RL training, default-chain promotion, or cross-domain expansion.
