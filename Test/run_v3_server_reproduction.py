@@ -21,7 +21,7 @@ DEFAULT_RELEASE_ROOT = ROOT / "artifacts" / "releases" / "milestone_d"
 DEFAULT_RW_TASK_ROOT = ROOT.parent / "rw-task"
 DEFAULT_SSH_HOST = "serene-cloud"
 RW_TASK_ALLOWED = ("pyproject.toml", "README.md", "bench_standalone")
-FORBIDDEN_NAMES = {".env", "deepseek-key.txt", "artifacts", "result", "evaluation", "e2b", "__pycache__"}
+FORBIDDEN_NAMES = {".env", ".DS_Store", "deepseek-key.txt", "artifacts", "result", "evaluation", "e2b", "__pycache__"}
 
 
 def run(command: list[str], *, cwd: Path = ROOT, check: bool = True) -> subprocess.CompletedProcess[str]:
