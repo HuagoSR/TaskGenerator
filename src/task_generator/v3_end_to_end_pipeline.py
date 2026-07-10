@@ -1634,6 +1634,9 @@ class EndToEndPipeline:
 
     def _semantic_file_hash(self, path: Path) -> str:
         suffix = path.suffix.lower()
+        if suffix in {".md", ".txt", ".csv"}:
+            normalized = path.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+            return hashlib.sha256(normalized.replace("\n", "\r\n").encode("utf-8")).hexdigest()
         if suffix == ".xlsx":
             from openpyxl import load_workbook
 

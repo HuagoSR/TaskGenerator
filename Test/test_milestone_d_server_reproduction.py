@@ -50,6 +50,16 @@ class MilestoneDServerReproductionTests(unittest.TestCase):
         source = (ROOT / "src" / "task_generator" / "v3_end_to_end_pipeline.py").read_text(encoding="utf-8")
         self.assertIn('str(item).replace("/", "\\\\")', source)
 
+    def test_semantic_text_hash_is_newline_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            crlf = root / "crlf.md"
+            lf = root / "lf.md"
+            crlf.write_bytes(b"one\r\ntwo\r\n")
+            lf.write_bytes(b"one\ntwo\n")
+            pipeline = EndToEndPipeline(root)
+            self.assertEqual(pipeline._semantic_file_hash(crlf), pipeline._semantic_file_hash(lf))
+
     def test_compose_is_private_and_resource_bounded(self) -> None:
         text = (ROOT / "deploy" / "docker" / "compose.yaml").read_text(encoding="utf-8")
         self.assertNotIn("ports:", text)
