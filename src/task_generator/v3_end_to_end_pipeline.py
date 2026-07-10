@@ -507,18 +507,18 @@ class EndToEndPipeline:
             str(prompt_package),
             "--output-dir",
             str(extraction_dir),
-                    "--max-candidates",
-                    str(request.max_candidates),
-                    "--max-tokens",
-                    str(request.extractor_max_tokens),
-                    "--output-profile",
-                    request.extractor_output_profile,
+            "--max-candidates",
+            str(request.max_candidates),
         ]
         if request.extractor_mode == "llm":
             if not (request.allow_external_source_upload or request.allow_external_upload):
                 raise ValueError("LLM extraction requires --allow-external-source-upload.")
             cmd.extend(
                 [
+                    "--max-tokens",
+                    str(request.extractor_max_tokens),
+                    "--output-profile",
+                    request.extractor_output_profile,
                     "--provider",
                     request.provider,
                     "--deepseek-model",
