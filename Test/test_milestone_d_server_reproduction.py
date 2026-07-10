@@ -46,6 +46,10 @@ class MilestoneDServerReproductionTests(unittest.TestCase):
             self.assertNotIn("api_key", text.lower())
             self.assertNotIn("bearer", text.lower())
 
+    def test_content_fingerprint_uses_legacy_cross_platform_deliverable_separator(self) -> None:
+        source = (ROOT / "src" / "task_generator" / "v3_end_to_end_pipeline.py").read_text(encoding="utf-8")
+        self.assertIn('str(item).replace("/", "\\\\")', source)
+
     def test_compose_is_private_and_resource_bounded(self) -> None:
         text = (ROOT / "deploy" / "docker" / "compose.yaml").read_text(encoding="utf-8")
         self.assertNotIn("ports:", text)

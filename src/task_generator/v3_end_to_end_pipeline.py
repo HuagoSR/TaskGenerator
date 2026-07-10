@@ -1500,7 +1500,10 @@ class EndToEndPipeline:
             normalized_row = {
                 "prompt": row.get("prompt"),
                 "rubric_json": row.get("rubric_json"),
-                "deliverable_files": row.get("deliverable_files"),
+                # Keep the Milestone C canonical representation stable across Windows and Linux.
+                "deliverable_files": [
+                    str(item).replace("/", "\\") for item in (row.get("deliverable_files") or [])
+                ],
                 "reference_file_names": sorted(Path(str(item)).name for item in (row.get("reference_files") or [])),
             }
             reference_hashes = []
