@@ -184,7 +184,17 @@ def release_payload(release_dir: Path) -> dict:
     return json.loads((release_dir / "release_manifest.json").read_text(encoding="utf-8"))
 
 
-def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None) -> None:
+def _env_value(path: Path, name: str) -> str:
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() == name:
+            return value.strip().strip('"').strip("'")
+    return ""
+
+
+def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, provider_env_source: Path | None) -> None:
     manifest = release_payload(release_dir)
     release_id = manifest["release_id"]
     remote_home = ssh(host, "printf %s \"$HOME\"").stdout.strip()
@@ -204,6 +214,7 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None) -> N
                 f"TASKGEN_RUNS_DIR={remote_home}/taskgenerator-data/runs",
                 f"TASKGEN_INPUT_DIR={remote_home}/taskgenerator-data/inputs",
                 f"TASKGEN_DEEPSEEK_KEY_FILE={remote_home}/taskgenerator-secrets/deepseek_api_key",
+                f"TASKGEN_PROVIDER_ENV_FILE={remote_home}/taskgenerator-secrets/provider.env",
             ]
         ) + "\n",
         encoding="utf-8",
@@ -215,6 +226,16 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None) -> N
         remote_tmp = f"{remote_home}/taskgenerator-secrets/.deepseek_api_key.tmp"
         run(["scp", str(deepseek_key), f"{host}:{remote_tmp}"])
         ssh(host, f"chmod 600 '{remote_tmp}' && mv '{remote_tmp}' '{remote_home}/taskgenerator-secrets/deepseek_api_key'")
+    if provider_env_source:
+        serper_key = _env_value(provider_env_source, "SERPER_API_KEY")
+        if not serper_key:
+            raise RuntimeError("SERPER_API_KEY is missing from the local provider env source.")
+        with tempfile.TemporaryDirectory(prefix="taskgen-provider-") as temporary:
+            minimal = Path(temporary) / "provider.env"
+            minimal.write_text(f"SERPER_API_KEY={serper_key}\n", encoding="utf-8")
+            remote_tmp = f"{remote_home}/taskgenerator-secrets/.provider.env.tmp"
+            run(["scp", str(minimal), f"{host}:{remote_tmp}"])
+            ssh(host, f"chmod 600 '{remote_tmp}' && mv '{remote_tmp}' '{remote_home}/taskgenerator-secrets/provider.env'")
     ssh(host, f"gzip -dc '{remote_release}/{release_id}.image.tar.gz' | docker load >/dev/null")
     ssh(host, f"cd '{remote_home}/taskgenerator-deploy' && ln -sfn '{remote_release}' candidate")
 
@@ -257,6 +278,7 @@ def local_compose(release_dir: Path, service: str, arguments: Iterable[str]) -> 
             "TASKGEN_RUNS_DIR": str(runs.resolve()),
             "TASKGEN_INPUT_DIR": str(inputs.resolve()),
             "TASKGEN_DEEPSEEK_KEY_FILE": str((ROOT / "deepseek-key.txt").resolve()),
+            "TASKGEN_PROVIDER_ENV_FILE": str((ROOT / ".env").resolve()),
         }
     )
     result = subprocess.run(
@@ -287,14 +309,47 @@ def pipeline_args(action: str, run_id: str, mode: str, from_stage: str | None = 
     return args
 
 
+def production_container_name(campaign_id: str, wave: int) -> str:
+    safe = "".join(char if char.isalnum() or char in "-_" else "-" for char in campaign_id)
+    return f"taskgenerator-{safe}-wave-{wave:02d}"
+
+
+def production_start(host: str, release_id: str, campaign_id: str, wave: int, *, resume: bool = False) -> str:
+    name = production_container_name(campaign_id, wave)
+    action = "resume" if resume else "run"
+    command = (
+        f"cd ~/taskgenerator-deploy/releases/{release_id} && "
+        f"(docker rm -f '{name}' >/dev/null 2>&1 || true) && "
+        f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' "
+        "--entrypoint python online Test/run_v3_finance_production_campaign.py "
+        f"--action '{action}' --wave '{wave}' --output-root /data/runs"
+    )
+    return ssh(host, command).stdout.strip()
+
+
+def production_status(host: str, release_id: str, campaign_id: str, wave: int) -> dict:
+    name = production_container_name(campaign_id, wave)
+    inspect = ssh(host, f"docker inspect '{name}' --format '{{{{json .State}}}}'", check=False)
+    state = json.loads(inspect.stdout) if inspect.returncode == 0 and inspect.stdout.strip() else {"Status": "not_found"}
+    command = (
+        f"cd ~/taskgenerator-deploy/releases/{release_id} && "
+        "docker compose --env-file release.env -f compose.yaml run --rm --entrypoint python online "
+        "Test/run_v3_finance_production_campaign.py --action status --output-root /data/runs"
+    )
+    report = ssh(host, command, check=False)
+    payload = json.loads(report.stdout) if report.returncode == 0 and report.stdout.strip().startswith("{") else {"status_error": report.stderr[-1000:]}
+    return {"container": name, "container_state": state, "campaign": payload}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build, deploy, and verify the Milestone D immutable Docker release.")
-    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback"])
+    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch"])
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
     parser.add_argument("--ssh-host", default=DEFAULT_SSH_HOST)
     parser.add_argument("--deepseek-key-file", type=Path, default=ROOT / "deepseek-key.txt")
+    parser.add_argument("--provider-env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--target", choices=["local", "server"], default="server")
     parser.add_argument("--service", choices=["offline", "online"], default="offline", help="Use online only when resuming an explicitly approved LLM run.")
     parser.add_argument("--run-id")
@@ -302,6 +357,10 @@ def main() -> None:
     parser.add_argument("--local-manifest", type=Path)
     parser.add_argument("--remote-manifest", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--campaign-id", default="finance_audit_production_01")
+    parser.add_argument("--wave", type=int, choices=[1, 2, 3, 4], default=1)
+    parser.add_argument("--poll-seconds", type=int, default=30)
+    parser.add_argument("--max-polls", type=int, default=0)
     args = parser.parse_args()
 
     if args.action == "preflight":
@@ -314,8 +373,49 @@ def main() -> None:
         print(json.dumps(release_payload(built), ensure_ascii=False, indent=2))
         return
     if args.action == "deploy":
-        deploy_release(release_dir, args.ssh_host, args.deepseek_key_file)
+        deploy_release(release_dir, args.ssh_host, args.deepseek_key_file, args.provider_env_file)
         print(json.dumps({"deployed_candidate": release_id, "host": args.ssh_host, "activated": False}, ensure_ascii=False))
+        return
+    if args.action in {"production-start", "production-resume"}:
+        container_id = production_start(
+            args.ssh_host,
+            release_id,
+            args.campaign_id,
+            args.wave,
+            resume=args.action == "production-resume",
+        )
+        print(json.dumps({"container_id": container_id, "campaign_id": args.campaign_id, "wave": args.wave}, ensure_ascii=False))
+        return
+    if args.action == "production-status":
+        print(json.dumps(production_status(args.ssh_host, release_id, args.campaign_id, args.wave), ensure_ascii=False, indent=2))
+        return
+    if args.action == "production-logs":
+        name = production_container_name(args.campaign_id, args.wave)
+        result = ssh(args.ssh_host, f"docker logs --tail 200 '{name}'", check=False)
+        print((result.stdout or "") + (result.stderr or ""))
+        return
+    if args.action == "production-monitor":
+        import time
+        polls = 0
+        while args.max_polls == 0 or polls < args.max_polls:
+            payload = production_status(args.ssh_host, release_id, args.campaign_id, args.wave)
+            print(json.dumps(payload, ensure_ascii=False), flush=True)
+            polls += 1
+            state = payload.get("container_state", {})
+            if state.get("Status") in {"exited", "dead", "not_found"}:
+                break
+            time.sleep(max(5, min(args.poll_seconds, 60)))
+        return
+    if args.action == "production-stop":
+        name = production_container_name(args.campaign_id, args.wave)
+        result = ssh(args.ssh_host, f"docker stop -t 30 '{name}'", check=False)
+        print(json.dumps({"container": name, "returncode": result.returncode}, ensure_ascii=False))
+        return
+    if args.action == "production-fetch":
+        destination = release_dir / "fetched" / args.campaign_id
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        run(["scp", "-r", f"{args.ssh_host}:~/taskgenerator-data/runs/{args.campaign_id}", str(destination.parent)])
+        print(destination)
         return
     if args.action == "activate":
         activate_release(release_id, args.ssh_host)

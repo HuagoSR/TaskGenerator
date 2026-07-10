@@ -49,6 +49,8 @@ class PipelineBBatchRunRequest(BaseModel):
     python_exe: str = str(DEFAULT_REAL_WORLD_TASK_PYTHON)
     domain_profile: str = "finance_audit"
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
+    case_index_offset: int = 0
+    motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
 
 
 class PipelineBBatchCaseSummary(BaseModel):
@@ -140,6 +142,8 @@ class PipelineBBatchRunner:
         python_exe: str | Path = DEFAULT_REAL_WORLD_TASK_PYTHON,
         domain_profile: str = "finance_audit",
         domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
+        case_index_offset: int = 0,
+        motif_occurrence_offsets: Optional[Dict[str, int]] = None,
     ) -> PipelineBBatchRunReport:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -162,14 +166,18 @@ class PipelineBBatchRunner:
             python_exe=str(python_exe),
             domain_profile=domain_profile,
             domain_profile_path=str(domain_profile_path),
+            case_index_offset=case_index_offset,
+            motif_occurrence_offsets=dict(motif_occurrence_offsets or {}),
         )
 
         cases: List[PipelineBBatchCaseSummary] = []
-        motif_occurrence_counts: Dict[str, int] = {}
-        for index, motif in enumerate(selected_motifs, start=1):
+        motif_occurrence_counts: Dict[str, int] = dict(motif_occurrence_offsets or {})
+        for local_index, motif in enumerate(selected_motifs, start=1):
+            index = case_index_offset + local_index
             motif_occurrence_index = motif_occurrence_counts.get(motif, 0)
             motif_occurrence_counts[motif] = motif_occurrence_index + 1
-            case_id = f"pipeline_b_batch_{index:02d}_{self._slug(motif)}"
+            width = 2 if case_index_offset == 0 else 3
+            case_id = f"pipeline_b_batch_{index:0{width}d}_{self._slug(motif)}"
             case_dir = output_path / case_id
             try:
                 cases.append(

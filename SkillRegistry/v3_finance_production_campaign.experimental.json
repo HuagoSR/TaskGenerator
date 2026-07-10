@@ -1,0 +1,123 @@
+{
+  "campaign_spec_version": "v3.finance_production_campaign.1",
+  "campaign_id": "finance_audit_production_01",
+  "domain_profile": "finance_audit",
+  "task_language": "en",
+  "report_language": "zh-CN",
+  "provider": "deepseek",
+  "model": "deepseek-v4-flash",
+  "extractor_output_profile": "bounded_production",
+  "max_candidates_per_topic": 6,
+  "max_tokens": 8000,
+  "source_limit_per_topic": 3,
+  "allowed_motifs": [
+    "fan_in_reconciliation",
+    "cross_check_validation",
+    "policy_application"
+  ],
+  "forbidden_motifs": ["evidence_to_deliverable"],
+  "topics": [
+    {
+      "topic_id": "bank_cash_controls",
+      "topic": "bank reconciliation and cash controls",
+      "wave_available": 1,
+      "queries": [
+        "public bank reconciliation procedure cash internal controls guide",
+        "bank reconciliation checklist public university government"
+      ]
+    },
+    {
+      "topic_id": "month_end_close",
+      "topic": "month-end close and account reconciliation",
+      "wave_available": 1,
+      "queries": [
+        "public month end close account reconciliation procedure guide",
+        "account reconciliation checklist month end public guidance"
+      ]
+    },
+    {
+      "topic_id": "accounts_payable",
+      "topic": "accounts payable three-way match and vendor invoice controls",
+      "wave_available": 1,
+      "queries": [
+        "public accounts payable three way match internal control guide",
+        "vendor invoice review purchase order receiving checklist"
+      ]
+    },
+    {
+      "topic_id": "accounts_receivable",
+      "topic": "accounts receivable cash application and revenue support",
+      "wave_available": 1,
+      "queries": [
+        "public accounts receivable reconciliation cash application procedure",
+        "revenue supporting documentation internal control checklist"
+      ]
+    },
+    {
+      "topic_id": "expense_controls",
+      "topic": "expense reimbursement and corporate card controls",
+      "wave_available": 1,
+      "queries": [
+        "public expense reimbursement audit control procedure",
+        "corporate card transaction review checklist public policy"
+      ]
+    },
+    {
+      "topic_id": "payroll_controls",
+      "topic": "payroll reconciliation and payroll controls",
+      "wave_available": 2,
+      "queries": [
+        "public payroll reconciliation internal control procedure",
+        "payroll audit checklist government university"
+      ]
+    },
+    {
+      "topic_id": "inventory_costing",
+      "topic": "inventory count costing and variance reconciliation",
+      "wave_available": 2,
+      "queries": [
+        "public inventory count reconciliation costing procedure",
+        "inventory audit variance checklist public guidance"
+      ]
+    },
+    {
+      "topic_id": "fixed_assets",
+      "topic": "fixed asset register depreciation and disposal controls",
+      "wave_available": 2,
+      "queries": [
+        "public fixed asset register depreciation control procedure",
+        "fixed asset disposal audit checklist public policy"
+      ]
+    },
+    {
+      "topic_id": "audit_evidence",
+      "topic": "audit evidence sampling and internal control testing",
+      "wave_available": 2,
+      "queries": [
+        "public audit evidence sampling internal control testing guide",
+        "internal control test workpaper checklist public guidance"
+      ]
+    },
+    {
+      "topic_id": "budget_variance",
+      "topic": "budget to actual variance and management reporting",
+      "wave_available": 2,
+      "queries": [
+        "public budget actual variance analysis procedure",
+        "management variance reporting checklist public finance"
+      ]
+    }
+  ],
+  "waves": [
+    {"wave": 1, "target_ready": 5, "max_attempts": 5, "case_offset": 0, "motifs": ["fan_in_reconciliation", "cross_check_validation", "fan_in_reconciliation", "cross_check_validation", "policy_application"]},
+    {"wave": 2, "target_ready": 15, "max_attempts": 18, "case_offset": 5, "motif_quota": {"fan_in_reconciliation": 5, "cross_check_validation": 5, "policy_application": 5}},
+    {"wave": 3, "target_ready": 20, "max_attempts": 24, "case_offset": 20, "motif_quota": {"fan_in_reconciliation": 7, "cross_check_validation": 6, "policy_application": 7}},
+    {"wave": 4, "target_ready": 20, "max_attempts": 24, "case_offset": 40, "motif_quota": {"fan_in_reconciliation": 6, "cross_check_validation": 7, "policy_application": 7}}
+  ],
+  "external_effects": {
+    "web_collection": true,
+    "public_source_upload": true,
+    "external_eval": false,
+    "eval_preparation": false
+  }
+}

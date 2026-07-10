@@ -43,6 +43,8 @@ def main() -> None:
     parser.add_argument("--motif", action="append", default=None)
     parser.add_argument("--skill-count", type=int, default=4)
     parser.add_argument("--max-cases", type=int, default=5)
+    parser.add_argument("--case-index-offset", type=int, default=0)
+    parser.add_argument("--motif-occurrence-offset", action="append", default=[])
     parser.add_argument("--allow-caution", action="store_true")
     parser.add_argument("--workflow-archetype", default=None)
     parser.add_argument("--target-difficulty-profile", default=None)
@@ -59,6 +61,12 @@ def main() -> None:
         default=Path(r"D:\miniconda3\envs\real-world-task\python.exe"),
     )
     args = parser.parse_args()
+    motif_occurrence_offsets = {}
+    for item in args.motif_occurrence_offset:
+        if "=" not in item:
+            parser.error("--motif-occurrence-offset must use motif=integer")
+        motif, value = item.split("=", 1)
+        motif_occurrence_offsets[motif] = int(value)
 
     output_dir = args.output_root / args.production_batch_id
     artifact = ProductionBatchRunner().run(
@@ -84,6 +92,8 @@ def main() -> None:
         python_exe=args.python_exe,
         domain_profile=args.domain_profile,
         domain_profile_path=args.domain_profile_path,
+        case_index_offset=args.case_index_offset,
+        motif_occurrence_offsets=motif_occurrence_offsets,
     )
 
     print(

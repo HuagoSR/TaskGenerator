@@ -138,7 +138,8 @@ def run_collector(
         )
     for domain in args.domain:
         cmd.extend(["--domain", domain])
-    for query in args.query:
+    topic_queries = getattr(args, "topic_queries", {}).get(topic, args.query)
+    for query in topic_queries:
         cmd.extend(["--query", query])
     if args.search_backend == "serper":
         cmd.extend(["--serper-api-key-env", args.serper_api_key_env])
@@ -185,6 +186,7 @@ def pipeline_args(args: argparse.Namespace, collection_dir: Path, output_dir: Pa
         deepseek_model=args.deepseek_model,
         max_candidates=args.max_candidates,
         max_tokens=args.max_tokens,
+        output_profile=args.output_profile,
         timeout_seconds=args.timeout_seconds,
         allow_external_upload=args.allow_external_upload,
         reuse_existing=args.reuse_existing,
@@ -290,21 +292,40 @@ def run_topic_batch_with_mode(
             "warnings": [{"code": "collection_failed", "message": "SourceCollector failed; LLM extraction was skipped."}],
         }
 
-    try:
-        pipeline_report = run_web_source_pipeline(pipeline_args(args, collection_dir, pipeline_output_dir))
-    except Exception as exc:
-        source_quality_path = pipeline_output_dir / "source_quality_report.json"
+    pipeline_report = None
+    pipeline_attempts = []
+    for attempt in range(1, args.max_pipeline_attempts + 1):
+        attempt_dir = pipeline_output_dir if attempt == 1 else collection_dir / f"pipeline_a_run_retry_{attempt:02d}"
+        try:
+            pipeline_report = run_web_source_pipeline(pipeline_args(args, collection_dir, attempt_dir))
+            pipeline_output_dir = attempt_dir
+            pipeline_attempts.append({"attempt": attempt, "status": "success", "output_dir": str(attempt_dir)})
+            break
+        except Exception as exc:
+            pipeline_attempts.append(
+                {
+                    "attempt": attempt,
+                    "status": "failed",
+                    "output_dir": str(attempt_dir),
+                    "error_type": type(exc).__name__,
+                    "error": str(exc)[:2000],
+                }
+            )
+    if pipeline_report is None:
+        last_dir = Path(pipeline_attempts[-1]["output_dir"])
+        source_quality_path = last_dir / "source_quality_report.json"
         source_quality = load_json(source_quality_path) if source_quality_path.exists() else None
         return {
             "batch_id": batch_id,
             "topic": topic,
             "status": "pipeline_failed",
             "collection_dir": str(collection_dir),
-            "pipeline_output_dir": str(pipeline_output_dir),
+            "pipeline_output_dir": str(last_dir),
             "collector": collector_report,
             "source_quality": summarize_source_quality(source_quality),
-            "error": str(exc),
-            "warnings": [{"code": "pipeline_failed", "message": "Pipeline A failed after collection; inspect per-topic outputs."}],
+            "pipeline_attempts": pipeline_attempts,
+            "error": pipeline_attempts[-1]["error"],
+            "warnings": [{"code": "pipeline_failed", "message": "Pipeline A failed after the bounded attempt budget; inspect per-topic outputs."}],
         }
 
     source_quality = load_json(Path(pipeline_report["source_quality_report"]))
@@ -316,6 +337,7 @@ def run_topic_batch_with_mode(
         "collection_dir": str(collection_dir),
         "pipeline_output_dir": str(pipeline_output_dir),
         "collector": collector_report,
+        "pipeline_attempts": pipeline_attempts,
         "source_quality": summarize_source_quality(source_quality),
         "candidate_count": pipeline_report.get("candidate_count", 0),
         "accepted_count": pipeline_report.get("accepted_count", 0),
@@ -493,7 +515,9 @@ def main() -> None:
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash")
     parser.add_argument("--max-candidates", type=int, default=15)
     parser.add_argument("--max-tokens", type=int, default=12000)
+    parser.add_argument("--output-profile", choices=["standard", "bounded_smoke", "bounded_production"], default="standard")
     parser.add_argument("--timeout-seconds", type=int, default=180)
+    parser.add_argument("--max-pipeline-attempts", type=int, choices=[1, 2], default=1)
     parser.add_argument("--allow-web-collection", action="store_true")
     parser.add_argument("--allow-external-upload", action="store_true")
     parser.add_argument("--reuse-existing", action="store_true")
@@ -502,10 +526,18 @@ def main() -> None:
     parser.add_argument("--min-text-chars", type=int, default=500)
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
     parser.add_argument("--deepseek-key-path", type=Path, default=DEFAULT_DEEPSEEK_KEY_PATH)
+    parser.add_argument("--topic-queries-path", type=Path)
     parser.add_argument("--build-transition-graph", action="store_true", help="Build report-only transition graph and composition readiness artifacts.")
     parser.add_argument("--skip-registry-update", action="store_true", help="Run extraction, review, and diagnostics without writing accepted candidates into the persistent registry.")
     parser.add_argument("--calibration-only", action="store_true", help="Shortcut for graph calibration: skip persistent registry update and build transition graph reports.")
     args = parser.parse_args()
+    args.topic_queries = {}
+    if args.topic_queries_path:
+        payload = load_json(args.topic_queries_path)
+        args.topic_queries = {
+            str(topic): [str(query) for query in queries]
+            for topic, queries in (payload.get("topics") or payload).items()
+        }
     if args.calibration_only:
         args.skip_registry_update = True
         args.build_transition_graph = True
@@ -543,5 +575,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

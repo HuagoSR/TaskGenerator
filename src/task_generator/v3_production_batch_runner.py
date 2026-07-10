@@ -52,6 +52,8 @@ class ProductionBatchRequest(BaseModel):
     selection_policy: str = "deterministic_pipeline_b_batch_v1"
     domain_profile: str = "finance_audit"
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
+    case_index_offset: int = 0
+    motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
 
 
 class ProductionCaseRecord(BaseModel):
@@ -144,6 +146,8 @@ class ProductionBatchRunner:
         python_exe: str | Path = Path(r"D:\miniconda3\envs\real-world-task\python.exe"),
         domain_profile: str = "finance_audit",
         domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
+        case_index_offset: int = 0,
+        motif_occurrence_offsets: Optional[Dict[str, int]] = None,
     ) -> ProductionBatchRunnerArtifact:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -173,6 +177,8 @@ class ProductionBatchRunner:
             python_exe=str(python_exe),
             domain_profile=domain_profile,
             domain_profile_path=str(domain_profile_path),
+            case_index_offset=case_index_offset,
+            motif_occurrence_offsets=dict(motif_occurrence_offsets or {}),
         )
 
         registry_payload = self._safe_load_json(registry_path)
@@ -207,6 +213,8 @@ class ProductionBatchRunner:
                 python_exe=python_exe,
                 domain_profile=domain_profile,
                 domain_profile_path=domain_profile_path,
+                case_index_offset=case_index_offset,
+                motif_occurrence_offsets=motif_occurrence_offsets,
             )
             batch_report_path = str(batch_output_dir / "pipeline_b_batch_report.json")
 

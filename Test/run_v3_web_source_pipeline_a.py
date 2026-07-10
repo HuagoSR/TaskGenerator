@@ -206,6 +206,7 @@ def build_external_extractor(args: argparse.Namespace) -> FallbackSkillExtractor
         tuzi_config = build_tuzi_config(args.env_path, args.model, args.timeout_seconds)
         if tuzi_config is not None:
             tuzi_config.max_tokens = args.max_tokens
+            tuzi_config.output_profile = getattr(args, "output_profile", "standard")
             extractors.append(("tuzi", LLMSkillExtractor(tuzi_config)))
         elif args.provider == "tuzi":
             raise RuntimeError("Tuzi provider requested, but .env provider config is incomplete.")
@@ -214,6 +215,7 @@ def build_external_extractor(args: argparse.Namespace) -> FallbackSkillExtractor
         deepseek_config = build_deepseek_config(args.deepseek_key_path, args.deepseek_model, args.timeout_seconds)
         if deepseek_config is not None:
             deepseek_config.max_tokens = args.max_tokens
+            deepseek_config.output_profile = getattr(args, "output_profile", "standard")
             extractors.append(("deepseek", LLMSkillExtractor(deepseek_config)))
         elif args.provider == "deepseek":
             raise RuntimeError("DeepSeek provider requested, but deepseek-key.txt is missing or empty.")
@@ -613,7 +615,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
 
 

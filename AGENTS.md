@@ -39,9 +39,9 @@ The current roadmap is:
 - C. Local end-to-end automation — complete.
 - D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
 - E. Warehouse-inventory vertical slice — complete; offline, public-source DeepSeek, contamination, and server evidence passed.
-- F. Training-data readiness — next.
+- F. Training-data readiness — in progress; the active slice is a 60-task finance/audit production campaign, beginning with a supervised five-task server wave.
 
-Milestone E kept GDPVal outside generation and is archived at `docs/archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md`. The active server release is `milestone-e-ed0568e`. Do not broaden the single warehouse-inventory result into a general cross-domain claim. The next workstream is Milestone F training-data readiness.
+Milestone E kept GDPVal outside generation and is archived at `docs/archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md`. The active server release remains `milestone-e-ed0568e` until the supervised finance-production candidate passes. Do not broaden the single warehouse-inventory result into a general cross-domain claim. Milestone F currently permits public web collection through Serper and public-source skill extraction through DeepSeek official for the named finance campaign only; it does not permit task-package upload, external eval, reward training, SFT, or RL.
 
 ## 4. Architecture Boundaries
 

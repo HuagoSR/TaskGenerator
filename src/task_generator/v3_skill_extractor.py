@@ -469,8 +469,8 @@ class LLMSkillExtractor(BaseSkillExtractor):
         raw_candidates = payload.get("candidates")
         if not isinstance(raw_candidates, list):
             raise SkillExtractionError("LLM response JSON must contain a top-level candidates array.")
-        if self.config.output_profile == "bounded_smoke" and len(raw_candidates) > max_candidates:
-            raise SkillExtractionError("Bounded smoke response exceeded max_candidates.")
+        if self.config.output_profile in {"bounded_smoke", "bounded_production"} and len(raw_candidates) > max_candidates:
+            raise SkillExtractionError(f"{self.config.output_profile} response exceeded max_candidates.")
 
         valid_source_ids, valid_block_ids = self._valid_evidence_ids(package)
         candidates = []
@@ -677,6 +677,17 @@ class LLMSkillExtractor(BaseSkillExtractor):
                 "- Keep every free-text string at or below 240 characters.\n"
                 "- Return at most 5 trace_edges and at most 2 motif_hints.\n"
                 "- Prefer compact semantic identifiers; do not repeat explanations across fields.\n"
+            )
+        elif self.config.output_profile == "bounded_production":
+            bounded_constraints = (
+                "\nBounded production output budget:\n"
+                "- Return no more than 6 candidates and obey the requested max_candidates exactly.\n"
+                "- Every list field may contain at most 6 items.\n"
+                "- Every semantic resource list may contain at most 3 items.\n"
+                "- Every candidate may contain exactly 1 evidence object with at most 2 supporting spans.\n"
+                "- Keep every free-text string at or below 360 characters.\n"
+                "- Return at most 8 trace_edges and at most 3 motif_hints.\n"
+                "- Prefer atomic, source-grounded finance and audit skills over broad job descriptions.\n"
             )
         return (
             "Return JSON only. The top-level JSON object must be {\"candidates\": [...], \"trace_edges\": [...], \"motif_hints\": [...]}.\n"

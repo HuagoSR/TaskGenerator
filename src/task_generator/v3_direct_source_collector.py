@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import ipaddress
 import json
 from pathlib import Path
+import socket
 from typing import Any, Dict, List, Sequence
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import trafilatura
@@ -28,6 +31,8 @@ DEFAULT_WEBFETCH_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
+MAX_SOURCE_BYTES = 5 * 1024 * 1024
+ALLOWED_SOURCE_CONTENT_TYPES = ("text/html", "text/plain", "application/xhtml+xml")
 
 
 @dataclass
@@ -219,14 +224,41 @@ class DirectWebSourceCollector:
         return hits
 
     def _fetch_record(self, hit: SearchHit) -> Dict[str, str] | None:
+        current_url = hit.url
+        body = b""
+        encoding = "utf-8"
         with httpx.Client(
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=self.fetch_timeout_seconds,
             headers=DEFAULT_WEBFETCH_HEADERS,
         ) as client:
-            response = client.get(hit.url)
-            response.raise_for_status()
-        raw_text = trafilatura.extract(response.text, output_format="markdown") or ""
+            for _ in range(6):
+                self._validate_public_url(current_url)
+                with client.stream("GET", current_url) as response:
+                    if response.is_redirect:
+                        location = response.headers.get("location")
+                        if not location:
+                            raise RuntimeError("Redirect response did not include a location header.")
+                        current_url = urljoin(current_url, location)
+                        continue
+                    response.raise_for_status()
+                    content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+                    if content_type and not any(content_type.startswith(item) for item in ALLOWED_SOURCE_CONTENT_TYPES):
+                        raise RuntimeError(f"Unsupported public source content type: {content_type}")
+                    chunks = []
+                    total = 0
+                    for chunk in response.iter_bytes():
+                        total += len(chunk)
+                        if total > MAX_SOURCE_BYTES:
+                            raise RuntimeError("Public source response exceeded the 5 MiB production limit.")
+                        chunks.append(chunk)
+                    body = b"".join(chunks)
+                    encoding = response.encoding or "utf-8"
+                    break
+            else:
+                raise RuntimeError("Public source exceeded the redirect limit.")
+        text = body.decode(encoding, errors="replace")
+        raw_text = trafilatura.extract(text, output_format="markdown") or ""
         excerpt = _excerpt(raw_text)
         if len(excerpt) < 120:
             fallback = _excerpt(hit.snippet)
@@ -238,3 +270,21 @@ class DirectWebSourceCollector:
             "text_excerpt": excerpt,
             "raw_text": raw_text.strip(),
         }
+
+    def _validate_public_url(self, url: str) -> None:
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise RuntimeError("Only public http/https source URLs are allowed.")
+        host = parsed.hostname.lower()
+        if host == "localhost" or host.endswith(".localhost"):
+            raise RuntimeError("Localhost source URLs are forbidden.")
+        addresses = {
+            item[4][0]
+            for item in socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
+        }
+        if not addresses:
+            raise RuntimeError("Source URL did not resolve to an address.")
+        for address in addresses:
+            ip = ipaddress.ip_address(address)
+            if not ip.is_global:
+                raise RuntimeError(f"Source URL resolved to a non-public address: {address}")

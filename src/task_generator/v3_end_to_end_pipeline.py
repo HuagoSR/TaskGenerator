@@ -46,7 +46,7 @@ RegistryMode = Literal["existing", "fresh_scratch", "snapshot_scratch"]
 StageState = Literal["pending", "running", "skipped", "completed", "failed", "reused", "invalidated"]
 CollectorBackend = Literal["direct", "stirrup"]
 ExtractorMode = Literal["none", "mock", "llm"]
-ExtractorOutputProfile = Literal["standard", "bounded_smoke"]
+ExtractorOutputProfile = Literal["standard", "bounded_smoke", "bounded_production"]
 RunAction = Literal["run", "resume", "status", "rerun"]
 RunProfile = Literal[
     "custom",
@@ -55,6 +55,7 @@ RunProfile = Literal[
     "local-existing",
     "local-source",
     "web-source",
+    "finance-production",
 ]
 
 STAGE_ORDER: List[PipelineStage] = [
@@ -124,6 +125,7 @@ class EndToEndRequest(BaseModel):
     source_limit: int = 3
     collector_backend: CollectorBackend = "direct"
     collector_max_turns: int = 32
+    topic_queries_path: Optional[str] = None
     max_cases: int = 4
     apply_registry_update: bool = False
     allow_web_collection: bool = False
@@ -154,6 +156,8 @@ class EndToEndRequest(BaseModel):
     domain_profile: str = "finance_audit"
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
     motifs: List[str] = Field(default_factory=list)
+    case_index_offset: int = 0
+    motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
 
 
 class ExternalEffectsLedger(BaseModel):
@@ -444,7 +448,23 @@ class EndToEndPipeline:
             "--collector-max-turns",
             str(request.collector_max_turns),
             "--build-transition-graph",
+            "--provider",
+            request.provider,
+            "--deepseek-model",
+            request.deepseek_model,
+            "--max-candidates",
+            str(request.max_candidates),
+            "--max-tokens",
+            str(request.extractor_max_tokens),
+            "--output-profile",
+            request.extractor_output_profile,
+            "--deepseek-key-path",
+            request.deepseek_key_path,
         ]
+        if request.topic_queries_path:
+            cmd.extend(["--topic-queries-path", request.topic_queries_path])
+        if request.extractor_output_profile == "bounded_production":
+            cmd.extend(["--max-pipeline-attempts", "2"])
         for topic in request.topics:
             cmd.extend(["--topic", topic])
         for collection_dir in request.collection_dirs:
@@ -749,7 +769,11 @@ class EndToEndPipeline:
             request.domain_profile,
             "--domain-profile-path",
             request.domain_profile_path,
+            "--case-index-offset",
+            str(request.case_index_offset),
         ]
+        for motif, offset in sorted(request.motif_occurrence_offsets.items()):
+            cmd.extend(["--motif-occurrence-offset", f"{motif}={offset}"])
         domain_profile = load_domain_profile(request.domain_profile, request.domain_profile_path)
         for file_type in domain_profile.allowed_input_file_types:
             cmd.extend(["--file-type", file_type])

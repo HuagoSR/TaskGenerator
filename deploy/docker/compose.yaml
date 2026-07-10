@@ -42,3 +42,4 @@ services:
       - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
       - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
       - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
+      - ${TASKGEN_PROVIDER_ENV_FILE:?must_set}:/run/secrets/provider_env:ro

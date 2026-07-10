@@ -29,7 +29,7 @@ def main() -> None:
     parser.add_argument("--action", choices=["run", "resume", "status", "rerun"], default="run")
     parser.add_argument(
         "--profile",
-        choices=["custom", "public-smoke-offline", "public-smoke-llm", "local-existing", "local-source", "web-source"],
+        choices=["custom", "public-smoke-offline", "public-smoke-llm", "local-existing", "local-source", "web-source", "finance-production"],
         default=None,
     )
     parser.add_argument("--from-stage", choices=STAGE_ORDER, default=None)
@@ -66,10 +66,13 @@ def main() -> None:
     parser.add_argument("--source-limit", type=int, default=3)
     parser.add_argument("--collector-backend", choices=["direct", "stirrup"], default="direct")
     parser.add_argument("--collector-max-turns", type=int, default=32)
+    parser.add_argument("--topic-queries-path")
     parser.add_argument("--max-cases", type=int, default=4)
     parser.add_argument("--domain-profile", choices=["finance_audit", "warehouse_inventory"], default="finance_audit")
     parser.add_argument("--domain-profile-path", default=str(DEFAULT_DOMAIN_PROFILE_PATH))
     parser.add_argument("--motif", action="append", default=[])
+    parser.add_argument("--case-index-offset", type=int, default=0)
+    parser.add_argument("--motif-occurrence-offset", action="append", default=[])
     parser.add_argument("--apply-registry-update", action="store_true")
     parser.add_argument("--skip-registry-update", action="store_true")
     parser.add_argument("--allow-web-collection", action="store_true")
@@ -86,7 +89,7 @@ def main() -> None:
     parser.add_argument("--extractor-model", default=None)
     parser.add_argument("--max-candidates", type=int, default=8)
     parser.add_argument("--extractor-max-tokens", type=int, default=6000)
-    parser.add_argument("--extractor-output-profile", choices=["standard", "bounded_smoke"], default="standard")
+    parser.add_argument("--extractor-output-profile", choices=["standard", "bounded_smoke", "bounded_production"], default="standard")
     parser.add_argument("--review-spec-path")
     parser.add_argument(
         "--eval-mode",
@@ -171,13 +174,36 @@ def main() -> None:
         args.registry_mode = "fresh_scratch"
         args.extractor_mode = "llm"
         args.eval_mode = "prepare_only"
+    elif profile == "finance-production":
+        args.source_mode = "web"
+        args.registry_mode = args.registry_mode or "fresh_scratch"
+        args.extractor_mode = "llm"
+        args.provider = "deepseek"
+        args.deepseek_model = "deepseek-v4-flash"
+        args.max_candidates = 6
+        args.extractor_max_tokens = 8000
+        args.extractor_output_profile = "bounded_production"
+        args.eval_mode = "dry-run"
+        args.model = []
+        if not args.motif:
+            args.motif = ["fan_in_reconciliation", "cross_check_validation", "policy_application"]
+        if not args.allow_web_collection or not args.allow_external_source_upload:
+            parser.error("finance-production requires --allow-web-collection and --allow-external-source-upload")
 
     if args.eval_mode == "execute" and not args.allow_external_eval:
         parser.error("eval execution requires --allow-external-eval")
-    if profile != "custom":
+    if profile not in {"custom", "finance-production"}:
         args.apply_registry_update = False
 
     selected_stages = STAGE_ORDER if args.stage == "all" else [args.stage]
+    if profile == "finance-production" and args.stage == "all":
+        selected_stages = ["production_review"]
+    motif_occurrence_offsets = {}
+    for item in args.motif_occurrence_offset:
+        if "=" not in item:
+            parser.error("--motif-occurrence-offset must use motif=integer")
+        motif, value = item.split("=", 1)
+        motif_occurrence_offsets[motif] = int(value)
     request = EndToEndRequest(
         run_id=args.run_id,
         selected_stages=selected_stages,
@@ -193,6 +219,7 @@ def main() -> None:
         source_limit=args.source_limit,
         collector_backend=args.collector_backend,
         collector_max_turns=args.collector_max_turns,
+        topic_queries_path=args.topic_queries_path,
         max_cases=args.max_cases,
         apply_registry_update=args.apply_registry_update and not args.skip_registry_update,
         allow_web_collection=args.allow_web_collection,
@@ -222,6 +249,8 @@ def main() -> None:
         domain_profile=args.domain_profile,
         domain_profile_path=args.domain_profile_path,
         motifs=args.motif,
+        case_index_offset=args.case_index_offset,
+        motif_occurrence_offsets=motif_occurrence_offsets,
     )
     if args.action in {"resume", "rerun"} and manifest_path.exists():
         stored_payload = json.loads(manifest_path.read_text(encoding="utf-8"))

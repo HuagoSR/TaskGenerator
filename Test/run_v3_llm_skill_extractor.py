@@ -198,7 +198,7 @@ def main() -> None:
     parser.add_argument("--deepseek-model", default="deepseek-v4-flash", help="DeepSeek official model.")
     parser.add_argument("--max-candidates", type=int, default=30)
     parser.add_argument("--max-tokens", type=int, default=6000, help="Maximum completion tokens for LLM providers.")
-    parser.add_argument("--output-profile", choices=["standard", "bounded_smoke"], default="standard")
+    parser.add_argument("--output-profile", choices=["standard", "bounded_smoke", "bounded_production"], default="standard")
     parser.add_argument("--timeout-seconds", type=int, default=180)
     parser.add_argument("--allow-mock-fallback", action="store_true")
     parser.add_argument("--allow-external-upload", action="store_true", help="Required before sending prompt-package content to Tuzi or DeepSeek.")
@@ -230,4 +230,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
