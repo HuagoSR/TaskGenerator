@@ -39,28 +39,28 @@ def sha256(path: Path) -> str:
 
 
 def task_roots(production_root: Path) -> list[Path]:
-    patterns = [
-        "wave1b_runs/wave_01b_release/03_task_generation/wave_01b_release/batch/pipeline_b_batch_*",
-        "waves/wave_02/03_task_generation/wave_02/batch/pipeline_b_batch_*",
-        "waves/wave_03/03_task_generation/wave_03/batch/pipeline_b_batch_*",
-        "waves/wave_04/03_task_generation/wave_04/batch/pipeline_b_batch_*",
-    ]
-    return sorted({path for pattern in patterns for path in production_root.glob(pattern) if path.is_dir()})
+    return sorted(path for path in production_root.glob("**/batch/pipeline_b_batch_*") if path.is_dir())
 
 
 def build_index(production_root: Path) -> list[dict]:
-    records = []
+    by_index = {}
     for case in task_roots(production_root):
         blueprint = load_json(case / "prototype" / "draft_task_blueprint.json")
+        if not str(blueprint.get("template_family") or "").startswith("finance_"):
+            continue
         row_path = case / "rw_task_export" / "dataset_row.json"
         row = load_json(row_path)
         digits = "".join(ch for ch in case.name.split("_")[3] if ch.isdigit())
-        records.append({
-            "task_id": row["task_id"], "global_index": int(digits), "motif": row["motif"],
+        motif = {"finance_cash_reconciliation_v1":"fan_in_reconciliation","finance_three_way_match_v1":"cross_check_validation","finance_expense_policy_review_v1":"policy_application"}[blueprint["template_family"]]
+        record = {
+            "task_id": row["task_id"], "global_index": int(digits), "motif": motif,
             "skills": sorted(blueprint.get("selected_skills") or []), "case_dir": str(case),
             "dataset_row_path": str(row_path), "reference_dir": str(case / "rw_task_export" / "reference_files"),
-        })
-    return sorted(records, key=lambda item: item["global_index"])
+        }
+        current = by_index.get(record["global_index"])
+        if current is None or record["case_dir"] > current["case_dir"]:
+            by_index[record["global_index"]] = record
+    return sorted(by_index.values(), key=lambda item: item["global_index"])
 
 
 def jaccard(left: list[str], right: list[str]) -> float:
