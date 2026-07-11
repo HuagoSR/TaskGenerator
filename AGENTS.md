@@ -39,9 +39,9 @@ The current roadmap is:
 - C. Local end-to-end automation — complete.
 - D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
 - E. Warehouse-inventory vertical slice — complete; offline, public-source DeepSeek, contamination, and server evidence passed.
-- F. Training-data readiness — in progress; the active slice is a 60-task finance/audit production campaign, beginning with a supervised five-task server wave.
+- F. Training-data readiness — finance production completed; model-difference evaluation design is next.
 
-Milestone E kept GDPVal outside generation and is archived at `docs/archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md`. The active server release remains `milestone-e-ed0568e` until the supervised finance-production candidate passes. Do not broaden the single warehouse-inventory result into a general cross-domain claim. Milestone F currently permits public web collection through Serper and public-source skill extraction through DeepSeek official for the named finance campaign only; it does not permit task-package upload, external eval, reward training, SFT, or RL.
+Milestone E kept GDPVal outside generation. The active server release is `milestone-f-data-production-6304e84`. The finance campaign completed 60/60 candidate-ready tasks with 20 per allowed motif, verifier/export pass for all tasks, zero QA-blocked cases, and no external task evaluation. It does not authorize task-package upload, reward training, SFT, or RL.
 
 ## 4. Architecture Boundaries
 
@@ -139,4 +139,4 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Milestone D is complete. The active server release is `milestone-d-094c6cb`; it passed local/server offline equivalence and the bounded public DeepSeek smoke on the single allowed retry. Deployment now separates candidate upload from explicit activation, preserving `previous` for rollback. Milestone E is the next workstream and must remain a single public-source domain slice. This does not authorize external eval, RL training, default-chain promotion, or broad multi-domain expansion.
+Milestones D and E are complete. Milestone F finance production is also complete with 60/60 candidate-ready tasks. The next workstream is governed model-difference evaluation design; this does not authorize external evaluation, RL training, default-chain promotion, or broad multi-domain expansion without a new explicit campaign contract.

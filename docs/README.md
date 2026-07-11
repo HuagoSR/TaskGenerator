@@ -33,4 +33,4 @@
 
 未来如需详细 workstream 计划，可在执行期创建局部文档并由《项目概要》链接；workstream 完成后必须迁入 archive，不能继续占用活跃架构目录。
 
-Milestone E 已完成并归档至 [`archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md`](archive/phases/milestone_e/MILESTONE_E_COMPLETION_2026-07-10.md)。Milestone F 当前活跃工作流为 [`workstreams/MILESTONE_F_FINANCE_PRODUCTION.md`](workstreams/MILESTONE_F_FINANCE_PRODUCTION.md)，宏观状态仍由根目录《项目概要》管理。
+Milestone E 已完成并归档。Milestone F 财务任务生产也已完成，证据见 [`archive/phases/milestone_f/MILESTONE_F_FINANCE_PRODUCTION_COMPLETION_2026-07-11.md`](archive/phases/milestone_f/MILESTONE_F_FINANCE_PRODUCTION_COMPLETION_2026-07-11.md)。宏观状态仍由根目录《项目概要》管理。
