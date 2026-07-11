@@ -215,6 +215,8 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, prov
                 f"TASKGEN_INPUT_DIR={remote_home}/taskgenerator-data/inputs",
                 f"TASKGEN_DEEPSEEK_KEY_FILE={remote_home}/taskgenerator-secrets/deepseek_api_key",
                 f"TASKGEN_PROVIDER_ENV_FILE={remote_home}/taskgenerator-secrets/provider.env",
+                f"TASKGEN_EVAL_TUZI_ENV_FILE={remote_home}/taskgenerator-secrets/eval_tuzi.env",
+                f"TASKGEN_E2B_KEY_FILE={remote_home}/taskgenerator-secrets/e2b_api_key",
             ]
         ) + "\n",
         encoding="utf-8",
@@ -343,13 +345,14 @@ def production_status(host: str, release_id: str, campaign_id: str, wave: int) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build, deploy, and verify the Milestone D immutable Docker release.")
-    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch"])
+    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch", "eval-install-secrets", "eval-pilot-start", "eval-pilot-status", "eval-pilot-logs", "eval-pilot-fetch"])
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
     parser.add_argument("--ssh-host", default=DEFAULT_SSH_HOST)
     parser.add_argument("--deepseek-key-file", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--provider-env-file", type=Path, default=ROOT / ".env")
+    parser.add_argument("--rw-task-env-file", type=Path, default=Path(r"E:\THU\2026Spring\SRT\rw-task\.env"))
     parser.add_argument("--target", choices=["local", "server"], default="server")
     parser.add_argument("--service", choices=["offline", "online"], default="offline", help="Use online only when resuming an explicitly approved LLM run.")
     parser.add_argument("--run-id")
@@ -376,6 +379,17 @@ def main() -> None:
         deploy_release(release_dir, args.ssh_host, args.deepseek_key_file, args.provider_env_file)
         print(json.dumps({"deployed_candidate": release_id, "host": args.ssh_host, "activated": False}, ensure_ascii=False))
         return
+    if args.action == "eval-install-secrets":
+        tuzi_key = _env_value(args.rw_task_env_file, "AGENT_API_KEY") or _env_value(args.rw_task_env_file, "OPENAI_API_KEY")
+        tuzi_url = _env_value(args.rw_task_env_file, "AGENT_BASE_URL") or _env_value(args.rw_task_env_file, "OPENAI_BASE_URL")
+        e2b_key = _env_value(args.provider_env_file, "E2B_API_KEY")
+        if not all((tuzi_key, tuzi_url, e2b_key)): raise RuntimeError("Tuzi or E2B eval secret is missing")
+        with tempfile.TemporaryDirectory(prefix="taskgen-eval-secrets-") as temporary:
+            root = Path(temporary); tuzi = root / "eval_tuzi.env"; e2b = root / "e2b_api_key"
+            tuzi.write_text(f"TUZI_API_KEY={tuzi_key}\nTUZI_BASE_URL={tuzi_url}\n", encoding="utf-8"); e2b.write_text(e2b_key + "\n", encoding="utf-8")
+            run(["scp", str(tuzi), str(e2b), f"{args.ssh_host}:~/taskgenerator-secrets/"])
+        ssh(args.ssh_host, "chmod 600 ~/taskgenerator-secrets/eval_tuzi.env ~/taskgenerator-secrets/e2b_api_key")
+        print(json.dumps({"installed": ["eval_tuzi.env", "e2b_api_key"], "mode": "0600"})); return
     if args.action in {"production-start", "production-resume"}:
         container_id = production_start(
             args.ssh_host,
@@ -386,6 +400,21 @@ def main() -> None:
         )
         print(json.dumps({"container_id": container_id, "campaign_id": args.campaign_id, "wave": args.wave}, ensure_ascii=False))
         return
+    if args.action == "eval-pilot-start":
+        name = "taskgenerator-finance-model-difference-pilot"
+        command = (f"cd ~/taskgenerator-deploy/releases/{release_id} && (docker rm -f '{name}' >/dev/null 2>&1 || true) && "
+                   f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' --entrypoint python eval "
+                   "Test/run_v3_finance_model_difference_eval.py --action run")
+        print(json.dumps({"container_id": ssh(args.ssh_host, command).stdout.strip(), "campaign_id": "finance_model_difference_eval_01"}, ensure_ascii=False)); return
+    if args.action in {"eval-pilot-status", "eval-pilot-logs"}:
+        name = "taskgenerator-finance-model-difference-pilot"
+        if args.action == "eval-pilot-logs": print(ssh(args.ssh_host, f"docker logs --tail 100 '{name}'", check=False).stdout); return
+        inspect = ssh(args.ssh_host, f"docker inspect '{name}' --format '{{{{json .State}}}}'", check=False)
+        report = compose_command(args.ssh_host, release_id, "eval", ["python", "Test/run_v3_finance_model_difference_eval.py", "--action", "status"])
+        print(json.dumps({"container_state": json.loads(inspect.stdout) if inspect.returncode == 0 else {"Status":"not_found"}, "campaign": json.loads(report.stdout)}, ensure_ascii=False, indent=2)); return
+    if args.action == "eval-pilot-fetch":
+        destination = release_dir / "fetched" / "finance_model_difference_eval_01"; destination.parent.mkdir(parents=True, exist_ok=True)
+        run(["scp", "-r", f"{args.ssh_host}:~/taskgenerator-data/runs/finance_model_difference_eval_01", str(destination.parent)]); print(destination); return
     if args.action == "production-status":
         print(json.dumps(production_status(args.ssh_host, release_id, args.campaign_id, args.wave), ensure_ascii=False, indent=2))
         return

@@ -43,3 +43,12 @@ services:
       - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
       - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
       - ${TASKGEN_PROVIDER_ENV_FILE:?must_set}:/run/secrets/provider_env:ro
+
+  eval:
+    <<: *taskgenerator-common
+    volumes:
+      - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
+      - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
+      - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
+      - ${TASKGEN_EVAL_TUZI_ENV_FILE:?must_set}:/run/secrets/eval_tuzi_env:ro
+      - ${TASKGEN_E2B_KEY_FILE:?must_set}:/run/secrets/e2b_api_key:ro
