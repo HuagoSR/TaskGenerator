@@ -48,6 +48,15 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
         self.assertEqual({motif:10 for motif in ("fan_in_reconciliation","cross_check_validation","policy_application")},
                          {motif:sum(item["motif"]==motif for item in first) for motif in {item["motif"] for item in first}})
 
+    def test_reused_subgraph_template_is_not_a_whole_task_duplicate(self):
+        index=[]
+        for occurrence in range(10):
+            index.append({"task_id":f"task-{occurrence}","global_index":occurrence,"motif":"fan_in_reconciliation",
+                          "skills":[str(occurrence)],"task_sha256":f"task-{occurrence}","prompt_sha256":f"prompt-{occurrence}",
+                          "subgraph_sha256":"shared-template","reference_bundle_sha256":f"reference-{occurrence}"})
+        from run_v3_finance_model_difference_eval import _is_exact_duplicate
+        self.assertFalse(_is_exact_duplicate(index[1],[index[0]]))
+
     def test_fixed_audit_is_two_per_model_per_motif(self):
         models=["weak","medium","strong","best"]
         tasks=[]

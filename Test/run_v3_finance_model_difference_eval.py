@@ -99,8 +99,13 @@ def select_pilot(index: list[dict]) -> list[dict]:
 
 
 def _is_exact_duplicate(item: dict, selected: list[dict]) -> bool:
-    keys = ("task_sha256", "prompt_sha256", "subgraph_sha256", "reference_bundle_sha256")
-    return any(item.get(key) and item.get(key) == existing.get(key) for existing in selected for key in keys)
+    for existing in selected:
+        if item.get("task_sha256") and item.get("task_sha256") == existing.get("task_sha256"):
+            return True
+        bundle_keys = ("prompt_sha256", "subgraph_sha256", "reference_bundle_sha256")
+        if all(item.get(key) and item.get(key) == existing.get(key) for key in bundle_keys):
+            return True
+    return False
 
 
 def select_extended(index: list[dict], tasks_per_motif: int = 10) -> list[dict]:
