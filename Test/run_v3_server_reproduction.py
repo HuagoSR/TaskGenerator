@@ -345,7 +345,7 @@ def production_status(host: str, release_id: str, campaign_id: str, wave: int) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build, deploy, and verify the Milestone D immutable Docker release.")
-    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch", "eval-install-secrets", "eval-pilot-start", "eval-pilot-status", "eval-pilot-logs", "eval-pilot-fetch"])
+    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch", "eval-install-secrets", "eval-pilot-start", "eval-pilot-grade", "eval-pilot-status", "eval-pilot-logs", "eval-pilot-fetch"])
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
@@ -406,11 +406,17 @@ def main() -> None:
                    f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' --entrypoint python eval "
                    "Test/run_v3_finance_model_difference_eval.py --action run")
         print(json.dumps({"container_id": ssh(args.ssh_host, command).stdout.strip(), "campaign_id": "finance_model_difference_eval_01"}, ensure_ascii=False)); return
+    if args.action == "eval-pilot-grade":
+        name = "taskgenerator-finance-model-difference-grading"
+        command = (f"cd ~/taskgenerator-deploy/releases/{release_id} && (docker rm -f '{name}' >/dev/null 2>&1 || true) && "
+                   f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' --entrypoint python eval "
+                   "Test/run_v3_finance_model_difference_eval.py --action grade")
+        print(json.dumps({"container_id": ssh(args.ssh_host, command).stdout.strip(), "campaign_id": "finance_model_difference_eval_01"}, ensure_ascii=False)); return
     if args.action in {"eval-pilot-status", "eval-pilot-logs"}:
         name = "taskgenerator-finance-model-difference-pilot"
         if args.action == "eval-pilot-logs": print(ssh(args.ssh_host, f"docker logs --tail 100 '{name}'", check=False).stdout); return
         inspect = ssh(args.ssh_host, f"docker inspect '{name}' --format '{{{{json .State}}}}'", check=False)
-        report = compose_command(args.ssh_host, release_id, "eval", ["python", "Test/run_v3_finance_model_difference_eval.py", "--action", "status"])
+        report = ssh(args.ssh_host, f"cd ~/taskgenerator-deploy/releases/{release_id} && docker compose --env-file release.env -f compose.yaml run --rm --entrypoint python eval Test/run_v3_finance_model_difference_eval.py --action status")
         print(json.dumps({"container_state": json.loads(inspect.stdout) if inspect.returncode == 0 else {"Status":"not_found"}, "campaign": json.loads(report.stdout)}, ensure_ascii=False, indent=2)); return
     if args.action == "eval-pilot-fetch":
         destination = release_dir / "fetched" / "finance_model_difference_eval_01"; destination.parent.mkdir(parents=True, exist_ok=True)
