@@ -4,7 +4,14 @@ from pathlib import Path
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT/"Test"))
-from run_v3_finance_model_difference_eval import ALLOWED_SOLVER_KEYS, jaccard, select_pilot  # noqa:E402
+from run_v3_finance_model_difference_eval import (  # noqa:E402
+    ALLOWED_SOLVER_KEYS,
+    _audit_disagrees,
+    fixed_audit_assignments,
+    jaccard,
+    select_extended,
+    select_pilot,
+)
 
 
 class FinanceModelDifferenceEvalTests(unittest.TestCase):
@@ -25,5 +32,38 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
 
     def test_solver_row_allowlist_excludes_teacher_truth(self):
         self.assertNotIn("rubric",ALLOWED_SOLVER_KEYS); self.assertNotIn("golden_run",ALLOWED_SOLVER_KEYS)
+
+    def test_extended_selection_is_balanced_and_deterministic(self):
+        index=[]
+        global_index=1
+        for motif in ("fan_in_reconciliation","cross_check_validation","policy_application"):
+            for occurrence in range(12):
+                index.append({"task_id":f"{motif}-{occurrence}","global_index":global_index,"motif":motif,
+                              "skills":[motif,str(occurrence)],"prompt_sha256":f"p-{motif}-{occurrence}",
+                              "subgraph_sha256":f"s-{motif}-{occurrence}","reference_bundle_sha256":f"r-{motif}-{occurrence}"})
+                global_index += 1
+        first=select_extended(index,10); second=select_extended(index,10)
+        self.assertEqual([item["task_id"] for item in first],[item["task_id"] for item in second])
+        self.assertEqual(30,len(first))
+        self.assertEqual({motif:10 for motif in ("fan_in_reconciliation","cross_check_validation","policy_application")},
+                         {motif:sum(item["motif"]==motif for item in first) for motif in {item["motif"] for item in first}})
+
+    def test_fixed_audit_is_two_per_model_per_motif(self):
+        models=["weak","medium","strong","best"]
+        tasks=[]
+        for motif in ("fan_in_reconciliation","cross_check_validation","policy_application"):
+            tasks += [{"task_id":f"{motif}-{index}","motif":motif,"global_index":index,"is_pilot":False} for index in range(8)]
+            tasks += [{"task_id":f"{motif}-pilot-{index}","motif":motif,"global_index":100+index,"is_pilot":True} for index in range(2)]
+        assignments=fixed_audit_assignments({"tasks":tasks},models)
+        self.assertEqual(24,len(assignments))
+        for motif in ("fan_in_reconciliation","cross_check_validation","policy_application"):
+            assigned=[model for task_id,model in assignments.items() if task_id.startswith(motif+"-")]
+            self.assertEqual({model:2 for model in models},{model:assigned.count(model) for model in models})
+
+    def test_audit_expansion_thresholds(self):
+        spec={"audit_absolute_difference_threshold":.20,"audit_pass_threshold":.60}
+        self.assertTrue(_audit_disagrees({"primary_grade":{"score":.70},"audit_grade":{"score":.49}},spec))
+        self.assertTrue(_audit_disagrees({"primary_grade":{"score":.61},"audit_grade":{"score":.59}},spec))
+        self.assertFalse(_audit_disagrees({"primary_grade":{"score":.55},"audit_grade":{"score":.50}},spec))
 
 if __name__=="__main__": unittest.main()
