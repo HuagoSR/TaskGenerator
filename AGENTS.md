@@ -39,7 +39,7 @@ The current roadmap is:
 - C. Local end-to-end automation — complete.
 - D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
 - E. Warehouse-inventory vertical slice — complete; offline, public-source DeepSeek, contamination, and server evidence passed.
-- F. Training-data readiness — finance production completed; model-difference evaluation design is next.
+- F. Training-data readiness — finance production and the governed 30-task model-difference evaluation are complete; research interpretation is next.
 
 Milestone E kept GDPVal outside generation. The active server release is `milestone-f-data-production-6304e84`. The finance campaign completed 60/60 candidate-ready tasks with 20 per allowed motif, verifier/export pass for all tasks, zero QA-blocked cases, and no external task evaluation. It does not authorize task-package upload, reward training, SFT, or RL.
 
@@ -139,4 +139,4 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Milestones D and E are complete. Milestone F finance production is also complete with 60/60 candidate-ready tasks. The next workstream is governed model-difference evaluation design; this does not authorize external evaluation, RL training, default-chain promotion, or broad multi-domain expansion without a new explicit campaign contract.
+Milestones D and E are complete. Milestone F finance production produced 60/60 candidate-ready tasks. The governed evaluation of 30 tasks is complete with 120/120 solver processes returned, 116 valid deliveries, 116 primary grades, 63 audit grades, four `gpt-4o-mini` non-deliveries, and no OOM or provider failure. The remaining 30 tasks are not authorized for evaluation. The next work is research interpretation and training-data-readiness planning; this does not authorize RL training, default-chain promotion, or broad multi-domain expansion.

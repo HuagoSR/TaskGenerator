@@ -463,8 +463,15 @@ def summarize(campaign_root: Path) -> dict:
             comparable = [(row["scores"].get(left),row["scores"].get(right)) for row in task_rows]
             comparable = [(a,b) for a,b in comparable if a is not None and b is not None]
             pairwise[f"{left}__vs__{right}"] = {"left_wins":sum(a>b for a,b in comparable),"ties":sum(a==b for a,b in comparable),"right_wins":sum(a<b for a,b in comparable)}
+    process_completed = sum(
+        bool(r.get("imported")) or any(attempt.get("status") == "completed" for attempt in r.get("attempts", []))
+        for r in records
+    )
     payload = {"version":"v3.finance_model_difference_summary.2","status":manifest.get("status"),"task_count":len(task_rows),
-               "record_count":len(records),"solver_completed":sum(r.get("status")=="completed" for r in records),
+               "record_count":len(records),"solver_attempted":len(records),"solver_process_completed":process_completed,
+               "valid_deliveries":sum(r.get("status")=="completed" for r in records),
+               "non_delivery":sum(r.get("status")=="non_delivery" for r in records),
+               "solver_completed":sum(r.get("status")=="completed" for r in records),
                "primary_graded":sum(r.get("primary_grade",{}).get("score") is not None for r in records),
                "audit_graded":sum(r.get("audit_grade",{}).get("score") is not None for r in records),
                "imported_pilot_records":sum(bool(r.get("imported")) for r in records),

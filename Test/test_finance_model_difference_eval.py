@@ -75,4 +75,9 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
         self.assertTrue(_audit_disagrees({"primary_grade":{"score":.61},"audit_grade":{"score":.59}},spec))
         self.assertFalse(_audit_disagrees({"primary_grade":{"score":.55},"audit_grade":{"score":.50}},spec))
 
+    def test_summary_contract_distinguishes_non_delivery(self):
+        source=(ROOT/"Test/run_v3_finance_model_difference_eval.py").read_text(encoding="utf-8")
+        for field in ("solver_attempted","solver_process_completed","valid_deliveries","non_delivery"):
+            self.assertIn(f'"{field}"',source)
+
 if __name__=="__main__": unittest.main()
