@@ -185,8 +185,8 @@ class SecondaryFindingDecision(BaseModel):
     finding_family: FindingFamily
     material: bool
     confidence: float = Field(ge=0.0, le=1.0)
-    evidence_locators: List[str] = Field(default_factory=list)
-    rationale: str
+    evidence_locators: List[str] = Field(default_factory=list, max_length=4)
+    rationale: str = Field(max_length=240)
 
 
 class SecondarySemanticReview(BaseModel):
@@ -198,7 +198,7 @@ class SecondarySemanticReview(BaseModel):
     provider: str
     created_at: str
     status: Literal["completed", "failed"] = "completed"
-    decisions: List[SecondaryFindingDecision]
+    decisions: List[SecondaryFindingDecision] = Field(max_length=6)
     notes: List[str] = Field(default_factory=list)
 
 

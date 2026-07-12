@@ -446,9 +446,10 @@ class ReferenceFileGenerator:
             paragraphs = [
                 "Accounts Payable Three-Way Match Rules",
                 "AP-001 Join key", "Join invoice, purchase-order, and receipt lines by PO_ID and Item_ID.",
-                "AP-002 Clear", "Clear only when a purchase order and receipt exist, quantity variance is zero, unit-price variance is no more than 0.01, and the invoice identity is not duplicated.",
-                "AP-003 Hold", "Hold a fully joined line when quantity or price is outside tolerance or the invoice identity is duplicated.",
-                "AP-004 Investigate", "Investigate when the purchase order or receipt needed for the join is missing. Investigate takes precedence over hold.",
+                "AP-002 Variances", "Receipt quantity variance equals Received_Qty minus Ordered_Qty. Invoice quantity variance equals Invoiced_Qty minus Received_Qty. Unit price variance equals Invoice_Unit_Price minus PO_Unit_Price.",
+                "AP-003 Potential duplicate", "Treat lines with the same PO_ID, Item_ID, Invoiced_Qty, and Unit_Price as potential duplicates even when Invoice_ID differs.",
+                "AP-004 Status precedence", "First investigate when the purchase order or receipt is missing. Otherwise hold a duplicate or any variance outside tolerance. Otherwise clear the line.",
+                "AP-005 Tolerance", "Quantity variances must equal zero. The absolute unit-price variance must not exceed 0.01.",
             ]
         else:
             paragraphs = [planned_file.file_name]

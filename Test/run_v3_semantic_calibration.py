@@ -16,7 +16,9 @@ from task_generator.v3_semantic_review_executor import (  # noqa: E402
     SemanticReviewExecutor,
     deepseek_semantic_config,
     gpt54_semantic_config,
+    tuzi_backup_semantic_config,
 )
+from task_generator.v3_semantic_secondary_cost import SecondaryCostLedgerManager
 from task_generator.v3_semantic_contract_v2 import LegacyFinanceSemanticAuditor  # noqa: E402
 from task_generator.v3_semantic_validity import (  # noqa: E402
     CandidateBlindReview,
@@ -43,6 +45,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-external-semantic-review", action="store_true")
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--secondary-model", default="gpt-5.4-pro")
+    parser.add_argument("--tuzi-key-slot", choices=["legacy", "backup"], default="legacy")
+    parser.add_argument("--secondary-max-tokens", type=int, default=8000)
+    parser.add_argument("--campaign-budget-rmb", type=float, default=10.0)
     return parser.parse_args()
 
 
@@ -189,7 +195,13 @@ def _run_secondary_reviews(
     secondary_failed = False
     reviews = []
     secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
-    secondary = SemanticReviewExecutor(gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds))
+    if args.tuzi_key_slot == "backup":
+        config = tuzi_backup_semantic_config(args.tuzi_env_path, args.secondary_model, args.timeout_seconds)
+        ledger = SecondaryCostLedgerManager(output_dir.parent / "secondary_cost_ledger.json", args.campaign_budget_rmb)
+    else:
+        config = gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds)
+        ledger = None
+    secondary = SemanticReviewExecutor(config, max_tokens=args.secondary_max_tokens, cost_ledger=ledger)
     if args.resume and secondary_blind_path.exists():
         reviews.append(SecondarySemanticReview.model_validate(_read_json(secondary_blind_path)))
     elif args.resume and _attempts_exhausted(output_dir / "secondary_blind_attempt_report.json"):

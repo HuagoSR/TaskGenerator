@@ -104,6 +104,26 @@ class SemanticContractV2Tests(unittest.TestCase):
             locators = {item.locator_id: item for item in contract.locators}
             self.assertTrue(all(locators[value].candidate_visible for value in rule_locator_ids))
 
+    def test_three_way_duplicate_business_key_ignores_invoice_id_and_uses_both_quantity_variances(self):
+        contract = FinanceSemanticContractAdapter().design(
+            "three", "cross_check_validation", self._blueprint("cross_check_validation")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write_workbook(root / "purchase_orders.xlsx", "PO_Lines", [
+                ("PO_ID", "Item_ID", "Ordered_Qty", "Unit_Price"), ("P1", "I1", 10, 5),
+            ])
+            self._write_workbook(root / "goods_receipts.xlsx", "Receipt_Lines", [
+                ("Receipt_ID", "PO_ID", "Item_ID", "Received_Qty"), ("R1", "P1", "I1", 9),
+            ])
+            self._write_workbook(root / "supplier_invoices.xlsx", "Invoice_Lines", [
+                ("Invoice_ID", "PO_ID", "Item_ID", "Invoiced_Qty", "Unit_Price"),
+                ("A", "P1", "I1", 9, 5), ("B", "P1", "I1", 9, 5),
+            ])
+            (root / "three_way_match_rules.docx").write_bytes(b"rules")
+            resolved = FinanceSemanticContractResolver().resolve(contract, root)
+        self.assertEqual(resolved.claims[0].expected_result.value["hold"], 2)
+
     def test_review_bridge_preserves_precise_fields_and_fact_coverage(self):
         contract = FinanceSemanticContractAdapter().design(
             "task", "cross_check_validation", self._blueprint("cross_check_validation")

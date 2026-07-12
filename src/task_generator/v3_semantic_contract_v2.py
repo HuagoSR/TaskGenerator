@@ -377,17 +377,24 @@ class FinanceSemanticContractResolver:
         statuses = []
         for row in invoices:
             key = (str(row["PO_ID"]), str(row["Item_ID"]))
-            identity = (str(row["Invoice_ID"]), *key)
-            duplicate = identity in seen
-            seen.add(identity)
+            business_key = (
+                str(row["PO_ID"]), str(row["Item_ID"]),
+                float(row["Invoiced_Qty"]), float(row["Unit_Price"]),
+            )
+            duplicate = business_key in seen
+            seen.add(business_key)
             po = pos.get(key)
             receipt = receipts.get(key)
             if not po or not receipt:
                 status = "investigate"
             else:
-                qty_variance = float(row["Invoiced_Qty"]) - float(receipt["Received_Qty"])
-                price_variance = float(row["Unit_Price"]) - float(po["Unit_Price"])
-                status = "hold" if duplicate or qty_variance != 0 or abs(price_variance) > 0.01 else "clear"
+                receipt_quantity_variance = float(receipt["Received_Qty"]) - float(po["Ordered_Qty"])
+                invoice_quantity_variance = float(row["Invoiced_Qty"]) - float(receipt["Received_Qty"])
+                unit_price_variance = float(row["Unit_Price"]) - float(po["Unit_Price"])
+                status = "hold" if (
+                    duplicate or receipt_quantity_variance != 0 or invoice_quantity_variance != 0
+                    or abs(unit_price_variance) > 0.01
+                ) else "clear"
             statuses.append(status)
         return {status: statuses.count(status) for status in ("clear", "hold", "investigate")}
 

@@ -14,7 +14,9 @@ from task_generator.v3_semantic_review_executor import (  # noqa: E402
     SemanticReviewExecutor,
     deepseek_semantic_config,
     gpt54_semantic_config,
+    tuzi_backup_semantic_config,
 )
+from task_generator.v3_semantic_secondary_cost import SecondaryCostLedgerManager
 from task_generator.v3_semantic_validity import (  # noqa: E402
     SemanticFinding,
     SemanticClaim,
@@ -33,7 +35,8 @@ def main() -> None:
     parser.add_argument("--tuzi-env-path", type=Path, required=True)
     parser.add_argument("--allow-external-semantic-review", action="store_true")
     parser.add_argument("--timeout-seconds", type=int, default=900)
-    parser.add_argument("--provider", choices=["all", "deepseek", "tuzi_gpt54"], default="all")
+    parser.add_argument("--provider", choices=["all", "deepseek", "tuzi_gpt54", "tuzi_gpt56_sol"], default="all")
+    parser.add_argument("--campaign-budget-rmb", type=float, default=10.0)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     if not args.allow_external_semantic_review:
@@ -55,9 +58,28 @@ def main() -> None:
     providers = {
         "deepseek": SemanticReviewExecutor(deepseek_semantic_config(args.deepseek_key_path, args.timeout_seconds)),
         "tuzi_gpt54": SemanticReviewExecutor(gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds)),
+        "tuzi_gpt56_sol": SemanticReviewExecutor(
+            tuzi_backup_semantic_config(args.tuzi_env_path, "gpt-5.6-sol", args.timeout_seconds),
+            max_tokens=1200,
+            cost_ledger=SecondaryCostLedgerManager(output / "secondary_cost_ledger.json", args.campaign_budget_rmb),
+        ),
     }
     if args.provider != "all":
         providers = {args.provider: providers[args.provider]}
+    model_preflight = {}
+    if "tuzi_gpt56_sol" in providers:
+        from openai import OpenAI
+        config = providers["tuzi_gpt56_sol"].config
+        available = {item.id for item in OpenAI(
+            api_key=config.api_key, base_url=config.base_url, timeout=args.timeout_seconds
+        ).models.list().data}
+        model_preflight = {
+            "requested_model": "gpt-5.6-sol",
+            "available": "gpt-5.6-sol" in available,
+            "model_count": len(available),
+        }
+        if not model_preflight["available"]:
+            raise SystemExit("gpt-5.6-sol is unavailable on the backup-key model endpoint.")
     records = []
     for provider_name, executor in providers.items():
         for repeat in (1, 2):
@@ -65,7 +87,7 @@ def main() -> None:
             run_dir.mkdir(parents=True, exist_ok=True)
             blind_path = run_dir / "blind_review.json"
             teacher_review_path = run_dir / "teacher_review.json"
-            compact_secondary = provider_name == "tuzi_gpt54"
+            compact_secondary = provider_name in {"tuzi_gpt54", "tuzi_gpt56_sol"}
             if args.resume and blind_path.exists():
                 if compact_secondary:
                     from task_generator.v3_semantic_validity import SecondarySemanticReview
@@ -116,6 +138,7 @@ def main() -> None:
         "fixture_scope": "tracked_public_synthetic_only",
         "decision": decision,
         "records": records,
+        "model_preflight": model_preflight,
         "raw_response_included": False,
     }
     (output / "provider_contract_smoke_report.json").write_text(

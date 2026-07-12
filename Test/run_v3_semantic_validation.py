@@ -16,7 +16,9 @@ from task_generator.v3_semantic_review_executor import (  # noqa: E402
     SemanticReviewExecutor,
     deepseek_semantic_config,
     gpt54_semantic_config,
+    tuzi_backup_semantic_config,
 )
+from task_generator.v3_semantic_secondary_cost import SecondaryCostLedgerManager
 from task_generator.v3_semantic_contract_v2 import (  # noqa: E402
     TaskSemanticContractV2,
     to_review_contract,
@@ -46,6 +48,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--repair-iteration", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--secondary-model", default="gpt-5.4-pro")
+    parser.add_argument("--tuzi-key-slot", choices=["legacy", "backup"], default="legacy")
+    parser.add_argument("--secondary-max-tokens", type=int, default=8000)
+    parser.add_argument("--campaign-budget-rmb", type=float, default=10.0)
     return parser.parse_args()
 
 
@@ -58,10 +64,13 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     records = []
+    audited_motifs = set()
     for index, case in enumerate(manifest.get("cases") or []):
         if case.get("batch_status") != "completed":
             continue
-        force_audit = index % 10 == 0
+        motif = str(case.get("motif") or "")
+        force_audit = motif not in audited_motifs
+        audited_motifs.add(motif)
         records.append(_review_case(case, output_dir, args, force_audit))
     summary = {
         "report_version": "v3.semantic_validation_batch.1",
@@ -72,7 +81,7 @@ def main() -> None:
         "secondary_review_count": sum(1 for item in records if item["secondary_review_performed"]),
         "needs_human_review_count": sum(1 for item in records if item["needs_human_review"]),
         "records": records,
-        "external_effects": {"deepseek_semantic_review": bool(args.execute), "claude_secondary_review": any(item["secondary_review_performed"] for item in records)},
+        "external_effects": {"deepseek_semantic_review": bool(args.execute), "tuzi_secondary_review": any(item["secondary_review_performed"] for item in records)},
     }
     augmented = _augmented_manifest(manifest, records, args.mode)
     augmented_path = output_dir / "semantic_augmented_production_manifest.json"
@@ -189,31 +198,47 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
                 "raw_response_included": False,
             })
         if preliminary.secondary_review_required and not secondary_failed:
-            secondary = SemanticReviewExecutor(gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds))
+            if args.tuzi_key_slot == "backup":
+                config = tuzi_backup_semantic_config(args.tuzi_env_path, args.secondary_model, args.timeout_seconds)
+                ledger = SecondaryCostLedgerManager(
+                    output_root / "secondary_cost_ledger.json", args.campaign_budget_rmb
+                )
+            else:
+                config = gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds)
+                ledger = None
+            secondary = SemanticReviewExecutor(
+                config, max_tokens=args.secondary_max_tokens, cost_ledger=ledger
+            )
             primary_findings = [
                 item for item in preliminary.findings
                 if item.severity == "blocking" and not item.deterministic_corroboration
             ]
+            candidate_families = {"missing_candidate_input", "hidden_assumption_required", "underdefined_decision_rule", "ambiguous_requirement", "deliverable_contract_mismatch"}
+            teacher_families = {"teacher_truth_conflict", "goldenrun_requirement_gap", "rubric_missing_fact_coverage", "irrelevant_rubric_criterion", "rubric_weight_imbalance"}
+            run_blind = force_audit or any(item.finding_code in candidate_families for item in primary_findings)
+            run_teacher = force_audit or any(item.finding_code in teacher_families for item in primary_findings)
             try:
-                secondary_blind = _retry_once(
-                    lambda: secondary.review_secondary(blind_package, primary_findings, "candidate_blind"),
-                    output_dir,
-                    "secondary_blind",
-                )
-                secondary_reviews.append(secondary_blind)
-                secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
-                write_semantic_artifact(secondary_blind_path, secondary_blind)
+                if run_blind:
+                    secondary_blind = _retry_once(
+                        lambda: secondary.review_secondary(blind_package, primary_findings, "candidate_blind"),
+                        output_dir,
+                        "secondary_blind",
+                    )
+                    secondary_reviews.append(secondary_blind)
+                    secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
+                    write_semantic_artifact(secondary_blind_path, secondary_blind)
                 secondary_teacher_package_path = output_dir / "secondary_teacher_rubric_prompt_package.json"
                 secondary_package = SemanticReviewPackageBuilder().build_teacher_package(
                     task_id, blind_review_path, teacher_contract_path, teacher_paths, secondary_teacher_package_path
                 )
-                secondary_teacher = _retry_once(
-                    lambda: secondary.review_secondary(secondary_package, primary_findings, "teacher_rubric"),
-                    output_dir,
-                    "secondary_teacher",
-                )
-                secondary_reviews.append(secondary_teacher)
-                write_semantic_artifact(output_dir / "secondary_teacher_rubric_review.json", secondary_teacher)
+                if run_teacher:
+                    secondary_teacher = _retry_once(
+                        lambda: secondary.review_secondary(secondary_package, primary_findings, "teacher_rubric"),
+                        output_dir,
+                        "secondary_teacher",
+                    )
+                    secondary_reviews.append(secondary_teacher)
+                    write_semantic_artifact(output_dir / "secondary_teacher_rubric_review.json", secondary_teacher)
             except Exception as exc:
                 secondary_failed = True
                 _write_json(secondary_status_path, {

@@ -115,6 +115,8 @@ For an opt-in `finance_semantic_contract_v2` run, `candidate_ready` additionally
 
 Legacy inferred contracts remain diagnostic and cannot satisfy this additional production contract.
 
+F3.1 进一步要求外部 secondary review 使用显式 key slot 和原子成本账本，并在输入投影超限、累计费用超过 campaign 上限或 provider 合同连续失败时停止。该机制当前仍为 opt-in diagnostic；`f3_1_semantic_gate_hold` 不改变既有 production profile 的默认门禁。
+
 ### `production_candidate`
 
 Entry conditions:

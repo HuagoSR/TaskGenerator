@@ -60,6 +60,8 @@ TaskBlueprint
 
 合同只有达到 `verified` 才能成为新的 production candidate。历史任务的 inferred contract 只能用于诊断。
 
+F3.1 的 secondary adjudication 使用 claim/finding 定向投影，而不是完整任务包。复审配置必须显式冻结 provider、model、key slot、token 上限和成本预算；当前低成本合同为 `tuzi / gpt-5.6-sol / backup / 1200 tokens / ¥10`，但完整8题校准尚未通过，不能据此推广默认链。
+
 LLM 可以参与情境变化、教师候选和 prose-heavy 文件生成；确定性代码负责 contract、provenance、manifest、验证、打包和门禁。candidate-visible truth 与 teacher-only supervision 必须保持分离。
 
 ## Validity / Evaluation / Feedback / Promotion
