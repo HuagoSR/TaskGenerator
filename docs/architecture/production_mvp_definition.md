@@ -117,6 +117,8 @@ Legacy inferred contracts remain diagnostic and cannot satisfy this additional p
 
 F3.1 进一步要求外部 secondary review 使用显式 key slot 和原子成本账本，并在输入投影超限、累计费用超过 campaign 上限或 provider 合同连续失败时停止。该机制当前仍为 opt-in diagnostic；`f3_1_semantic_gate_hold` 不改变既有 production profile 的默认门禁。
 
+F4 新增的 whole-task editorial workflow 仅用于固定8题版本化修订和汇报收口。它允许编辑模型提出完整任务修订，但任何数值 truth 必须由candidate-visible文件独立重算，独立复核模型不得读取teacher artifacts。`holistic_editorial_review_completed` 不自动升级历史60题或默认production profile。
+
 ### `production_candidate`
 
 Entry conditions:

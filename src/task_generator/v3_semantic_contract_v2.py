@@ -373,7 +373,10 @@ class FinanceSemanticContractResolver:
         pos = {(str(row["PO_ID"]), str(row["Item_ID"])): row for row in _xlsx_rows(root / "purchase_orders.xlsx", "PO_Lines")}
         receipts = {(str(row["PO_ID"]), str(row["Item_ID"])): row for row in _xlsx_rows(root / "goods_receipts.xlsx", "Receipt_Lines")}
         invoices = _xlsx_rows(root / "supplier_invoices.xlsx", "Invoice_Lines")
-        seen = set()
+        business_key_counts: Dict[tuple, int] = {}
+        for row in invoices:
+            key = (str(row["PO_ID"]), str(row["Item_ID"]), float(row["Invoiced_Qty"]), float(row["Unit_Price"]))
+            business_key_counts[key] = business_key_counts.get(key, 0) + 1
         statuses = []
         for row in invoices:
             key = (str(row["PO_ID"]), str(row["Item_ID"]))
@@ -381,8 +384,7 @@ class FinanceSemanticContractResolver:
                 str(row["PO_ID"]), str(row["Item_ID"]),
                 float(row["Invoiced_Qty"]), float(row["Unit_Price"]),
             )
-            duplicate = business_key in seen
-            seen.add(business_key)
+            duplicate = business_key_counts[business_key] > 1
             po = pos.get(key)
             receipt = receipts.get(key)
             if not po or not receipt:

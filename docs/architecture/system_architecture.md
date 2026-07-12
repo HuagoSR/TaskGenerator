@@ -62,6 +62,8 @@ TaskBlueprint
 
 F3.1 的 secondary adjudication 使用 claim/finding 定向投影，而不是完整任务包。复审配置必须显式冻结 provider、model、key slot、token 上限和成本预算；当前低成本合同为 `tuzi / gpt-5.6-sol / backup / 1200 tokens / ¥10`，但完整8题校准尚未通过，不能据此推广默认链。
 
+F4 验证了一个更高层的替代方向：LLM以完整任务总编辑身份同时理解 candidate、teacher、rubric和既有执行证据，程序只负责版本化、独立重算、candidate/teacher隔离、成本和发布门禁，再由独立模型进行candidate-blind求解。固定8题全部通过，但该路径仍是bounded reporting cohort，尚未成为默认生成链。
+
 LLM 可以参与情境变化、教师候选和 prose-heavy 文件生成；确定性代码负责 contract、provenance、manifest、验证、打包和门禁。candidate-visible truth 与 teacher-only supervision 必须保持分离。
 
 ## Validity / Evaluation / Feedback / Promotion
