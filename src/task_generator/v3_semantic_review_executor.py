@@ -12,7 +12,12 @@ from xml.etree import ElementTree
 
 from pydantic import BaseModel
 
-from task_generator.v3_semantic_validity import CandidateBlindReview, TeacherRubricReview
+from task_generator.v3_semantic_validity import (
+    CandidateBlindReview,
+    SecondarySemanticReview,
+    SemanticFinding,
+    TeacherRubricReview,
+)
 from task_generator.v3_skill_extractor import ProviderConfig, build_deepseek_config, build_tuzi_config, load_env_file
 
 
@@ -96,6 +101,67 @@ class SemanticReviewExecutor:
         )
         self._clear_provider_corroboration(review)
         return review
+
+    def review_secondary(
+        self,
+        package: Dict[str, Any],
+        primary_findings: List[SemanticFinding],
+        review_scope: str,
+    ) -> SecondarySemanticReview:
+        if review_scope == "candidate_blind":
+            evidence = dict(package)
+            evidence["reference_files"] = [
+                {key: value for key, value in item.items() if key != "path"}
+                for item in package.get("reference_files") or []
+            ]
+            evidence["reference_contents"] = [
+                self._reference_content(Path(item["path"])) for item in package.get("reference_files") or []
+            ]
+        elif review_scope == "teacher_rubric":
+            evidence = {
+                "blind_review_payload": self._read_json(Path(package["blind_review"]["path"])),
+                "semantic_contract_payload": self._read_json(Path(package["semantic_contract"]["path"])),
+                "teacher_artifact_payloads": {
+                    name: self._read_or_summarize(Path(item["path"]))
+                    for name, item in (package.get("teacher_artifacts") or {}).items()
+                },
+            }
+        else:
+            raise SemanticReviewExecutionError(f"Unknown secondary review scope: {review_scope}")
+        payload = {
+            "task_id": package.get("task_id"),
+            "review_scope": review_scope,
+            "primary_material_findings": [
+                {
+                    "finding_code": item.finding_code,
+                    "requirement_id": item.requirement_id,
+                    "claim_id": item.claim_id,
+                    "message": item.message,
+                    "evidence_locators": item.evidence_locators,
+                }
+                for item in primary_findings
+                if item.severity == "blocking"
+            ],
+            "evidence": evidence,
+        }
+        instructions = (
+            "Act as an independent secondary adjudicator. For each material issue family supported by the evidence, "
+            "return one compact decision. Do not recreate the primary review, do not repair artifacts, and do not "
+            "treat style suggestions as material. Use only the enumerated finding families."
+        )
+        return self._call(
+            instructions,
+            payload,
+            SecondarySemanticReview,
+            {
+                "task_id": package.get("task_id"),
+                "review_scope": review_scope,
+                "model": self.config.model,
+                "provider": self.config.provider_name,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "status": "completed",
+            },
+        )
 
     def _clear_provider_corroboration(self, review: BaseModel) -> None:
         findings = list(getattr(review, "findings", []) or [])

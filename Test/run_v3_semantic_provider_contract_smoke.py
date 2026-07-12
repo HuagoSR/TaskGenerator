@@ -16,6 +16,7 @@ from task_generator.v3_semantic_review_executor import (  # noqa: E402
     gpt54_semantic_config,
 )
 from task_generator.v3_semantic_validity import (  # noqa: E402
+    SemanticFinding,
     SemanticClaim,
     SemanticDependency,
     SemanticRequirement,
@@ -32,6 +33,8 @@ def main() -> None:
     parser.add_argument("--tuzi-env-path", type=Path, required=True)
     parser.add_argument("--allow-external-semantic-review", action="store_true")
     parser.add_argument("--timeout-seconds", type=int, default=900)
+    parser.add_argument("--provider", choices=["all", "deepseek", "tuzi_gpt54"], default="all")
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     if not args.allow_external_semantic_review:
         raise SystemExit("Public provider smoke requires explicit --allow-external-semantic-review.")
@@ -53,14 +56,30 @@ def main() -> None:
         "deepseek": SemanticReviewExecutor(deepseek_semantic_config(args.deepseek_key_path, args.timeout_seconds)),
         "tuzi_gpt54": SemanticReviewExecutor(gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds)),
     }
+    if args.provider != "all":
+        providers = {args.provider: providers[args.provider]}
     records = []
     for provider_name, executor in providers.items():
         for repeat in (1, 2):
             run_dir = output / provider_name / f"repeat_{repeat}"
             run_dir.mkdir(parents=True, exist_ok=True)
-            blind = executor.review_blind(blind_package)
             blind_path = run_dir / "blind_review.json"
-            write_semantic_artifact(blind_path, blind)
+            teacher_review_path = run_dir / "teacher_review.json"
+            compact_secondary = provider_name == "tuzi_gpt54"
+            if args.resume and blind_path.exists():
+                if compact_secondary:
+                    from task_generator.v3_semantic_validity import SecondarySemanticReview
+                    blind = SecondarySemanticReview.model_validate(json.loads(blind_path.read_text(encoding="utf-8")))
+                else:
+                    from task_generator.v3_semantic_validity import CandidateBlindReview
+                    blind = CandidateBlindReview.model_validate(json.loads(blind_path.read_text(encoding="utf-8")))
+            elif compact_secondary:
+                blind = executor.review_secondary(blind_package, _public_findings(), "candidate_blind")
+                write_semantic_artifact(blind_path, blind)
+            else:
+                from task_generator.v3_semantic_validity import CandidateBlindReview
+                blind = executor.review_blind(blind_package)
+                write_semantic_artifact(blind_path, blind)
             teacher_package = SemanticReviewPackageBuilder().build_teacher_package(
                 contract.task_id,
                 blind_path,
@@ -68,8 +87,19 @@ def main() -> None:
                 {"teacher_truth": fixture / "teacher_truth.json", "rubric": fixture / "rubric.json"},
                 run_dir / "teacher_prompt_package.json",
             )
-            teacher = executor.review_teacher(teacher_package)
-            write_semantic_artifact(run_dir / "teacher_review.json", teacher)
+            if args.resume and teacher_review_path.exists():
+                if compact_secondary:
+                    from task_generator.v3_semantic_validity import SecondarySemanticReview
+                    teacher = SecondarySemanticReview.model_validate(json.loads(teacher_review_path.read_text(encoding="utf-8")))
+                else:
+                    from task_generator.v3_semantic_validity import TeacherRubricReview
+                    teacher = TeacherRubricReview.model_validate(json.loads(teacher_review_path.read_text(encoding="utf-8")))
+            elif compact_secondary:
+                teacher = executor.review_secondary(teacher_package, _public_findings(), "teacher_rubric")
+                write_semantic_artifact(teacher_review_path, teacher)
+            else:
+                teacher = executor.review_teacher(teacher_package)
+                write_semantic_artifact(teacher_review_path, teacher)
             records.append({
                 "provider": provider_name,
                 "repeat": repeat,
@@ -77,7 +107,8 @@ def main() -> None:
                 "teacher_status": teacher.status,
                 "raw_response_included": False,
             })
-    decision = "pass" if len(records) == 4 and all(
+    expected_record_count = len(providers) * 2
+    decision = "pass" if len(records) == expected_record_count and all(
         item["blind_status"] == "completed" and item["teacher_status"] == "completed" for item in records
     ) else "fail"
     report = {
@@ -124,6 +155,16 @@ def _contract() -> TaskSemanticContract:
             candidate_visible=True,
         )],
     )
+
+
+def _public_findings():
+    return [SemanticFinding(
+        finding_code="ambiguous_requirement",
+        severity="blocking",
+        message="Check whether the matching requirement is uniquely answerable.",
+        requirement_id="req_001",
+        confidence=0.9,
+    )]
 
 
 if __name__ == "__main__":

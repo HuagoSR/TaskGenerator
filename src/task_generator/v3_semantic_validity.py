@@ -34,6 +34,13 @@ FindingCode = Literal[
     "rubric_weight_imbalance",
     "deliverable_contract_mismatch",
 ]
+FindingFamily = Literal[
+    "candidate_support",
+    "decision_ambiguity",
+    "teacher_alignment",
+    "rubric_alignment",
+    "deliverable_alignment",
+]
 
 FINDING_CODES = {
     "missing_candidate_input",
@@ -170,6 +177,28 @@ class TeacherRubricReview(BaseModel):
     rubric_fact_weight_ratio: float = Field(ge=0.0, le=1.0)
     findings: List[SemanticFinding] = Field(default_factory=list)
     repair_proposals: List[Dict[str, Any]] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+
+
+class SecondaryFindingDecision(BaseModel):
+    requirement_id: Optional[str] = None
+    finding_family: FindingFamily
+    material: bool
+    confidence: float = Field(ge=0.0, le=1.0)
+    evidence_locators: List[str] = Field(default_factory=list)
+    rationale: str
+
+
+class SecondarySemanticReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    review_version: str = "v3.secondary_semantic_review.1"
+    task_id: str
+    review_scope: Literal["candidate_blind", "teacher_rubric"]
+    model: str
+    provider: str
+    created_at: str
+    status: Literal["completed", "failed"] = "completed"
+    decisions: List[SecondaryFindingDecision]
     notes: List[str] = Field(default_factory=list)
 
 
@@ -486,6 +515,7 @@ class SemanticValidityGate:
         force_secondary_audit: bool = False,
         secondary_blind_review: Optional[CandidateBlindReview] = None,
         secondary_teacher_review: Optional[TeacherRubricReview] = None,
+        secondary_compact_reviews: Optional[List[SecondarySemanticReview]] = None,
         deterministic_findings: Optional[List[SemanticFinding]] = None,
     ) -> SemanticValidityGateReport:
         contract_findings = SemanticContractValidator().validate(contract)
@@ -536,20 +566,42 @@ class SemanticValidityGate:
                 secondary_findings.extend(review.findings)
         if secondary_teacher_review:
             secondary_findings.extend(secondary_teacher_review.findings)
+        for review in secondary_compact_reviews or []:
+            for decision_item in review.decisions:
+                if decision_item.material:
+                    secondary_findings.append(SemanticFinding(
+                        finding_code=self._family_representative(decision_item.finding_family),
+                        severity="blocking",
+                        message=decision_item.rationale,
+                        requirement_id=decision_item.requirement_id,
+                        evidence_locators=decision_item.evidence_locators,
+                        confidence=decision_item.confidence,
+                    ))
         findings.extend(secondary_findings)
 
         findings = self._deduplicate(findings)
         low_confidence = any(item.confidence < self.SECONDARY_CONFIDENCE_THRESHOLD for item in primary_findings)
         primary_blocker_keys = self._material_keys(primary_findings)
-        uncorroborated_blocker = bool(primary_blocker_keys)
-        has_secondary = secondary_blind_review is not None and secondary_teacher_review is not None
+        deterministic_families = {
+            self._finding_family(item.finding_code)
+            for item in contract_findings
+            if item.severity == "blocking"
+        }
+        uncorroborated_primary_keys = {
+            key for key in primary_blocker_keys if key.rsplit("|", 1)[-1] not in deterministic_families
+        }
+        uncorroborated_blocker = bool(uncorroborated_primary_keys)
+        has_secondary = (
+            secondary_blind_review is not None and secondary_teacher_review is not None
+        ) or bool(secondary_compact_reviews)
         secondary_required = (force_secondary_audit or low_confidence or uncorroborated_blocker) and not has_secondary
         needs_human = False
         confirmed_llm_blocker = False
         if has_secondary:
             secondary_blocker_keys = self._material_keys(secondary_findings)
-            confirmed_llm_blocker = bool(primary_blocker_keys.intersection(secondary_blocker_keys))
-            needs_human = bool(primary_blocker_keys.symmetric_difference(secondary_blocker_keys))
+            confirmed_llm_blocker = bool(uncorroborated_primary_keys.intersection(secondary_blocker_keys))
+            comparison_keys = primary_blocker_keys if force_secondary_audit else uncorroborated_primary_keys
+            needs_human = bool(comparison_keys.symmetric_difference(secondary_blocker_keys))
         deterministic_blocking = any(item.severity == "blocking" for item in contract_findings)
         blocking = deterministic_blocking or confirmed_llm_blocker
         advisories = any(item.severity in {"info", "warning"} for item in findings)
@@ -617,7 +669,18 @@ class SemanticValidityGate:
             return "teacher_alignment"
         if code in {"rubric_missing_fact_coverage", "irrelevant_rubric_criterion", "rubric_weight_imbalance"}:
             return "rubric_alignment"
+        if code == "deliverable_contract_mismatch":
+            return "deliverable_alignment"
         return code
+
+    def _family_representative(self, family: str) -> FindingCode:
+        return {
+            "candidate_support": "missing_candidate_input",
+            "decision_ambiguity": "ambiguous_requirement",
+            "teacher_alignment": "teacher_truth_conflict",
+            "rubric_alignment": "rubric_missing_fact_coverage",
+            "deliverable_alignment": "deliverable_contract_mismatch",
+        }[family]
 
 
 class SemanticReviewPackageBuilder:

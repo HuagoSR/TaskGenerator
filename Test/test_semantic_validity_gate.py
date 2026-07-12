@@ -14,6 +14,8 @@ from src.task_generator.v3_semantic_validity import (
     SemanticRequirement,
     SemanticReviewPackageBuilder,
     SemanticRevisionController,
+    SecondaryFindingDecision,
+    SecondarySemanticReview,
     SemanticValidityGate,
     TaskSemanticContract,
     TeacherRubricReview,
@@ -189,6 +191,53 @@ class SemanticValidityGateTests(unittest.TestCase):
         finding_ref = schema["$defs"]["SemanticFinding"]["properties"]["finding_code"]
         self.assertIn("missing_candidate_input", finding_ref["enum"])
         self.assertIn("rubric_weight_imbalance", finding_ref["enum"])
+
+    def test_compact_secondary_agreement_confirms_revision(self):
+        finding = SemanticFinding(
+            finding_code="ambiguous_requirement",
+            severity="blocking",
+            message="two interpretations",
+            requirement_id="req_1",
+        )
+        secondary = SecondarySemanticReview(
+            task_id="task_1",
+            review_scope="candidate_blind",
+            model="gpt-5.4-pro",
+            provider="tuzi",
+            created_at="now",
+            decisions=[SecondaryFindingDecision(
+                requirement_id="req_1",
+                finding_family="decision_ambiguity",
+                material=True,
+                confidence=0.9,
+                rationale="Both interpretations remain candidate-visible.",
+            )],
+        )
+        report = SemanticValidityGate().build(
+            self._contract(), self._blind([finding]), self._teacher(), "blocking",
+            secondary_compact_reviews=[secondary],
+        )
+        self.assertEqual(report.decision, "revise")
+
+    def test_deterministic_family_does_not_require_secondary(self):
+        finding = SemanticFinding(
+            finding_code="missing_candidate_input",
+            severity="blocking",
+            message="missing field",
+            requirement_id="req_1",
+        )
+        deterministic = SemanticFinding(
+            finding_code="missing_candidate_input",
+            severity="blocking",
+            message="header check confirmed missing field",
+            deterministic_corroboration=True,
+        )
+        report = SemanticValidityGate().build(
+            self._contract(), self._blind([finding]), self._teacher(), "blocking",
+            deterministic_findings=[deterministic],
+        )
+        self.assertEqual(report.decision, "revise")
+        self.assertFalse(report.secondary_review_required)
 
 
 if __name__ == "__main__":

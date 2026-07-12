@@ -1,6 +1,6 @@
 # Milestone F3：生成器原生语义合同
 
-> 状态：`active / awaiting_external_authorization`
+> 状态：`historical / superseded_by_external_calibration_hold`
 > 项目级状态仍由根目录《项目概要》管理。
 
 ## 目标
@@ -18,14 +18,11 @@
 - 重复校准报告 SHA-256 完全一致，外部调用为0。
 - 五题新生产的离线结构部分为 `5/5 verified + candidate-ready`。
 
-## 当前停止点
+## 最终停止点
 
-尚未执行新的 DeepSeek / Tuzi 真实语义审查。下一步必须先获得本次 F3 campaign 的明确外部授权，然后：
+外部授权后，公开 provider 合同验证通过。旧8题真实复核达到 `8/8` 非放行；但 V2 修复任务前三题只有1题通过，另2题需要复审，其中 Tuzi 随后返回额度不足。此时最多只能达到 `6/8`，低于 `7/8` 门槛，campaign 按规则提前停止。
 
-1. 用 tracked public synthetic fixture 连续验证两次 DeepSeek 与 Tuzi `gpt-5.4-pro` JSON 合同；
-2. 执行真实8+8语义复核；
-3. 只有通过后才完成五题外部语义 smoke；
-4. 失败则保持 diagnostic，不审计全部60题、不进入训练。
+最终为 `f3_semantic_gate_hold_for_redesign_and_secondary_capacity`。未执行五题外部语义 smoke、60题审计或训练。
 
 ## 边界
 
