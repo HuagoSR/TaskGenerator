@@ -26,6 +26,11 @@ from task_generator.v3_teacher_runner import TeacherRunner
 from task_generator.v3_task_verifier import TaskVerifier
 from task_generator.v3_training_annotation_builder import TrainingAnnotationBuilder
 from task_generator.v3_domain_profile import DEFAULT_DOMAIN_PROFILE_PATH, load_domain_profile
+from task_generator.v3_semantic_contract_v2 import (
+    FinanceSemanticContractAdapter,
+    FinanceSemanticContractResolver,
+    write_contract,
+)
 
 
 BatchCaseStatus = Literal["completed", "failed"]
@@ -84,6 +89,10 @@ class PipelineBBatchCaseSummary(BaseModel):
     verifier_blocking_count: int = 0
     verifier_revise_count: int = 0
     verifier_reason_codes: List[str] = Field(default_factory=list)
+    semantic_contract_origin: Optional[str] = None
+    semantic_contract_lifecycle: Optional[str] = None
+    semantic_contract_decision: Optional[str] = None
+    semantic_contract_reason_codes: List[str] = Field(default_factory=list)
     reason_codes: List[str] = Field(default_factory=list)
     warning_reason_codes: List[str] = Field(default_factory=list)
     error_type: Optional[str] = None
@@ -302,6 +311,14 @@ class PipelineBBatchRunner:
         blueprint_path = prototype_dir / "draft_task_blueprint.json"
         prototype_report_path = prototype_dir / "pipeline_b_prototype_report.json"
 
+        semantic_contract = None
+        semantic_contract_report = None
+        semantic_contract_dir = case_dir / "semantic_contract"
+        if target_difficulty_profile == "finance_semantic_contract_v2":
+            blueprint_payload = json.loads(blueprint_path.read_text(encoding="utf-8"))
+            semantic_contract = FinanceSemanticContractAdapter().design(case_id, motif, blueprint_payload)
+            write_contract(semantic_contract_dir / "task_semantic_contract.design.json", semantic_contract)
+
         planner = ReferenceFilePlanner()
         plan = planner.build_plan(
             blueprint_path=blueprint_path,
@@ -316,6 +333,11 @@ class PipelineBBatchRunner:
             output_dir=reference_generation_dir,
         )
         generated_manifest_path = reference_generation_dir / "generated_file_manifest.json"
+        if semantic_contract is not None:
+            semantic_contract = FinanceSemanticContractResolver().resolve(
+                semantic_contract, reference_generation_dir / "reference_files"
+            )
+            write_contract(semantic_contract_dir / "task_semantic_contract.resolved.json", semantic_contract)
 
         teacher_input_builder = TeacherInputBuilder()
         teacher_manifest, teacher_validation = teacher_input_builder.build(
@@ -356,9 +378,19 @@ class PipelineBBatchRunner:
             golden_run_path=golden_run_path,
             teacher_runner_report_path=teacher_report_path,
         )
+        if semantic_contract is not None:
+            rubric = rubric_builder.apply_semantic_contract(rubric, semantic_contract)
+            rubric_report.diagnostics = rubric_builder._diagnostics(rubric)
         rubric_builder.write_outputs(rubric, rubric_report, rubric_dir)
         rubric_path = rubric_dir / "rubric.json"
         rubric_report_path = rubric_dir / "rubric_report.json"
+        if semantic_contract is not None:
+            semantic_contract, semantic_contract_report = FinanceSemanticContractResolver().verify(semantic_contract)
+            write_contract(semantic_contract_dir / "task_semantic_contract.json", semantic_contract)
+            write_contract(
+                semantic_contract_dir / "semantic_contract_consistency_report.json",
+                semantic_contract_report,
+            )
 
         quality_gate = PipelineBQualityGate()
         quality_report = quality_gate.build(
@@ -426,6 +458,8 @@ class PipelineBBatchRunner:
             rubric_report_path=rubric_report_path,
             quality_report_path=quality_report_path,
             output_dir=package_dir,
+            semantic_contract_path=(semantic_contract_dir / "task_semantic_contract.json") if semantic_contract else None,
+            semantic_contract_consistency_path=(semantic_contract_dir / "semantic_contract_consistency_report.json") if semantic_contract else None,
         )
         package_manifest_path = package_dir / "package_manifest.json"
 
@@ -508,6 +542,10 @@ class PipelineBBatchRunner:
             verifier_blocking_count=verifier_report.diagnostics.blocking_count,
             verifier_revise_count=verifier_report.diagnostics.revise_count,
             verifier_reason_codes=list(verifier_report.diagnostics.reason_codes),
+            semantic_contract_origin=(semantic_contract.contract_origin if semantic_contract else None),
+            semantic_contract_lifecycle=(semantic_contract.lifecycle if semantic_contract else None),
+            semantic_contract_decision=(semantic_contract_report.decision if semantic_contract_report else None),
+            semantic_contract_reason_codes=(semantic_contract_report.reason_codes if semantic_contract_report else []),
             reason_codes=reason_codes,
             warning_reason_codes=warning_reason_codes,
         )

@@ -75,6 +75,10 @@ class ProductionCaseRecord(BaseModel):
     difficulty_overall: Optional[float] = None
     workflow_context_fit: Optional[str] = None
     package_readiness: Optional[str] = None
+    semantic_contract_origin: Optional[str] = None
+    semantic_contract_lifecycle: Optional[str] = None
+    semantic_contract_decision: Optional[str] = None
+    semantic_contract_reason_codes: List[str] = Field(default_factory=list)
     production_candidate_eligible: bool = False
     training_pool_candidate_eligible: bool = False
     diagnostic_eval_recommended: bool = False
@@ -262,8 +266,13 @@ class ProductionBatchRunner:
         for case in batch_report.cases:
             task_state = self._task_state(case)
             candidate_ready = task_state == "candidate_ready"
-            production_candidate_eligible = candidate_ready
-            training_pool_candidate_eligible = candidate_ready and case.verifier_status == "pass"
+            semantic_required = case.semantic_contract_origin == "generator_owned_v2"
+            semantic_ready = (
+                not semantic_required
+                or (case.semantic_contract_lifecycle == "verified" and case.semantic_contract_decision == "pass")
+            )
+            production_candidate_eligible = candidate_ready and semantic_ready
+            training_pool_candidate_eligible = candidate_ready and case.verifier_status == "pass" and semantic_ready
             diagnostic_eval_recommended = candidate_ready and mode == "production_run"
             blueprint_payload = self._safe_load_json(
                 Path(case.case_dir) / "prototype" / "draft_task_blueprint.json"
@@ -293,6 +302,10 @@ class ProductionBatchRunner:
                     difficulty_overall=getattr(case, "difficulty_overall", None),
                     workflow_context_fit=case.workflow_context_fit,
                     package_readiness=case.package_readiness,
+                    semantic_contract_origin=case.semantic_contract_origin,
+                    semantic_contract_lifecycle=case.semantic_contract_lifecycle,
+                    semantic_contract_decision=case.semantic_contract_decision,
+                    semantic_contract_reason_codes=list(case.semantic_contract_reason_codes),
                     production_candidate_eligible=production_candidate_eligible,
                     training_pool_candidate_eligible=training_pool_candidate_eligible,
                     diagnostic_eval_recommended=diagnostic_eval_recommended,

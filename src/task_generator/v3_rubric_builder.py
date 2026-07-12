@@ -58,6 +58,8 @@ class RubricCriterion(BaseModel):
     status_hint: CriterionStatusHint
     source_ids: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
+    weight: float = Field(default=0.0, ge=0.0, le=1.0)
+    semantic_claim_ids: List[str] = Field(default_factory=list)
 
 
 class RubricSection(BaseModel):
@@ -158,6 +160,51 @@ class RubricBuilder:
             ],
         )
         return artifact, report
+
+    def apply_semantic_contract(self, artifact: RubricArtifact, contract) -> RubricArtifact:
+        """Replace generic fact checks with generator-owned claim checks.
+
+        This is opt-in for semantic-contract V2 and leaves all historical profiles unchanged.
+        """
+        payload = artifact.model_copy(deep=True)
+        claim_by_id = {item.claim_id: item for item in contract.claims}
+        fact_section = next(
+            (section for section in payload.sections if section.section_name == "fact_checks"),
+            None,
+        )
+        if fact_section is None:
+            fact_section = RubricSection(section_name="fact_checks")
+            payload.sections.insert(0, fact_section)
+        criteria = []
+        for binding in contract.rubric_bindings:
+            if binding.criterion_type not in {"fact", "deliverable"}:
+                continue
+            descriptions = [claim_by_id[item].description for item in binding.claim_ids]
+            expected = [claim_by_id[item].expected_result.value for item in binding.claim_ids]
+            criteria.append(
+                RubricCriterion(
+                    criterion_id=binding.criterion_id,
+                    section="fact_checks",
+                    criterion_type="fact",
+                    audience="candidate",
+                    export_to_rw_task=True,
+                    description="; ".join(descriptions),
+                    evidence_requirements=[{"semantic_claim_id": item} for item in binding.claim_ids],
+                    pass_condition=f"Deliverable agrees with the deterministic expected result: {expected!r}",
+                    failure_signals=["semantic_claim_mismatch"],
+                    severity="high",
+                    status_hint="pass",
+                    source_ids=list(binding.claim_ids),
+                    notes=["Generated from verified semantic-contract bindings."],
+                    weight=binding.weight,
+                    semantic_claim_ids=list(binding.claim_ids),
+                )
+            )
+        fact_section.criteria = criteria
+        fact_section.summary = ["Fact criteria are generated from resolved semantic claims."]
+        payload.rubric_version = "v3.rubric.semantic_contract.2"
+        payload.notes.append("Fact checks and weights are bound to TaskSemanticContract V2.")
+        return payload
 
     def write_outputs(
         self,

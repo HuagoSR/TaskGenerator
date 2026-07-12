@@ -93,7 +93,7 @@ class SemanticValidityGateTests(unittest.TestCase):
         report = SemanticValidityGate().build(self._contract(rule=False, rubric=False), self._blind(), self._teacher(), "blocking")
         self.assertIn("underdefined_decision_rule", report.reason_codes)
         self.assertIn("rubric_missing_fact_coverage", report.reason_codes)
-        self.assertEqual(report.decision, "blocked")
+        self.assertEqual(report.decision, "revise")
 
     def test_teacher_only_dependency_blocks(self):
         report = SemanticValidityGate().build(self._contract(visible=False), self._blind(), self._teacher(), "blocking")

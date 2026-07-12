@@ -106,6 +106,15 @@ Entry conditions:
 
 This is the highest state the current deterministic production runner may assign automatically.
 
+For an opt-in `finance_semantic_contract_v2` run, `candidate_ready` additionally requires:
+
+- `contract_origin = generator_owned_v2`;
+- lifecycle reaches `verified` after candidate-visible deterministic recomputation;
+- every deterministic claim has a fact-rubric binding;
+- semantic-contract consistency decision is `pass`.
+
+Legacy inferred contracts remain diagnostic and cannot satisfy this additional production contract.
+
 ### `production_candidate`
 
 Entry conditions:

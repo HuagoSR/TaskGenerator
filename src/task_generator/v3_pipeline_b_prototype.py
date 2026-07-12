@@ -184,6 +184,15 @@ class PipelineBPrototypeBuilder:
         self._apply_subgraph_context(blueprint, subgraph)
         if production_profile == "finance_production_v1":
             self._apply_finance_production_profile(blueprint, subgraph.selected_motif)
+        elif production_profile == "finance_semantic_contract_v2":
+            self._apply_finance_production_profile(blueprint, subgraph.selected_motif)
+            from task_generator.v3_semantic_contract_v2 import FinanceSemanticContractAdapter
+
+            blueprint = TaskBlueprint.model_validate(
+                FinanceSemanticContractAdapter().prepare_blueprint(
+                    blueprint.model_dump(), subgraph.selected_motif
+                )
+            )
         diagnostics = self._diagnose_subgraph_signals(subgraph, selected_records)
 
         return {

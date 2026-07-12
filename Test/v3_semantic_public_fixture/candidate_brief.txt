@@ -1,0 +1,1 @@
+Public synthetic fixture. Match the two listed cash activities by Reference and Amount, report unmatched rows, and report each file's period-activity total. Do not infer opening or closing balances.

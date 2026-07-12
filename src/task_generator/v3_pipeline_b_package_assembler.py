@@ -32,6 +32,8 @@ PackageArtifactRole = Literal[
     "rubric",
     "rubric_report",
     "quality_report",
+    "semantic_contract",
+    "semantic_contract_consistency",
     "dataset_row_draft",
 ]
 
@@ -48,6 +50,8 @@ class PipelineBPackageAssemblerRequest(BaseModel):
     rubric_path: str
     rubric_report_path: str
     quality_report_path: str
+    semantic_contract_path: Optional[str] = None
+    semantic_contract_consistency_path: Optional[str] = None
 
 
 class PackageArtifactRecord(BaseModel):
@@ -98,6 +102,8 @@ class PipelineBPackageAssembler:
         rubric_report_path: str | Path,
         quality_report_path: str | Path,
         output_dir: str | Path,
+        semantic_contract_path: str | Path | None = None,
+        semantic_contract_consistency_path: str | Path | None = None,
     ) -> PipelineBPackageManifest:
         request = PipelineBPackageAssemblerRequest(
             blueprint_path=str(blueprint_path),
@@ -111,6 +117,8 @@ class PipelineBPackageAssembler:
             rubric_path=str(rubric_path),
             rubric_report_path=str(rubric_report_path),
             quality_report_path=str(quality_report_path),
+            semantic_contract_path=str(semantic_contract_path) if semantic_contract_path else None,
+            semantic_contract_consistency_path=str(semantic_contract_consistency_path) if semantic_contract_consistency_path else None,
         )
 
         blueprint = TaskBlueprint.model_validate(load_json_file(str(blueprint_path)))
@@ -138,6 +146,11 @@ class PipelineBPackageAssembler:
         reference_dir.mkdir(parents=True, exist_ok=True)
 
         artifact_records: List[PackageArtifactRecord] = []
+        semantic_paths = {}
+        if semantic_contract_path:
+            semantic_paths["semantic_contract"] = Path(semantic_contract_path)
+        if semantic_contract_consistency_path:
+            semantic_paths["semantic_contract_consistency"] = Path(semantic_contract_consistency_path)
         artifact_records.extend(
             self._copy_json_artifacts(
                 artifacts_dir=artifacts_dir,
@@ -153,6 +166,7 @@ class PipelineBPackageAssembler:
                     "rubric": Path(rubric_path),
                     "rubric_report": Path(rubric_report_path),
                     "quality_report": Path(quality_report_path),
+                    **semantic_paths,
                 },
             )
         )

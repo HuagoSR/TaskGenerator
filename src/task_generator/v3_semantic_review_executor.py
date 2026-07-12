@@ -60,6 +60,7 @@ class SemanticReviewExecutor:
         returned_ids = {item.requirement_id for item in review.requirement_reviews}
         if not expected_ids or returned_ids != expected_ids:
             raise SemanticReviewExecutionError("Provider contract violation: requirement review coverage mismatch.")
+        self._clear_provider_corroboration(review)
         return review
 
     def review_teacher(self, package: Dict[str, Any]) -> TeacherRubricReview:
@@ -80,7 +81,7 @@ class SemanticReviewExecutor:
             "Find unsupported teacher assumptions, uncovered requirements, irrelevant criteria, and weight imbalance. "
             "Return JSON matching TeacherRubricReview. Findings and repair proposals are advisory only."
         )
-        return self._call(
+        review = self._call(
             instructions,
             expanded,
             TeacherRubricReview,
@@ -93,6 +94,15 @@ class SemanticReviewExecutor:
                 "status": "completed",
             },
         )
+        self._clear_provider_corroboration(review)
+        return review
+
+    def _clear_provider_corroboration(self, review: BaseModel) -> None:
+        findings = list(getattr(review, "findings", []) or [])
+        for requirement in getattr(review, "requirement_reviews", []) or []:
+            findings.extend(requirement.findings)
+        for finding in findings:
+            finding.deterministic_corroboration = False
 
     def _call(self, system_prompt: str, payload: Dict[str, Any], model_type: Type[BaseModel], defaults: Dict[str, Any]):
         try:
@@ -209,5 +219,23 @@ def claude_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> 
         base_url=base_url,
         api_key=api_key,
         model="claude-sonnet-4-6",
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def gpt54_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> ProviderConfig:
+    config = build_tuzi_config(env_path, "gpt-5.4-pro", timeout_seconds)
+    if config is not None:
+        return config
+    values = load_env_file(env_path)
+    api_key = values.get("AGENT_API_KEY") or values.get("GRADER_API_KEY")
+    base_url = values.get("AGENT_BASE_URL") or values.get("GRADER_BASE_URL")
+    if not api_key or not base_url:
+        raise SemanticReviewExecutionError("Tuzi semantic-review configuration is unavailable.")
+    return ProviderConfig(
+        provider_name="tuzi",
+        base_url=base_url,
+        api_key=api_key,
+        model="gpt-5.4-pro",
         timeout_seconds=timeout_seconds,
     )

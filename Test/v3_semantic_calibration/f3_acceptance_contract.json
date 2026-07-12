@@ -1,0 +1,14 @@
+{
+  "contract_version": "milestone_f3.semantic_contract_calibration.1",
+  "original_task_ids": ["02", "06", "13", "18", "31", "35", "38", "47"],
+  "original_blocking_recall_required": 8,
+  "repaired_pass_minimum": 7,
+  "required_issue_families": [
+    "candidate_support",
+    "decision_rule",
+    "rubric_fact_coverage"
+  ],
+  "new_task_smoke_count": 5,
+  "external_solver_allowed": false,
+  "external_eval_allowed": false
+}

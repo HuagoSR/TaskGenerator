@@ -39,7 +39,7 @@ The current roadmap is:
 - C. Local end-to-end automation — complete.
 - D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
 - E. Warehouse-inventory vertical slice — complete; offline, public-source DeepSeek, contamination, and server evidence passed.
-- F. Training-data readiness — semantic validation is implemented, but real 8+8 calibration ended `semantic_gate_hold_for_redesign`; do not promote it into the default chain.
+- F. Training-data readiness — F3 generator-owned semantic contracts passed deterministic offline 8+8 calibration, but the new external semantic calibration is not yet authorized or complete; do not promote it into the default chain.
 
 Milestone E kept GDPVal outside generation. The active server release is `milestone-f-data-production-6304e84`. The finance campaign completed 60/60 candidate-ready tasks with 20 per allowed motif, verifier/export pass for all tasks, zero QA-blocked cases, and no external task evaluation. It does not authorize task-package upload, reward training, SFT, or RL.
 
@@ -139,4 +139,4 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Milestones D and E are complete. Milestone F finance production produced 60/60 candidate-ready tasks, followed by the governed 30-task evaluation and 8-task human-style diagnosis. Milestone F2 added candidate-blind `semantic_validation` between task generation and production review and completed real calibration. DeepSeek blocked all 8 flawed originals, but two repaired-twin revisions cleared primary blockers for only 5/8; Tuzi Claude also failed its JSON contract twice. The decision is `semantic_gate_hold_for_redesign`: keep the gate diagnostic, treat legacy tasks as semantically unevaluated, do not run the 5-task/60-task expansion, and do not authorize RL training or default-chain promotion.
+Milestones D and E are complete. Milestone F finance production produced 60/60 candidate-ready tasks, followed by the governed 30-task evaluation and 8-task human-style diagnosis. F2 remains a historical `semantic_gate_hold_for_redesign`. F3 now creates generator-owned `design/resolved/verified` contracts and passed deterministic offline calibration (`8/8` flawed legacy tasks blocked, `8/8` new repaired tasks verified, and `5/5` new-task structural smoke). The next checkpoint is a separately authorized DeepSeek / Tuzi semantic recalibration. Until that passes, keep the gate diagnostic, treat legacy tasks as semantically unevaluated, do not audit all 60 tasks, and do not authorize RL training or default-chain promotion.

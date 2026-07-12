@@ -332,10 +332,13 @@ class ReferenceFileGenerator:
             rows = []
             for i in range(14):
                 amount = round(35 + variant / 20 + i * 61.4, 2)
-                rows.append({"Transaction_ID": f"TX-{variant+i+1:04d}", "Employee_ID": f"EMP-{(i%5)+1:03d}",
+                row = {"Transaction_ID": f"TX-{variant+i+1:04d}", "Employee_ID": f"EMP-{(i%5)+1:03d}",
                              "Expense_Date": f"2026-06-{i+1:02d}", "Category": categories[i % len(categories)], "Amount": amount,
                              "Receipt_Available": "No" if i in {3, 9} else "Yes", "Approval_Level": "Director" if i in {6, 12} else "Manager",
-                             "Business_Purpose": f"Client or operating activity {variant+i+1}"})
+                             "Business_Purpose": f"Client or operating activity {variant+i+1}"}
+                if "Attendee_Count" in names:
+                    row["Attendee_Count"] = 1 + (i % 4)
+                rows.append(row)
             return pd.DataFrame(rows, columns=columns)
         return None
 
@@ -432,11 +435,31 @@ class ReferenceFileGenerator:
                 "POL-003 Entertainment", "Entertainment transactions require Director approval and a stated business purpose.",
                 "POL-004 Missing evidence", "A missing receipt or business purpose must be classified as an exception pending follow-up.",
             ]
+        elif planned_file.file_name == "reconciliation_rules.docx":
+            paragraphs = [
+                "Cash Reconciliation Rules",
+                "REC-001 Exact match", "Match items only when both Reference and Amount agree exactly.",
+                "REC-002 Unmatched items", "Keep bank-only and ledger-only items separate and retain their source identifiers.",
+                "REC-003 Period activity", "Report the sum of supplied bank activity and cash-ledger activity. Do not infer opening or closing balances when they are not supplied.",
+            ]
+        elif planned_file.file_name == "three_way_match_rules.docx":
+            paragraphs = [
+                "Accounts Payable Three-Way Match Rules",
+                "AP-001 Join key", "Join invoice, purchase-order, and receipt lines by PO_ID and Item_ID.",
+                "AP-002 Clear", "Clear only when a purchase order and receipt exist, quantity variance is zero, unit-price variance is no more than 0.01, and the invoice identity is not duplicated.",
+                "AP-003 Hold", "Hold a fully joined line when quantity or price is outside tolerance or the invoice identity is duplicated.",
+                "AP-004 Investigate", "Investigate when the purchase order or receipt needed for the join is missing. Investigate takes precedence over hold.",
+            ]
         else:
             paragraphs = [planned_file.file_name]
         if production_mode:
             paragraphs.append(f"Control package ID: {planned_file.file_id}")
-        for section in ([] if planned_file.file_name == "expense_policy.docx" else planned_file.text_sections):
+        special_policy = {
+            "expense_policy.docx",
+            "reconciliation_rules.docx",
+            "three_way_match_rules.docx",
+        }
+        for section in ([] if planned_file.file_name in special_policy else planned_file.text_sections):
             title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
             paragraphs.append(title)
             if section.clause_id:
@@ -557,7 +580,12 @@ class ReferenceFileGenerator:
     ) -> GeneratedFileRecord:
         checks = [ValidationCheck(check_name="file_exists", passed=target_path.exists(), details=str(target_path))]
         xml_text = self._read_docx_document_xml(target_path) if target_path.exists() else ""
-        for section in planned_file.text_sections:
+        special_policy = {
+            "expense_policy.docx",
+            "reconciliation_rules.docx",
+            "three_way_match_rules.docx",
+        }
+        for section in ([] if planned_file.file_name in special_policy else planned_file.text_sections):
             title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
             checks.append(
                 ValidationCheck(

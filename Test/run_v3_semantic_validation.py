@@ -14,8 +14,12 @@ if str(SRC) not in sys.path:
 
 from task_generator.v3_semantic_review_executor import (  # noqa: E402
     SemanticReviewExecutor,
-    claude_semantic_config,
     deepseek_semantic_config,
+    gpt54_semantic_config,
+)
+from task_generator.v3_semantic_contract_v2 import (  # noqa: E402
+    TaskSemanticContractV2,
+    to_review_contract,
 )
 from task_generator.v3_semantic_validity import (  # noqa: E402
     CandidateBlindReview,
@@ -24,6 +28,7 @@ from task_generator.v3_semantic_validity import (  # noqa: E402
     SemanticValidityGate,
     TaskSemanticContract,
     TeacherRubricReview,
+    SemanticFinding,
     write_semantic_artifact,
 )
 
@@ -92,7 +97,18 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
     blueprint = _read_json(blueprint_path)
     rubric = _read_json(rubric_path) if rubric_path else {}
     dataset = _read_json(dataset_path)
-    contract = SemanticContractDraftBuilder().build(task_id, blueprint, rubric)
+    v2_contract_path = case_dir / "semantic_contract" / "task_semantic_contract.json"
+    v2_consistency_path = case_dir / "semantic_contract" / "semantic_contract_consistency_report.json"
+    if v2_contract_path.exists():
+        v2_contract = TaskSemanticContractV2.model_validate(_read_json(v2_contract_path))
+        contract = to_review_contract(v2_contract)
+        teacher_contract_path = v2_contract_path
+        deterministic_findings = _v2_consistency_findings(v2_consistency_path)
+    else:
+        v2_contract = None
+        contract = SemanticContractDraftBuilder().build(task_id, blueprint, rubric)
+        teacher_contract_path = output_dir / "task_semantic_contract.json"
+        deterministic_findings = []
     contract_path = output_dir / "task_semantic_contract.json"
     write_semantic_artifact(contract_path, contract)
 
@@ -123,22 +139,28 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
         teacher_paths = _teacher_paths(case_dir, rubric_path)
         teacher_package_path = output_dir / "teacher_rubric_prompt_package.json"
         teacher_package = SemanticReviewPackageBuilder().build_teacher_package(
-            task_id, blind_review_path, contract_path, teacher_paths, teacher_package_path
+            task_id, blind_review_path, teacher_contract_path, teacher_paths, teacher_package_path
         )
         teacher_review = _retry_once(lambda: primary.review_teacher(teacher_package), output_dir, "primary_teacher")
         write_semantic_artifact(output_dir / "teacher_rubric_review.json", teacher_review)
 
         preliminary = SemanticValidityGate().build(
-            contract, blind_review, teacher_review, args.mode, args.repair_iteration, force_secondary_audit=force_audit
+            contract,
+            blind_review,
+            teacher_review,
+            args.mode,
+            args.repair_iteration,
+            force_secondary_audit=force_audit,
+            deterministic_findings=deterministic_findings,
         )
         if preliminary.secondary_review_required:
-            secondary = SemanticReviewExecutor(claude_semantic_config(args.tuzi_env_path, args.timeout_seconds))
+            secondary = SemanticReviewExecutor(gpt54_semantic_config(args.tuzi_env_path, args.timeout_seconds))
             secondary_blind = _retry_once(lambda: secondary.review_blind(blind_package), output_dir, "secondary_blind")
             secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
             write_semantic_artifact(secondary_blind_path, secondary_blind)
             secondary_teacher_package_path = output_dir / "secondary_teacher_rubric_prompt_package.json"
             secondary_package = SemanticReviewPackageBuilder().build_teacher_package(
-                task_id, secondary_blind_path, contract_path, teacher_paths, secondary_teacher_package_path
+                task_id, secondary_blind_path, teacher_contract_path, teacher_paths, secondary_teacher_package_path
             )
             secondary_teacher = _retry_once(lambda: secondary.review_teacher(secondary_package), output_dir, "secondary_teacher")
             write_semantic_artifact(output_dir / "secondary_teacher_rubric_review.json", secondary_teacher)
@@ -152,6 +174,7 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
         force_secondary_audit=force_audit,
         secondary_blind_review=secondary_blind,
         secondary_teacher_review=secondary_teacher,
+        deterministic_findings=deterministic_findings,
     )
     gate.artifact_sha256 = {
         "contract": _sha256(contract_path),
@@ -167,6 +190,30 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
         "needs_human_review": gate.needs_human_review,
         "gate_report_path": str(output_dir / "semantic_validity_gate_report.json"),
     }
+
+
+def _v2_consistency_findings(path: Path) -> List[SemanticFinding]:
+    if not path.exists():
+        return [SemanticFinding(
+            finding_code="deliverable_contract_mismatch",
+            severity="blocking",
+            message="Generator-owned semantic contract has no consistency report.",
+            deterministic_corroboration=True,
+        )]
+    payload = _read_json(path)
+    mapping = {
+        "legacy_contract_not_production_eligible": "hidden_assumption_required",
+        "hidden_candidate_dependency": "hidden_assumption_required",
+        "deterministic_validator_not_passed": "teacher_truth_conflict",
+        "rubric_missing_fact_coverage": "rubric_missing_fact_coverage",
+        "rubric_weight_imbalance": "rubric_weight_imbalance",
+    }
+    return [SemanticFinding(
+        finding_code=mapping.get(code, "deliverable_contract_mismatch"),
+        severity="blocking",
+        message=f"V2 deterministic consistency failure: {code}",
+        deterministic_corroboration=True,
+    ) for code in payload.get("reason_codes") or []]
 
 
 def _teacher_paths(case_dir: Path, rubric_path: Path) -> Dict[str, Path]:
