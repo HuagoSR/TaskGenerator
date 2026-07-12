@@ -80,6 +80,10 @@ def main() -> None:
     parser.add_argument("--allow-external-upload", action="store_true")
     parser.add_argument("--allow-external-source-upload", action="store_true")
     parser.add_argument("--allow-external-eval", action="store_true")
+    parser.add_argument("--allow-external-semantic-review", action="store_true")
+    parser.add_argument("--semantic-review-mode", choices=["disabled", "prepare", "diagnostic", "blocking"], default="disabled")
+    parser.add_argument("--semantic-review-execute", action="store_true")
+    parser.add_argument("--semantic-repair-iteration", type=int, default=0)
     parser.add_argument("--extractor-mode", choices=["none", "mock", "llm"], default="none")
     parser.add_argument(
         "--public-package-path",
@@ -186,6 +190,8 @@ def main() -> None:
         args.extractor_output_profile = "bounded_production"
         args.eval_mode = "dry-run"
         args.model = []
+        args.semantic_review_mode = "diagnostic" if args.allow_external_semantic_review else "prepare"
+        args.semantic_review_execute = args.allow_external_semantic_review
         if not args.motif:
             args.motif = ["fan_in_reconciliation", "cross_check_validation", "policy_application"]
         if not args.allow_web_collection or not args.allow_external_source_upload:
@@ -227,6 +233,7 @@ def main() -> None:
         allow_external_upload=args.allow_external_upload,
         allow_external_source_upload=args.allow_external_source_upload,
         allow_external_eval=args.allow_external_eval,
+        allow_external_semantic_review=args.allow_external_semantic_review,
         extractor_mode=args.extractor_mode,
         public_package_path=args.public_package_path,
         provider=args.provider,
@@ -253,6 +260,9 @@ def main() -> None:
         case_index_offset=args.case_index_offset,
         target_difficulty_profile=args.target_difficulty_profile,
         motif_occurrence_offsets=motif_occurrence_offsets,
+        semantic_review_mode=args.semantic_review_mode,
+        semantic_review_execute=args.semantic_review_execute,
+        semantic_repair_iteration=args.semantic_repair_iteration,
     )
     if args.action in {"resume", "rerun"} and manifest_path.exists():
         stored_payload = json.loads(manifest_path.read_text(encoding="utf-8"))

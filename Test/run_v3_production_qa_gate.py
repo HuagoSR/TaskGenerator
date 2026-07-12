@@ -21,6 +21,7 @@ def main() -> None:
     )
     parser.add_argument("--manifest-path", type=Path, required=True)
     parser.add_argument("--diversity-report-path", type=Path, default=None)
+    parser.add_argument("--semantic-validation-report-path", type=Path, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     args = parser.parse_args()
 
@@ -28,6 +29,7 @@ def main() -> None:
     report = ProductionQAGateBuilder().build(
         production_batch_manifest_path=args.manifest_path,
         diversity_report_path=args.diversity_report_path,
+        semantic_validation_report_path=args.semantic_validation_report_path,
         output_dir=output_dir,
     )
     print(

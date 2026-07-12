@@ -15,6 +15,7 @@ ProductionQAFindingSeverity = Literal["blocking", "warning", "info"]
 class ProductionQAGateRequest(BaseModel):
     production_batch_manifest_path: str
     diversity_report_path: Optional[str] = None
+    semantic_validation_report_path: Optional[str] = None
     output_dir: str
 
 
@@ -62,20 +63,26 @@ class ProductionQAGateBuilder:
         production_batch_manifest_path: str | Path,
         output_dir: str | Path,
         diversity_report_path: str | Path | None = None,
+        semantic_validation_report_path: str | Path | None = None,
     ) -> ProductionQAGateReport:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         request = ProductionQAGateRequest(
             production_batch_manifest_path=str(production_batch_manifest_path),
             diversity_report_path=str(diversity_report_path) if diversity_report_path else None,
+            semantic_validation_report_path=str(semantic_validation_report_path) if semantic_validation_report_path else None,
             output_dir=str(output_path),
         )
         manifest = load_json_file(str(production_batch_manifest_path))
         diversity = load_json_file(str(diversity_report_path)) if diversity_report_path else {}
         production_batch_id = str((manifest.get("request") or {}).get("production_batch_id") or "unknown_batch")
         diversity_warnings = set((diversity.get("diagnostics") or {}).get("warnings") or [])
+        semantic = load_json_file(str(semantic_validation_report_path)) if semantic_validation_report_path else {}
+        semantic_records = {
+            str(item.get("task_id") or ""): item for item in (semantic.get("records") or []) if isinstance(item, dict)
+        }
         decisions = [
-            self._decision(case, diversity_warnings)
+            self._decision(case, diversity_warnings, semantic.get("mode"), semantic_records.get(str(case.get("case_id") or "")))
             for case in (manifest.get("cases") or [])
             if isinstance(case, dict)
         ]
@@ -101,6 +108,8 @@ class ProductionQAGateBuilder:
         self,
         case: Dict[str, object],
         diversity_warnings: set[str],
+        semantic_mode: object = None,
+        semantic_record: Optional[Dict[str, object]] = None,
     ) -> ProductionQACaseDecision:
         findings: List[ProductionQAFinding] = []
         case_dir = Path(str(case.get("case_dir") or ""))
@@ -126,6 +135,15 @@ class ProductionQAGateBuilder:
             findings.append(self._finding("blocking", "export_validation_blockers_present", "rw-task export validation still has blocking findings."))
         if int(((verifier_report or {}).get("diagnostics") or {}).get("blocking_count") or 0) > 0:
             findings.append(self._finding("blocking", "verifier_blockers_present", "Task verifier still has blocking findings."))
+
+        if semantic_mode == "blocking":
+            if not semantic_record:
+                findings.append(self._finding("blocking", "semantic_validation_missing", "Blocking semantic validation has no case record."))
+            elif not bool(semantic_record.get("semantic_gate_pass")):
+                findings.append(self._finding("blocking", "semantic_validation_not_pass", "LLM-assisted semantic validity gate did not pass."))
+        elif semantic_mode in {"prepare", "diagnostic"}:
+            if not semantic_record or not bool(semantic_record.get("semantic_gate_pass")):
+                findings.append(self._finding("warning", "semantic_validation_review_required", "Semantic validity remains diagnostic or unresolved."))
 
         if case.get("workflow_context_fit") != "high":
             findings.append(self._finding("warning", "workflow_context_not_high", "Workflow-context fit is not yet high."))

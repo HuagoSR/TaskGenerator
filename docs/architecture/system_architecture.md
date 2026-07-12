@@ -43,6 +43,7 @@ TaskBlueprint
 → teacher input / GoldenRun
 → TrainingAnnotation / rubric
 → quality gate / verifier
+→ LLM-assisted semantic validation
 → package / rw-task export
 ```
 
@@ -53,6 +54,8 @@ LLM 可以参与情境变化、教师候选和 prose-heavy 文件生成；确定
 该层包括 package-level quality gate、task verifier、real-worldness、difficulty、model-separation diagnostics、production QA、release packaging、rw-task eval 和 promotion / rollback record。
 
 结构验收不能替代真实模型执行证据。单任务或单次执行默认只作为 diagnostic；正式 promotion 需要完整 cohort、固定 grader、明确任务包指纹和可审计的失败处理。
+
+`semantic_validation` 是结构 verifier 之后的独立语义门禁。它先在 candidate-blind 视图中检查材料是否充分、答案是否唯一，再审计 teacher truth 与 rubric。LLM 只产生结构化 finding；candidate dependency、teacher leakage、fact coverage、权重和晋升由确定性裁决器控制。历史任务没有该证据时标记为 `legacy_semantic_status=not_evaluated`，不能被解释为已经通过新门禁。
 
 ## 稳定边界
 

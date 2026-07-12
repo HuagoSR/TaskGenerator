@@ -37,6 +37,7 @@ PipelineStage = Literal[
     "source_to_skills",
     "registry_prepare",
     "task_generation",
+    "semantic_validation",
     "production_review",
     "rw_task_eval",
 ]
@@ -47,6 +48,7 @@ StageState = Literal["pending", "running", "skipped", "completed", "failed", "re
 CollectorBackend = Literal["direct", "stirrup"]
 ExtractorMode = Literal["none", "mock", "llm"]
 ExtractorOutputProfile = Literal["standard", "bounded_smoke", "bounded_production"]
+SemanticReviewMode = Literal["disabled", "prepare", "diagnostic", "blocking"]
 RunAction = Literal["run", "resume", "status", "rerun"]
 RunProfile = Literal[
     "custom",
@@ -62,6 +64,7 @@ STAGE_ORDER: List[PipelineStage] = [
     "source_to_skills",
     "registry_prepare",
     "task_generation",
+    "semantic_validation",
     "production_review",
     "rw_task_eval",
 ]
@@ -132,6 +135,7 @@ class EndToEndRequest(BaseModel):
     allow_external_upload: bool = False
     allow_external_source_upload: bool = False
     allow_external_eval: bool = False
+    allow_external_semantic_review: bool = False
     extractor_mode: ExtractorMode = "none"
     public_package_path: str = str(ROOT / "Test" / "v3_public_smoke_package" / "skill_extraction_prompt_package.json")
     provider: str = "deepseek"
@@ -159,6 +163,9 @@ class EndToEndRequest(BaseModel):
     case_index_offset: int = 0
     target_difficulty_profile: Optional[str] = None
     motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
+    semantic_review_mode: SemanticReviewMode = "disabled"
+    semantic_review_execute: bool = False
+    semantic_repair_iteration: int = 0
 
 
 class ExternalEffectsLedger(BaseModel):
@@ -167,6 +174,7 @@ class ExternalEffectsLedger(BaseModel):
     llm_extraction: bool = False
     eval_preparation: bool = False
     external_eval: bool = False
+    semantic_review: bool = False
 
 
 class EndToEndManifest(BaseModel):
@@ -346,6 +354,8 @@ class EndToEndPipeline:
             status = self._stage_registry_prepare(status, request, stage_dir, manifest)
         elif stage == "task_generation":
             status = self._stage_task_generation(status, request, stage_dir, manifest)
+        elif stage == "semantic_validation":
+            status = self._stage_semantic_validation(status, request, stage_dir, manifest)
         elif stage == "production_review":
             status = self._stage_production_review(status, request, stage_dir, manifest)
         elif stage == "rw_task_eval":
@@ -356,6 +366,61 @@ class EndToEndPipeline:
         self._validate_stage_outcome(status, request, manifest)
         status.state = "completed"
         status.finished_at = self._now()
+        return status
+
+    def _stage_semantic_validation(
+        self,
+        status: StageStatus,
+        request: EndToEndRequest,
+        stage_dir: Path,
+        manifest: EndToEndManifest,
+    ) -> StageStatus:
+        production_manifest = self._artifact(manifest, "task_generation", "production_batch_manifest")
+        if not production_manifest:
+            raise ValueError("task_generation must run before semantic_validation.")
+        command = [
+            request.python_exe,
+            str(self.test_dir / "run_v3_semantic_validation.py"),
+            "--manifest-path",
+            production_manifest,
+            "--output-dir",
+            str(stage_dir),
+            "--mode",
+            request.semantic_review_mode,
+            "--repair-iteration",
+            str(request.semantic_repair_iteration),
+            "--timeout-seconds",
+            str(request.timeout_seconds or 900),
+        ]
+        if request.semantic_review_execute:
+            if not request.allow_external_semantic_review:
+                raise ValueError("Semantic review execution requires --allow-external-semantic-review.")
+            command.extend(
+                [
+                    "--execute",
+                    "--allow-external-semantic-review",
+                    "--deepseek-key-path",
+                    request.deepseek_key_path,
+                    "--tuzi-env-path",
+                    request.env_path,
+                ]
+            )
+            manifest.external_effects.semantic_review = True
+        result = self._run_command("semantic_validation", command, stage_dir, request.timeout_seconds)
+        status.command_results.append(result)
+        report_path = stage_dir / "semantic_validation_batch_report.json"
+        augmented_manifest_path = stage_dir / "semantic_augmented_production_manifest.json"
+        payload = self._safe_load(report_path)
+        status.artifact_paths["semantic_validation_report"] = str(report_path)
+        status.artifact_paths["semantic_augmented_production_manifest"] = str(augmented_manifest_path)
+        status.summary = {
+            "mode": payload.get("mode"),
+            "case_count": payload.get("case_count", 0),
+            "decision_counts": payload.get("decision_counts") or {},
+            "semantic_pass_count": payload.get("semantic_pass_count", 0),
+            "secondary_review_count": payload.get("secondary_review_count", 0),
+            "needs_human_review_count": payload.get("needs_human_review_count", 0),
+        }
         return status
 
     def _stage_source_to_skills(
@@ -813,7 +878,7 @@ class EndToEndPipeline:
         stage_dir: Path,
         manifest: EndToEndManifest,
     ) -> StageStatus:
-        manifest_path = self._artifact(manifest, "task_generation", "production_batch_manifest")
+        manifest_path = self._artifact(manifest, "semantic_validation", "semantic_augmented_production_manifest") or self._artifact(manifest, "task_generation", "production_batch_manifest")
         if not manifest_path:
             raise ValueError("task_generation must run before production_review.")
         diversity_dir = stage_dir / "production_diversity"
@@ -836,10 +901,7 @@ class EndToEndPipeline:
                 request.timeout_seconds,
             )
         )
-        status.command_results.append(
-            self._run_command(
-                "production_qa_gate",
-                [
+        qa_command = [
                     request.python_exe,
                     str(self.test_dir / "run_v3_production_qa_gate.py"),
                     "--manifest-path",
@@ -848,7 +910,14 @@ class EndToEndPipeline:
                     str(diversity_report),
                     "--output-dir",
                     str(qa_dir),
-                ],
+                ]
+        semantic_report = self._artifact(manifest, "semantic_validation", "semantic_validation_report")
+        if semantic_report:
+            qa_command.extend(["--semantic-validation-report-path", semantic_report])
+        status.command_results.append(
+            self._run_command(
+                "production_qa_gate",
+                qa_command,
                 stage_dir,
                 request.timeout_seconds,
             )
@@ -953,7 +1022,7 @@ class EndToEndPipeline:
     ) -> StageStatus:
         if request.eval_mode == "execute" and not (request.run_eval and request.allow_external_eval):
             raise ValueError("External eval requires eval_mode=execute, --run-eval, and --allow-external-eval.")
-        manifest_path = self._artifact(manifest, "task_generation", "production_batch_manifest")
+        manifest_path = self._artifact(manifest, "semantic_validation", "semantic_augmented_production_manifest") or self._artifact(manifest, "task_generation", "production_batch_manifest")
         if not manifest_path:
             raise ValueError("task_generation must run before rw_task_eval.")
         case_dir = self._first_eval_case_dir(Path(manifest_path))
@@ -1396,6 +1465,14 @@ class EndToEndPipeline:
                 )
                 raise StageFailure(
                     "registry_prepare produced an empty seed set; no skills are available for Pipeline B sampling.",
+                    status,
+                )
+        if status.stage == "semantic_validation" and request.semantic_review_mode == "blocking":
+            case_count = int(status.summary.get("case_count") or 0)
+            pass_count = int(status.summary.get("semantic_pass_count") or 0)
+            if case_count == 0 or pass_count != case_count:
+                raise StageFailure(
+                    f"Blocking semantic validation accepted {pass_count}/{case_count} cases; production review was stopped.",
                     status,
                 )
 
