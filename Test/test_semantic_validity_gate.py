@@ -78,6 +78,8 @@ class SemanticValidityGateTests(unittest.TestCase):
             provider="deepseek",
             created_at="2026-07-12T00:02:00Z",
             blind_review_sha256="b" * 64,
+            teacher_truth_consistent=True,
+            goldenrun_covers_requirements=True,
             rubric_fact_weight_ratio=ratio,
             findings=findings or [],
         )
@@ -181,6 +183,12 @@ class SemanticValidityGateTests(unittest.TestCase):
             self.assertEqual(len(contract.requirements), 1)
             self.assertEqual(contract.claims[0].determinism, "judgmental")
             self.assertIn("does not certify teacher truth", contract.notes[0])
+
+    def test_finding_code_is_exposed_as_json_schema_enum(self):
+        schema = CandidateBlindReview.model_json_schema()
+        finding_ref = schema["$defs"]["SemanticFinding"]["properties"]["finding_code"]
+        self.assertIn("missing_candidate_input", finding_ref["enum"])
+        self.assertIn("rubric_weight_imbalance", finding_ref["enum"])
 
 
 if __name__ == "__main__":

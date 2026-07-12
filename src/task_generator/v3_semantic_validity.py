@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 ClaimType = Literal["amount", "quantity", "matching", "classification", "status", "judgment"]
@@ -15,6 +15,18 @@ Answerability = Literal["supported", "ambiguous", "unsupported"]
 FindingSeverity = Literal["info", "warning", "blocking"]
 SemanticDecision = Literal["pass", "revise", "blocked", "needs_secondary_review"]
 SemanticMode = Literal["disabled", "prepare", "diagnostic", "blocking"]
+FindingCode = Literal[
+    "missing_candidate_input",
+    "underdefined_decision_rule",
+    "ambiguous_requirement",
+    "hidden_assumption_required",
+    "teacher_truth_conflict",
+    "goldenrun_requirement_gap",
+    "rubric_missing_fact_coverage",
+    "irrelevant_rubric_criterion",
+    "rubric_weight_imbalance",
+    "deliverable_contract_mismatch",
+]
 
 FINDING_CODES = {
     "missing_candidate_input",
@@ -100,7 +112,7 @@ class TaskSemanticContract(BaseModel):
 
 
 class SemanticFinding(BaseModel):
-    finding_code: str
+    finding_code: FindingCode
     severity: FindingSeverity
     message: str
     requirement_id: Optional[str] = None
@@ -110,13 +122,6 @@ class SemanticFinding(BaseModel):
     alternative_interpretations: List[str] = Field(default_factory=list)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     deterministic_corroboration: bool = False
-
-    @model_validator(mode="after")
-    def validate_code(self) -> "SemanticFinding":
-        if self.finding_code not in FINDING_CODES:
-            raise ValueError(f"Unknown semantic finding code: {self.finding_code}")
-        return self
-
 
 class BlindRequirementReview(BaseModel):
     requirement_id: str
@@ -131,6 +136,7 @@ class BlindRequirementReview(BaseModel):
 
 
 class CandidateBlindReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     review_version: str = "v3.candidate_blind_semantic_review.1"
     task_id: str
     model: str
@@ -138,12 +144,13 @@ class CandidateBlindReview(BaseModel):
     created_at: str
     prompt_package_sha256: str
     status: Literal["completed", "failed"] = "completed"
-    requirement_reviews: List[BlindRequirementReview] = Field(default_factory=list)
+    requirement_reviews: List[BlindRequirementReview] = Field(min_length=1)
     findings: List[SemanticFinding] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
 
 
 class TeacherRubricReview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     review_version: str = "v3.teacher_rubric_semantic_review.1"
     task_id: str
     model: str
@@ -151,9 +158,9 @@ class TeacherRubricReview(BaseModel):
     created_at: str
     blind_review_sha256: str
     status: Literal["completed", "failed"] = "completed"
-    teacher_truth_consistent: bool = True
-    goldenrun_covers_requirements: bool = True
-    rubric_fact_weight_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
+    teacher_truth_consistent: bool
+    goldenrun_covers_requirements: bool
+    rubric_fact_weight_ratio: float = Field(ge=0.0, le=1.0)
     findings: List[SemanticFinding] = Field(default_factory=list)
     repair_proposals: List[Dict[str, Any]] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
@@ -594,6 +601,7 @@ class SemanticReviewPackageBuilder:
         deliverable_contract: Dict[str, Any],
         reference_files: List[str | Path],
         output_path: str | Path,
+        semantic_contract: Optional[TaskSemanticContract] = None,
     ) -> Dict[str, Any]:
         references = []
         for value in reference_files:
@@ -606,6 +614,10 @@ class SemanticReviewPackageBuilder:
             "task_id": task_id,
             "prompt": prompt,
             "deliverable_contract": deliverable_contract,
+            "semantic_requirements": [
+                {"requirement_id": item.requirement_id, "prompt_text": item.prompt_text}
+                for item in (semantic_contract.requirements if semantic_contract else [])
+            ],
             "reference_files": references,
             "forbidden_teacher_artifacts": sorted(self.FORBIDDEN_BLIND_NAMES),
         }

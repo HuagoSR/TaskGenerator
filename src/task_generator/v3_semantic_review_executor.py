@@ -13,7 +13,7 @@ from xml.etree import ElementTree
 from pydantic import BaseModel
 
 from task_generator.v3_semantic_validity import CandidateBlindReview, TeacherRubricReview
-from task_generator.v3_skill_extractor import ProviderConfig, build_deepseek_config, build_tuzi_config
+from task_generator.v3_skill_extractor import ProviderConfig, build_deepseek_config, build_tuzi_config, load_env_file
 
 
 class SemanticReviewExecutionError(RuntimeError):
@@ -43,7 +43,7 @@ class SemanticReviewExecutor:
             "uniquely answerable, and free of hidden assumptions. Return JSON matching CandidateBlindReview. "
             "Use only the documented semantic finding codes. Do not infer teacher truth or repair files."
         )
-        return self._call(
+        review = self._call(
             instructions,
             enriched,
             CandidateBlindReview,
@@ -56,6 +56,11 @@ class SemanticReviewExecutor:
                 "status": "completed",
             },
         )
+        expected_ids = {str(item.get("requirement_id")) for item in package.get("semantic_requirements") or []}
+        returned_ids = {item.requirement_id for item in review.requirement_reviews}
+        if not expected_ids or returned_ids != expected_ids:
+            raise SemanticReviewExecutionError("Provider contract violation: requirement review coverage mismatch.")
+        return review
 
     def review_teacher(self, package: Dict[str, Any]) -> TeacherRubricReview:
         expanded = {
@@ -96,10 +101,16 @@ class SemanticReviewExecutor:
             raise SemanticReviewExecutionError(f"OpenAI SDK unavailable: {type(exc).__name__}") from exc
         client = OpenAI(api_key=self.config.api_key, base_url=self.config.base_url, timeout=self.config.timeout_seconds)
         started = time.monotonic()
+        schema = model_type.model_json_schema()
         response = client.chat.completions.create(
             model=self.config.model,
             messages=[
-                {"role": "system", "content": system_prompt + " Output valid JSON only."},
+                {
+                    "role": "system",
+                    "content": system_prompt
+                    + " Output exactly one JSON object matching this JSON Schema. Do not add wrapper keys or prose: "
+                    + json.dumps(schema, ensure_ascii=False),
+                },
                 {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
             ],
             temperature=0,
@@ -186,6 +197,17 @@ def deepseek_semantic_config(key_path: str | Path, timeout_seconds: int = 900) -
 
 def claude_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> ProviderConfig:
     config = build_tuzi_config(env_path, "claude-sonnet-4-6", timeout_seconds)
-    if config is None:
+    if config is not None:
+        return config
+    values = load_env_file(env_path)
+    api_key = values.get("AGENT_API_KEY") or values.get("GRADER_API_KEY")
+    base_url = values.get("AGENT_BASE_URL") or values.get("GRADER_BASE_URL")
+    if not api_key or not base_url:
         raise SemanticReviewExecutionError("Tuzi semantic-review configuration is unavailable.")
-    return config
+    return ProviderConfig(
+        provider_name="tuzi",
+        base_url=base_url,
+        api_key=api_key,
+        model="claude-sonnet-4-6",
+        timeout_seconds=timeout_seconds,
+    )

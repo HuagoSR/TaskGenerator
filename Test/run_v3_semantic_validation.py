@@ -108,6 +108,7 @@ def _review_case(case: Dict[str, Any], output_root: Path, args: argparse.Namespa
         deliverable_contract=deliverables,
         reference_files=references,
         output_path=blind_package_path,
+        semantic_contract=contract,
     )
 
     blind_review = None

@@ -1,6 +1,6 @@
 # Milestone F2：LLM 语义有效性闭环
 
-> 状态：`implementation_complete_external_calibration_blocked_by_runtime_policy`
+> 状态：`superseded_by_calibration_hold`
 
 ## 目标
 
@@ -29,14 +29,14 @@ task_generation
 - 离线 prepare smoke 对两个既有任务生成合同和盲审包；在没有真实 review 时均为 `revise`，外部效果为 false。
 - 8 题人工诊断的 aggregate acceptance contract 已冻结，不包含 prompt、reference、teacher truth、rubric 正文或 GDPVal 内容。
 
-## 未完成的外部执行边界
+## 最终执行结果
 
-首次真实校准需要将固定 8 题的 candidate-visible package 发送给 DeepSeek，并在触发条件下把相同候选材料及审查证据发送给 Claude。用户已经明确授权该 campaign，但当前执行环境仍以非公开工作区数据外传风险拒绝了真实调用。确认没有后台进程启动、没有任务包上传、没有 provider 调用产生，因此以下步骤未执行：
+运行环境解除限制后，用户再次授权并完成 DeepSeek 主审。Claude 复审连续两次违反 JSON 输出合同，按 campaign 规则停止该通道。原始 8 题全部被阻塞，但两轮 repaired twin 仅有 5/8 消除主审 blocking 问题，未达到 7/8 门槛，因此最终为 `semantic_gate_hold_for_redesign`。
 
-1. 8 题 positive replay；
-2. 8 个 repaired twin 的真实 negative-control review；
-3. 5 题新生产 smoke；
-4. 既有 60 题只读诊断审计；
-5. 将 `finance-production` 从 diagnostic 晋升为 blocking。
+1. 8 题 positive replay：完成；
+2. repaired twin revision 01/02：完成但未达门槛；
+3. 5 题新生产 smoke：按停止规则未执行；
+4. 既有 60 题只读诊断审计：按停止规则未执行；
+5. `finance-production` blocking promotion：拒绝。
 
-在真实校准完成前不得宣称语义门禁已推广，也不得进入 RL。
+最终证据见 `MILESTONE_F2_SEMANTIC_VALIDITY_CALIBRATION.md`。不得宣称语义门禁已推广，也不得进入 RL。

@@ -18,9 +18,11 @@ from task_generator.v3_semantic_review_executor import (  # noqa: E402
     deepseek_semantic_config,
 )
 from task_generator.v3_semantic_validity import (  # noqa: E402
+    CandidateBlindReview,
     SemanticContractDraftBuilder,
     SemanticReviewPackageBuilder,
     SemanticValidityGate,
+    TeacherRubricReview,
     write_semantic_artifact,
 )
 
@@ -77,24 +79,35 @@ def _run_case(number: int, review_root: Path, output_root: Path, args: argparse.
     deliverable_contract = {Path(str(value).replace("\\", "/")).name: ["Satisfy every visible requirement in the prompt."] for value in dataset.get("deliverable_files") or []}
     blind_package_path = output_dir / "candidate_blind_prompt_package.json"
     blind_package = SemanticReviewPackageBuilder().build_blind_package(
-        contract.task_id, str(dataset.get("prompt") or ""), deliverable_contract, references, blind_package_path
+        contract.task_id,
+        str(dataset.get("prompt") or ""),
+        deliverable_contract,
+        references,
+        blind_package_path,
+        semantic_contract=contract,
     )
 
-    primary = SemanticReviewExecutor(deepseek_semantic_config(args.deepseek_key_path, args.timeout_seconds))
-    blind_review = _run_with_retry(lambda: primary.review_blind(blind_package), output_dir, "primary_blind")
     blind_review_path = output_dir / "candidate_blind_review.json"
-    write_semantic_artifact(blind_review_path, blind_review)
-    _write_json(output_dir / "primary_blind_provider_diagnostics.json", primary.last_diagnostics)
+    primary = SemanticReviewExecutor(deepseek_semantic_config(args.deepseek_key_path, args.timeout_seconds))
+    if args.resume and blind_review_path.exists():
+        blind_review = CandidateBlindReview.model_validate(_read_json(blind_review_path))
+    else:
+        blind_review = _run_with_retry(lambda: primary.review_blind(blind_package), output_dir, "primary_blind")
+        write_semantic_artifact(blind_review_path, blind_review)
+        _write_json(output_dir / "primary_blind_provider_diagnostics.json", primary.last_diagnostics)
 
     teacher_paths = {path.stem: path for path in sorted(teacher_dir.glob("*.json"))}
     teacher_package_path = output_dir / "teacher_rubric_prompt_package.json"
     teacher_package = SemanticReviewPackageBuilder().build_teacher_package(
         contract.task_id, blind_review_path, contract_path, teacher_paths, teacher_package_path
     )
-    teacher_review = _run_with_retry(lambda: primary.review_teacher(teacher_package), output_dir, "primary_teacher")
     teacher_review_path = output_dir / "teacher_rubric_review.json"
-    write_semantic_artifact(teacher_review_path, teacher_review)
-    _write_json(output_dir / "primary_teacher_provider_diagnostics.json", primary.last_diagnostics)
+    if args.resume and teacher_review_path.exists():
+        teacher_review = TeacherRubricReview.model_validate(_read_json(teacher_review_path))
+    else:
+        teacher_review = _run_with_retry(lambda: primary.review_teacher(teacher_package), output_dir, "primary_teacher")
+        write_semantic_artifact(teacher_review_path, teacher_review)
+        _write_json(output_dir / "primary_teacher_provider_diagnostics.json", primary.last_diagnostics)
 
     preliminary = SemanticValidityGate().build(
         contract,
@@ -105,19 +118,20 @@ def _run_case(number: int, review_root: Path, output_root: Path, args: argparse.
     )
     secondary_blind = None
     secondary_teacher = None
+    secondary_failed = False
     if preliminary.secondary_review_required:
-        secondary = SemanticReviewExecutor(claude_semantic_config(args.tuzi_env_path, args.timeout_seconds))
-        secondary_blind = _run_with_retry(lambda: secondary.review_blind(blind_package), output_dir, "secondary_blind")
-        secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
-        write_semantic_artifact(secondary_blind_path, secondary_blind)
-        _write_json(output_dir / "secondary_blind_provider_diagnostics.json", secondary.last_diagnostics)
-        secondary_package_path = output_dir / "secondary_teacher_rubric_prompt_package.json"
-        secondary_package = SemanticReviewPackageBuilder().build_teacher_package(
-            contract.task_id, secondary_blind_path, contract_path, teacher_paths, secondary_package_path
-        )
-        secondary_teacher = _run_with_retry(lambda: secondary.review_teacher(secondary_package), output_dir, "secondary_teacher")
-        write_semantic_artifact(output_dir / "secondary_teacher_rubric_review.json", secondary_teacher)
-        _write_json(output_dir / "secondary_teacher_provider_diagnostics.json", secondary.last_diagnostics)
+        provider_status_path = output_root / "secondary_provider_status.json"
+        if provider_status_path.exists() and _read_json(provider_status_path).get("status") == "unavailable":
+            secondary_failed = True
+        else:
+            secondary_failed, secondary_blind, secondary_teacher = _run_secondary_reviews(
+                args,
+                output_dir,
+                blind_package,
+                contract,
+                contract_path,
+                teacher_paths,
+            )
 
     gate = SemanticValidityGate().build(
         contract,
@@ -128,6 +142,12 @@ def _run_case(number: int, review_root: Path, output_root: Path, args: argparse.
         secondary_blind_review=secondary_blind,
         secondary_teacher_review=secondary_teacher,
     )
+    if secondary_failed:
+        gate.decision = "needs_secondary_review"
+        gate.semantic_gate_pass = False
+        gate.secondary_review_required = False
+        gate.needs_human_review = True
+        gate.notes.append("Secondary reviewer is unavailable or exhausted the allowed attempts; manual review is required.")
     gate.artifact_sha256 = {
         "contract": _sha256(contract_path),
         "blind_package": _sha256(blind_package_path),
@@ -138,6 +158,50 @@ def _run_case(number: int, review_root: Path, output_root: Path, args: argparse.
         gate.artifact_sha256["secondary_blind"] = _sha256(output_dir / "secondary_candidate_blind_review.json")
     write_semantic_artifact(gate_path, gate)
     return _record(number, gate.model_dump(mode="json"), output_dir, secondary_blind is not None)
+
+
+def _run_secondary_reviews(
+    args: argparse.Namespace,
+    output_dir: Path,
+    blind_package: Dict[str, Any],
+    contract,
+    contract_path: Path,
+    teacher_paths: Dict[str, Path],
+):
+        secondary_failed = False
+        secondary_blind = None
+        secondary_teacher = None
+        secondary_blind_path = output_dir / "secondary_candidate_blind_review.json"
+        secondary = SemanticReviewExecutor(claude_semantic_config(args.tuzi_env_path, args.timeout_seconds))
+        if args.resume and secondary_blind_path.exists():
+            secondary_blind = CandidateBlindReview.model_validate(_read_json(secondary_blind_path))
+        elif args.resume and _attempts_exhausted(output_dir / "secondary_blind_attempt_report.json"):
+            secondary_failed = True
+        else:
+            try:
+                secondary_blind = _run_with_retry(lambda: secondary.review_blind(blind_package), output_dir, "secondary_blind")
+                write_semantic_artifact(secondary_blind_path, secondary_blind)
+                _write_json(output_dir / "secondary_blind_provider_diagnostics.json", secondary.last_diagnostics)
+            except Exception:
+                secondary_failed = True
+        if secondary_blind is not None:
+            secondary_package_path = output_dir / "secondary_teacher_rubric_prompt_package.json"
+            secondary_package = SemanticReviewPackageBuilder().build_teacher_package(
+                contract.task_id, secondary_blind_path, contract_path, teacher_paths, secondary_package_path
+            )
+            secondary_teacher_path = output_dir / "secondary_teacher_rubric_review.json"
+            if args.resume and secondary_teacher_path.exists():
+                secondary_teacher = TeacherRubricReview.model_validate(_read_json(secondary_teacher_path))
+            elif args.resume and _attempts_exhausted(output_dir / "secondary_teacher_attempt_report.json"):
+                secondary_failed = True
+            else:
+                try:
+                    secondary_teacher = _run_with_retry(lambda: secondary.review_teacher(secondary_package), output_dir, "secondary_teacher")
+                    write_semantic_artifact(secondary_teacher_path, secondary_teacher)
+                    _write_json(output_dir / "secondary_teacher_provider_diagnostics.json", secondary.last_diagnostics)
+                except Exception:
+                    secondary_failed = True
+        return secondary_failed, secondary_blind, secondary_teacher
 
 
 def _record(number: int, gate: Dict[str, Any], output_dir: Path, secondary: bool) -> Dict[str, Any]:
@@ -197,8 +261,16 @@ def _run_with_retry(callable_, output_dir: Path, label: str):
     raise RuntimeError("unreachable")
 
 
+def _attempts_exhausted(path: Path) -> bool:
+    if not path.exists():
+        return False
+    payload = _read_json(path)
+    attempts = payload.get("attempts") or []
+    return len(attempts) >= 2 and all(item.get("status") == "failed" for item in attempts)
+
+
 def _read_json(path: Path) -> Dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
