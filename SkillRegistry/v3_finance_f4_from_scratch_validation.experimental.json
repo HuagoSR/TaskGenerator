@@ -1,0 +1,48 @@
+{
+  "campaign_spec_version": "v3.finance_f4_from_scratch.1",
+  "campaign_id": "finance_f4_from_scratch_validation_01",
+  "domain_profile": "finance_audit",
+  "task_language": "en",
+  "report_language": "zh-CN",
+  "source_provider": "deepseek",
+  "source_model": "deepseek-v4-flash",
+  "extractor_output_profile": "bounded_production",
+  "max_candidates_per_topic": 6,
+  "max_tokens": 8000,
+  "source_limit_per_topic": 3,
+  "editor_model": "gpt-5.6-terra",
+  "blind_solver_model": "gpt-5.6-luna",
+  "tuzi_key_slot": "backup",
+  "tuzi_budget_rmb": 50.0,
+  "tuzi_request_cap": 40,
+  "maximum_system_revisions_per_slot": 2,
+  "topics": [
+    {"topic": "bank reconciliation cash activity and control review", "queries": ["public bank reconciliation cash control procedure guide", "bank reconciliation checklist public university government"]},
+    {"topic": "purchase order receipt invoice and vendor controls", "queries": ["public accounts payable three way match control guide", "vendor invoice purchase order receiving checklist"]},
+    {"topic": "expense reimbursement corporate card and exception policy", "queries": ["public expense reimbursement corporate card control policy", "expense exception review checklist public policy"]},
+    {"topic": "audit evidence control testing and management deliverables", "queries": ["public internal control testing workpaper audit evidence guide", "audit finding management report evidence checklist"]}
+  ],
+  "slots": [
+    {"slot": 1, "motif": "fan_in_reconciliation", "occurrence": 0},
+    {"slot": 2, "motif": "cross_check_validation", "occurrence": 0},
+    {"slot": 3, "motif": "policy_application", "occurrence": 0},
+    {"slot": 4, "motif": "evidence_to_deliverable", "occurrence": 0, "experimental_motif": true},
+    {"slot": 5, "motif": "fan_in_reconciliation", "occurrence": 1},
+    {"slot": 6, "motif": "cross_check_validation", "occurrence": 1},
+    {"slot": 7, "motif": "policy_application", "occurrence": 1},
+    {"slot": 8, "motif": "evidence_to_deliverable", "occurrence": 1, "experimental_motif": true}
+  ],
+  "evidence_to_deliverable_governance": {
+    "experimental_motif": true,
+    "default_promotion_allowed": false,
+    "phase16_history_acknowledged": true
+  },
+  "external_effects": {
+    "web_collection": true,
+    "public_source_upload": true,
+    "holistic_editorial_review": true,
+    "candidate_blind_solve": true,
+    "external_solver_eval": false,
+    "external_grader_eval": false
+  }
+}
