@@ -119,6 +119,8 @@ F3.1 进一步要求外部 secondary review 使用显式 key slot 和原子成�
 
 F4 新增的 whole-task editorial workflow 仅用于固定8题版本化修订和汇报收口。它允许编辑模型提出完整任务修订，但任何数值 truth 必须由candidate-visible文件独立重算，独立复核模型不得读取teacher artifacts。`holistic_editorial_review_completed` 不自动升级历史60题或默认production profile。
 
+从零 F4 validation 进一步证明：`WholeTaskRevisionBundle` 目前只是 proposal contract，不是已物化任务。只要候选文件修改尚未由受治理的 materializer 写入新版本并重新通过 truth、rubric、verifier、export 和人工式放行，任务就必须保持 `revise_system/blocked`。
+
 ### `production_candidate`
 
 Entry conditions:

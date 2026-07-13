@@ -89,7 +89,8 @@ def _source_run(campaign, args):
 
 def _generate_next(campaign, args, slot):
     campaign.begin_slot(slot); item = campaign.spec["slots"][slot - 1]
-    run_id = f"slot_{slot:02d}_{item['motif']}"
+    attempt = campaign.read()["slots"][slot - 1]["attempts"]
+    run_id = f"slot_{slot:02d}_{item['motif']}_r{attempt:02d}"
     command = [sys.executable, str(ROOT / "Test" / "run_v3_end_to_end_pipeline.py"),
         "--run-id", run_id, "--action", "run", "--profile", "custom", "--stage", "production_review",
         "--source-mode", "existing", "--registry-mode", "existing", "--registry-path", str(campaign.registry_path),
