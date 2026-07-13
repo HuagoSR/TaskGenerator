@@ -66,7 +66,7 @@ def _required(value, parser, flag):
 
 
 def _source_run(campaign, args):
-    manifest = campaign.read()
+    manifest = campaign.initialize()
     if manifest["state"] == "new": campaign.begin_source_collection()
     elif manifest["state"] != "collecting_sources": raise RuntimeError("source_run_not_allowed")
     query_path = campaign.root / "state" / "topic_queries.json"
@@ -94,6 +94,7 @@ def _generate_next(campaign, args, slot):
         "--run-id", run_id, "--action", "run", "--profile", "custom", "--stage", "production_review",
         "--source-mode", "existing", "--registry-mode", "existing", "--registry-path", str(campaign.registry_path),
         "--domain-profile", "finance_audit", "--max-cases", "1", "--case-index-offset", str(slot - 1),
+        "--target-difficulty-profile", "finance_semantic_contract_v2" if item["motif"] != "evidence_to_deliverable" else "finance_production_v1",
         "--motif", item["motif"], "--motif-occurrence-offset", f"{item['motif']}={item['occurrence']}",
         "--rw-task-root", args.rw_task_root, "--python-exe", sys.executable,
         "--output-root", str(campaign.root / "pipeline_runs"), "--timeout-seconds", str(args.timeout_seconds)]

@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from src.task_generator.v3_f4_from_scratch_campaign import AssistantReviewRecord, F4FromScratchCampaign
+from Test.run_v3_finance_f4_from_scratch_campaign import _generate_next
 
 
 class F4FromScratchCampaignTests(unittest.TestCase):
@@ -33,6 +34,12 @@ class F4FromScratchCampaignTests(unittest.TestCase):
     def test_source_collection_is_single_use_and_frozen(self):
         with self.assertRaises(RuntimeError): self.campaign.begin_source_collection()
         self.campaign.assert_frozen_inputs()
+
+    def test_new_finance_tasks_use_generator_owned_semantic_profile(self):
+        import inspect
+        source = inspect.getsource(_generate_next)
+        self.assertIn('finance_semantic_contract_v2', source)
+        self.assertIn('evidence_to_deliverable', source)
 
     def test_next_slot_requires_release(self):
         self.campaign.begin_slot(1)
