@@ -195,7 +195,13 @@ def _env_value(path: Path, name: str) -> str:
     return ""
 
 
-def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, provider_env_source: Path | None) -> None:
+def deploy_release(
+    release_dir: Path,
+    host: str,
+    deepseek_key: Path | None,
+    provider_env_source: Path | None,
+    tuzi_key_slot: str = "primary",
+) -> None:
     manifest = release_payload(release_dir)
     release_id = manifest["release_id"]
     remote_home = ssh(host, "printf %s \"$HOME\"").stdout.strip()
@@ -219,7 +225,11 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, prov
                 f"TASKGEN_INPUT_DIR={remote_home}/taskgenerator-data/inputs",
                 f"TASKGEN_DEEPSEEK_KEY_FILE={remote_home}/taskgenerator-secrets/deepseek_api_key",
                 f"TASKGEN_PROVIDER_ENV_FILE={remote_home}/taskgenerator-secrets/provider.env",
-                f"TASKGEN_EVAL_TUZI_ENV_FILE={remote_home}/taskgenerator-secrets/eval_tuzi.env",
+                "TASKGEN_EVAL_TUZI_ENV_FILE=" + (
+                    f"{remote_home}/taskgenerator-secrets/f4_tuzi_backup.env"
+                    if tuzi_key_slot == "backup"
+                    else f"{remote_home}/taskgenerator-secrets/eval_tuzi.env"
+                ),
                 f"TASKGEN_E2B_KEY_FILE={remote_home}/taskgenerator-secrets/e2b_api_key",
             ]
         ) + "\n",
@@ -372,6 +382,7 @@ def main() -> None:
     parser.add_argument("--deepseek-key-file", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--provider-env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--rw-task-env-file", type=Path, default=Path(r"E:\THU\2026Spring\SRT\rw-task\.env"))
+    parser.add_argument("--tuzi-key-slot", choices=["primary", "backup"], default="primary")
     parser.add_argument("--target", choices=["local", "server"], default="server")
     parser.add_argument("--service", choices=["offline", "online"], default="offline", help="Use online only when resuming an explicitly approved LLM run.")
     parser.add_argument("--run-id")
@@ -395,7 +406,7 @@ def main() -> None:
         print(json.dumps(release_payload(built), ensure_ascii=False, indent=2))
         return
     if args.action == "deploy":
-        deploy_release(release_dir, args.ssh_host, args.deepseek_key_file, args.provider_env_file)
+        deploy_release(release_dir, args.ssh_host, args.deepseek_key_file, args.provider_env_file, args.tuzi_key_slot)
         print(json.dumps({"deployed_candidate": release_id, "host": args.ssh_host, "activated": False}, ensure_ascii=False))
         return
     if args.action == "eval-install-secrets":
