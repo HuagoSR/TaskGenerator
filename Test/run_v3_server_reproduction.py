@@ -282,6 +282,8 @@ def local_compose(release_dir: Path, service: str, arguments: Iterable[str]) -> 
     inputs = local_root / "inputs"
     runs.mkdir(parents=True, exist_ok=True)
     inputs.mkdir(parents=True, exist_ok=True)
+    unused_secret = local_root / "unused_secret"
+    unused_secret.touch(exist_ok=True)
     env = os.environ.copy()
     env.update(
         {
@@ -294,6 +296,10 @@ def local_compose(release_dir: Path, service: str, arguments: Iterable[str]) -> 
             "TASKGEN_INPUT_DIR": str(inputs.resolve()),
             "TASKGEN_DEEPSEEK_KEY_FILE": str((ROOT / "deepseek-key.txt").resolve()),
             "TASKGEN_PROVIDER_ENV_FILE": str((ROOT / ".env").resolve()),
+            # Compose interpolates every service even when only offline is
+            # selected. These placeholders are never mounted by that service.
+            "TASKGEN_EVAL_TUZI_ENV_FILE": str(unused_secret.resolve()),
+            "TASKGEN_E2B_KEY_FILE": str(unused_secret.resolve()),
         }
     )
     result = subprocess.run(

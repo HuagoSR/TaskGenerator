@@ -155,6 +155,8 @@ class WholeTaskMaterializer:
 
         if len([item for item in reference_root.iterdir() if item.is_file()]) > self.MAX_FILES:
             raise ValueError("materialized_reference_file_limit_exceeded")
+        for workbook_path in reference_root.glob("*.xlsx"):
+            self._normalize_xlsx_print_layout(workbook_path)
 
         adapter = FinanceSemanticContractAdapter()
         contract = adapter.design(bundle.task_id, bundle.motif, blueprint)
@@ -305,6 +307,24 @@ class WholeTaskMaterializer:
         if len(encoded) > self.MAX_JSON_BYTES:
             raise ValueError("json_content_limit_exceeded")
         target.write_bytes(encoded)
+
+    @staticmethod
+    def _normalize_xlsx_print_layout(path: Path) -> None:
+        """Make every candidate workbook readable as a complete rendered sheet."""
+        from openpyxl import load_workbook
+        from openpyxl.worksheet.page import PageMargins
+
+        workbook = load_workbook(path)
+        for sheet in workbook.worksheets:
+            sheet.sheet_properties.pageSetUpPr.fitToPage = True
+            sheet.page_setup.orientation = "landscape"
+            sheet.page_setup.fitToWidth = 1
+            sheet.page_setup.fitToHeight = 0
+            sheet.print_area = sheet.dimensions
+            sheet.page_margins = PageMargins(
+                left=0.2, right=0.2, top=0.35, bottom=0.35, header=0.1, footer=0.1
+            )
+        workbook.save(path)
 
     def _build_rubric(self, contract) -> Dict[str, Any]:
         claims = {item.claim_id: item for item in contract.claims}

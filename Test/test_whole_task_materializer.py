@@ -54,6 +54,11 @@ class WholeTaskMaterializerTests(unittest.TestCase):
             self.assertEqual(report.decision, "pass")
             self.assertTrue(report.deterministic_recomputation_pass)
             self.assertTrue(report.rw_task_export_compatible)
+            from openpyxl import load_workbook
+            rendered = load_workbook(root / "revision" / "reference_files" / "bank_statement.xlsx")
+            self.assertEqual(rendered.active.page_setup.fitToWidth, 1)
+            self.assertEqual(rendered.active.page_setup.orientation, "landscape")
+            rendered.close()
             truth = json.loads((root / "revision" / "teacher" / "deterministic_answer_key.json").read_text(encoding="utf-8"))
             self.assertEqual(truth["claim_001"]["matched_count"], 1)
             self.assertEqual(truth["claim_001"]["bank_only_count"], 1)
