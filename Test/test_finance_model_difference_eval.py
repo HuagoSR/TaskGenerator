@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 import sys
 
@@ -7,10 +8,13 @@ ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT/"Test"))
 from run_v3_finance_model_difference_eval import (  # noqa:E402
     ALLOWED_SOLVER_KEYS,
     _audit_disagrees,
+    atomic_json,
+    build_f4_2_index,
     fixed_audit_assignments,
     jaccard,
     select_extended,
     select_pilot,
+    reserve_tuzi_call,
 )
 
 
@@ -21,6 +25,31 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
             self.assertIn(model,text)
         compose=(ROOT/"deploy/docker/compose.yaml").read_text(encoding="utf-8")
         self.assertIn("/run/secrets/eval_tuzi_env:ro",compose); self.assertIn("/run/secrets/e2b_api_key:ro",compose)
+
+    def test_f4_2_panel_and_low_cost_graders_are_frozen(self):
+        payload=json.loads((ROOT/"SkillRegistry/v3_finance_f4_2_model_eval.experimental.json").read_text(encoding="utf-8"))
+        self.assertEqual("f4_2_eight_task",payload["scope"])
+        self.assertEqual(["gpt-5.6-sol","claude-sonnet-4-6","deepseek-v4-pro","deepseek-v4-flash"],
+                         [item["model"] for item in payload["solver_models"]])
+        self.assertEqual("gpt-5.6-luna",payload["primary_grader"])
+        self.assertEqual("claude-opus-4-7",payload["audit_grader"])
+        self.assertEqual(50.0,payload["tuzi_budget_rmb"])
+
+    def test_f4_2_fixed_audit_rotates_every_model_twice(self):
+        models=["sol","sonnet","pro","flash"]
+        selection={"scope":"f4_2_eight_task","tasks":[
+            {"task_id":f"task-{slot}","slot":slot,"global_index":slot,"motif":"m"} for slot in range(1,9)
+        ]}
+        assignments=fixed_audit_assignments(selection,models)
+        self.assertEqual({model:2 for model in models},{model:list(assignments.values()).count(model) for model in models})
+
+    def test_tuzi_budget_is_atomic_and_blocks_overrun(self):
+        spec={"tuzi_budget_rmb":1.0,"tuzi_request_cap":2,"reservation_rmb":{"grader:test":.6}}
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            reserve_tuzi_call(root,spec,"grader","test")
+            with self.assertRaisesRegex(RuntimeError,"tuzi_budget_exhausted"):
+                reserve_tuzi_call(root,spec,"grader","test")
 
     def test_pilot_selection_is_deterministic_and_diverse(self):
         index=[]

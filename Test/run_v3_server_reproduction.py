@@ -404,7 +404,7 @@ def production_status(host: str, release_id: str, campaign_id: str, wave: int) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build, deploy, and verify the Milestone D immutable Docker release.")
-    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch", "eval-install-secrets", "eval-pilot-start", "eval-pilot-grade", "eval-pilot-status", "eval-pilot-logs", "eval-pilot-fetch", "eval-extended-prepare", "eval-extended-start", "eval-extended-grade", "eval-extended-status", "eval-extended-logs", "eval-extended-fetch"])
+    parser.add_argument("--action", required=True, choices=["preflight", "build", "deploy", "activate", "demo-offline", "demo-llm", "batch", "status", "resume", "rerun", "fetch", "compare", "rollback", "production-start", "production-status", "production-logs", "production-monitor", "production-resume", "production-stop", "production-fetch", "eval-install-secrets", "eval-pilot-start", "eval-pilot-grade", "eval-pilot-status", "eval-pilot-logs", "eval-pilot-fetch", "eval-extended-prepare", "eval-extended-start", "eval-extended-grade", "eval-extended-status", "eval-extended-logs", "eval-extended-fetch", "eval-f4-preflight", "eval-f4-prepare", "eval-f4-start", "eval-f4-grade", "eval-f4-status", "eval-f4-logs", "eval-f4-fetch"])
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
@@ -467,6 +467,53 @@ def main() -> None:
                    f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' --entrypoint python eval "
                    "Test/run_v3_finance_model_difference_eval.py --action run")
         print(json.dumps({"container_id": ssh(args.ssh_host, command).stdout.strip(), "campaign_id": "finance_model_difference_eval_01"}, ensure_ascii=False)); return
+    if args.action in {"eval-f4-preflight", "eval-f4-prepare"}:
+        runner_action = "preflight" if args.action.endswith("preflight") else "prepare"
+        command = (f"cd ~/taskgenerator-deploy/releases/{release_id} && docker compose --env-file release.env -f compose.yaml run --rm "
+                   "--entrypoint python eval Test/run_v3_finance_model_difference_eval.py "
+                   f"--action {runner_action} --spec /opt/taskgenerator/SkillRegistry/v3_finance_f4_2_model_eval.experimental.json "
+                   "--campaign-root /data/runs/finance_f4_2_model_eval_01")
+        print(ssh(args.ssh_host, command).stdout); return
+    if args.action in {"eval-f4-start", "eval-f4-grade"}:
+        stage = "solver" if args.action.endswith("start") else "grading"
+        runner_action = "run" if stage == "solver" else "grade"
+        name = f"taskgenerator-finance-f4-2-eval-{stage}"
+        command = (f"cd ~/taskgenerator-deploy/releases/{release_id} && (docker rm -f '{name}' >/dev/null 2>&1 || true) && "
+                   f"docker compose --env-file release.env -f compose.yaml run -d --name '{name}' --entrypoint python eval "
+                   "Test/run_v3_finance_model_difference_eval.py "
+                   f"--action {runner_action} --spec /opt/taskgenerator/SkillRegistry/v3_finance_f4_2_model_eval.experimental.json "
+                   "--campaign-root /data/runs/finance_f4_2_model_eval_01")
+        container_id = ssh(args.ssh_host, command).stdout.strip()
+        if stage == "solver":
+            grading_name = "taskgenerator-finance-f4-2-eval-grading"
+            watcher = (f"cd ~/taskgenerator-deploy/releases/{release_id} && "
+                       f"nohup sh -c \"docker wait '{name}'; docker rm -f '{grading_name}' >/dev/null 2>&1 || true; "
+                       f"docker compose --env-file release.env -f compose.yaml run -d --name '{grading_name}' --entrypoint python eval "
+                       "Test/run_v3_finance_model_difference_eval.py --action grade "
+                       "--spec /opt/taskgenerator/SkillRegistry/v3_finance_f4_2_model_eval.experimental.json "
+                       "--campaign-root /data/runs/finance_f4_2_model_eval_01\" "
+                       "> ~/taskgenerator-data/runs/finance_f4_2_model_eval_01/grading_watcher.log 2>&1 < /dev/null &")
+            ssh(args.ssh_host, watcher)
+        print(json.dumps({"container_id":container_id,"campaign_id":"finance_f4_2_model_eval_01","stage":stage})); return
+    if args.action in {"eval-f4-status", "eval-f4-logs"}:
+        if args.action.endswith("logs"):
+            for stage in ("solver","grading"):
+                print(ssh(args.ssh_host,f"docker logs --tail 100 taskgenerator-finance-f4-2-eval-{stage}",check=False).stdout)
+            return
+        states={}
+        for stage in ("solver","grading"):
+            result=ssh(args.ssh_host,f"docker inspect taskgenerator-finance-f4-2-eval-{stage} --format '{{{{json .State}}}}'",check=False)
+            states[stage]=json.loads(result.stdout) if result.returncode==0 else {"Status":"not_found"}
+        command=(f"cd ~/taskgenerator-deploy/releases/{release_id} && docker compose --env-file release.env -f compose.yaml run --rm "
+                 "--entrypoint python eval Test/run_v3_finance_model_difference_eval.py --action status "
+                 "--spec /opt/taskgenerator/SkillRegistry/v3_finance_f4_2_model_eval.experimental.json "
+                 "--campaign-root /data/runs/finance_f4_2_model_eval_01")
+        result=ssh(args.ssh_host,command,check=False)
+        print(json.dumps({"container_states":states,"campaign":json.loads(result.stdout) if result.returncode==0 else {"error":result.stderr[-1000:]}},indent=2)); return
+    if args.action == "eval-f4-fetch":
+        destination=release_dir/"fetched"/"finance_f4_2_model_eval_01"; destination.parent.mkdir(parents=True,exist_ok=True)
+        run(["scp","-r",f"{args.ssh_host}:~/taskgenerator-data/runs/finance_f4_2_model_eval_01",str(destination.parent)])
+        print(destination); return
     if args.action == "eval-pilot-grade":
         name = "taskgenerator-finance-model-difference-grading"
         command = (f"cd ~/taskgenerator-deploy/releases/{release_id} && (docker rm -f '{name}' >/dev/null 2>&1 || true) && "

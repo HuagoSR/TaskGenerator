@@ -1,0 +1,28 @@
+{
+  "campaign_id": "finance_f4_2_model_eval_01",
+  "scope": "f4_2_eight_task",
+  "source_campaign_id": "finance_f4_from_scratch_validation_02",
+  "solver_models": [
+    {"model": "gpt-5.6-sol", "provider": "tuzi"},
+    {"model": "claude-sonnet-4-6", "provider": "tuzi"},
+    {"model": "deepseek-v4-pro", "provider": "deepseek_official"},
+    {"model": "deepseek-v4-flash", "provider": "deepseek_official"}
+  ],
+  "primary_grader": "gpt-5.6-luna",
+  "audit_grader": "claude-opus-4-7",
+  "solve_timeout_seconds": 2400,
+  "grade_timeout_seconds": 900,
+  "workers": 1,
+  "audit_absolute_difference_threshold": 0.20,
+  "audit_pass_threshold": 0.60,
+  "tuzi_budget_rmb": 50.0,
+  "tuzi_request_cap": 96,
+  "minimum_free_disk_bytes": 3221225472,
+  "reservation_rmb": {
+    "solver:gpt-5.6-sol": 0.50,
+    "solver:claude-sonnet-4-6": 1.00,
+    "grader:gpt-5.6-luna": 0.20,
+    "grader:claude-opus-4-7": 0.75,
+    "preflight": 0.50
+  }
+}
