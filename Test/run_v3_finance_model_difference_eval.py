@@ -304,6 +304,15 @@ def env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def tuzi_credentials(values: dict[str, str], *, backup_only: bool = False) -> tuple[str | None, str | None]:
+    if backup_only:
+        key = values.get("OPENAI_API_KEY_BACKUP")
+    else:
+        key = values.get("TUZI_API_KEY") or values.get("AGENT_API_KEY") or values.get("OPENAI_API_KEY")
+    url = values.get("TUZI_BASE_URL") or values.get("AGENT_BASE_URL") or values.get("OPENAI_BASE_URL")
+    return key, url
+
+
 def _cost_ledger_path(campaign_root: Path) -> Path:
     return campaign_root / "tuzi_cost_ledger.json"
 
@@ -390,8 +399,7 @@ def _chat_preflight(url: str, key: str, model: str) -> dict:
 def provider_preflight(campaign_root: Path, spec: dict, tuzi_env: Path, deepseek_key: Path) -> dict:
     campaign_root.mkdir(parents=True, exist_ok=True)
     tuzi = env_file(tuzi_env)
-    key = tuzi.get("TUZI_API_KEY") or tuzi.get("AGENT_API_KEY") or tuzi.get("OPENAI_API_KEY")
-    url = tuzi.get("TUZI_BASE_URL") or tuzi.get("AGENT_BASE_URL") or tuzi.get("OPENAI_BASE_URL")
+    key, url = tuzi_credentials(tuzi, backup_only=True)
     deepseek = deepseek_key.read_text(encoding="utf-8").strip()
     if not key or not url or not deepseek:
         raise RuntimeError("provider_preflight_secrets_missing")
@@ -453,8 +461,7 @@ def execute(campaign_root: Path, spec: dict, tuzi_env: Path, deepseek_key: Path,
         if not preflight_path.exists() or load_json(preflight_path).get("decision") != "pass":
             raise RuntimeError("F4.2 provider preflight has not passed")
     tuzi = env_file(tuzi_env); base = dict(os.environ)
-    tuzi_key = tuzi.get("TUZI_API_KEY") or tuzi.get("AGENT_API_KEY") or tuzi.get("OPENAI_API_KEY")
-    tuzi_url = tuzi.get("TUZI_BASE_URL") or tuzi.get("AGENT_BASE_URL") or tuzi.get("OPENAI_BASE_URL")
+    tuzi_key, tuzi_url = tuzi_credentials(tuzi, backup_only=selection.get("scope") == "f4_2_eight_task")
     e2b = e2b_key.read_text(encoding="utf-8").strip(); deepseek = deepseek_key.read_text(encoding="utf-8").strip()
     if not all((tuzi_key, tuzi_url, e2b, deepseek)): raise RuntimeError("required eval secrets are missing")
     if shutil.disk_usage(campaign_root.parent).free < int(spec.get("minimum_free_disk_bytes", 0)):
@@ -570,8 +577,7 @@ def _audit_disagrees(record: dict, spec: dict) -> bool:
 def grade(campaign_root: Path, spec: dict, tuzi_env: Path) -> dict:
     target_manifest = manifest_path(campaign_root); manifest = load_json(target_manifest); tuzi = env_file(tuzi_env)
     selection = load_json(selection_path(campaign_root))
-    key = tuzi.get("TUZI_API_KEY") or tuzi.get("AGENT_API_KEY") or tuzi.get("OPENAI_API_KEY")
-    url = tuzi.get("TUZI_BASE_URL") or tuzi.get("AGENT_BASE_URL") or tuzi.get("OPENAI_BASE_URL")
+    key, url = tuzi_credentials(tuzi, backup_only=selection.get("scope") == "f4_2_eight_task")
     if not key or not url:
         raise RuntimeError("Tuzi grader secret missing")
     records = [record for record in manifest["records"] if record.get("status") == "completed" and not record.get("imported")]

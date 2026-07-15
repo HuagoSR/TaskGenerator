@@ -15,6 +15,7 @@ from run_v3_finance_model_difference_eval import (  # noqa:E402
     select_extended,
     select_pilot,
     reserve_tuzi_call,
+    tuzi_credentials,
 )
 
 
@@ -50,6 +51,12 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
             reserve_tuzi_call(root,spec,"grader","test")
             with self.assertRaisesRegex(RuntimeError,"tuzi_budget_exhausted"):
                 reserve_tuzi_call(root,spec,"grader","test")
+
+    def test_f4_2_backup_key_does_not_fall_back_to_primary(self):
+        values={"OPENAI_API_KEY":"teacher","OPENAI_API_KEY_BACKUP":"personal","OPENAI_BASE_URL":"https://example.invalid/v1"}
+        self.assertEqual(("personal","https://example.invalid/v1"),tuzi_credentials(values,backup_only=True))
+        self.assertEqual(("teacher","https://example.invalid/v1"),tuzi_credentials(values,backup_only=False))
+        self.assertEqual((None,"https://example.invalid/v1"),tuzi_credentials({"OPENAI_API_KEY":"teacher","OPENAI_BASE_URL":"https://example.invalid/v1"},backup_only=True))
 
     def test_pilot_selection_is_deterministic_and_diverse(self):
         index=[]
