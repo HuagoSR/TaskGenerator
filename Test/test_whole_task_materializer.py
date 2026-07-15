@@ -80,6 +80,22 @@ class WholeTaskMaterializerTests(unittest.TestCase):
                     "prompt_spec": {}, "golden_plan": {},
                 })
 
+    def test_candidate_text_mojibake_is_repaired_or_rejected(self):
+        materializer = WholeTaskMaterializer()
+        self.assertEqual(materializer._normalize_candidate_text("invoice line鈥檚 key"), "invoice line's key")
+        with self.assertRaisesRegex(ValueError, "candidate_text_encoding_corruption"):
+            materializer._normalize_candidate_text("broken 鈥 text")
+
+    def test_wide_workbook_renders_two_pages_wide(self):
+        from openpyxl import load_workbook
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "wide.xlsx"
+            self._xlsx(path, "Validation", [[f"C{i}" for i in range(19)]])
+            WholeTaskMaterializer._normalize_xlsx_print_layout(path)
+            workbook = load_workbook(path)
+            self.assertEqual(workbook.active.page_setup.fitToWidth, 2)
+            workbook.close()
+
     @staticmethod
     def _xlsx(path: Path, sheet_name: str, rows):
         from openpyxl import Workbook

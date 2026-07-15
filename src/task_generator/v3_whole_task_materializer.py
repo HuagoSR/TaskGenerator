@@ -117,6 +117,7 @@ class WholeTaskMaterializer:
         sector: str = "Finance",
         occupation: str = "Financial auditor",
     ) -> MaterializationReport:
+        revised_prompt = self._normalize_candidate_text(bundle.revised_prompt)
         source_root = Path(source_reference_dir)
         output_root = Path(output_dir)
         if not source_root.is_dir():
@@ -176,7 +177,7 @@ class WholeTaskMaterializer:
             if item.get("criterion_type") in {"fact", "deliverable"}
         )
 
-        (output_root / "prompt.md").write_text(bundle.revised_prompt.strip() + "\n", encoding="utf-8")
+        (output_root / "prompt.md").write_text(revised_prompt.strip() + "\n", encoding="utf-8")
         self._atomic_json(teacher_root / "task_semantic_contract.json", verified.model_dump(mode="json"))
         self._atomic_json(teacher_root / "semantic_contract_consistency_report.json", consistency.model_dump(mode="json"))
         self._atomic_json(teacher_root / "deterministic_answer_key.json", expected)
@@ -201,7 +202,7 @@ class WholeTaskMaterializer:
             export_dir=export_dir,
             task_id=bundle.task_id,
             motif=bundle.motif,
-            prompt=bundle.revised_prompt,
+            prompt=revised_prompt,
             reference_root=reference_root,
             blueprint=blueprint,
             rubric=rubric,
@@ -210,7 +211,7 @@ class WholeTaskMaterializer:
         )
         export_report = RwTaskExportValidator().validate(export_dir)
         isolation = not any(
-            token in bundle.revised_prompt.lower()
+            token in revised_prompt.lower()
             for token in ("goldenrun", "golden_run", "answer key", "teacher truth", "training annotation")
         )
         reasons = list(consistency.reason_codes)
@@ -318,13 +319,24 @@ class WholeTaskMaterializer:
         for sheet in workbook.worksheets:
             sheet.sheet_properties.pageSetUpPr.fitToPage = True
             sheet.page_setup.orientation = "landscape"
-            sheet.page_setup.fitToWidth = 1
+            # Wide deliverable templates become illegible when nineteen or more
+            # columns are compressed into a single landscape page. Two pages
+            # wide preserves every column while keeping headers readable.
+            sheet.page_setup.fitToWidth = 2 if sheet.max_column > 12 else 1
             sheet.page_setup.fitToHeight = 0
             sheet.print_area = sheet.dimensions
             sheet.page_margins = PageMargins(
                 left=0.2, right=0.2, top=0.35, bottom=0.35, header=0.1, footer=0.1
             )
         workbook.save(path)
+
+    @staticmethod
+    def _normalize_candidate_text(value: str) -> str:
+        """Repair only known reversible punctuation mojibake and reject the rest."""
+        normalized = value.replace("鈥檚", "'s")
+        if any(marker in normalized for marker in ("鈥", "锟", "�")):
+            raise ValueError("candidate_text_encoding_corruption")
+        return normalized
 
     def _build_rubric(self, contract) -> Dict[str, Any]:
         claims = {item.claim_id: item for item in contract.claims}

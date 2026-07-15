@@ -122,7 +122,11 @@ class SemanticContractV2Tests(unittest.TestCase):
             ])
             (root / "three_way_match_rules.docx").write_bytes(b"rules")
             resolved = FinanceSemanticContractResolver().resolve(contract, root)
-        self.assertEqual(resolved.claims[0].expected_result.value["hold"], 2)
+        result = resolved.claims[0].expected_result.value
+        self.assertEqual(result["status_counts"]["hold"], 2)
+        self.assertEqual(result["line_results"][0]["receipt_quantity_variance"], -1.0)
+        self.assertEqual(result["line_results"][0]["invoice_quantity_variance"], 0.0)
+        self.assertTrue(all(item["potential_duplicate"] for item in result["line_results"]))
 
     def test_three_way_marks_every_member_of_duplicate_business_key(self):
         contract = FinanceSemanticContractAdapter().design(
@@ -142,7 +146,10 @@ class SemanticContractV2Tests(unittest.TestCase):
             ])
             (root / "three_way_match_rules.docx").write_bytes(b"rules")
             resolved = FinanceSemanticContractResolver().resolve(contract, root)
-        self.assertEqual(resolved.claims[0].expected_result.value, {"clear": 0, "hold": 2, "investigate": 0})
+        result = resolved.claims[0].expected_result.value
+        self.assertEqual(result["status_counts"], {"clear": 0, "hold": 2, "investigate": 0})
+        self.assertEqual([item["invoice_id"] for item in result["line_results"]], ["A", "B"])
+        self.assertTrue(all(item["status"] == "hold" for item in result["line_results"]))
 
     def test_review_bridge_preserves_precise_fields_and_fact_coverage(self):
         contract = FinanceSemanticContractAdapter().design(

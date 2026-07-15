@@ -420,6 +420,7 @@ class FinanceSemanticContractResolver:
             key = (str(row["PO_ID"]), str(row["Item_ID"]), float(row["Invoiced_Qty"]), float(row["Unit_Price"]))
             business_key_counts[key] = business_key_counts.get(key, 0) + 1
         statuses = []
+        line_results = []
         for row in invoices:
             key = (str(row["PO_ID"]), str(row["Item_ID"]))
             business_key = (
@@ -429,6 +430,9 @@ class FinanceSemanticContractResolver:
             duplicate = business_key_counts[business_key] > 1
             po = pos.get(key)
             receipt = receipts.get(key)
+            receipt_quantity_variance = None
+            invoice_quantity_variance = None
+            unit_price_variance = None
             if not po or not receipt:
                 status = "investigate"
             else:
@@ -440,12 +444,33 @@ class FinanceSemanticContractResolver:
                     or abs(unit_price_variance) > 0.01
                 ) else "clear"
             statuses.append(status)
-        return {status: statuses.count(status) for status in ("clear", "hold", "investigate")}
+            line_results.append({
+                "invoice_id": str(row["Invoice_ID"]),
+                "po_id": str(row["PO_ID"]),
+                "item_id": str(row["Item_ID"]),
+                "receipt_quantity_variance": (
+                    round(receipt_quantity_variance, 4) if receipt_quantity_variance is not None else None
+                ),
+                "invoice_quantity_variance": (
+                    round(invoice_quantity_variance, 4) if invoice_quantity_variance is not None else None
+                ),
+                "unit_price_variance": (
+                    round(unit_price_variance, 4) if unit_price_variance is not None else None
+                ),
+                "potential_duplicate": duplicate,
+                "status": status,
+            })
+        return {
+            "line_count": len(line_results),
+            "status_counts": {status: statuses.count(status) for status in ("clear", "hold", "investigate")},
+            "line_results": line_results,
+        }
 
     def _expense(self, root: Path) -> Dict[str, Any]:
         rows = _xlsx_rows(root / "expense_transactions.xlsx", "Transactions")
         exception_count = 0
         exception_amount = 0.0
+        transaction_results = []
         for row in rows:
             amount = float(row["Amount"])
             attendees = max(int(float(row.get("Attendee_Count") or 1)), 1)
@@ -455,10 +480,30 @@ class FinanceSemanticContractResolver:
             entertainment = category == "entertainment" and (
                 str(row["Approval_Level"]).lower() != "director" or not str(row["Business_Purpose"]).strip()
             )
-            if missing_receipt or meal or entertainment:
+            reasons = []
+            if missing_receipt:
+                reasons.append("missing_required_receipt")
+            if meal:
+                reasons.append("meal_per_person_threshold_without_director_approval")
+            if entertainment:
+                reasons.append("entertainment_approval_or_business_purpose_missing")
+            is_exception = bool(reasons)
+            if is_exception:
                 exception_count += 1
                 exception_amount += amount
-        return {"exception_count": exception_count, "exception_amount": round(exception_amount, 2)}
+            transaction_results.append({
+                "transaction_id": str(row["Transaction_ID"]),
+                "amount": round(amount, 2),
+                "attendee_count": attendees,
+                "per_person_amount": round(amount / attendees, 2),
+                "classification": "exception" if is_exception else "compliant",
+                "reason_codes": reasons,
+            })
+        return {
+            "exception_count": exception_count,
+            "exception_amount": round(exception_amount, 2),
+            "transaction_results": transaction_results,
+        }
 
     def _evidence_to_deliverable(self, root: Path) -> Dict[str, Any]:
         tests = _xlsx_rows(root / "control_test_results.xlsx", "Control_Tests")
