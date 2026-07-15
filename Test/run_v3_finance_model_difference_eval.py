@@ -473,11 +473,14 @@ def execute(campaign_root: Path, spec: dict, tuzi_env: Path, deepseek_key: Path,
         for model_spec in spec["solver_models"]:
             key = (task["task_id"], model_spec["model"])
             if keyed.get(key, {}).get("status") == "completed": continue
-            record = {"slot":task.get("slot"),"task_id":key[0],"model":key[1],"provider":model_spec["provider"],
-                      "task_sha256":task.get("task_sha256"),"package_sha256":task.get("package_sha256"),
-                      "status":"running","started_at":now(),"attempts":[]}
+            record = keyed.get(key) or {
+                "slot":task.get("slot"),"task_id":key[0],"model":key[1],"provider":model_spec["provider"],
+                "task_sha256":task.get("task_sha256"),"package_sha256":task.get("package_sha256"),
+                "started_at":now(),"attempts":[]
+            }
+            record["status"] = "running"
             keyed[key] = record; manifest["records"] = list(keyed.values()); manifest["heartbeat_at"] = now(); atomic_json(target_manifest, manifest)
-            for attempt in (1, 2):
+            for attempt in range(len(record.get("attempts", [])) + 1, 3):
                 env = dict(base); env["E2B_API_KEY"] = e2b
                 if model_spec["provider"] == "deepseek_official": env.update(AGENT_API_KEY=deepseek, AGENT_BASE_URL="https://api.deepseek.com")
                 else: env.update(AGENT_API_KEY=tuzi_key, AGENT_BASE_URL=tuzi_url)
@@ -492,7 +495,8 @@ def execute(campaign_root: Path, spec: dict, tuzi_env: Path, deepseek_key: Path,
                     finalize_tuzi_call(campaign_root, reservation, attempt_result["status"])
                 record["attempts"].append(attempt_result)
                 if attempt_result["status"] == "completed": break
-            record["status"] = record["attempts"][-1]["status"]; record["finished_at"] = now(); manifest["records"] = list(keyed.values()); manifest["heartbeat_at"] = now(); atomic_json(target_manifest, manifest)
+            record["status"] = record["attempts"][-1]["status"] if record.get("attempts") else "failed"
+            record["finished_at"] = now(); manifest["records"] = list(keyed.values()); manifest["heartbeat_at"] = now(); atomic_json(target_manifest, manifest)
     manifest["status"] = (
         "solver_f4_2_completed" if selection.get("scope") == "f4_2_eight_task"
         else "solver_extended_completed" if selection.get("scope") == "extended_30" else "solver_pilot_completed"
@@ -542,6 +546,7 @@ def _grade_one(campaign_root: Path, manifest: dict, target_manifest: Path, recor
     env = dict(os.environ); env.update(GRADER_API_KEY=key, GRADER_BASE_URL=url, GRADER_MODEL=grader_model)
     command = [sys.executable, "-m", "bench_standalone.grade_deliverables", str(stage), "--out-dir", str(out)]
     attempts = []
+    score = None
     for attempt in (1, 2):
         reservation = reserve_tuzi_call(campaign_root, spec, "grader", grader_model)
         result = run_command(
@@ -550,16 +555,20 @@ def _grade_one(campaign_root: Path, manifest: dict, target_manifest: Path, recor
             campaign_root / "logs" / f"grade__{grader_model}__{record['task_id']}__{record['model']}__{attempt}.err",
         )
         finalize_tuzi_call(campaign_root, reservation, result["status"])
+        grade_files = sorted(out.glob("eval_*.json"))
+        if result["status"] == "completed" and grade_files:
+            sample = load_json(grade_files[-1]).get("samples", [{}])[0]
+            grading = sample.get("grading") or {}
+            maximum = float(grading.get("max_possible_score") or 0)
+            total = float(grading.get("total_score") or 0)
+            if maximum > 0:
+                score = total / maximum
+            else:
+                result["status"] = "invalid_grade_contract"
+                result["failure_class"] = "zero_max_possible_score"
         attempts.append(result)
-        if result["status"] == "completed":
+        if score is not None:
             break
-    grade_files = sorted(out.glob("eval_*.json")); score = None
-    if attempts[-1]["status"] == "completed" and grade_files:
-        sample = load_json(grade_files[-1]).get("samples", [{}])[0]
-        grading = sample.get("grading") or {}
-        maximum = float(grading.get("max_possible_score") or 0)
-        total = float(grading.get("total_score") or 0)
-        score = total / maximum if maximum else None
     record[grader_key] = {**attempts[-1], "grader": grader_model, "score": score, "attempts": attempts}
     manifest["heartbeat_at"] = now(); atomic_json(target_manifest, manifest)
 
@@ -612,9 +621,14 @@ def grade(campaign_root: Path, spec: dict, tuzi_env: Path) -> dict:
             _grade_one(campaign_root, manifest, target_manifest, record, "audit_grade", spec["audit_grader"], key, url, spec["grade_timeout_seconds"], spec)
     manifest["anomaly_expanded_task_ids"] = sorted(anomalous_tasks)
     primary_count = sum(r.get("primary_grade", {}).get("score") is not None for r in manifest["records"])
+    valid_delivery_count = sum(r.get("status") == "completed" for r in manifest["records"])
+    fixed_audit_count = sum(r.get("audit_reason") == "fixed_sample" and r.get("audit_grade", {}).get("score") is not None for r in manifest["records"])
     manifest["status"] = (
         "f4_2_eval_completed_awaiting_interpretation"
-        if selection.get("scope") == "f4_2_eight_task" and len(manifest["records"]) == 32 and primary_count >= 30
+        if selection.get("scope") == "f4_2_eight_task" and len(manifest["records"]) == 32
+        and primary_count == valid_delivery_count and fixed_audit_count >= 8
+        else "f4_2_eval_blocked"
+        if selection.get("scope") == "f4_2_eight_task"
         else "thirty_task_eval_completed_awaiting_research_interpretation"
         if selection.get("scope") == "extended_30" and len(manifest["records"]) == 120 and primary_count >= 114
         else "pilot_completed_awaiting_cost_decision" if selection.get("scope") != "extended_30"
