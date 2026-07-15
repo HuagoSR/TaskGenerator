@@ -91,12 +91,13 @@ def prune_forbidden_tree(root: Path) -> None:
             path.unlink(missing_ok=True)
 
 
-def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Path:
+def build_release(release_id: str, rw_task_root: Path, release_root: Path, base_image: str | None = None) -> Path:
     release_dir = release_root / release_id
     if release_dir.exists():
         raise RuntimeError(f"Release already exists: {release_dir}")
     context = release_dir / "context"
     taskgenerator = context / "taskgenerator"
+    base: dict = {}
     context.mkdir(parents=True)
     archive = release_dir / "taskgenerator.tar"
     run(["git", "archive", "--format=tar", "-o", str(archive), "HEAD"])
@@ -107,17 +108,44 @@ def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Pa
     for forbidden in (taskgenerator / ".env", taskgenerator / "deepseek-key.txt"):
         forbidden.unlink(missing_ok=True)
     prune_forbidden_tree(taskgenerator)
-    shutil.copy2(DEPLOY / "Dockerfile", context / "Dockerfile")
-    shutil.copy2(DEPLOY / "requirements.lock", context / "requirements.lock")
+    if base_image:
+        base = json.loads(run(["docker", "image", "inspect", base_image]).stdout)[0]
+        base_labels = base.get("Config", {}).get("Labels") or {}
+        rw_snapshot = base_labels.get("cloud.huago.taskgenerator.rw-task-sha256")
+        if not rw_snapshot:
+            raise RuntimeError("base_image_missing_rw_task_fingerprint")
+        (context / "Dockerfile").write_text(
+            "\n".join([
+                f"FROM {base_image}",
+                "ARG RELEASE_ID=development",
+                "ARG SOURCE_COMMIT=unknown",
+                "USER root",
+                "RUN find /opt/taskgenerator -mindepth 1 -maxdepth 1 -exec rm -rf {} +",
+                "COPY --chown=1000:1000 taskgenerator /opt/taskgenerator",
+                "LABEL org.opencontainers.image.revision=\"${SOURCE_COMMIT}\" \\",
+                "      cloud.huago.taskgenerator.release=\"${RELEASE_ID}\" \\",
+                "      cloud.huago.taskgenerator.managed=\"true\"",
+                "USER taskgenerator",
+                "WORKDIR /opt/taskgenerator",
+                "ENTRYPOINT [\"python\", \"Test/run_v3_end_to_end_pipeline.py\"]",
+                "CMD [\"--help\"]",
+                "",
+            ]),
+            encoding="utf-8",
+        )
+        rw_hashes = {}
+    else:
+        shutil.copy2(DEPLOY / "Dockerfile", context / "Dockerfile")
+        shutil.copy2(DEPLOY / "requirements.lock", context / "requirements.lock")
+        rw_hashes = safe_copy_rw_task(rw_task_root, context / "rw-task")
+        rw_snapshot = hashlib.sha256(json.dumps(rw_hashes, sort_keys=True).encode()).hexdigest()
     shutil.copy2(DEPLOY / ".dockerignore", context / ".dockerignore")
     shutil.copy2(DEPLOY / "compose.yaml", release_dir / "compose.yaml")
-    rw_hashes = safe_copy_rw_task(rw_task_root, context / "rw-task")
     assert_release_clean(context)
 
     commit = run(["git", "rev-parse", "HEAD"]).stdout.strip()
     dirty = [line for line in run(["git", "status", "--short"]).stdout.splitlines() if not line.endswith(" .env")]
     image = f"taskgenerator:{release_id}"
-    rw_snapshot = hashlib.sha256(json.dumps(rw_hashes, sort_keys=True).encode()).hexdigest()
     run(
         [
             "docker", "buildx", "build", "--platform", "linux/amd64", "--load",
@@ -143,8 +171,10 @@ def build_release(release_id: str, rw_task_root: Path, release_root: Path) -> Pa
         "image_size_bytes": inspect.get("Size"),
         "rw_task_snapshot_sha256": rw_snapshot,
         "rw_task_files": rw_hashes,
-        "dockerfile_sha256": sha256_file(DEPLOY / "Dockerfile"),
-        "requirements_lock_sha256": sha256_file(DEPLOY / "requirements.lock"),
+        "base_image": base_image,
+        "base_image_id": base.get("Id") if base_image else None,
+        "dockerfile_sha256": sha256_file(context / "Dockerfile"),
+        "requirements_lock_sha256": sha256_file(DEPLOY / "requirements.lock") if not base_image else None,
         "compose_sha256": sha256_file(DEPLOY / "compose.yaml"),
         "security_scan": {"forbidden_context_findings": [], "secret_values_recorded": False},
     }
@@ -378,6 +408,7 @@ def main() -> None:
     parser.add_argument("--release-id")
     parser.add_argument("--release-root", type=Path, default=DEFAULT_RELEASE_ROOT)
     parser.add_argument("--rw-task-root", type=Path, default=DEFAULT_RW_TASK_ROOT)
+    parser.add_argument("--base-image", help="Build a code-only immutable release on an already verified local image.")
     parser.add_argument("--ssh-host", default=DEFAULT_SSH_HOST)
     parser.add_argument("--deepseek-key-file", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--provider-env-file", type=Path, default=ROOT / ".env")
@@ -402,7 +433,7 @@ def main() -> None:
     release_id = args.release_id or datetime.now(timezone.utc).strftime("d-%Y%m%d-%H%M%S")
     release_dir = args.release_root / release_id
     if args.action == "build":
-        built = build_release(release_id, args.rw_task_root, args.release_root)
+        built = build_release(release_id, args.rw_task_root, args.release_root, args.base_image)
         print(json.dumps(release_payload(built), ensure_ascii=False, indent=2))
         return
     if args.action == "deploy":
