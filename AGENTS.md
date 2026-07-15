@@ -37,9 +37,9 @@ The current roadmap is:
 - A. Phase 16 evidence closure — complete.
 - B. Documentation and project-state governance — complete.
 - C. Local end-to-end automation — complete.
-- D. Server reproduction — complete; active release is `milestone-d-094c6cb`.
+- D. Server reproduction — complete; its accepted release was `milestone-d-094c6cb`, while the current production release is recorded below.
 - E. Warehouse-inventory vertical slice — complete; offline, public-source DeepSeek, contamination, and server evidence passed.
-- F. Training-data readiness — F4 holistic editorial closure completed on the fixed eight-task cohort: Terra edited whole tasks, deterministic recomputation governed truth, and Luna solved candidate-only packages; 8/8 passed with no unresolved material ambiguity. This is reporting evidence, not RL authorization or default-chain promotion.
+- F. Training-data readiness — F4.2 completed a fresh server-side source-to-task validation: four motifs produced two tasks each, and all 8 passed versioned Terra editing, deterministic recomputation, Luna candidate-only solving, visual QA, verifier/export, and assistant review. This is bounded evidence, not RL authorization or default-chain promotion.
 
 Milestone E kept GDPVal outside generation. The active server release is `milestone-f-data-production-6304e84`. The finance campaign completed 60/60 candidate-ready tasks with 20 per allowed motif, verifier/export pass for all tasks, zero QA-blocked cases, and no external task evaluation. It does not authorize task-package upload, reward training, SFT, or RL.
 
@@ -139,4 +139,4 @@ Before expensive execution, run structural readiness, verifier, export validatio
 
 Milestone C is complete. The unified local runner now provides Manifest V2, scratch-first profiles, checksum-backed reuse, resume/rerun/status actions, public offline and LLM smoke profiles, lifecycle indexing, and eval preparation with external eval disabled by default.
 
-Milestones D and E are complete. Milestone F produced 60/60 candidate-ready tasks, followed by the governed 30-task evaluation and 8-task diagnosis. F2/F3/F3.1 remain historical evidence of over-fragmented semantic review. F4 instead used whole-task editing plus deterministic governance: fixed tasks #2/#6/#13/#18/#31/#35/#38/#47 were versioned, independently recomputed, visually checked, and solved candidate-blind by Luna; all 8 passed. Preserve this as a bounded reporting cohort. The next research question is a governed comparison of the strict pipeline, Skill-only generation, and an LLM-led hybrid; do not start RL or promote a new default chain without that explicit workstream.
+Milestones D and E are complete. Milestone F produced 60/60 candidate-ready tasks, followed by the governed 30-task evaluation and 8-task diagnosis. F2/F3/F3.1 remain historical evidence of over-fragmented semantic review. F4 repaired a fixed eight-task cohort; F4.2 then validated the same whole-task-editing plus deterministic-governance division on eight newly produced server tasks from fresh public sources and a fresh scratch registry. All 8 passed, including two isolated `evidence_to_deliverable` tasks, but the candidate release remains inactive and that motif remains experimental. The next research question is a governed comparison of the strict pipeline, Skill-only generation, and an LLM-led hybrid; do not start RL or promote a new default chain without that explicit workstream.
