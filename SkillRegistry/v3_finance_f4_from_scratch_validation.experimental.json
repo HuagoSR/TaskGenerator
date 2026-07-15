@@ -1,6 +1,6 @@
 {
-  "campaign_spec_version": "v3.finance_f4_from_scratch.1",
-  "campaign_id": "finance_f4_from_scratch_validation_01",
+  "campaign_spec_version": "v3.finance_f4_from_scratch.2",
+  "campaign_id": "finance_f4_from_scratch_validation_02",
   "domain_profile": "finance_audit",
   "task_language": "en",
   "report_language": "zh-CN",
@@ -14,7 +14,7 @@
   "blind_solver_model": "gpt-5.6-luna",
   "tuzi_key_slot": "backup",
   "tuzi_budget_rmb": 50.0,
-  "tuzi_request_cap": 40,
+  "tuzi_request_cap": 60,
   "maximum_system_revisions_per_slot": 2,
   "topics": [
     {"topic": "bank reconciliation cash activity and control review", "queries": ["public bank reconciliation cash control procedure guide", "bank reconciliation checklist public university government"]},

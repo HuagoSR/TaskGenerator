@@ -33,6 +33,14 @@ ENV LANG=C.UTF-8 \
 RUN groupadd --gid "${APP_GID}" taskgenerator \
     && useradd --uid "${APP_UID}" --gid "${APP_GID}" --create-home taskgenerator
 
+# Headless rendering is part of the F4.2 release gate.  The runtime converts
+# candidate-visible XLSX/DOCX files to PDF/PNG for review; it never edits the
+# source package in place.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       libreoffice-calc libreoffice-writer poppler-utils fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.lock /tmp/requirements.lock
 RUN python -m pip install --no-cache-dir --upgrade pip==26.1.1 setuptools==80.10.2 wheel==0.46.3 \
     && python -m pip install --no-cache-dir -r /tmp/requirements.lock

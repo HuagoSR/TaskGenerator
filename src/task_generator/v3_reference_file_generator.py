@@ -340,6 +340,34 @@ class ReferenceFileGenerator:
                     row["Attendee_Count"] = 1 + (i % 4)
                 rows.append(row)
             return pd.DataFrame(rows, columns=columns)
+        if names == {"Test_ID", "Control_ID", "Evidence_ID", "Procedure", "Sample_Size", "Exceptions_Found", "Result", "Owner", "Due_Date"}:
+            rows = []
+            for i in range(10):
+                exception_count = 1 if i in {3, 7} else 0
+                evidence_id = f"EVID-{variant+i+1:04d}"
+                rows.append({
+                    "Test_ID": f"TEST-{variant+i+1:04d}",
+                    "Control_ID": f"CTRL-{i+1:03d}",
+                    "Evidence_ID": evidence_id,
+                    "Procedure": f"Inspect evidence and reperform control step {i+1}",
+                    "Sample_Size": 20 + i * 5,
+                    "Exceptions_Found": exception_count,
+                    "Result": "Fail" if exception_count else ("Evidence Gap" if i == 8 else "Pass"),
+                    "Owner": f"Control Owner {(i % 4) + 1}",
+                    "Due_Date": f"2026-07-{i+10:02d}",
+                })
+            return pd.DataFrame(rows, columns=columns)
+        if names == {"Evidence_ID", "Source", "Period", "Reliability", "Supports_Test_ID"}:
+            rows = []
+            for i in range(9):
+                rows.append({
+                    "Evidence_ID": f"EVID-{variant+i+1:04d}",
+                    "Source": ["System report", "Approved form", "Manager review record"][i % 3],
+                    "Period": "2026-Q2",
+                    "Reliability": "High" if i % 3 else "Moderate",
+                    "Supports_Test_ID": f"TEST-{variant+i+1:04d}",
+                })
+            return pd.DataFrame(rows, columns=columns)
         return None
 
     def _column_value(self, column_name: str, semantic_type: str, row_index: int, column_index: int) -> Any:
@@ -451,6 +479,18 @@ class ReferenceFileGenerator:
                 "AP-004 Status precedence", "First investigate when the purchase order or receipt is missing. Otherwise hold a duplicate or any variance outside tolerance. Otherwise clear the line.",
                 "AP-005 Tolerance", "Quantity variances must equal zero. The absolute unit-price variance must not exceed 0.01.",
             ]
+        elif planned_file.file_name == "control_reporting_rules.docx":
+            paragraphs = [
+                "Control Testing Reporting Rules",
+                "Purpose", "Define how control-test evidence becomes a management-facing conclusion.",
+                "Applicable Guidance", "Apply E2D-001 through E2D-004 to every supplied test.",
+                "Evidence Interpretation", "Use only the test results and evidence-register links supplied in the candidate package.",
+                "Decision Rules", "Distinguish supported passes, confirmed exceptions, and unresolved evidence gaps before assigning follow-up.",
+                "E2D-001 Supported pass", "Classify a test as passed only when Result is Pass and the evidence register links the stated Evidence_ID to the same Test_ID.",
+                "E2D-002 Confirmed exception", "Classify a test as failed when Result is Fail or Exceptions_Found is greater than zero. List the Test_ID, Control_ID, Evidence_ID, owner, due date, and exception count.",
+                "E2D-003 Evidence gap", "Classify a test as unresolved when Result is Evidence Gap, the Evidence_ID is absent from the register, or the evidence does not support the same Test_ID.",
+                "E2D-004 Follow-up", "A failed test requires remediation by the stated owner by the due date. An unresolved test requires evidence collection and retesting before a conclusion.",
+            ]
         else:
             paragraphs = [planned_file.file_name]
         if production_mode:
@@ -459,6 +499,7 @@ class ReferenceFileGenerator:
             "expense_policy.docx",
             "reconciliation_rules.docx",
             "three_way_match_rules.docx",
+            "control_reporting_rules.docx",
         }
         for section in ([] if planned_file.file_name in special_policy else planned_file.text_sections):
             title = f"{section.clause_id} {section.heading}" if section.clause_id else section.heading
@@ -471,18 +512,33 @@ class ReferenceFileGenerator:
         self._write_minimal_docx(target_path, paragraphs, production_mode)
         clause_map_name = f"{Path(planned_file.file_name).stem}_clause_map.json"
         clause_map_path = target_path.parent / clause_map_name
+        special_clause_ids = {
+            "expense_policy.docx": [("POL-001", "Receipt requirement"), ("POL-002", "Meal threshold"), ("POL-003", "Entertainment"), ("POL-004", "Missing evidence")],
+            "reconciliation_rules.docx": [("REC-001", "Exact match"), ("REC-002", "Unmatched items"), ("REC-003", "Period activity")],
+            "three_way_match_rules.docx": [("AP-001", "Join key"), ("AP-002", "Variances"), ("AP-003", "Potential duplicate"), ("AP-004", "Status precedence"), ("AP-005", "Tolerance")],
+            "control_reporting_rules.docx": [("E2D-001", "Supported pass"), ("E2D-002", "Confirmed exception"), ("E2D-003", "Evidence gap"), ("E2D-004", "Follow-up")],
+        }
+        clause_entries = [
+            {
+                "clause_id": clause_id,
+                "heading": heading,
+                "evidence_role": "decision_rule",
+                "locator": f"{planned_file.file_name}:{clause_id}",
+            }
+            for clause_id, heading in special_clause_ids.get(planned_file.file_name, [])
+        ] or [
+            {
+                "clause_id": section.clause_id,
+                "heading": section.heading,
+                "evidence_role": section.evidence_role,
+                "locator": f"{planned_file.file_name}:{section.clause_id or section.heading}",
+            }
+            for section in planned_file.text_sections
+        ]
         clause_map_payload = {
             "file_name": planned_file.file_name,
             **({"control_package_id": planned_file.file_id} if production_mode else {}),
-            "clauses": [
-                {
-                    "clause_id": section.clause_id,
-                    "heading": section.heading,
-                    "evidence_role": section.evidence_role,
-                    "locator": f"{planned_file.file_name}:{section.clause_id or section.heading}",
-                }
-                for section in planned_file.text_sections
-            ],
+            "clauses": clause_entries,
         }
         clause_map_path.write_text(
             json.dumps(clause_map_payload, ensure_ascii=False, indent=2),

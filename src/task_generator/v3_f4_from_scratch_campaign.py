@@ -182,8 +182,14 @@ class F4FromScratchCampaign:
         record = manifest["slots"][slot - 1]
         if record["state"] != "awaiting_holistic_review":
             raise RuntimeError("holistic_review_not_expected")
-        required = ["whole_task_revision_bundle.json", "luna_candidate_solve.json", "deterministic_validation.json"]
-        missing = [name for name in required if not (evidence_dir / name).exists()]
+        required = [
+            evidence_dir / "provider" / "whole_task_revision_bundle_v2.json",
+            evidence_dir / "luna_candidate_solve.json",
+            evidence_dir / "deterministic_validation.json",
+            evidence_dir / "visual_qa" / "visual_qa_report.json",
+            evidence_dir / "final_package" / "materialization_report.json",
+        ]
+        missing = [str(path.relative_to(evidence_dir)) for path in required if not path.exists()]
         if missing:
             raise RuntimeError("holistic_evidence_incomplete:" + ",".join(missing))
         record["state"] = "awaiting_assistant_review"

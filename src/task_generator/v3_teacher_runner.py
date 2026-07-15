@@ -209,6 +209,31 @@ class TeacherRunner:
                 "quantity_variance_total": float(exceptions["quantity_variance"].fillna(0).sum()),
                 "price_variance_total": round(float(exceptions["price_variance"].fillna(0).sum()), 2),
             }
+        if manifest.template_family == "finance_control_testing_summary_v1":
+            tests = pd.read_excel(reference_dir / "control_test_results.xlsx")
+            evidence = pd.read_excel(reference_dir / "audit_evidence_register.xlsx")
+            evidence_map = dict(zip(evidence["Evidence_ID"].astype(str), evidence["Supports_Test_ID"].astype(str)))
+            passed, failed, unresolved, follow_up = [], [], [], []
+            for row in tests.to_dict(orient="records"):
+                test_id = str(row["Test_ID"])
+                evidence_id = str(row["Evidence_ID"])
+                supported = evidence_map.get(evidence_id) == test_id
+                result = str(row.get("Result") or "").strip().lower()
+                exceptions = int(float(row.get("Exceptions_Found") or 0))
+                if result == "evidence gap" or not supported:
+                    unresolved.append(test_id)
+                    follow_up.append({"Test_ID": test_id, "action": "collect evidence and retest", "rule": "E2D-003; E2D-004"})
+                elif result == "fail" or exceptions > 0:
+                    failed.append(test_id)
+                    follow_up.append({"Test_ID": test_id, "action": "remediate and retest", "rule": "E2D-002; E2D-004"})
+                else:
+                    passed.append(test_id)
+            return {
+                "tested_count": int(len(tests)), "passed_count": len(passed),
+                "failed_count": len(failed), "unresolved_count": len(unresolved),
+                "passed_test_ids": passed, "failed_test_ids": failed,
+                "unresolved_test_ids": unresolved, "follow_up": follow_up,
+            }
         transactions = pd.read_excel(reference_dir / "expense_transactions.xlsx")
         exceptions = []
         for row in transactions.to_dict(orient="records"):

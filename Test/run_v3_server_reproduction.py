@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import gzip
 import hashlib
 import json
 import os
@@ -201,7 +202,10 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, prov
     remote_release = f"{remote_home}/taskgenerator-deploy/releases/{release_id}"
     ssh(host, f"mkdir -p '{remote_release}' '{remote_home}/taskgenerator-data/runs' '{remote_home}/taskgenerator-data/inputs' '{remote_home}/taskgenerator-secrets'")
     archive = release_dir / f"{release_id}.image.tar.gz"
-    run(["scp", str(archive), str(release_dir / "compose.yaml"), str(release_dir / "release_manifest.json"), f"{host}:{remote_release}/"])
+    # Stream the image into docker load instead of storing a second compressed
+    # copy on the small server disk.  Release metadata remains durable, while
+    # the local archive is the transport/recovery artifact.
+    run(["scp", str(release_dir / "compose.yaml"), str(release_dir / "release_manifest.json"), f"{host}:{remote_release}/"])
     env_path = release_dir / "release.env"
     env_path.write_text(
         "\n".join(
@@ -238,7 +242,16 @@ def deploy_release(release_dir: Path, host: str, deepseek_key: Path | None, prov
             remote_tmp = f"{remote_home}/taskgenerator-secrets/.provider.env.tmp"
             run(["scp", str(minimal), f"{host}:{remote_tmp}"])
             ssh(host, f"chmod 600 '{remote_tmp}' && mv '{remote_tmp}' '{remote_home}/taskgenerator-secrets/provider.env'")
-    ssh(host, f"gzip -dc '{remote_release}/{release_id}.image.tar.gz' | docker load >/dev/null")
+    with gzip.open(archive, "rb") as source:
+        process = subprocess.Popen(["ssh", host, "docker load"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert process.stdin is not None
+        shutil.copyfileobj(source, process.stdin, length=1024 * 1024)
+        process.stdin.close()
+        stdout = process.stdout.read() if process.stdout else b""
+        stderr = process.stderr.read() if process.stderr else b""
+        returncode = process.wait()
+        if returncode:
+            raise RuntimeError(f"remote_docker_load_failed:{returncode}:{stderr.decode(errors='replace')[-500:]}")
     ssh(host, f"cd '{remote_home}/taskgenerator-deploy' && ln -sfn '{remote_release}' candidate")
 
 

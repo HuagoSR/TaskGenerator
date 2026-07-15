@@ -19,7 +19,12 @@ from task_generator.v3_f4_from_scratch_campaign import (  # noqa: E402
     F4FromScratchCampaign,
     utc_now,
 )
-from task_generator.v3_holistic_editorial import HolisticCostLedger, HolisticEditorialExecutor  # noqa: E402
+from task_generator.v3_holistic_editorial import CandidateSolveReview, HolisticCostLedger, HolisticEditorialExecutor  # noqa: E402
+from task_generator.v3_whole_task_materializer import (  # noqa: E402
+    MaterializationReport,
+    WholeTaskMaterializer,
+    WholeTaskRevisionBundleV2,
+)
 
 
 def main() -> None:
@@ -95,7 +100,7 @@ def _generate_next(campaign, args, slot):
         "--run-id", run_id, "--action", "run", "--profile", "custom", "--stage", "production_review",
         "--source-mode", "existing", "--registry-mode", "existing", "--registry-path", str(campaign.registry_path),
         "--domain-profile", "finance_audit", "--max-cases", "1", "--case-index-offset", str(slot - 1),
-        "--target-difficulty-profile", "finance_semantic_contract_v2" if item["motif"] != "evidence_to_deliverable" else "finance_production_v1",
+        "--target-difficulty-profile", "finance_semantic_contract_v2",
         "--motif", item["motif"], "--motif-occurrence-offset", f"{item['motif']}={item['occurrence']}",
         "--rw-task-root", args.rw_task_root, "--python-exe", sys.executable,
         "--output-root", str(campaign.root / "pipeline_runs"), "--timeout-seconds", str(args.timeout_seconds)]
@@ -115,28 +120,103 @@ def _holistic(campaign, args, slot):
     refs = run_root / paths["reference_files"]
     prompt = "\n".join(blueprint.get("prompt_spec", {}).get("visible_requirements", []))
     out = campaign.root / "slots" / f"slot_{slot:02d}" / f"revision_{record['attempts']:02d}"
-    out.mkdir(parents=True, exist_ok=True)
+    provider_dir = out / "provider"
+    provider_dir.mkdir(parents=True, exist_ok=True)
     ledger = HolisticCostLedger(campaign.root / "holistic_cost_ledger.json", campaign.spec["tuzi_budget_rmb"], campaign.spec["tuzi_request_cap"])
     executor = HolisticEditorialExecutor(args.tuzi_env_path, ledger)
     context = {"task_id": lifecycle["case_id"], "motif": record["motif"], "required_business_goal": blueprint.get("task_metadata", {}).get("task_goal"),
         "prompt": prompt, "candidate_files": _contents(refs), "teacher_artifacts": {"golden_run": golden, "training_annotation": annotation, "rubric": rubric},
         "minimum_repairs": ["candidate-visible answerability", "independently reproducible truth", "fact-centered rubric >= 60%"],
         "experimental_evidence_to_deliverable": bool(record.get("experimental_motif"))}
-    revision = executor.revise(context); _atomic(out / "whole_task_revision_bundle.json", revision.model_dump(mode="json")); _atomic(out / "terra_provider_diagnostics.json", executor.last_diagnostics)
-    deterministic = {"decision": "pass" if revision.overall_decision == "already_valid" and not revision.candidate_file_changes and not revision.unresolved_questions else "revise_system",
-        "original_verifier_pass": lifecycle.get("verifier_status") == "pass", "candidate_file_changes_requested": len(revision.candidate_file_changes),
-        "unresolved_questions": revision.unresolved_questions, "truth_accepted_from_llm": False}
+    context["materialization_contract"] = {
+        "allowed_extensions": [".xlsx", ".docx", ".json"],
+        "actions": ["retain", "add", "replace"],
+        "retain_must_omit_content": True,
+        "xlsx_content_shape": {"Sheet_Name": [["Header_1", "Header_2"], ["value", 1]]},
+        "docx_content_shape": "complete plain text or {title, sections:[{heading, paragraphs}]}",
+        "delete_forbidden": True,
+    }
+    revision_path = provider_dir / "whole_task_revision_bundle_v2.json"
+    if revision_path.exists():
+        revision = WholeTaskRevisionBundleV2.model_validate(_json(revision_path))
+    else:
+        revision = _with_retry(lambda attempt: executor.revise_v2(context, attempt), provider_dir / "terra_attempts.json")
+        _atomic(revision_path, revision.model_dump(mode="json"))
+        _atomic(provider_dir / "terra_provider_diagnostics.json", executor.last_diagnostics)
+    final_package = out / "final_package"
+    materialization_path = final_package / "materialization_report.json"
+    if materialization_path.exists():
+        materialization = MaterializationReport.model_validate(_json(materialization_path))
+    else:
+        materialization = WholeTaskMaterializer().materialize(
+            bundle=revision,
+            source_reference_dir=refs,
+            output_dir=final_package,
+            blueprint=blueprint,
+            sector=str(blueprint.get("task_metadata", {}).get("sector") or "Finance"),
+            occupation=str(blueprint.get("task_metadata", {}).get("occupation") or "Financial auditor"),
+        )
+    deterministic = {
+        "decision": materialization.decision,
+        "original_verifier_pass": lifecycle.get("verifier_status") == "pass",
+        "materialized_file_count": materialization.materialized_file_count,
+        "deterministic_recomputation_pass": materialization.deterministic_recomputation_pass,
+        "semantic_contract_verified": materialization.semantic_contract_verified,
+        "fact_weight_ratio": materialization.fact_weight_ratio,
+        "rw_task_export_compatible": materialization.rw_task_export_compatible,
+        "candidate_teacher_isolation_pass": materialization.candidate_teacher_isolation_pass,
+        "reason_codes": materialization.reason_codes,
+        "truth_accepted_from_llm": False,
+    }
     _atomic(out / "deterministic_validation.json", deterministic)
-    solve = executor.solve({"task_id": lifecycle["case_id"], "prompt": revision.revised_prompt or prompt, "candidate_files": _contents(refs)})
-    _atomic(out / "luna_candidate_solve.json", solve.model_dump(mode="json")); _atomic(out / "luna_provider_diagnostics.json", executor.last_diagnostics)
-    _atomic(out / "holistic_summary.json", {"slot": slot, "motif": record["motif"], "deterministic_decision": deterministic["decision"], "luna_answerable": solve.answerable,
-        "unresolved_material_ambiguity": bool(solve.ambiguity_or_hidden_assumptions), "raw_provider_response_included": False})
+    visual_root = out / "visual_qa"
+    if not (visual_root / "visual_qa_report.json").exists():
+        _run([
+            sys.executable, str(ROOT / "Test" / "run_v3_task_package_visual_qa.py"),
+            "--reference-dir", str(final_package / "reference_files"),
+            "--output-dir", str(visual_root),
+        ], 900)
+    solve_path = out / "luna_candidate_solve.json"
+    if solve_path.exists():
+        solve = CandidateSolveReview.model_validate(_json(solve_path))
+    else:
+        solve = _with_retry(lambda attempt: executor.solve({
+            "task_id": lifecycle["case_id"],
+            "prompt": revision.revised_prompt,
+            "candidate_files": _contents(final_package / "reference_files"),
+            "output_instruction": "Return independently computed key results using the prompt's business labels.",
+        }, attempt), provider_dir / "luna_attempts.json")
+        _atomic(solve_path, solve.model_dump(mode="json"))
+        _atomic(provider_dir / "luna_provider_diagnostics.json", executor.last_diagnostics)
+    _atomic(out / "holistic_summary.json", {
+        "slot": slot, "motif": record["motif"],
+        "deterministic_decision": deterministic["decision"],
+        "luna_answerable": solve.answerable,
+        "unresolved_material_ambiguity": bool(solve.ambiguity_or_hidden_assumptions),
+        "final_package": str(final_package),
+        "raw_provider_response_included": False,
+    })
     return campaign.mark_holistic_complete(slot, out)
 
 
 def _run(command, timeout):
     result = subprocess.run(command, cwd=ROOT, timeout=timeout, check=False)
     if result.returncode: raise RuntimeError(f"subprocess_failed:{result.returncode}")
+
+
+def _with_retry(call, report_path):
+    attempts = []
+    for attempt in (1, 2):
+        try:
+            result = call(attempt)
+            attempts.append({"attempt": attempt, "status": "completed"})
+            _atomic(report_path, {"attempts": attempts, "raw_provider_response_included": False})
+            return result
+        except Exception as exc:
+            attempts.append({"attempt": attempt, "status": "failed", "error_type": type(exc).__name__})
+            _atomic(report_path, {"attempts": attempts, "raw_provider_response_included": False})
+            if attempt == 2:
+                raise
 
 
 def _json(path): return json.loads(Path(path).read_text(encoding="utf-8"))

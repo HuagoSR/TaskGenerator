@@ -187,9 +187,12 @@ class LegacyFinanceSemanticAuditor:
 
 
 class FinanceSemanticContractAdapter:
-    """Build generator-owned contracts for the three governed finance motifs."""
+    """Build generator-owned contracts for the governed finance motifs."""
 
-    SUPPORTED_MOTIFS = {"fan_in_reconciliation", "cross_check_validation", "policy_application"}
+    SUPPORTED_MOTIFS = {
+        "fan_in_reconciliation", "cross_check_validation", "policy_application",
+        "evidence_to_deliverable",
+    }
 
     def prepare_blueprint(self, blueprint: Dict[str, Any], motif: str) -> Dict[str, Any]:
         payload = json.loads(json.dumps(blueprint))
@@ -211,7 +214,7 @@ class FinanceSemanticContractAdapter:
                 "calculate quantity and unit-price variances using the supplied rules",
                 "classify every invoice line as clear, hold, or investigate and cite source row identifiers",
             ]
-        else:
+        elif motif == "policy_application":
             transaction = next((item for item in files if item.get("file_name") == "expense_transactions.xlsx"), None)
             if transaction:
                 columns = transaction["sheet_specs"][0].setdefault("columns", [])
@@ -221,6 +224,13 @@ class FinanceSemanticContractAdapter:
                 "classify every transaction against the supplied policy clauses",
                 "state the exception reason and required follow-up with transaction and clause citations",
                 "summarize exception counts and amounts without inventing missing facts",
+            ]
+        else:
+            self._ensure_docx(files, "control_reporting_rules.docx")
+            requirements = [
+                "report tested, passed, failed, and unresolved-evidence counts",
+                "list every confirmed exception and evidence gap with Test_ID, Control_ID, and Evidence_ID",
+                "state the required follow-up and cite the applicable reporting rule for every non-pass item",
             ]
         if deliverables:
             deliverables[0]["requirements"] = requirements
@@ -296,7 +306,9 @@ class FinanceSemanticContractAdapter:
             return _cash_specs()
         if motif == "cross_check_validation":
             return _three_way_specs()
-        return _expense_specs()
+        if motif == "policy_application":
+            return _expense_specs()
+        return _evidence_to_deliverable_specs()
 
 
 class FinanceSemanticContractResolver:
@@ -309,6 +321,7 @@ class FinanceSemanticContractResolver:
             "finance.cash.activity_reconciliation.v1": self._cash,
             "finance.ap.three_way_match.v1": self._three_way,
             "finance.expense.policy_application.v1": self._expense,
+            "finance.audit.control_testing_summary.v1": self._evidence_to_deliverable,
         }
         for claim in payload.claims:
             calculator = calculators.get(claim.validator.validator_id)
@@ -418,6 +431,52 @@ class FinanceSemanticContractResolver:
                 exception_amount += amount
         return {"exception_count": exception_count, "exception_amount": round(exception_amount, 2)}
 
+    def _evidence_to_deliverable(self, root: Path) -> Dict[str, Any]:
+        tests = _xlsx_rows(root / "control_test_results.xlsx", "Control_Tests")
+        evidence_rows = _xlsx_rows(root / "audit_evidence_register.xlsx", "Evidence_Register")
+        evidence = {str(row["Evidence_ID"]): row for row in evidence_rows}
+        passed: List[str] = []
+        failed: List[str] = []
+        unresolved: List[str] = []
+        follow_up: List[Dict[str, Any]] = []
+        for row in tests:
+            test_id = str(row["Test_ID"])
+            evidence_id = str(row["Evidence_ID"])
+            linked = evidence.get(evidence_id)
+            evidence_supported = linked is not None and str(linked.get("Supports_Test_ID")) == test_id
+            result = str(row.get("Result") or "").strip().lower()
+            exception_count = int(float(row.get("Exceptions_Found") or 0))
+            if result == "evidence gap" or not evidence_supported:
+                unresolved.append(test_id)
+                action = "collect evidence and retest before conclusion"
+                rule = "E2D-003; E2D-004"
+            elif result == "fail" or exception_count > 0:
+                failed.append(test_id)
+                action = f"remediate by {row.get('Due_Date')} and retest"
+                rule = "E2D-002; E2D-004"
+            else:
+                passed.append(test_id)
+                continue
+            follow_up.append({
+                "Test_ID": test_id,
+                "Control_ID": str(row["Control_ID"]),
+                "Evidence_ID": evidence_id,
+                "Owner": str(row["Owner"]),
+                "Due_Date": str(row["Due_Date"]),
+                "Required_Action": action,
+                "Rule": rule,
+            })
+        return {
+            "tested_count": len(tests),
+            "passed_count": len(passed),
+            "failed_count": len(failed),
+            "unresolved_count": len(unresolved),
+            "passed_test_ids": passed,
+            "failed_test_ids": failed,
+            "unresolved_test_ids": unresolved,
+            "follow_up": follow_up,
+        }
+
     def _input_hashes(self, root: Path, locator_ids: List[str], contract: TaskSemanticContractV2) -> Dict[str, str]:
         locator_by_id = {item.locator_id: item for item in contract.locators}
         result = {}
@@ -499,6 +558,37 @@ def _expense_specs() -> Dict[str, Any]:
             {"dependency_id": "dep_policy", "description": "Candidate-visible expense policy", "locator_ids": ["loc_policy"], "dependency_kind": "rule"},
         ],
         "claims": [{"requirement": "Classify every expense using the supplied policy and report exception totals.", "deliverable_location": "memo:exception_register", "claim_type": "classification", "description": "Exception count and amount", "dependency_ids": ["dep_transactions", "dep_policy"], "result_kind": "exact", "validator_id": "finance.expense.policy_application.v1", "locator_ids": ["loc_transactions", "loc_policy"], "check_mode": "exact"}],
+    }
+
+
+def _evidence_to_deliverable_specs() -> Dict[str, Any]:
+    return {
+        "locators": [
+            _loc("loc_control_tests", "control_test_results.xlsx", "Control_Tests", [
+                "Test_ID", "Control_ID", "Evidence_ID", "Procedure", "Sample_Size",
+                "Exceptions_Found", "Result", "Owner", "Due_Date",
+            ]),
+            _loc("loc_evidence_register", "audit_evidence_register.xlsx", "Evidence_Register", [
+                "Evidence_ID", "Source", "Period", "Reliability", "Supports_Test_ID",
+            ]),
+            _loc("loc_reporting_rules", "control_reporting_rules.docx", None, [], "docx_clause", "E2D-001:E2D-004"),
+        ],
+        "dependencies": [
+            {"dependency_id": "dep_control_tests", "description": "Control test results", "locator_ids": ["loc_control_tests"], "dependency_kind": "data"},
+            {"dependency_id": "dep_evidence_register", "description": "Evidence-to-test mapping", "locator_ids": ["loc_evidence_register"], "dependency_kind": "data"},
+            {"dependency_id": "dep_reporting_rules", "description": "Candidate-visible conclusion and follow-up rules", "locator_ids": ["loc_reporting_rules"], "dependency_kind": "rule"},
+        ],
+        "claims": [{
+            "requirement": "Prepare a control-testing summary grounded in the supplied tests, evidence register, and reporting rules.",
+            "deliverable_location": "document:control_testing_summary",
+            "claim_type": "classification",
+            "description": "Passed, failed, unresolved, exception, evidence-gap, and follow-up results",
+            "dependency_ids": ["dep_control_tests", "dep_evidence_register", "dep_reporting_rules"],
+            "result_kind": "exact",
+            "validator_id": "finance.audit.control_testing_summary.v1",
+            "locator_ids": ["loc_control_tests", "loc_evidence_register", "loc_reporting_rules"],
+            "check_mode": "exact",
+        }],
     }
 
 

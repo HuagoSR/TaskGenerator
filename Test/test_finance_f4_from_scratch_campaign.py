@@ -39,7 +39,7 @@ class F4FromScratchCampaignTests(unittest.TestCase):
         import inspect
         source = inspect.getsource(_generate_next)
         self.assertIn('finance_semantic_contract_v2', source)
-        self.assertIn('evidence_to_deliverable', source)
+        self.assertNotIn('finance_production_v1', source)
 
     def test_next_slot_requires_release(self):
         self.campaign.begin_slot(1)
@@ -50,9 +50,8 @@ class F4FromScratchCampaignTests(unittest.TestCase):
             self.campaign.begin_slot(slot)
             run = Path(self.temp.name) / f"run{slot}.json"; run.write_text('{}', encoding="utf-8")
             self.campaign.mark_generated(slot, run)
-            evidence = Path(self.temp.name) / f"evidence{slot}"; evidence.mkdir()
-            for name in ("whole_task_revision_bundle.json", "luna_candidate_solve.json", "deterministic_validation.json"):
-                (evidence / name).write_text('{}', encoding="utf-8")
+            evidence = Path(self.temp.name) / f"evidence{slot}"
+            self._write_holistic_evidence(evidence)
             self.campaign.mark_holistic_complete(slot, evidence)
             self.campaign.apply_review(self._review(slot, "pass"))
         manifest = self.campaign.read()
@@ -63,9 +62,8 @@ class F4FromScratchCampaignTests(unittest.TestCase):
         self.campaign.begin_slot(1)
         run = Path(self.temp.name) / "run.json"; run.write_text('{}', encoding="utf-8")
         self.campaign.mark_generated(1, run)
-        evidence = Path(self.temp.name) / "evidence"; evidence.mkdir()
-        for name in ("whole_task_revision_bundle.json", "luna_candidate_solve.json", "deterministic_validation.json"):
-            (evidence / name).write_text('{}', encoding="utf-8")
+        evidence = Path(self.temp.name) / "evidence"
+        self._write_holistic_evidence(evidence)
         self.campaign.mark_holistic_complete(1, evidence)
         review = self._review(1, "pass"); review.visual_review_pass = False
         with self.assertRaises(ValueError): self.campaign.apply_review(review)
@@ -76,6 +74,19 @@ class F4FromScratchCampaignTests(unittest.TestCase):
             deterministic_recomputation_pass=True, visual_review_pass=True, teacher_rubric_review_pass=True,
             verifier_export_pass=True, unresolved_material_ambiguity=False, findings=[], responsibility="none",
             reviewed_at="2026-07-13T00:00:00+00:00")
+
+    @staticmethod
+    def _write_holistic_evidence(root: Path) -> None:
+        paths = [
+            root / "provider" / "whole_task_revision_bundle_v2.json",
+            root / "luna_candidate_solve.json",
+            root / "deterministic_validation.json",
+            root / "visual_qa" / "visual_qa_report.json",
+            root / "final_package" / "materialization_report.json",
+        ]
+        for path in paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('{}', encoding="utf-8")
 
 
 if __name__ == "__main__": unittest.main()

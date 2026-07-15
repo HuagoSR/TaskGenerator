@@ -296,7 +296,7 @@ class PipelineBPrototypeBuilder:
                 DataRelationship(relation_type="match_key", left="supplier_invoices.xlsx:Invoice_Lines.PO_ID", right="purchase_orders.xlsx:PO_Lines.PO_ID"),
                 DataRelationship(relation_type="cross_check", left="supplier_invoices.xlsx:Invoice_Lines.Invoiced_Qty", right="goods_receipts.xlsx:Receipt_Lines.Received_Qty"),
             ]
-        else:
+        elif motif == "policy_application":
             blueprint.template_family = "finance_expense_policy_review_v1"
             blueprint.task_metadata.scenario_title = "Expense and corporate card policy review"
             blueprint.task_metadata.task_goal = "Apply candidate-visible policy rules to expense transactions."
@@ -322,6 +322,49 @@ class PipelineBPrototypeBuilder:
             relationships = [
                 DataRelationship(relation_type="policy_lookup", left="expense_transactions.xlsx:Transactions.Category", right="expense_policy.docx:POL-001"),
             ]
+        elif motif == "evidence_to_deliverable":
+            blueprint.template_family = "finance_control_testing_summary_v1"
+            blueprint.task_metadata.scenario_title = "Internal control testing summary"
+            blueprint.task_metadata.task_goal = "Turn control-test evidence into a fact-grounded management summary."
+            blueprint.scenario_spec.business_context = (
+                "The audit manager needs a concise control-testing summary. Trace every conclusion to the supplied "
+                "test result and evidence register, distinguish confirmed exceptions from evidence gaps, and assign "
+                "the follow-up specified by the reporting rules."
+            )
+            blueprint.data_spec.reference_files = [
+                FileSpec(file_name="control_test_results.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Control_Tests", row_count_target=10, columns=[
+                        ColumnSpec(name="Test_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Control_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Evidence_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Procedure", semantic_type="free_text_description"),
+                        ColumnSpec(name="Sample_Size", semantic_type="count"),
+                        ColumnSpec(name="Exceptions_Found", semantic_type="count"),
+                        ColumnSpec(name="Result", semantic_type="status_label"),
+                        ColumnSpec(name="Owner", semantic_type="business_entity"),
+                        ColumnSpec(name="Due_Date", semantic_type="date"),
+                    ])]),
+                FileSpec(file_name="audit_evidence_register.xlsx", file_role="source_data", sheet_specs=[SheetSpec(
+                    sheet_name="Evidence_Register", row_count_target=9, columns=[
+                        ColumnSpec(name="Evidence_ID", semantic_type="identifier"),
+                        ColumnSpec(name="Source", semantic_type="source_label"),
+                        ColumnSpec(name="Period", semantic_type="time_period"),
+                        ColumnSpec(name="Reliability", semantic_type="status_label"),
+                        ColumnSpec(name="Supports_Test_ID", semantic_type="identifier"),
+                    ])]),
+                FileSpec(file_name="control_reporting_rules.docx", file_role="reference_table", sheet_specs=[]),
+            ]
+            deliverable = ("control_testing_summary.docx", [
+                "report tested, passed, failed, and unresolved-evidence counts",
+                "list every confirmed exception and evidence gap with Test_ID, Control_ID, and Evidence_ID",
+                "state the required follow-up and cite the applicable reporting rule for every non-pass item",
+            ])
+            relationships = [
+                DataRelationship(relation_type="match_key", left="control_test_results.xlsx:Control_Tests.Evidence_ID", right="audit_evidence_register.xlsx:Evidence_Register.Evidence_ID"),
+                DataRelationship(relation_type="policy_lookup", left="control_test_results.xlsx:Control_Tests.Result", right="control_reporting_rules.docx:E2D-001"),
+            ]
+        else:
+            raise ValueError(f"Unsupported finance production motif: {motif}")
         blueprint.data_spec.data_relationships = relationships
         blueprint.trap_spec = []
         blueprint.deliverable_spec = [DeliverableSpec(file_name=deliverable[0], file_role="final_deliverable", requirements=deliverable[1])]
