@@ -372,14 +372,43 @@ class FinanceSemanticContractResolver:
     def _cash(self, root: Path) -> Dict[str, Any]:
         bank = _xlsx_rows(root / "bank_statement.xlsx", "Bank_Activity")
         ledger = _xlsx_rows(root / "cash_ledger.xlsx", "Cash_Ledger")
-        bank_keys = {(str(row["Reference"]), float(row["Amount"])) for row in bank}
-        ledger_keys = {(str(row["Reference"]), float(row["Amount"])) for row in ledger}
+        bank_by_key = {(str(row["Reference"]), float(row["Amount"])): row for row in bank}
+        ledger_by_key = {(str(row["Reference"]), float(row["Amount"])): row for row in ledger}
+        bank_keys = set(bank_by_key)
+        ledger_keys = set(ledger_by_key)
+        matched_keys = sorted(bank_keys & ledger_keys)
+        bank_only_keys = sorted(bank_keys - ledger_keys)
+        ledger_only_keys = sorted(ledger_keys - bank_keys)
+        bank_total = round(sum(float(row["Amount"]) for row in bank), 2)
+        ledger_total = round(sum(float(row["Amount"]) for row in ledger), 2)
         return {
-            "matched_count": len(bank_keys & ledger_keys),
-            "bank_only_count": len(bank_keys - ledger_keys),
-            "ledger_only_count": len(ledger_keys - bank_keys),
-            "bank_activity_total": round(sum(float(row["Amount"]) for row in bank), 2),
-            "ledger_activity_total": round(sum(float(row["Amount"]) for row in ledger), 2),
+            "matched_count": len(matched_keys),
+            "matched_pairs": [
+                {
+                    "Bank_ID": str(bank_by_key[key]["Bank_ID"]),
+                    "Ledger_ID": str(ledger_by_key[key]["Ledger_ID"]),
+                    "Reference": key[0],
+                    "Amount": round(key[1], 2),
+                }
+                for key in matched_keys
+            ],
+            "bank_only_count": len(bank_only_keys),
+            "bank_only_items": [
+                {"Bank_ID": str(bank_by_key[key]["Bank_ID"]), "Reference": key[0], "Amount": round(key[1], 2)}
+                for key in bank_only_keys
+            ],
+            "ledger_only_count": len(ledger_only_keys),
+            "ledger_only_items": [
+                {"Ledger_ID": str(ledger_by_key[key]["Ledger_ID"]), "Reference": key[0], "Amount": round(key[1], 2)}
+                for key in ledger_only_keys
+            ],
+            "bank_activity_total": bank_total,
+            "ledger_activity_total": ledger_total,
+            "activity_difference": round(bank_total - ledger_total, 2),
+            "bank_only_total": round(sum(key[1] for key in bank_only_keys), 2),
+            "ledger_only_total": round(sum(key[1] for key in ledger_only_keys), 2),
+            "unmatched_status": "unresolved_exception" if bank_only_keys or ledger_only_keys else "none",
+            "balance_inference_allowed": False,
         }
 
     def _three_way(self, root: Path) -> Dict[str, Any]:

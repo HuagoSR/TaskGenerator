@@ -62,6 +62,9 @@ class WholeTaskMaterializerTests(unittest.TestCase):
             truth = json.loads((root / "revision" / "teacher" / "deterministic_answer_key.json").read_text(encoding="utf-8"))
             self.assertEqual(truth["claim_001"]["matched_count"], 1)
             self.assertEqual(truth["claim_001"]["bank_only_count"], 1)
+            self.assertEqual(truth["claim_001"]["activity_difference"], 0.0)
+            self.assertEqual(truth["claim_001"]["bank_only_items"][0]["Bank_ID"], "B-2")
+            self.assertEqual(truth["claim_001"]["ledger_only_items"][0]["Ledger_ID"], "L-2")
 
     def test_xlsx_shape_limit_is_enforced(self):
         with tempfile.TemporaryDirectory() as directory:

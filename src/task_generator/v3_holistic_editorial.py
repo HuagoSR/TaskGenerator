@@ -124,7 +124,9 @@ class HolisticEditorialExecutor:
     def solve(self, payload: Dict[str, Any], attempt: int = 1) -> CandidateSolveReview:
         system = (
             "Act as an independent candidate. Use only the candidate-visible prompt and reference contents. Determine "
-            "whether the task is answerable and independently compute its key results. Do not guess teacher truth."
+            "whether the task is answerable and independently compute its key results. Do not guess teacher truth. "
+            "The ambiguity_or_hidden_assumptions list must contain only unresolved ambiguities or assumptions that are "
+            "actually required to answer; do not repeat explicit prompt constraints, stated rules, or prudent caveats."
         )
         return self._call("gpt-5.6-luna", "candidate_blind_solver", system, payload, CandidateSolveReview, 2500, attempt)
 
