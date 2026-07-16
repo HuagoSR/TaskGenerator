@@ -62,9 +62,9 @@ TaskBlueprint
 
 F3.1 的 secondary adjudication 使用 claim/finding 定向投影，而不是完整任务包。复审配置必须显式冻结 provider、model、key slot、token 上限和成本预算；当前低成本合同为 `tuzi / gpt-5.6-sol / backup / 1200 tokens / ¥10`，但完整8题校准尚未通过，不能据此推广默认链。
 
-F4 验证了一个更高层的替代方向：LLM以完整任务总编辑身份同时理解 candidate、teacher、rubric和既有执行证据，程序只负责版本化、独立重算、candidate/teacher隔离、成本和发布门禁，再由独立模型进行candidate-blind求解。固定8题全部通过，但该路径仍是bounded reporting cohort，尚未成为默认生成链。
+F4 验证了一个更高层的替代方向：LLM以完整任务总编辑身份同时理解 candidate、teacher、rubric和既有执行证据，程序负责版本化、独立重算、candidate/teacher隔离、成本和发布门禁，再由独立模型进行candidate-blind求解。F4.2 已补齐受限 whole-task materialization，并从全新公开 source 与 scratch registry 生产8题；内部 truth、视觉、盲解、verifier/export 和人工式检查均通过。
 
-后续从零生产验证在第1题两轮后阻塞：整体编辑能够发现并提出完整修订，但当前系统缺少把 candidate-file revision proposal 安全物化为新 XLSX/DOCX、truth 和 rubric 的通用层。逐题人工放行应继续保留；whole-task materialization 和下游 checksum 重建完成前，整体编辑结果不能直接成为 production evidence。
+F4.3 的真实 rw-task 执行进一步证明，内部语义有效性和 export compatibility 仍不能替代行为级验收：8题32个组合只有15个实际生成交付文件，Slots 2/5/8 暴露 prompt、模板名与 deliverable path 不一致或提交位置不清。其余5题的三个有效模型评分又高度饱和。当前不推广该路径为默认链；下一轮问题定义见 [`pipeline_reconstruction_problem_statement.md`](pipeline_reconstruction_problem_statement.md)。
 
 LLM 可以参与情境变化、教师候选和 prose-heavy 文件生成；确定性代码负责 contract、provenance、manifest、验证、打包和门禁。candidate-visible truth 与 teacher-only supervision 必须保持分离。
 

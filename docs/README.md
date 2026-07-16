@@ -10,7 +10,8 @@
 3. [`architecture/system_architecture.md`](architecture/system_architecture.md)：当前稳定技术架构。
 4. [`architecture/global_interface_contracts.md`](architecture/global_interface_contracts.md)：全局接口契约。
 5. [`architecture/production_mvp_definition.md`](architecture/production_mvp_definition.md)：当前 production contract。
-6. [`archive/README.md`](archive/README.md)：历史计划、handoff 和报告索引。
+6. [`architecture/pipeline_reconstruction_problem_statement.md`](architecture/pipeline_reconstruction_problem_statement.md)：下一轮流水线重构的问题定义与证据边界。
+7. [`archive/README.md`](archive/README.md)：历史计划、handoff 和报告索引。
 
 ## 生命周期
 

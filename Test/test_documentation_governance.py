@@ -17,6 +17,7 @@ class DocumentationGovernanceTests(unittest.TestCase):
             ROOT / "docs" / "architecture" / "system_architecture.md",
             ROOT / "docs" / "architecture" / "global_interface_contracts.md",
             ROOT / "docs" / "architecture" / "production_mvp_definition.md",
+            ROOT / "docs" / "architecture" / "pipeline_reconstruction_problem_statement.md",
             ROOT / "docs" / "archive" / "README.md",
         ]
         missing = [str(path.relative_to(ROOT)) for path in expected if not path.is_file()]
@@ -47,6 +48,7 @@ class DocumentationGovernanceTests(unittest.TestCase):
             "system_architecture.md",
             "global_interface_contracts.md",
             "production_mvp_definition.md",
+            "pipeline_reconstruction_problem_statement.md",
         }
         self.assertEqual(actual, expected)
 
