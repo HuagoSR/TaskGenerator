@@ -8,6 +8,7 @@ ROOT=Path(__file__).resolve().parents[1]; sys.path.insert(0,str(ROOT/"Test"))
 from run_v3_finance_model_difference_eval import (  # noqa:E402
     ALLOWED_SOLVER_KEYS,
     _audit_disagrees,
+    _delivered_files,
     atomic_json,
     build_f4_2_index,
     fixed_audit_assignments,
@@ -115,5 +116,17 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
         source=(ROOT/"Test/run_v3_finance_model_difference_eval.py").read_text(encoding="utf-8")
         for field in ("solver_attempted","solver_process_completed","valid_deliveries","non_delivery"):
             self.assertIn(f'"{field}"',source)
+
+    def test_delivery_requires_a_file_in_deliverable_directory(self):
+        record={"model":"model","task_id":"task"}
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            run=root/"solver_outputs/model/task/run_task"
+            (run/"reference_files").mkdir(parents=True)
+            (run/"reference_files/input.xlsx").write_bytes(b"input")
+            self.assertEqual([],_delivered_files(root,record))
+            (run/"deliverable_files").mkdir()
+            (run/"deliverable_files/output.xlsx").write_bytes(b"output")
+            self.assertEqual([run/"deliverable_files/output.xlsx"],_delivered_files(root,record))
 
 if __name__=="__main__": unittest.main()

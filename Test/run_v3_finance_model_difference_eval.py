@@ -527,8 +527,23 @@ def fixed_audit_assignments(selection: dict, models: list[str]) -> dict[str, str
     return assignments
 
 
+def _delivered_files(campaign_root: Path, record: dict) -> list[Path]:
+    output = campaign_root / "solver_outputs" / record["model"] / record["task_id"]
+    return sorted(
+        path for directory in output.rglob("deliverable_files")
+        if directory.is_dir()
+        for path in directory.rglob("*")
+        if path.is_file()
+    )
+
+
 def _grade_one(campaign_root: Path, manifest: dict, target_manifest: Path, record: dict,
                grader_key: str, grader_model: str, key: str, url: str, timeout: int, spec: dict) -> None:
+    if not _delivered_files(campaign_root, record):
+        record["status"] = "non_delivery"
+        record["delivery_file_count"] = 0
+        return
+    record["delivery_file_count"] = len(_delivered_files(campaign_root, record))
     if record.get(grader_key, {}).get("status") == "completed" and record[grader_key].get("score") is not None:
         return
     output = campaign_root / "solver_outputs" / record["model"] / record["task_id"]
@@ -670,9 +685,17 @@ def summarize(campaign_root: Path) -> dict:
         if record["model"] not in models:
             models.append(record["model"])
     task_rows = []
+    actual_delivery = {
+        (record["task_id"], record["model"]): bool(_delivered_files(campaign_root, record))
+        for record in records
+    }
     for task_id in sorted({r["task_id"] for r in records}, key=lambda value: task_meta.get(value, {}).get("global_index", 10**9)):
         task_records = [r for r in records if r["task_id"] == task_id]
-        by_model = {r["model"]: r.get("primary_grade", {}).get("score") for r in task_records}
+        by_model = {
+            r["model"]: r.get("primary_grade", {}).get("score")
+            if actual_delivery[(r["task_id"], r["model"])] else None
+            for r in task_records
+        }
         scores = [by_model.get(model) for model in models]; complete = all(score is not None for score in scores)
         spread = max(scores)-min(scores) if complete else None; label = None
         if complete:
@@ -681,25 +704,42 @@ def summarize(campaign_root: Path) -> dict:
             elif max(scores) <= .40: label = "too_hard"
             elif spread >= .20 and max(scores) >= .65 and min(scores) <= .55: label = "informative"
             elif spread < .15: label = "compressed"
-        audited = [r for r in task_records if r.get("audit_grade", {}).get("score") is not None]
+        audited = [
+            r for r in task_records
+            if actual_delivery[(r["task_id"], r["model"])] and r.get("audit_grade", {}).get("score") is not None
+        ]
         unstable = any(_audit_disagrees(r, {"audit_absolute_difference_threshold":.20,"audit_pass_threshold":.60}) for r in audited)
         audit_status = "grader_unstable" if unstable else "fully_dual_graded" if len(audited) == 4 else "sample_audit_stable" if audited else "awaiting_manual_review"
-        valid_delivery_count = sum(score is not None for score in scores)
+        valid_delivery_count = sum(actual_delivery[(r["task_id"], r["model"])] for r in task_records)
         externally_executable = valid_delivery_count >= 3 and any(score is not None and score >= .60 for score in scores)
+        common_task_failure = valid_delivery_count <= 1
+        diagnosis = (
+            "common_task_failure" if common_task_failure
+            else "solver_capability_failure" if valid_delivery_count == 3
+            else "grader_uncertain" if unstable
+            else "externally_executable" if externally_executable
+            else "needs_manual_review"
+        )
         task_rows.append({"task_id":task_id,"global_index":task_meta.get(task_id,{}).get("global_index"),
                           "motif":task_meta.get(task_id,{}).get("motif"),"is_pilot":task_meta.get(task_id,{}).get("is_pilot",False),
                           "scores":by_model,"spread":spread,"standard_deviation":statistics.pstdev(scores) if complete else None,
                           "spearman_expected_order":_spearman(scores) if complete else None,"rank_inversion":(_spearman(scores) or 0) < 0 if complete else None,
                           "label":label,"grader_unstable":unstable,"audit_status":audit_status,"audited_output_count":len(audited),
                           "valid_delivery_count":valid_delivery_count,"externally_executable":externally_executable,
-                          "common_task_failure":False,"task_quality_diagnosis":"pending_manual_diagnostic"})
+                          "common_task_failure":common_task_failure,"task_quality_diagnosis":diagnosis})
     durations = [a["duration_seconds"] for r in records if not r.get("imported") for a in r.get("attempts",[]) if a.get("status")=="completed"]
     model_summary = {}
     for model in models:
-        scores = [r.get("primary_grade",{}).get("score") for r in records if r["model"]==model]
+        scores = [
+            r.get("primary_grade",{}).get("score")
+            for r in records if r["model"] == model and actual_delivery[(r["task_id"], r["model"])]
+        ]
         scores = [score for score in scores if score is not None]
         model_summary[model] = {"graded":len(scores),"mean":statistics.mean(scores) if scores else None,
-                                "median":statistics.median(scores) if scores else None}
+                                "median":statistics.median(scores) if scores else None,
+                                "valid_deliveries":sum(
+                                    actual_delivery[(r["task_id"], r["model"])] for r in records if r["model"] == model
+                                )}
     pairwise = {}
     for left_index, left in enumerate(models):
         for right in models[left_index+1:]:
@@ -718,14 +758,27 @@ def summarize(campaign_root: Path) -> dict:
         and sum((row["spread"] or 0) >= .15 for row in task_rows) >= 4
         and sum(row["grader_unstable"] for row in task_rows) <= 2
     )
-    preliminary_decision = "f4_2_eval_supportive" if supportive else "f4_2_eval_mixed" if selection.get("scope") == "f4_2_eight_task" else None
+    task_quality_reopened = sum(row["common_task_failure"] for row in task_rows) >= 2
+    preliminary_decision = (
+        "f4_2_eval_reopens_task_quality" if selection.get("scope") == "f4_2_eight_task" and task_quality_reopened
+        else "f4_2_eval_supportive" if supportive
+        else "f4_2_eval_mixed" if selection.get("scope") == "f4_2_eight_task"
+        else None
+    )
+    actual_delivery_count = sum(actual_delivery.values())
     payload = {"version":"v3.finance_model_difference_summary.3","status":manifest.get("status"),"task_count":len(task_rows),
                "record_count":len(records),"solver_attempted":len(records),"solver_process_completed":process_completed,
-               "valid_deliveries":sum(r.get("status")=="completed" for r in records),
-               "non_delivery":sum(r.get("status")=="non_delivery" for r in records),
+               "valid_deliveries":actual_delivery_count,
+               "non_delivery":len(records)-actual_delivery_count,
                "solver_completed":sum(r.get("status")=="completed" for r in records),
-               "primary_graded":sum(r.get("primary_grade",{}).get("score") is not None for r in records),
-               "audit_graded":sum(r.get("audit_grade",{}).get("score") is not None for r in records),
+               "primary_graded":sum(
+                   actual_delivery[(r["task_id"], r["model"])] and r.get("primary_grade",{}).get("score") is not None
+                   for r in records
+               ),
+               "audit_graded":sum(
+                   actual_delivery[(r["task_id"], r["model"])] and r.get("audit_grade",{}).get("score") is not None
+                   for r in records
+               ),
                "imported_pilot_records":sum(bool(r.get("imported")) for r in records),
                "new_solver_wall_time_seconds_sum":sum(durations),"median_solver_seconds":statistics.median(durations) if durations else None,
                "p90_solver_seconds":sorted(durations)[max(0,math.ceil(.9*len(durations))-1)] if durations else None,
