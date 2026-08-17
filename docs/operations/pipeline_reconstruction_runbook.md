@@ -777,3 +777,11 @@ Frozen first-run outcome (2026-08-17):
 - Preserve generation result `production_insufficient`: 10 normal task-design calls, 7 materialized, 3 `InternalServerError`, zero unconditional redraw. The failed task IDs are `prod_579e378937b75d7c`, `prod_951abfa7ee1b6fb3` and `prod_1323bd30303e8f30`.
 - Preserve generation result SHA `f87b600c...bbb36` and `production_package_integrity_report.json` SHA `c47fb50e...e9d10`: 7/7 package reports pass and 31/31 candidate XLSX files are openable, nonempty and byte-identical to rw-task export copies.
 - Stop before step 6 because the cohort has fewer than eight packages. No model probe, private solver session, grader call or comparison record exists for this run. Do not retry the three tasks inside the consumed run, import historical packages, or lower the threshold. A future attempt requires a new homogeneous production campaign and an explicit provider choice.
+
+Recovery production outcome:
+
+- Campaign `r9_huago_cone_recovery_production_10` reuses only the frozen public source/skill/brief inputs. It has ten new blind IDs and imports no proposal, package or result from the 7/10 run.
+- Preserve cohort SHA `77e7835f...15b6bd`, generation SHA `0d519c5d...91812` and integrity SHA `37c31a1b...1ba16`. Ten normal calls produced 10/10 first-attempt materializations, and all 39 candidate XLSX files pass openability, nonempty-content and candidate/export identity checks.
+- Treat this recovery cohort as the only R9 evaluation cohort. Never merge the first campaign's seven packages.
+- Run every server solver through `Test/run_v3_huago_cone_eval.py`. The public probe must pass before `solve`; a canary infrastructure failure stops expansion, while three consecutive later infrastructure failures freeze the stack. Persist only secret-redacted stdout/stderr.
+- The pre-run manual GPT public probe passed. The manual DeepSeek probe timed out with no events or delivery and uploaded no private task. The manual Gemini probe failed before model entry because CRLF env substitution made the OpenCode config invalid; its credential-bearing stderr was immediately cleared. Do not reuse the shell probe. Rotate the Tuzi key and use only the tracked in-memory-redacting runner after the replacement release passes parity.
