@@ -23,6 +23,7 @@ class AssistantReviewRecord(BaseModel):
     decision: Literal["pass", "revise_system", "blocked"]
     candidate_blind_completed: bool
     deterministic_recomputation_pass: bool
+    deliverable_contract_valid: bool = False
     visual_review_pass: bool
     teacher_rubric_review_pass: bool
     verifier_export_pass: bool
@@ -188,6 +189,8 @@ class F4FromScratchCampaign:
             evidence_dir / "deterministic_validation.json",
             evidence_dir / "visual_qa" / "visual_qa_report.json",
             evidence_dir / "final_package" / "materialization_report.json",
+            evidence_dir / "final_package" / "deliverable_contract.json",
+            evidence_dir / "final_package" / "deliverable_contract_validation_report.json",
         ]
         missing = [str(path.relative_to(evidence_dir)) for path in required if not path.exists()]
         if missing:
@@ -207,6 +210,7 @@ class F4FromScratchCampaign:
         if review.decision == "pass" and not all([
             review.candidate_blind_completed,
             review.deterministic_recomputation_pass,
+            review.deliverable_contract_valid,
             review.visual_review_pass,
             review.teacher_rubric_review_pass,
             review.verifier_export_pass,

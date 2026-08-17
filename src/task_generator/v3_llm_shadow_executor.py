@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from task_generator.v3_llm_shadow_common import KIND_CONFIG, ShadowKind
 from task_generator.v3_skill_extractor import ProviderConfig, build_tuzi_config, load_env_file
+from task_generator.v3_external_model_policy import enforce_external_model_policy
 
 
 class LLMShadowExecuteRequest(BaseModel):
@@ -88,6 +89,7 @@ class LLMShadowExecutor:
         model = request.model or env.get("AGENT_MODEL") or env.get("GRADER_MODEL")
         if not api_key or not base_url or not model:
             return None
+        enforce_external_model_policy("openai_compatible_env", model)
         return ProviderConfig(
             provider_name="openai_compatible_env",
             base_url=base_url,
@@ -197,6 +199,7 @@ class LLMShadowExecutor:
             return self._failed(kind, task_id, shadow_path, comparison_path, config.model, failure)
 
     def _call_model(self, kind: ShadowKind, package: Dict[str, Any], config: ProviderConfig) -> Dict[str, Any]:
+        enforce_external_model_policy(config.provider_name, config.model)
         try:
             from openai import OpenAI
         except Exception as exc:  # pragma: no cover

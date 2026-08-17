@@ -4,6 +4,10 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from task_generator.v3_deliverable_contract import (
+    DeliverableContractV1,
+    DeliverableContractValidator,
+)
 from task_generator.v3_source_schema import load_json_file
 
 
@@ -26,7 +30,7 @@ class RwTaskExportValidationFinding(BaseModel):
 
 
 class RwTaskExportValidationReport(BaseModel):
-    validation_version: str = "v3.rw_task_export_validation.1"
+    validation_version: str = "v3.rw_task_export_validation.2"
     request: RwTaskExportValidationRequest
     case_dir: str
     case_id: str = "unknown"
@@ -167,6 +171,7 @@ class RwTaskExportValidator:
                     dataset_row=dataset_row,
                 )
             )
+            findings.extend(self._deliverable_contract_findings(case_path, dataset_row))
             findings.extend(self._draft_status_findings(dataset_row, export_report))
             findings.extend(self._rubric_findings(dataset_row))
 
@@ -399,6 +404,120 @@ class RwTaskExportValidator:
                     if report_decision == row_decision
                     else "Export report decision differs from dataset row metadata.",
                     {"export_report_decision": report_decision, "dataset_row_decision": row_decision},
+                )
+            )
+        return findings
+
+    def _deliverable_contract_findings(
+        self,
+        case_path: Path,
+        dataset_row: Dict[str, Any],
+    ) -> List[RwTaskExportValidationFinding]:
+        findings: List[RwTaskExportValidationFinding] = []
+        extra = dataset_row.get("extra") or {}
+        mode = str(extra.get("deliverable_contract_mode") or "diagnostic")
+        blocking = mode == "blocking"
+        severity: ValidationSeverity = "blocking" if blocking else "warning"
+        contract_path = case_path / "deliverable_contract.json"
+        contract_payload = extra.get("deliverable_contract")
+        if contract_path.exists():
+            try:
+                contract_payload = load_json_file(str(contract_path))
+            except Exception as exc:
+                findings.append(
+                    self._finding(
+                        "deliverable_contract_readable",
+                        severity,
+                        False,
+                        "deliverable_contract.json is unreadable.",
+                        {"error_type": type(exc).__name__, "error": str(exc)},
+                    )
+                )
+                return findings
+        if not isinstance(contract_payload, dict):
+            findings.append(
+                self._finding(
+                    "deliverable_contract_present",
+                    severity,
+                    False,
+                    "A versioned deliverable contract is required."
+                    if blocking
+                    else "No versioned deliverable contract is present; legacy export remains diagnostic.",
+                    {"mode": mode},
+                )
+            )
+            return findings
+        try:
+            contract = DeliverableContractV1.model_validate(contract_payload)
+        except Exception as exc:
+            findings.append(
+                self._finding(
+                    "deliverable_contract_schema_valid",
+                    severity,
+                    False,
+                    "Deliverable contract does not satisfy the V1 schema.",
+                    {"error_type": type(exc).__name__, "error": str(exc)},
+                )
+            )
+            return findings
+
+        findings.append(
+            self._finding(
+                "deliverable_contract_schema_valid",
+                severity,
+                True,
+                "Deliverable contract satisfies the V1 schema.",
+                {"contract_version": contract.contract_version, "mode": mode},
+            )
+        )
+        contract_paths = [item.relative_path for item in contract.deliverables]
+        row_paths = [str(item).replace("\\", "/") for item in dataset_row.get("deliverable_files") or []]
+        findings.append(
+            self._finding(
+                "dataset_row_matches_deliverable_contract",
+                severity,
+                row_paths == contract_paths,
+                "dataset_row deliverables exactly match the authoritative contract."
+                if row_paths == contract_paths
+                else "dataset_row deliverables differ from the authoritative contract.",
+                {"dataset_row": row_paths, "contract": contract_paths},
+            )
+        )
+        manifest_path = case_path / "deliverable_files" / "expected_deliverables.json"
+        manifest_paths: List[str] = []
+        if manifest_path.exists():
+            try:
+                manifest = load_json_file(str(manifest_path))
+                manifest_paths = [
+                    str(item).replace("\\", "/")
+                    for item in manifest.get("deliverables") or []
+                ]
+            except Exception:
+                manifest_paths = []
+        findings.append(
+            self._finding(
+                "expected_manifest_matches_deliverable_contract",
+                severity,
+                manifest_paths == contract_paths,
+                "Expected-deliverables manifest exactly matches the authoritative contract."
+                if manifest_paths == contract_paths
+                else "Expected-deliverables manifest differs from the authoritative contract.",
+                {"manifest": manifest_paths, "contract": contract_paths},
+            )
+        )
+        contract_report = DeliverableContractValidator().validate(
+            contract=contract,
+            prompt=str(dataset_row.get("prompt") or ""),
+            reference_files=list(dataset_row.get("reference_files") or []),
+        )
+        for item in contract_report.findings:
+            findings.append(
+                self._finding(
+                    f"deliverable_contract:{item.check_name}",
+                    severity if item.severity == "blocking" else item.severity,
+                    item.passed,
+                    item.message,
+                    item.details,
                 )
             )
         return findings

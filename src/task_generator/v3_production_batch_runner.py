@@ -54,6 +54,7 @@ class ProductionBatchRequest(BaseModel):
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
     case_index_offset: int = 0
     motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
+    proposal_input_manifest_path: Optional[str] = None
 
 
 class ProductionCaseRecord(BaseModel):
@@ -79,6 +80,16 @@ class ProductionCaseRecord(BaseModel):
     semantic_contract_lifecycle: Optional[str] = None
     semantic_contract_decision: Optional[str] = None
     semantic_contract_reason_codes: List[str] = Field(default_factory=list)
+    design_frontend_status: Optional[str] = None
+    proposal_validation_decision: Optional[str] = None
+    hybrid_materialization_decision: Optional[str] = None
+    proposal_id: Optional[str] = None
+    proposal_input_path: Optional[str] = None
+    proposal_input_sha256: Optional[str] = None
+    validity_overall_status: Optional[str] = None
+    utility_profile_status: Optional[str] = None
+    rubric_plan_decision: Optional[str] = None
+    r5_offline_governance_pass: bool = False
     production_candidate_eligible: bool = False
     training_pool_candidate_eligible: bool = False
     diagnostic_eval_recommended: bool = False
@@ -152,6 +163,7 @@ class ProductionBatchRunner:
         domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
         case_index_offset: int = 0,
         motif_occurrence_offsets: Optional[Dict[str, int]] = None,
+        proposal_input_manifest_path: str | Path | None = None,
     ) -> ProductionBatchRunnerArtifact:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -183,6 +195,11 @@ class ProductionBatchRunner:
             domain_profile_path=str(domain_profile_path),
             case_index_offset=case_index_offset,
             motif_occurrence_offsets=dict(motif_occurrence_offsets or {}),
+            proposal_input_manifest_path=(
+                str(proposal_input_manifest_path)
+                if proposal_input_manifest_path
+                else None
+            ),
         )
 
         registry_payload = self._safe_load_json(registry_path)
@@ -219,6 +236,7 @@ class ProductionBatchRunner:
                 domain_profile_path=domain_profile_path,
                 case_index_offset=case_index_offset,
                 motif_occurrence_offsets=motif_occurrence_offsets,
+                proposal_input_manifest_path=proposal_input_manifest_path,
             )
             batch_report_path = str(batch_output_dir / "pipeline_b_batch_report.json")
 
@@ -306,6 +324,52 @@ class ProductionBatchRunner:
                     semantic_contract_lifecycle=case.semantic_contract_lifecycle,
                     semantic_contract_decision=case.semantic_contract_decision,
                     semantic_contract_reason_codes=list(case.semantic_contract_reason_codes),
+                    design_frontend_status=getattr(
+                        case,
+                        "design_frontend_status",
+                        None,
+                    ),
+                    proposal_validation_decision=getattr(
+                        case,
+                        "proposal_validation_decision",
+                        None,
+                    ),
+                    hybrid_materialization_decision=getattr(
+                        case,
+                        "hybrid_materialization_decision",
+                        None,
+                    ),
+                    proposal_id=getattr(case, "proposal_id", None),
+                    proposal_input_path=getattr(
+                        case,
+                        "proposal_input_path",
+                        None,
+                    ),
+                    proposal_input_sha256=getattr(
+                        case,
+                        "proposal_input_sha256",
+                        None,
+                    ),
+                    validity_overall_status=getattr(
+                        case,
+                        "validity_overall_status",
+                        None,
+                    ),
+                    utility_profile_status=getattr(
+                        case,
+                        "utility_profile_status",
+                        None,
+                    ),
+                    rubric_plan_decision=getattr(
+                        case,
+                        "rubric_plan_decision",
+                        None,
+                    ),
+                    r5_offline_governance_pass=getattr(
+                        case,
+                        "r5_offline_governance_pass",
+                        False,
+                    ),
                     production_candidate_eligible=production_candidate_eligible,
                     training_pool_candidate_eligible=training_pool_candidate_eligible,
                     diagnostic_eval_recommended=diagnostic_eval_recommended,
@@ -356,6 +420,20 @@ class ProductionBatchRunner:
         return state
 
     def _is_candidate_ready(self, case: BaseModel) -> bool:
+        design_frontend_status = getattr(case, "design_frontend_status", None)
+        if design_frontend_status is not None:
+            if getattr(case, "proposal_validation_decision", None) != "pass":
+                return False
+            if getattr(case, "hybrid_materialization_decision", None) != "pass":
+                return False
+            if not getattr(case, "r5_offline_governance_pass", False):
+                return False
+            if getattr(case, "validity_overall_status", None) != "pass":
+                return False
+            if getattr(case, "utility_profile_status", None) != "pass":
+                return False
+            if getattr(case, "rubric_plan_decision", None) != "pass":
+                return False
         return (
             getattr(case, "quality_decision", None) == "candidate_ready"
             and getattr(case, "verifier_status", None) == "pass"

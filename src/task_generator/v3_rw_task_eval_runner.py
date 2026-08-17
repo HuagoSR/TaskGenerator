@@ -7,6 +7,17 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from task_generator.v3_deliverable_contract import (
+    DeliveryInspectionReport,
+    contract_from_dataset_row,
+    inspect_delivery,
+)
+from task_generator.v3_behavioral_validation import (
+    BehavioralExecutionBuilder,
+    BehavioralExecutionReportV1,
+    SolverToolPreflightReportV1,
+    write_behavioral_report,
+)
 from task_generator.v3_rw_task_eval_prep import RwTaskEvalPrepReport
 from task_generator.v3_source_schema import load_json_file
 
@@ -22,6 +33,7 @@ class RwTaskEvalRunRequest(BaseModel):
     allow_draft_eval: bool = False
     command_timeout_seconds: int = 0
     grader_model: Optional[str] = None
+    solver_preflight_report_path: Optional[str] = None
 
 
 class RwTaskEvalCommandRecord(BaseModel):
@@ -50,7 +62,7 @@ class RwTaskEvalOutputInspection(BaseModel):
 
 
 class RwTaskEvalRunReport(BaseModel):
-    run_version: str = "v3.rw_task_eval_runner.1"
+    run_version: str = "v3.rw_task_eval_runner.2"
     request: RwTaskEvalRunRequest
     case_id: str = "unknown"
     batch_case_id: str = "unknown"
@@ -71,6 +83,13 @@ class RwTaskEvalRunReport(BaseModel):
     command_records: List[RwTaskEvalCommandRecord] = Field(default_factory=list)
     output_dirs: List[str] = Field(default_factory=list)
     output_inspections: List[RwTaskEvalOutputInspection] = Field(default_factory=list)
+    delivery_inspection_path: Optional[str] = None
+    delivery_status: Optional[str] = None
+    expected_deliverable_count: int = 0
+    valid_deliverable_count: int = 0
+    behavioral_execution_report_path: Optional[str] = None
+    behavioral_failure_category: Optional[str] = None
+    grader_eligible: bool = False
     blocking_reasons: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
@@ -87,6 +106,7 @@ class RwTaskEvalRunner:
         allow_draft_eval: bool = False,
         command_timeout_seconds: int = 0,
         grader_model: Optional[str] = None,
+        solver_preflight_report_path: str | Path | None = None,
     ) -> RwTaskEvalRunReport:
         prep_path = Path(prep_report_path)
         output_path = Path(output_dir)
@@ -99,10 +119,16 @@ class RwTaskEvalRunner:
             allow_draft_eval=allow_draft_eval,
             command_timeout_seconds=command_timeout_seconds,
             grader_model=grader_model,
+            solver_preflight_report_path=(
+                str(solver_preflight_report_path)
+                if solver_preflight_report_path
+                else None
+            ),
         )
         blocking_reasons: List[str] = []
         warnings: List[str] = []
         prep_report: Optional[RwTaskEvalPrepReport] = None
+        preflight_report: Optional[SolverToolPreflightReportV1] = None
 
         if not prep_path.exists():
             blocking_reasons.append("prep_report_missing")
@@ -127,6 +153,27 @@ class RwTaskEvalRunner:
                 eval_case_dir = Path(prep_report.eval_input_case_dir or "")
                 if not eval_case_dir.exists():
                     blocking_reasons.append("eval_input_case_dir_missing")
+            preflight_required = self._requires_solver_preflight(prep_report)
+            if solver_preflight_report_path:
+                try:
+                    preflight_report = SolverToolPreflightReportV1.model_validate(
+                        load_json_file(str(solver_preflight_report_path))
+                    )
+                except Exception:
+                    blocking_reasons.append("solver_preflight_report_unreadable")
+            if run_eval and preflight_required:
+                if preflight_report is None:
+                    blocking_reasons.append("solver_preflight_required")
+                elif preflight_report.status != "pass":
+                    blocking_reasons.append(
+                        f"solver_preflight_status:{preflight_report.status}"
+                    )
+                elif not preflight_report.eligible_for_business_eval:
+                    blocking_reasons.append("solver_preflight_not_business_eligible")
+                elif preflight_report.solver_model != prep_report.request.model:
+                    blocking_reasons.append("solver_preflight_model_mismatch")
+        else:
+            preflight_required = False
 
         command_records = self._initial_command_records(prep_report)
         output_dirs = self._output_dirs(prep_report)
@@ -141,6 +188,16 @@ class RwTaskEvalRunner:
         ]
 
         if blocking_reasons:
+            behavioral_report, behavioral_path = self._build_behavioral_report(
+                output_path=output_path,
+                prep_report=prep_report,
+                command_records=command_records,
+                delivery_inspection=None,
+                delivery_inspection_path=None,
+                preflight_report=preflight_report,
+                preflight_report_path=solver_preflight_report_path,
+                preflight_required=preflight_required,
+            )
             report = self._report(
                 request=request,
                 prep_report=prep_report,
@@ -154,6 +211,8 @@ class RwTaskEvalRunner:
                 blocking_reasons=blocking_reasons,
                 warnings=warnings,
                 notes=notes,
+                behavioral_report=behavioral_report,
+                behavioral_report_path=behavioral_path,
             )
             self.write_report(report, output_path / "rw_task_eval_run_report.json")
             return report
@@ -176,15 +235,26 @@ class RwTaskEvalRunner:
             self.write_report(report, output_path / "rw_task_eval_run_report.json")
             return report
 
-        executed_records = self._execute_commands(
+        executed_records, delivery_inspection, delivery_inspection_path = self._execute_commands(
             commands=prep_report.would_run_commands if prep_report else [],
             output_dir=output_path,
             timeout_seconds=command_timeout_seconds,
             grading_model=grader_model or (prep_report.request.model if prep_report else ""),
             rw_task_root=prep_report.request.rw_task_root if prep_report else "",
+            prep_report=prep_report,
         )
         output_inspections = self._inspect_output_dirs(output_dirs)
         run_status = self._run_status(executed_records)
+        behavioral_report, behavioral_report_path = self._build_behavioral_report(
+            output_path=output_path,
+            prep_report=prep_report,
+            command_records=executed_records,
+            delivery_inspection=delivery_inspection,
+            delivery_inspection_path=delivery_inspection_path,
+            preflight_report=preflight_report,
+            preflight_report_path=solver_preflight_report_path,
+            preflight_required=preflight_required,
+        )
         report = self._report(
             request=request,
             prep_report=prep_report,
@@ -198,6 +268,10 @@ class RwTaskEvalRunner:
             blocking_reasons=[],
             warnings=warnings,
             notes=notes,
+            delivery_inspection=delivery_inspection,
+            delivery_inspection_path=delivery_inspection_path,
+            behavioral_report=behavioral_report,
+            behavioral_report_path=behavioral_report_path,
         )
         self.write_report(report, output_path / "rw_task_eval_run_report.json")
         return report
@@ -221,6 +295,10 @@ class RwTaskEvalRunner:
         blocking_reasons: List[str],
         warnings: List[str],
         notes: List[str],
+        delivery_inspection: Optional[DeliveryInspectionReport] = None,
+        delivery_inspection_path: Optional[str] = None,
+        behavioral_report: Optional[BehavioralExecutionReportV1] = None,
+        behavioral_report_path: Optional[str] = None,
     ) -> RwTaskEvalRunReport:
         return RwTaskEvalRunReport(
             request=request,
@@ -243,10 +321,78 @@ class RwTaskEvalRunner:
             command_records=command_records,
             output_dirs=output_dirs,
             output_inspections=output_inspections,
+            delivery_inspection_path=delivery_inspection_path,
+            delivery_status=delivery_inspection.delivery_status if delivery_inspection else None,
+            expected_deliverable_count=delivery_inspection.expected_count if delivery_inspection else 0,
+            valid_deliverable_count=delivery_inspection.valid_count if delivery_inspection else 0,
+            behavioral_execution_report_path=behavioral_report_path,
+            behavioral_failure_category=(
+                behavioral_report.failure_category if behavioral_report else None
+            ),
+            grader_eligible=(
+                behavioral_report.grader_eligible if behavioral_report else False
+            ),
             blocking_reasons=sorted(set(blocking_reasons)),
             warnings=sorted(set(warnings)),
             notes=notes,
         )
+
+    def _build_behavioral_report(
+        self,
+        *,
+        output_path: Path,
+        prep_report: Optional[RwTaskEvalPrepReport],
+        command_records: List[RwTaskEvalCommandRecord],
+        delivery_inspection: Optional[DeliveryInspectionReport],
+        delivery_inspection_path: Optional[str],
+        preflight_report: Optional[SolverToolPreflightReportV1],
+        preflight_report_path: str | Path | None,
+        preflight_required: bool,
+    ) -> tuple[BehavioralExecutionReportV1, str]:
+        solver_output = self._dir_for_flag(prep_report, "--output")
+        report = BehavioralExecutionBuilder().build(
+            case_id=prep_report.case_id if prep_report else "unknown",
+            solver_model=prep_report.request.model if prep_report else "",
+            environment_id=(
+                preflight_report.environment_id
+                if preflight_report
+                else "not_evaluated"
+            ),
+            command_records=command_records,
+            delivery_inspection=delivery_inspection,
+            output_root=solver_output or output_path,
+            input_package_root=(
+                prep_report.eval_input_case_dir if prep_report else None
+            ),
+            preflight_report=preflight_report,
+            preflight_report_path=(
+                preflight_report_path
+                if preflight_report_path
+                else None
+            ),
+            preflight_required=preflight_required,
+            delivery_inspection_path=delivery_inspection_path,
+        )
+        path = output_path / "behavioral_execution_report.json"
+        write_behavioral_report(report, path)
+        return report, str(path)
+
+    def _requires_solver_preflight(
+        self,
+        prep_report: Optional[RwTaskEvalPrepReport],
+    ) -> bool:
+        if not prep_report or not prep_report.eval_input_case_dir:
+            return False
+        dataset_path = Path(prep_report.eval_input_case_dir) / "dataset_row.json"
+        if not dataset_path.exists():
+            return False
+        try:
+            dataset_row = load_json_file(str(dataset_path))
+        except Exception:
+            return False
+        extra = dataset_row.get("extra") or {}
+        route = str(extra.get("materialization_route") or "")
+        return route.startswith("hybrid_") or bool(extra.get("behavioral_preflight_required"))
 
     def _initial_command_records(
         self,
@@ -270,11 +416,14 @@ class RwTaskEvalRunner:
         timeout_seconds: int,
         grading_model: str,
         rw_task_root: str,
-    ) -> List[RwTaskEvalCommandRecord]:
+        prep_report: Optional[RwTaskEvalPrepReport],
+    ) -> tuple[List[RwTaskEvalCommandRecord], Optional[DeliveryInspectionReport], Optional[str]]:
         records: List[RwTaskEvalCommandRecord] = []
         log_dir = output_dir / "command_logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timeout = timeout_seconds if timeout_seconds > 0 else None
+        delivery_inspection: Optional[DeliveryInspectionReport] = None
+        delivery_inspection_path: Optional[str] = None
 
         for index, command in enumerate(commands, start=1):
             started_at = self._now()
@@ -286,6 +435,32 @@ class RwTaskEvalRunner:
             cleanup_attempted = False
             cleanup_note = ""
             command_name = self._command_name(command)
+            if command_name == "bench_standalone.grade_deliverables":
+                delivery_inspection = self._inspect_expected_delivery(prep_report)
+                delivery_path = output_dir / "delivery_inspection_report.json"
+                delivery_path.write_text(
+                    delivery_inspection.model_dump_json(indent=2),
+                    encoding="utf-8",
+                )
+                delivery_inspection_path = str(delivery_path)
+                if delivery_inspection.delivery_status != "valid":
+                    records.append(
+                        RwTaskEvalCommandRecord(
+                            command_index=index,
+                            command=command,
+                            command_name=command_name,
+                            status="not_run",
+                            started_at=started_at,
+                            ended_at=self._now(),
+                            timeout_seconds=timeout_seconds,
+                            failure_stage="delivery_inspection",
+                            stderr_excerpt=(
+                                "Grading skipped because exact expected deliverables "
+                                "were missing, invalid, wrongly named, or on the wrong path."
+                            ),
+                        )
+                    )
+                    break
             try:
                 env = self._command_env(command, grading_model, rw_task_root)
                 completed = subprocess.run(
@@ -341,7 +516,7 @@ class RwTaskEvalRunner:
             )
             if status != "succeeded":
                 break
-        return records
+        return records, delivery_inspection, delivery_inspection_path
 
     def _run_status(self, records: List[RwTaskEvalCommandRecord]) -> EvalRunStatus:
         if any(record.status == "timeout" for record in records):
@@ -350,7 +525,26 @@ class RwTaskEvalRunner:
         if failed_records:
             succeeded_count = sum(1 for record in records if record.status == "succeeded")
             return "partial_failed" if succeeded_count else "failed"
+        if any(record.status == "not_run" for record in records):
+            return "partial_failed"
         return "completed"
+
+    def _inspect_expected_delivery(
+        self,
+        prep_report: Optional[RwTaskEvalPrepReport],
+    ) -> DeliveryInspectionReport:
+        if not prep_report or not prep_report.eval_input_case_dir:
+            raise ValueError("delivery_inspection_requires_prepared_case")
+        case_dir = Path(prep_report.eval_input_case_dir)
+        dataset_row = load_json_file(str(case_dir / "dataset_row.json"))
+        contract = contract_from_dataset_row(
+            dataset_row,
+            case_dir / "deliverable_contract.json",
+        )
+        output_dir = self._dir_for_flag(prep_report, "--output")
+        if not output_dir:
+            raise ValueError("delivery_inspection_requires_solver_output")
+        return inspect_delivery(output_dir, contract)
 
     def _command_env(self, command: List[str], grading_model: str, rw_task_root: str) -> dict[str, str]:
         env = dict(os.environ)

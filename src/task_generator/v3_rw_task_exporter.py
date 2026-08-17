@@ -6,6 +6,10 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from task_generator.v3_deliverable_contract import (
+    DeliverableContractCompiler,
+    DeliverableContractValidator,
+)
 from task_generator.v3_pipeline_b_package_assembler import (
     PackageArtifactRecord,
     PipelineBPackageManifest,
@@ -15,6 +19,7 @@ from task_generator.v3_source_schema import load_json_file
 
 
 ExportDecision = Literal["blocked", "draft_exported", "exported"]
+DeliverableContractMode = Literal["disabled", "diagnostic", "blocking"]
 
 
 class PipelineBRwTaskExportRequest(BaseModel):
@@ -22,6 +27,7 @@ class PipelineBRwTaskExportRequest(BaseModel):
     output_dir: str
     case_id: Optional[str] = None
     allow_revise_only: bool = False
+    deliverable_contract_mode: DeliverableContractMode = "disabled"
 
 
 class PipelineBRwTaskExportReport(BaseModel):
@@ -51,6 +57,7 @@ class PipelineBRwTaskExporter:
         output_dir: str | Path,
         case_id: str | None = None,
         allow_revise_only: bool = False,
+        deliverable_contract_mode: DeliverableContractMode = "disabled",
     ) -> PipelineBRwTaskExportReport:
         manifest_path = Path(package_manifest_path)
         output_path = Path(output_dir)
@@ -64,6 +71,7 @@ class PipelineBRwTaskExporter:
             output_dir=str(output_path),
             case_id=resolved_case_id,
             allow_revise_only=allow_revise_only,
+            deliverable_contract_mode=deliverable_contract_mode,
         )
 
         if output_path.exists():
@@ -110,6 +118,50 @@ class PipelineBRwTaskExporter:
             package_manifest=package_manifest,
             export_decision=export_decision,
         )
+        contract_mode = deliverable_contract_mode
+        deliverable_contract = None
+        contract_validation = None
+        if contract_mode in {"diagnostic", "blocking"}:
+            compiler = DeliverableContractCompiler()
+            deliverable_contract = compiler.build(
+                case_id=resolved_case_id,
+                deliverable_specs=list(dataset_row.get("deliverable_files") or []),
+                reference_files=list(dataset_row.get("reference_files") or []),
+            )
+            if contract_mode == "blocking":
+                dataset_row["prompt"] = compiler.compile_prompt(
+                    str(dataset_row.get("prompt") or ""),
+                    deliverable_contract,
+                )
+            contract_validation = DeliverableContractValidator().validate(
+                deliverable_contract,
+                str(dataset_row.get("prompt") or ""),
+                list(dataset_row.get("reference_files") or []),
+            )
+            dataset_row["extra"]["deliverable_contract_mode"] = contract_mode
+            dataset_row["extra"]["deliverable_contract"] = deliverable_contract.model_dump(
+                mode="json"
+            )
+            (output_path / "deliverable_contract.json").write_text(
+                deliverable_contract.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+            (output_path / "deliverable_contract_validation_report.json").write_text(
+                contract_validation.model_dump_json(indent=2),
+                encoding="utf-8",
+            )
+            if contract_mode == "blocking" and contract_validation.validation_status != "pass":
+                report.export_decision = "blocked"
+                report.case_dir = None
+                report.reason_codes = sorted(
+                    set(report.reason_codes + ["deliverable_contract_invalid"])
+                )
+                report.notes.append(
+                    "Reconstruction blocking export stopped because prompt, templates, "
+                    "or expected output paths conflict with the deliverable contract."
+                )
+                self._write_report(output_path / "rw_task_export_report.json", report)
+                return report
 
         reference_dir = output_path / "reference_files"
         deliverable_dir = output_path / "deliverable_files"
@@ -130,6 +182,13 @@ class PipelineBRwTaskExporter:
                 "This manifest records the expected candidate-created outputs.",
             ],
         }
+        if deliverable_contract:
+            deliverable_manifest.update(
+                {
+                    "deliverable_contract_version": deliverable_contract.contract_version,
+                    "contract_path": "deliverable_contract.json",
+                }
+            )
         (deliverable_dir / "expected_deliverables.json").write_text(
             json.dumps(deliverable_manifest, ensure_ascii=False, indent=2),
             encoding="utf-8",

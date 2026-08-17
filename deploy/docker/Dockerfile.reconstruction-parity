@@ -1,0 +1,22 @@
+ARG BASE_IMAGE=taskgenerator:f4-3-eval-eddd09a
+FROM ${BASE_IMAGE}
+
+ARG SOURCE_FINGERPRINT=unknown
+
+USER root
+RUN rm -rf /opt/taskgenerator
+COPY --chown=taskgenerator:taskgenerator . /opt/taskgenerator
+RUN python -m pip install --no-cache-dir --no-deps /opt/taskgenerator
+
+LABEL cloud.huago.taskgenerator.reconstruction-parity="true" \
+      cloud.huago.taskgenerator.source-fingerprint="${SOURCE_FINGERPRINT}"
+
+ENV PYTHONHASHSEED=0 \
+    PYTHONPATH=/opt/taskgenerator/src \
+    TASKGEN_EXECUTION_PLATFORM=container-parity \
+    TASKGEN_ENV_PATH=/run/secrets/unavailable
+
+WORKDIR /opt/taskgenerator
+USER taskgenerator
+ENTRYPOINT ["python"]
+CMD ["-m", "unittest", "discover", "-s", "Test", "-p", "test_*.py"]

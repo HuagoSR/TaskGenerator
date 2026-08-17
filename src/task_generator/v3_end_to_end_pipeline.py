@@ -162,6 +162,7 @@ class EndToEndRequest(BaseModel):
     motifs: List[str] = Field(default_factory=list)
     case_index_offset: int = 0
     target_difficulty_profile: Optional[str] = None
+    proposal_input_manifest_path: Optional[str] = None
     motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
     semantic_review_mode: SemanticReviewMode = "disabled"
     semantic_review_execute: bool = False
@@ -840,6 +841,13 @@ class EndToEndPipeline:
         ]
         if request.target_difficulty_profile:
             cmd.extend(["--target-difficulty-profile", request.target_difficulty_profile])
+        if request.proposal_input_manifest_path:
+            cmd.extend(
+                [
+                    "--proposal-input-manifest",
+                    request.proposal_input_manifest_path,
+                ]
+            )
         for motif, offset in sorted(request.motif_occurrence_offsets.items()):
             cmd.extend(["--motif-occurrence-offset", f"{motif}={offset}"])
         domain_profile = load_domain_profile(request.domain_profile, request.domain_profile_path)

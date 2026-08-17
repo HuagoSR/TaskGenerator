@@ -1,6 +1,6 @@
 ﻿from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from task_generator.v3_skill_registry import SkillRegistryBuilder
 from task_generator.v3_source_schema import SkillRegistryEntry, load_json_file
@@ -31,6 +31,8 @@ class PipelineBSeedSetBuilder:
         target_count: int = 20,
         caution_limit: int = 5,
         domain_profile: Optional[DomainProfile] = None,
+        allowed_skill_ids: Optional[Set[str]] = None,
+        selection_policy_id: str = "default_registry_readiness",
     ) -> Dict[str, Any]:
         domain_profile = domain_profile or load_domain_profile("finance_audit")
         entries = self.registry_builder.load_registry(registry_path)
@@ -43,6 +45,7 @@ class PipelineBSeedSetBuilder:
         scored = [
             self._score_entry(entry, readiness_by_skill.get(entry.skill_id, {}), domain_profile)
             for entry in entries
+            if allowed_skill_ids is None or entry.skill_id in allowed_skill_ids
         ]
         selectable = [
             record
@@ -86,6 +89,10 @@ class PipelineBSeedSetBuilder:
             "caution_limit": caution_limit,
             "domain_profile_id": domain_profile.profile_id,
             "domain_profile_version": domain_profile.profile_version,
+            "selection_policy_id": selection_policy_id,
+            "allowed_skill_count": (
+                len(allowed_skill_ids) if allowed_skill_ids is not None else None
+            ),
             "registry_entry_count": len(entries),
             "selected_count": len(selected),
             "selected_readiness_counts": dict(sorted(Counter(r["readiness_decision"] for r in selected).items())),
@@ -98,6 +105,7 @@ class PipelineBSeedSetBuilder:
                 "This report is non-destructive and does not modify SkillRegistryEntry records.",
                 "The seed set is a first Pipeline B sampling slice, not a full endorsement of the registry.",
                 "Pipeline B should treat sample_with_caution seeds as exploratory and keep provenance visible.",
+                "An allowed-skill filter is report-only and never mutates registry readiness.",
             ],
         }
 

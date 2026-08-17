@@ -164,6 +164,7 @@ def _holistic(campaign, args, slot):
         "semantic_contract_verified": materialization.semantic_contract_verified,
         "fact_weight_ratio": materialization.fact_weight_ratio,
         "rw_task_export_compatible": materialization.rw_task_export_compatible,
+        "deliverable_contract_valid": materialization.deliverable_contract_valid,
         "candidate_teacher_isolation_pass": materialization.candidate_teacher_isolation_pass,
         "reason_codes": materialization.reason_codes,
         "truth_accepted_from_llm": False,
@@ -182,7 +183,7 @@ def _holistic(campaign, args, slot):
     else:
         solve = _with_retry(lambda attempt: executor.solve({
             "task_id": lifecycle["case_id"],
-            "prompt": revision.revised_prompt,
+            "prompt": (final_package / "prompt.md").read_text(encoding="utf-8"),
             "candidate_files": _contents(final_package / "reference_files"),
             "output_instruction": "Return independently computed key results using the prompt's business labels.",
         }, attempt), provider_dir / "luna_attempts.json")

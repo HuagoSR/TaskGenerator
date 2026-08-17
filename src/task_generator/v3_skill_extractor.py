@@ -396,6 +396,7 @@ class ProviderConfig:
     temperature: float = 0.2
     max_tokens: int = 6000
     output_profile: str = "standard"
+    reasoning_mode: str = "high"
 
 
 @dataclass
@@ -456,6 +457,8 @@ class SkillExtractionError(RuntimeError):
 
 class LLMSkillExtractor(BaseSkillExtractor):
     def __init__(self, config: ProviderConfig, prompt_block_limit: int = 80, prompt_char_limit: int = 24000):
+        from task_generator.v3_external_model_policy import enforce_external_model_policy
+        enforce_external_model_policy(config.provider_name, config.model)
         self.config = config
         self.prompt_block_limit = prompt_block_limit
         self.prompt_char_limit = prompt_char_limit
@@ -908,6 +911,8 @@ def build_tuzi_config(env_path: str | Path, model_override: Optional[str], timeo
     model = model_override or env_values.get("OPENAI_MODEL") or os.environ.get("OPENAI_MODEL")
     if not api_key or not base_url or not model:
         return None
+    from task_generator.v3_external_model_policy import enforce_external_model_policy
+    enforce_external_model_policy("tuzi", model)
     return ProviderConfig(
         provider_name="tuzi",
         base_url=base_url,
@@ -924,6 +929,8 @@ def build_deepseek_config(key_path: str | Path, model: str, timeout_seconds: int
     api_key = path.read_text(encoding="utf-8", errors="replace").strip()
     if not api_key:
         return None
+    from task_generator.v3_external_model_policy import enforce_external_model_policy
+    enforce_external_model_policy("deepseek", model)
     return ProviderConfig(
         provider_name="deepseek",
         base_url="https://api.deepseek.com",

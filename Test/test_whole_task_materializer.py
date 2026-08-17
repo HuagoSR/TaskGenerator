@@ -54,6 +54,13 @@ class WholeTaskMaterializerTests(unittest.TestCase):
             self.assertEqual(report.decision, "pass")
             self.assertTrue(report.deterministic_recomputation_pass)
             self.assertTrue(report.rw_task_export_compatible)
+            self.assertTrue(report.deliverable_contract_valid)
+            prompt = (root / "revision" / "prompt.md").read_text(encoding="utf-8")
+            self.assertIn("deliverable_files/cash_reconciliation.xlsx", prompt)
+            self.assertTrue((root / "revision" / "deliverable_contract.json").is_file())
+            self.assertTrue(
+                (root / "revision" / "rw_task_export" / "deliverable_contract.json").is_file()
+            )
             from openpyxl import load_workbook
             rendered = load_workbook(root / "revision" / "reference_files" / "bank_statement.xlsx")
             self.assertEqual(rendered.active.page_setup.fitToWidth, 1)

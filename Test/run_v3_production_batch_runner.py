@@ -48,6 +48,15 @@ def main() -> None:
     parser.add_argument("--allow-caution", action="store_true")
     parser.add_argument("--workflow-archetype", default=None)
     parser.add_argument("--target-difficulty-profile", default=None)
+    parser.add_argument(
+        "--proposal-input-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "Governed case-to-proposal manifest for the "
+            "reconstruction_experimental route."
+        ),
+    )
     parser.add_argument("--model", type=str, default="gpt-5.4-pro")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
@@ -94,6 +103,7 @@ def main() -> None:
         domain_profile_path=args.domain_profile_path,
         case_index_offset=args.case_index_offset,
         motif_occurrence_offsets=motif_occurrence_offsets,
+        proposal_input_manifest_path=args.proposal_input_manifest,
     )
 
     print(

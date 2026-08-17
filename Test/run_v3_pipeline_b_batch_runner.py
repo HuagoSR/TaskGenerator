@@ -37,6 +37,22 @@ def main() -> None:
     parser.add_argument("--workflow-archetype", default=None)
     parser.add_argument("--motif-grammar-path", type=Path, default=None)
     parser.add_argument("--target-difficulty-profile", default=None)
+    parser.add_argument(
+        "--motif-occurrence-offset",
+        action="append",
+        default=[],
+        metavar="MOTIF=INDEX",
+        help="Deterministic starting occurrence per motif; repeat as needed.",
+    )
+    parser.add_argument(
+        "--proposal-input-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "Governed case-to-proposal manifest for the "
+            "reconstruction_experimental route."
+        ),
+    )
     parser.add_argument("--model", type=str, default="gpt-5.4-pro")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument(
@@ -50,6 +66,15 @@ def main() -> None:
         default=Path(r"D:\miniconda3\envs\real-world-task\python.exe"),
     )
     args = parser.parse_args()
+    motif_occurrence_offsets = {}
+    for item in args.motif_occurrence_offset:
+        motif, separator, raw_index = item.partition("=")
+        if not separator or not motif or not raw_index:
+            parser.error("--motif-occurrence-offset must use MOTIF=INDEX")
+        try:
+            motif_occurrence_offsets[motif] = int(raw_index)
+        except ValueError:
+            parser.error("--motif-occurrence-offset INDEX must be an integer")
 
     runner = PipelineBBatchRunner()
     report = runner.run(
@@ -67,6 +92,8 @@ def main() -> None:
         workers=args.workers,
         rw_task_root=args.rw_task_root,
         python_exe=args.python_exe,
+        proposal_input_manifest_path=args.proposal_input_manifest,
+        motif_occurrence_offsets=motif_occurrence_offsets,
     )
 
     print(

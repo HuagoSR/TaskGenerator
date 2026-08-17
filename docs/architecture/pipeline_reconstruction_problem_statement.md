@@ -3,6 +3,8 @@
 > 状态：`active`
 > 职责：总结截至 Milestone F4.3 已被证据确认的系统问题，定义下一轮流水线重构需要解决的研究问题；不预设具体实现方案，不替代《项目概要》的项目状态职能。
 
+本文件只负责问题定义。当前阶段、实现切片、接口草案、验证矩阵、受控比较和 promotion 条件见 [`pipeline_reconstruction_optimization_plan.md`](pipeline_reconstruction_optimization_plan.md)。
+
 ## 一、结论摘要
 
 当前系统已经能够自动完成公开来源收集、skill 提炼、任务包生成、teacher truth、rubric、文件验证、服务器运行和真实模型评测，但还不能稳定产出同时满足以下两项要求的任务：
@@ -238,6 +240,58 @@ Utility：真实、复杂、有区分度、对目标能力具有训练价值
 - 不推广 `evidence_to_deliverable`；
 - 不切换服务器 production release；
 - 不以现有内部 pass 数量证明训练数据已经准备完成。
+
+### 9.1 v7 provider screening 对问题定义的补充
+
+四个公开来源 brief 的 v7 授权筛选进一步确认，问题不只是“是否让 LLM 参与”，还包括 LLM 与程序之间的引用协议和修复反馈是否真实成立：
+
+- 8 个 LLM assignments 仅 4 个完成物化，说明 schema-valid、source-admitted 的输入仍不足以保证跨 brief package completion；
+- 失败 proposal 多次把章节裸文本或自造 `section_*` ID 当成 causal binding，说明程序内部的 canonical namespace 若没有明确暴露给模型，就会把可修复的引用错误误记为“装饰性 skill”；
+- 5 次第二调用与第一次 prompt 相同，说明“最多一次重试”本身不构成 repair；没有失败 proposal、validator finding 和合法 ID 集合的反馈，成功只能视为随机重抽；
+- skill-guided 1/4、LLM-led 3/4 不能用于路线优劣判断，因为 matched packages 不完整且没有任何 solver/grader 行为证据。
+
+因此下一候选必须把“feedback-conditioned repair rate”和“canonical binding reference validity”作为 provider screening 的独立指标；未通过 package completion 前不得进入行为比较。
+
+### 9.2 v15–v22 对接口问题的补充
+
+后续证据表明，解决 canonical namespace 和 repair feedback 后，新的主要矛盾转移到“整体语义设计”与“大型执行 schema”之间：
+
+- v15/v16 的 proposal 可以通过，但旧 materializer 把不同业务角色压成统一占位表，说明 schema pass 不代表语义工件成立；
+- v21 的 V2 双路线首次生成真实业务字段和跨文件 anchors，但实际渲染仍发现机器式标签与长文本显示问题；
+- v22 skill-guided 验证了业务可读标签，而 matched LLM-led 返回完整响应后仍在 V2 parse 阶段失败，且没有形成可反馈修复的 proposal；
+- v22 历史报告只保留 `ValidationError`，进一步说明 contract failure 的安全诊断必须在下一次外呼前离线完成，而不能依赖重复调用碰运气。
+
+因此，下一步不能简单放宽 schema 或增加无条件重试。需要验证一种受治理的接口分层：LLM 保留场景、证据关系、判断和交付意图的 proposal authority；程序负责把已验证语义结构归一化为执行合同，并继续独占事实、路径、隔离与 promotion authority。任何分层方案都必须通过 negative controls 证明它没有静默补造业务事实、删除 productive complexity 或把不完整输出伪装成合格 proposal。
+
+该接口分层的离线核心现已实现并通过同指纹容器复验：`v3.task_design_semantic_proposal.1` 保留全部 provider-owned business semantics，normalizer 只增加执行语法和全 false authority，并以语义投影哈希、事实增删计数和 productive-complexity equality 证明无损。v24 进一步证明“proposal 通过”仍可能遗漏 artifact-level provenance 或在内容 gate 误判真实 prior-draft 输入；当前合同因此强制 artifact/node source projection 精确相等，并对明确否定语境做边界处理。persisted proposal 可零外呼重放当前验证合同，形成可审计 repair readiness，但不被计为 provider 观测。该阶段的 243/243、`103b59ad...01fb` 是历史快照；当前完整本地/固定容器基线已推进到 249/249、`0c1b3705...858a`。这些证据证明接口与治理合同可执行，不证明真实 provider、solver 或专业复核能在完整 matched campaign 中稳定通过。
+
+### 9.3 v23–v28 对“生成正确性”的进一步补充
+
+v23–v28 的真实 provider slices 把问题进一步定位到三个层次：
+
+- semantic proposal 与程序执行合同可以无损分层；多条真实 proposal 已证明事实零增删、productive complexity 保留和零 mutation authority；
+- feedback-conditioned repair 在 preserved proposal、blocking findings 和 canonical IDs 齐备时能够工作，但 provider/schema failure 或 materialization failure 不能靠重复调用补救；
+- materialization 后的 deterministic semantic gate 本身也可能误判。v25–v27 连续暴露 plural/irregular-plural/typed-record 三类 role-header 假阳性，说明“更多门禁”若没有独立内容和实际渲染证据，也会成为新的代理指标。
+
+当前修复把 provider-owned `record_type` 纳入角色语义，同时排除 field display names，避免门禁自证式通过；正负回归、冻结文件零外呼 replay 与 V27 实审均通过。V28 四个 briefs 的 8 个 provider assignments 已全部观测：LLM-led 4/4 首轮物化，skill-guided 3/4；唯一失败因 relation 缺少 required join contract 而在 semantic normalization 阶段 fail closed，且因没有 strict proposal 不具 repair 资格。这说明 typed-record gate 已稳定，但 route-conditioned provider 对完整关系合同的一次性遵从仍不稳定。7 条已物化路线的 47 个工作簿和 94 张实际渲染全部通过内容、公式、provenance 与 export-identity 审计。正式 provider screening 因 package completion 低于合同和跨 brief route instability 判为 `redesign_again`；matched packages 不完整，因此不能进入 solver panel、repeated grader、独立专业复核或路线优越性判断。
+
+V28 之后的离线重构针对的是接口失配而非放宽正确性：semantic provider schema 现在直接要求每条 relation 的两个非空 join fields，prompt 明确禁止省略或 `null`，normalizer 仍不得代填业务关系。为了避免“整体可解析、局部缺失”被误归为不可反馈的广泛 schema failure，executor 新增 `semantic_proposal_blocked`：只在兼容 draft schema 能解析完整对象时保存 semantic draft、sanitized normalization findings 和实际初始 prompt，并允许唯一一次带原 draft、findings 与 canonical IDs 的完整替换修复。真正的 schema-invalid、provider failure、materialization failure 或无 draft 情况仍停止。该路径已通过 tracked missing-join negative fixture、42 项针对性测试和 local/container 252/252，尚未获得 fresh provider observation，因此只能把问题从“接口必然浪费一次响应”推进到“具备可验证修复能力”，不能声称跨 brief 稳定性已经解决。
+
+V29 fresh provider pair 证明 join-field schema 修复后两条路线都能完成 normalization/materialization，但又暴露 skill-binding cardinality：skill-guided 首轮通过，LLM-led 对同一 skill 生成两个 binding objects，被 causal validator 阻断后由一次 feedback-conditioned repair 通过。16 个 provider-route XLSX/32 sheets 的真实导入、渲染、公式、provenance 与 export-identity 审计全部通过。问题不在 bound-element namespace，而在初始 prompt 只要求“每个 skill 有因果绑定”，没有明确“恰好一个 binding”。当前 prompt 已补齐 cardinality，screening 也分别报告 namespace/cardinality/missing-or-decorative；local/container 253/253 通过。该结果仍只证明 proposal repair 和静态 materialization，不证明行为 Utility 或跨 brief 稳定性。
+
+V30 首个 fresh pair 对 cardinality 修复给出正向观察：skill-guided 首轮通过；LLM-led 没有重复 binding，而是因一个 frozen source 未进入 topology 被阻断，随后 feedback repair 通过。两条路线 2/2 materialized；15 个 provider-route XLSX/30 sheets 的真实审计全部通过。partial screening 只有 `provider_campaign_incomplete`，没有新的 contract redesign reason。这仍不足以声称跨 brief 稳定性，必须继续 matched provider screening，且在完整 packages 前不得启动 solver/grader。
+
+V30 的 sequential authorization 审计还暴露了独立的状态机问题：旧 slice 的合法 receipt 曾可在未绑定当前 active request SHA 的情况下把 campaign 标成 `provider_generation_ready`。后续 task-scope gate 虽会阻断真正调用，但 ready 状态本身已不可信。用户对 request `74a6e65f...5d47` 的授权因此未被消费，且没有产生 provider 调用。当前 preflight 在状态变更前强制校验 receipt 的 `authorization_request_sha256` 与 active request 文件内容 SHA 完全一致；不一致返回 `authorization_receipt_active_request_mismatch` 并保持 campaign 不变。新增 sequential regression 后，本地与固定容器均通过 254 项测试。V30 冻结，V31 以新代码和容器指纹重新准备；其 exact request 为 `6e486b9d1e0a983bf9bd6b950213b095cb826dacbf9903e415f39732d5990ba5`，尚无外部调用。
+
+V31 cross-check provider slice 随后证明 active-request 修复可在真实 sequential workflow 中工作。LLM-led 首轮通过；skill-guided 首轮唯一阻断为 proposal 试图声明 mutation authority，原 proposal、验证 finding 与首错均被保留，feedback-conditioned repair 随后通过。两路线最终 2/2 materialized，3 calls、58,916 tokens、501.297 秒、6 USD，0 unconditioned retry。18 个工作簿/36 张 sheet 的导入、渲染、公式、provenance 与 export identity 审计通过。该结果说明 authority boundary 能被验证并由受管反馈纠正，但仍只有一个 brief；partial screening 仅为 `awaiting_provider_completion`，不能推导行为 Utility、路线优越性或训练价值。
+
+V31 policy-application slice 扩展了跨 brief 观察：skill-guided 与 LLM-led 均在首轮通过 schema、normalization、proposal validation 和 materialization，无 repair。两次调用共 24,923 tokens、269.062 秒和 4 USD；15 个工作簿/30 张 sheet 的内容、渲染、公式、provenance 与 export identity 审计全部通过。V31 累计 4/8 provider assignments materialized，正式 partial screening 仍只有 `provider_campaign_incomplete`。这提高了 provider-interface 跨 brief 稳定性证据，但 matched packages 尚未完整，仍不能启动 solver/grader 或声称路线优越性。
+
+V31 fan-in slice 继续给出正向跨 brief 观察：两路线均首轮通过并物化，无 repair；2 calls、24,060 tokens、253.124 秒和 4 USD。13 个工作簿/26 张 sheet 的内容、渲染、公式、provenance 与 export identity 审计通过。V31 累计 6/8 provider assignments materialized，partial screening 仍只有 `provider_campaign_incomplete`。剩余一对属于 `evidence_to_deliverable` experimental motif；其 provider 完成只能关闭 screening 样本，不得自动解释为该 motif 已可推广或已具行为 Utility。
+
+V31 final evidence-to-deliverable slice 关闭了 provider 样本。skill-guided 首轮通过；LLM-led 首轮因冻结来源未进入 evidence topology 而保留 `proposal_blocked`，唯一 feedback-conditioned repair 随后通过。该 pair 2/2 materialized，3 calls、40,810 tokens、387.391 秒、6 USD；12 workbooks/24 sheets 的内容、渲染、公式、provenance 与 12/12 export identity 审计通过。V31 总计 8/8 provider assignments materialized、10 calls、148,709 tokens、1410.874 秒、20 USD、2 feedback retries、0 unconditioned retry；formal screening=`proceed_to_behavioral_evaluation`。12/12 route-blind staging 随后通过且排除 teacher artifacts。该证据只证明 provider/materialization 接口在四个冻结 brief 上达到继续评估门槛；它仍未回答 solver 是否精确交付、任务是否区分模型、grader 是否稳定或路线是否有真实 Utility。
+
+Provider 门关闭后又暴露一项治理缺口：原计划要求 solver preflight 与 business execution 独立授权，但行为层最初没有可校验授权对象。V1 两级合同补上 authority scope，却让一次 attempt 展开为 4/6/100 calls。V2/V3 逐步加入 call、turn、request-byte、provider token、completion reservation、零重试、contract-cost、request-hash 清单隔离和 legacy MD5 路径归一化。V3 已把三模型限制在 8/7/8 calls，却进一步证明“finish + 非空 + 精确路径”仍不等于有效提交：weak 交付的是两个只有 15/16 字节的纯文本伪 XLSX，medium 真正通过全部操作，strong 在 call ceiling 无交付。V3 closeout 因此为 `redesign_again`，且没有盲包或 grader 调用。当前 outcome 在返回成功前必须使用同一 `DeliverableContract` 检查文件可打开性；下一步应修正 agent-tool admission/feedback，而不是用更高预算掩盖工具失败。contract cost 不冒充第三方实际账单。只有三个 preflight 同环境通过后，第二级真实任务授权才具备生成资格。
 
 ## 十、重构问题的最终表述
 

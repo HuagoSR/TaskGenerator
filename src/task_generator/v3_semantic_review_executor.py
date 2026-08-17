@@ -20,10 +20,20 @@ from task_generator.v3_semantic_validity import (
 )
 from task_generator.v3_skill_extractor import ProviderConfig, build_deepseek_config, build_tuzi_config, load_env_file
 from task_generator.v3_semantic_secondary_cost import SecondaryCostLedgerManager
+from task_generator.v3_validity_utility import (
+    CandidateBlindRealityReviewV2,
+    RubricFocusRealityReviewV2,
+    RubricFocusRealityReviewV3,
+    RubricFocusRealityReviewV4,
+)
+from task_generator.v3_external_model_policy import enforce_external_model_policy
 
 
 class SemanticReviewExecutionError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, retry_eligible: bool = False, failure_code: str = "provider_failure") -> None:
+        super().__init__(message)
+        self.retry_eligible = retry_eligible
+        self.failure_code = failure_code
 
 
 class SemanticReviewExecutor:
@@ -35,12 +45,148 @@ class SemanticReviewExecutor:
         max_tokens: int = 8000,
         cost_ledger: Optional[SecondaryCostLedgerManager] = None,
         input_token_hard_limit: int = 20_000,
+        max_retries: int = 2,
     ) -> None:
         self.config = config
+        enforce_external_model_policy(config.provider_name, config.model)
         self.max_tokens = max_tokens
         self.cost_ledger = cost_ledger
         self.input_token_hard_limit = input_token_hard_limit
+        self.max_retries = max_retries
         self.last_diagnostics: Dict[str, Any] = {}
+        self.last_raw_response_content: str = ""
+
+    def review_reality_candidate_blind(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> CandidateBlindRealityReviewV2:
+        instructions = (
+            "Act as an independent professional task reviewer. Review only the "
+            "candidate-visible task, deliverable contract, and reference contents. "
+            "Return exactly five dimensions: role_realism, information_sufficiency, "
+            "natural_difficulty, professional_judgment, and deliverable_realism. "
+            "Use concrete evidence locators. Do not infer generation route, teacher "
+            "truth, hidden rubric, or repairs."
+        )
+        return self._call(
+            instructions,
+            payload,
+            CandidateBlindRealityReviewV2,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+
+    def review_reality_rubric_focus(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> RubricFocusRealityReviewV2:
+        instructions = (
+            "Act as an independent rubric auditor. Evaluate only whether the supplied "
+            "rubric and bindings focus on real professional capability, avoid duplicate "
+            "scoring, and avoid rewarding accidental difficulty. Return only the "
+            "rubric_focus dimension with concrete evidence locators. Do not infer or "
+            "mention generation route or model."
+        )
+        return self._call(
+            instructions,
+            payload,
+            RubricFocusRealityReviewV2,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+
+    def review_reality_rubric_focus_v3(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> RubricFocusRealityReviewV3:
+        instructions = (
+            "Act as an independent rubric scoring-authority auditor. Only entries in "
+            "rubric_plan.criteria are final weighted scoring criteria. Entries in the "
+            "rubric_binding_plan are trace-only annotations because final_weights_assigned "
+            "is false and scoring_authority says not_final_weight; never count them as extra "
+            "criteria. Assess every unordered pair of the seven final criteria exactly once. "
+            "Shared skill IDs, capability IDs, or evidence alone do not establish duplicate "
+            "scoring when observable behaviors and independent failure signals are distinct. "
+            "Use shared_evidence_distinct_behavior exactly for a pair marked as sharing "
+            "evidence by the frozen scoring-authority audit when its behavior and failure "
+            "signal remain distinct; otherwise use distinct for a non-risk pair. "
+            "Use potential_duplicate or duplicate only when the scored behaviors or failure "
+            "conditions materially overlap, and cite both criterion IDs. Keep route and "
+            "generator identity out of the review. Return the criterion IDs in lexical order, "
+            "and each pair with criterion_a < criterion_b."
+        )
+        return self._call(
+            instructions,
+            payload,
+            RubricFocusRealityReviewV3,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+
+    def estimate_reality_rubric_focus_v3_input_tokens(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> int:
+        instructions = (
+            "Act as an independent rubric scoring-authority auditor. Only entries in "
+            "rubric_plan.criteria are final weighted scoring criteria. Entries in the "
+            "rubric_binding_plan are trace-only annotations because final_weights_assigned "
+            "is false and scoring_authority says not_final_weight; never count them as extra "
+            "criteria. Assess every unordered pair of the seven final criteria exactly once. "
+            "Shared skill IDs, capability IDs, or evidence alone do not establish duplicate "
+            "scoring when observable behaviors and independent failure signals are distinct. "
+            "Use shared_evidence_distinct_behavior exactly for a pair marked as sharing "
+            "evidence by the frozen scoring-authority audit when its behavior and failure "
+            "signal remain distinct; otherwise use distinct for a non-risk pair. "
+            "Use potential_duplicate or duplicate only when the scored behaviors or failure "
+            "conditions materially overlap, and cite both criterion IDs. Keep route and "
+            "generator identity out of the review. Return the criterion IDs in lexical order, "
+            "and each pair with criterion_a < criterion_b."
+        )
+        messages = self._request_messages(
+            instructions,
+            payload,
+            RubricFocusRealityReviewV3,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+        return self._estimated_message_tokens(messages)
+
+    def review_reality_rubric_focus_v4(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> RubricFocusRealityReviewV4:
+        instructions = self._rubric_focus_v4_instructions()
+        return self._call(
+            instructions,
+            payload,
+            RubricFocusRealityReviewV4,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+
+    def estimate_reality_rubric_focus_v4_input_tokens(
+        self, payload: Dict[str, Any], *, format_feedback: Optional[str] = None
+    ) -> int:
+        messages = self._request_messages(
+            self._rubric_focus_v4_instructions(),
+            payload,
+            RubricFocusRealityReviewV4,
+            {"case_id": payload["case_id"]},
+            format_feedback=format_feedback,
+        )
+        return self._estimated_message_tokens(messages)
+
+    @staticmethod
+    def _rubric_focus_v4_instructions() -> str:
+        return (
+            "Act as an independent rubric scoring-authority auditor. Only entries in "
+            "rubric_plan.criteria are final weighted scoring criteria; rubric_binding_plan "
+            "entries are trace-only and non-scoring. Classify all 21 unordered pairs once. "
+            "For non-risk pairs return only the compact assessment: use "
+            "shared_evidence_distinct_behavior exactly when the frozen audit marks shared "
+            "evidence, otherwise use distinct. Shared skill, capability, or evidence alone "
+            "never establishes duplicate scoring. Use potential_duplicate or duplicate only "
+            "for material overlap in scored behavior or failure conditions. Detailed "
+            "rationale and evidence locators belong only in risk_findings, one finding for "
+            "each risky pair, citing both criterion IDs. Keep the summary under 80 words. "
+            "Do not mention route, generator identity, or provider."
+        )
 
     def review_blind(self, package: Dict[str, Any]) -> CandidateBlindReview:
         enriched = dict(package)
@@ -206,31 +352,80 @@ class SemanticReviewExecutor:
         model_type: Type[BaseModel],
         defaults: Dict[str, Any],
         cost_scope: Optional[str] = None,
+        format_feedback: Optional[str] = None,
     ):
+        started = time.monotonic()
+        messages = self._request_messages(
+            system_prompt,
+            payload,
+            model_type,
+            defaults,
+            format_feedback=format_feedback,
+        )
+        estimated_tokens = self._estimated_message_tokens(messages)
+        self.last_diagnostics = {
+            "estimated_input_tokens": estimated_tokens,
+            "input_token_hard_limit": self.input_token_hard_limit,
+        }
+        if estimated_tokens > self.input_token_hard_limit:
+            raise SemanticReviewExecutionError(
+                "Provider message input token ceiling exceeded.",
+                retry_eligible=False,
+                failure_code="input_token_ceiling",
+            )
         try:
             from openai import OpenAI
         except Exception as exc:  # pragma: no cover
             raise SemanticReviewExecutionError(f"OpenAI SDK unavailable: {type(exc).__name__}") from exc
-        client = OpenAI(api_key=self.config.api_key, base_url=self.config.base_url, timeout=self.config.timeout_seconds)
-        started = time.monotonic()
-        schema = model_type.model_json_schema()
-        reserved = self.cost_ledger.reserve(self.input_token_hard_limit, self.max_tokens) if self.cost_ledger else 0.0
-        response = client.chat.completions.create(
-            model=self.config.model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                    + " Output exactly one JSON object matching this JSON Schema. Do not add wrapper keys or prose: "
-                    + json.dumps(schema, ensure_ascii=False),
-                },
-                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-            ],
-            temperature=0,
-            max_tokens=self.max_tokens,
-            response_format={"type": "json_object"},
+        client = OpenAI(
+            api_key=self.config.api_key,
+            base_url=self.config.base_url,
+            timeout=self.config.timeout_seconds,
+            max_retries=self.max_retries,
         )
+        reserved = self.cost_ledger.reserve(self.input_token_hard_limit, self.max_tokens) if self.cost_ledger else 0.0
+        request_args: Dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "max_tokens": self.max_tokens,
+            "response_format": {"type": "json_object"},
+        }
+        if self.config.provider_name == "deepseek":
+            if self.config.reasoning_mode == "disabled":
+                request_args["extra_body"] = {
+                    "thinking": {"type": "disabled"}
+                }
+            elif self.config.reasoning_mode == "high":
+                request_args["reasoning_effort"] = "high"
+                request_args["extra_body"] = {
+                    "thinking": {"type": "enabled"}
+                }
+            else:
+                raise SemanticReviewExecutionError(
+                    "Unsupported DeepSeek reasoning mode.",
+                    retry_eligible=False,
+                    failure_code="provider_configuration_failure",
+                )
+        else:
+            request_args["temperature"] = 0
+        try:
+            response = client.chat.completions.create(**request_args)
+        except Exception as exc:
+            status = getattr(exc, "status_code", None)
+            eligible = status in {408, 429} or (isinstance(status, int) and 500 <= status <= 599) or isinstance(exc, (TimeoutError, ConnectionError))
+            code = (
+                f"transport_http_{status}" if status in {408, 429}
+                else "transport_http_5xx" if isinstance(status, int) and 500 <= status <= 599
+                else "transport_timeout" if isinstance(exc, (TimeoutError, ConnectionError))
+                else "transport_failure"
+            )
+            raise SemanticReviewExecutionError(
+                f"Provider request failed: {type(exc).__name__}",
+                retry_eligible=eligible,
+                failure_code=code,
+            ) from exc
         content = response.choices[0].message.content or ""
+        self.last_raw_response_content = content
         finish_reason = str(getattr(response.choices[0], "finish_reason", ""))
         usage = getattr(response, "usage", None)
         self.last_diagnostics = {
@@ -245,6 +440,8 @@ class SemanticReviewExecutor:
             "duration_seconds": round(time.monotonic() - started, 3),
             "likely_truncated": finish_reason.lower() == "length",
             "key_slot": "backup" if self.cost_ledger else None,
+            "estimated_input_tokens": estimated_tokens,
+            "input_token_hard_limit": self.input_token_hard_limit,
         }
         if self.cost_ledger and cost_scope:
             self.cost_ledger.record(
@@ -256,9 +453,9 @@ class SemanticReviewExecutor:
                 status="completed" if content and finish_reason.lower() != "length" else "failed",
             )
         if not content:
-            raise SemanticReviewExecutionError("Provider returned empty semantic review output.")
+            raise SemanticReviewExecutionError("Provider returned empty semantic review output.", retry_eligible=True, failure_code="empty_content")
         if self.last_diagnostics["likely_truncated"]:
-            raise SemanticReviewExecutionError("Provider truncated semantic review output.")
+            raise SemanticReviewExecutionError("Provider truncated semantic review output.", retry_eligible=True, failure_code="truncated_output")
         try:
             parsed = json.loads(content)
             if not isinstance(parsed, dict):
@@ -266,7 +463,122 @@ class SemanticReviewExecutor:
             parsed.update(defaults)
             return model_type.model_validate(parsed)
         except Exception as exc:
-            raise SemanticReviewExecutionError(f"Provider contract violation: {type(exc).__name__}") from exc
+            raise SemanticReviewExecutionError(
+                f"Provider contract violation: {type(exc).__name__}",
+                retry_eligible=True,
+                failure_code="invalid_json" if isinstance(exc, json.JSONDecodeError) else "schema_contract_failure",
+            ) from exc
+
+    def _request_messages(
+        self,
+        system_prompt: str,
+        payload: Dict[str, Any],
+        model_type: Type[BaseModel],
+        defaults: Dict[str, Any],
+        *,
+        format_feedback: Optional[str] = None,
+    ) -> list[Dict[str, str]]:
+        schema = model_type.model_json_schema()
+        schema_example = self._json_example(model_type, defaults)
+        return [
+                {
+                    "role": "system",
+                    "content": system_prompt
+                    + " Output exactly one JSON object matching this JSON Schema. Do not add wrapper keys or prose: "
+                    + json.dumps(schema, ensure_ascii=False)
+                    + " Example JSON shape: "
+                    + json.dumps(schema_example, ensure_ascii=False)
+                    + ((" Previous attempt failed only this output contract check: " + format_feedback) if format_feedback else ""),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        payload, ensure_ascii=False, default=str
+                    ),
+                },
+            ]
+
+    @staticmethod
+    def _estimated_message_tokens(messages: list[Dict[str, str]]) -> int:
+        serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"))
+        return max(1, (len(serialized) + 2) // 3)
+
+    def _json_example(self, model_type: Type[BaseModel], defaults: Dict[str, Any]) -> Dict[str, Any]:
+        if model_type is CandidateBlindRealityReviewV2:
+            names = ["role_realism", "information_sufficiency", "natural_difficulty", "professional_judgment", "deliverable_realism"]
+            return {
+                "case_id": defaults.get("case_id", "case_id"),
+                "dimensions": [
+                    {"dimension": name, "decision": "revise", "rationale": "Concrete evidence-based rationale.", "evidence_locators": ["file:sheet!A1"]}
+                    for name in names
+                ],
+            }
+        if model_type is RubricFocusRealityReviewV2:
+            return {
+                "case_id": defaults.get("case_id", "case_id"),
+                "dimension": {"dimension": "rubric_focus", "decision": "revise", "rationale": "Concrete evidence-based rationale.", "evidence_locators": ["rubric:criterion_id"]},
+            }
+        if model_type is RubricFocusRealityReviewV3:
+            criterion_ids = sorted(
+                str(item) for item in defaults.get("criterion_ids", [
+                    "criterion_evidence_traceability",
+                    "criterion_exception_handling",
+                    "criterion_factual_accuracy",
+                    "criterion_method_process",
+                    "criterion_professional_expression",
+                    "criterion_reproducibility",
+                    "criterion_structural_usability",
+                ])
+            )
+            pairs = []
+            for index, left in enumerate(criterion_ids):
+                for right in criterion_ids[index + 1 :]:
+                    pairs.append({
+                        "criterion_a": left,
+                        "criterion_b": right,
+                        "assessment": "distinct",
+                        "rationale": "The observable behaviors and independent failure signals are distinct.",
+                        "evidence_locators": [f"rubric:{left}", f"rubric:{right}"],
+                    })
+            return {
+                "case_id": defaults.get("case_id", "case_id"),
+                "final_scoring_criterion_ids": criterion_ids,
+                "final_scoring_criteria_count": 7,
+                "annotation_bindings_recognized_non_scoring": True,
+                "pair_assessments": pairs,
+                "decision": "pass",
+                "rationale": "All final scoring criteria assess distinct professional behaviors.",
+            }
+        if model_type is RubricFocusRealityReviewV4:
+            criterion_ids = sorted([
+                "criterion_evidence_traceability",
+                "criterion_exception_handling",
+                "criterion_factual_accuracy",
+                "criterion_method_process",
+                "criterion_professional_expression",
+                "criterion_reproducibility",
+                "criterion_structural_usability",
+            ])
+            pairs = [
+                {
+                    "criterion_a": left,
+                    "criterion_b": right,
+                    "assessment": "distinct",
+                }
+                for index, left in enumerate(criterion_ids)
+                for right in criterion_ids[index + 1 :]
+            ]
+            return {
+                "case_id": defaults.get("case_id", "case_id"),
+                "final_scoring_criterion_ids": criterion_ids,
+                "final_scoring_criteria_count": 7,
+                "annotation_bindings_recognized_non_scoring": True,
+                "pair_assessments": pairs,
+                "risk_findings": [],
+                "decision": "pass",
+                "summary": "All final scoring criteria assess distinct professional behaviors.",
+            }
+        return defaults
 
     def _reference_content(self, path: Path) -> Dict[str, Any]:
         suffix = path.suffix.lower()
@@ -338,7 +650,13 @@ def deepseek_semantic_config(key_path: str | Path, timeout_seconds: int = 900) -
     return config
 
 
-def claude_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> ProviderConfig:
+def claude_semantic_config(
+    env_path: str | Path,
+    timeout_seconds: int = 900,
+    *,
+    allow_expensive_model: bool = False,
+) -> ProviderConfig:
+    enforce_external_model_policy("tuzi", "claude-sonnet-4-6")
     config = build_tuzi_config(env_path, "claude-sonnet-4-6", timeout_seconds)
     if config is not None:
         return config
@@ -357,6 +675,7 @@ def claude_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> 
 
 
 def gpt54_semantic_config(env_path: str | Path, timeout_seconds: int = 900) -> ProviderConfig:
+    enforce_external_model_policy("tuzi", "gpt-5.4-pro")
     config = build_tuzi_config(env_path, "gpt-5.4-pro", timeout_seconds)
     if config is not None:
         return config
@@ -379,6 +698,7 @@ def tuzi_backup_semantic_config(
     model: str = "gpt-5.6-sol",
     timeout_seconds: int = 900,
 ) -> ProviderConfig:
+    enforce_external_model_policy("tuzi", model)
     values = load_env_file(env_path)
     api_key = values.get("OPENAI_API_KEY_BACKUP")
     base_url = (
@@ -387,6 +707,36 @@ def tuzi_backup_semantic_config(
     )
     if not api_key or not base_url:
         raise SemanticReviewExecutionError("Tuzi backup semantic-review configuration is unavailable.")
+    return ProviderConfig(
+        provider_name="tuzi",
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def tuzi_semantic_config(
+    env_path: str | Path,
+    model: str,
+    timeout_seconds: int = 900,
+) -> ProviderConfig:
+    """Load a Tuzi model without persisting credentials.
+
+    Prefer the standard OPENAI-compatible names, while retaining the project's
+    established AGENT/GRADER aliases used by the existing ignored environment.
+    """
+    enforce_external_model_policy("tuzi", model)
+    config = build_tuzi_config(env_path, model, timeout_seconds)
+    if config is not None:
+        return config
+    values = load_env_file(env_path)
+    api_key = values.get("AGENT_API_KEY") or values.get("GRADER_API_KEY")
+    base_url = values.get("AGENT_BASE_URL") or values.get("GRADER_BASE_URL")
+    if not api_key or not base_url:
+        raise SemanticReviewExecutionError(
+            "Tuzi semantic-review configuration is unavailable."
+        )
     return ProviderConfig(
         provider_name="tuzi",
         base_url=base_url,

@@ -25,6 +25,11 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--case-id", type=str, default=None)
     parser.add_argument("--allow-revise-only", action="store_true")
+    parser.add_argument(
+        "--deliverable-contract-mode",
+        choices=["disabled", "diagnostic", "blocking"],
+        default="disabled",
+    )
     args = parser.parse_args()
 
     exporter = PipelineBRwTaskExporter()
@@ -33,6 +38,7 @@ def main() -> None:
         output_dir=args.output_dir,
         case_id=args.case_id,
         allow_revise_only=args.allow_revise_only,
+        deliverable_contract_mode=args.deliverable_contract_mode,
     )
     print(
         json.dumps(

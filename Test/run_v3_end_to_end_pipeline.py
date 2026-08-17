@@ -73,6 +73,15 @@ def main() -> None:
     parser.add_argument("--motif", action="append", default=[])
     parser.add_argument("--case-index-offset", type=int, default=0)
     parser.add_argument("--target-difficulty-profile", default=None)
+    parser.add_argument(
+        "--proposal-input-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "Governed case-to-proposal manifest for the "
+            "reconstruction_experimental production stage."
+        ),
+    )
     parser.add_argument("--motif-occurrence-offset", action="append", default=[])
     parser.add_argument("--apply-registry-update", action="store_true")
     parser.add_argument("--skip-registry-update", action="store_true")
@@ -259,6 +268,11 @@ def main() -> None:
         motifs=args.motif,
         case_index_offset=args.case_index_offset,
         target_difficulty_profile=args.target_difficulty_profile,
+        proposal_input_manifest_path=(
+            str(args.proposal_input_manifest)
+            if args.proposal_input_manifest
+            else None
+        ),
         motif_occurrence_offsets=motif_occurrence_offsets,
         semantic_review_mode=args.semantic_review_mode,
         semantic_review_execute=args.semantic_review_execute,

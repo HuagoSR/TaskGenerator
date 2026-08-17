@@ -1,7 +1,7 @@
 name: taskgenerator-d
 
 x-taskgenerator-common: &taskgenerator-common
-  image: ${TASKGEN_IMAGE:?must_set}
+  image: ${TASKGEN_FACTORY_IMAGE:-${TASKGEN_IMAGE:?must_set}}
   user: "1000:1000"
   read_only: true
   cap_drop: ["ALL"]
@@ -20,12 +20,15 @@ x-taskgenerator-common: &taskgenerator-common
     TASKGEN_RW_TASK_ROOT: /opt/rw-task
     TASKGEN_ENV_PATH: /run/secrets/provider_env
     TASKGEN_DEEPSEEK_KEY_PATH: /run/secrets/deepseek_api_key
+    TASKGEN_EXECUTION_CONCURRENCY: "1"
   volumes:
     - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
     - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
   tmpfs:
     - /tmp:size=268435456,mode=1777
     - /home/taskgenerator/.cache:size=134217728,mode=0700,uid=1000,gid=1000
+    - /home/taskgenerator/.local:size=134217728,mode=0700,uid=1000,gid=1000
+    - /home/taskgenerator/.config:size=67108864,mode=0700,uid=1000,gid=1000
   logging:
     driver: local
     options:
@@ -47,9 +50,25 @@ services:
 
   eval:
     <<: *taskgenerator-common
+    image: ${TASKGEN_EVAL_IMAGE:-${TASKGEN_FACTORY_IMAGE:-${TASKGEN_IMAGE:?must_set}}}
+    mem_limit: 3g
+    cpus: 2.0
+    environment:
+      TASKGEN_IMAGE_ID: ${TASKGEN_EVAL_IMAGE_ID:-unknown}
+      TASKGEN_RELEASE_ID: ${TASKGEN_RELEASE_ID:-unknown}
+      TASKGEN_SOURCE_COMMIT: ${TASKGEN_SOURCE_COMMIT:-unknown}
+      TASKGEN_RW_TASK_SNAPSHOT: ${TASKGEN_RW_TASK_SNAPSHOT:-unknown}
+      TASKGEN_OUTPUT_ROOT: /data/runs
+      TASKGEN_RW_TASK_ROOT: /opt/rw-task
+      TASKGEN_ENV_PATH: /run/secrets/provider_env
+      TASKGEN_DEEPSEEK_KEY_PATH: /run/secrets/deepseek_api_key
+      TASKGEN_EXECUTION_CONCURRENCY: "1"
+      CODEX_HOME: /home/taskgenerator/.codex
     volumes:
       - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
       - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
+      - ${TASKGEN_EVAL_WORKSPACES_DIR:?must_set}:/data/eval-workspaces
       - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
       - ${TASKGEN_EVAL_TUZI_ENV_FILE:?must_set}:/run/secrets/eval_tuzi_env:ro
       - ${TASKGEN_E2B_KEY_FILE:?must_set}:/run/secrets/e2b_api_key:ro
+      - ${TASKGEN_CODEX_AUTH_FILE:?must_set}:/home/taskgenerator/.codex/auth.json

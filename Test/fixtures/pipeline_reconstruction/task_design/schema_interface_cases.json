@@ -1,0 +1,58 @@
+{
+  "fixture_version": "v3.task_design_schema_interface_cases.2",
+  "base_interface": "v3.task_design_semantic_proposal.1",
+  "cases": [
+    {
+      "case_id": "missing_required_field",
+      "mutation": {
+        "op": "remove",
+        "path": ["trigger_event"]
+      },
+      "expected_blocking_reason": "semantic_proposal_schema_invalid"
+    },
+    {
+      "case_id": "wrong_union_shape",
+      "mutation": {
+        "op": "replace",
+        "path": ["scenario"],
+        "value": {"invalid": "provider-private-value-must-not-persist"}
+      },
+      "expected_blocking_reason": "semantic_proposal_schema_invalid"
+    },
+    {
+      "case_id": "legacy_nested_record_shape",
+      "mutation": {
+        "op": "wrap_record",
+        "path": ["evidence_nodes", 0, "artifact_spec", "records", 0]
+      },
+      "expected_blocking_reason": "semantic_proposal_schema_invalid"
+    },
+    {
+      "case_id": "missing_relation_join_contract",
+      "mutation": {
+        "op": "remove",
+        "path": ["evidence_relations", 0, "from_join_field"]
+      },
+      "expected_blocking_reason": "semantic_proposal_schema_invalid"
+    },
+    {
+      "case_id": "boolean_enum_display",
+      "mutation": {
+        "op": "replace",
+        "path": ["evidence_nodes", 0, "artifact_spec", "records", 0, "record_status"],
+        "value": true
+      },
+      "expected_blocking_reason": "normalized_v2_contract_invalid"
+    },
+    {
+      "case_id": "oversized_semantic_proposal",
+      "mutation": {
+        "op": "repeat_string",
+        "path": ["scenario"],
+        "value": "X",
+        "count": 100001
+      },
+      "expected_blocking_reason": "semantic_proposal_payload_too_large"
+    }
+  ]
+}

@@ -11,7 +11,9 @@
 4. [`architecture/global_interface_contracts.md`](architecture/global_interface_contracts.md)：全局接口契约。
 5. [`architecture/production_mvp_definition.md`](architecture/production_mvp_definition.md)：当前 production contract。
 6. [`architecture/pipeline_reconstruction_problem_statement.md`](architecture/pipeline_reconstruction_problem_statement.md)：下一轮流水线重构的问题定义与证据边界。
-7. [`archive/README.md`](archive/README.md)：历史计划、handoff 和报告索引。
+7. [`architecture/pipeline_reconstruction_optimization_plan.md`](architecture/pipeline_reconstruction_optimization_plan.md)：当前活跃重构 workstream 的阶段、合同、指标、门禁和 promotion 计划。
+8. [`operations/pipeline_reconstruction_runbook.md`](operations/pipeline_reconstruction_runbook.md)：重构实验的授权、执行、盲化、评测、服务器与 rollback 治理手册；当前是否存在可执行 campaign 以该文档和《项目概要》的最新状态为准。
+9. [`archive/README.md`](archive/README.md)：历史计划、handoff 和报告索引。
 
 ## 生命周期
 
@@ -32,6 +34,6 @@
 - 阶段性报告及图片放在 `docs/archive/reports/`。
 - 运行生成物、日志、任务包、grader 输出和临时报告只写入 `artifacts/`。
 
-未来如需详细 workstream 计划，可在执行期创建局部文档并由《项目概要》链接；workstream 完成后必须迁入 archive，不能继续占用活跃架构目录。
+当前活跃 workstream 为流水线重构，执行计划由《项目概要》链接并保存在 `architecture/pipeline_reconstruction_optimization_plan.md`。workstream 完成后必须迁入 archive，不能继续占用活跃架构目录或继续承担当前状态管理职责。
 
-Milestone E 已完成并归档。Milestone F 财务任务生产也已完成，证据见 [`archive/phases/milestone_f/MILESTONE_F_FINANCE_PRODUCTION_COMPLETION_2026-07-11.md`](archive/phases/milestone_f/MILESTONE_F_FINANCE_PRODUCTION_COMPLETION_2026-07-11.md)。宏观状态仍由根目录《项目概要》管理。
+Milestone E 和 Milestone F 财务任务生产均已完成并归档；F4.3 真实执行随后重新打开了任务质量与交付合同问题。当前不再沿旧生产扩题，而是按活跃重构计划推进。宏观状态仍只由根目录《项目概要》管理。

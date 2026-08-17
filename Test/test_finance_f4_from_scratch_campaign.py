@@ -71,7 +71,8 @@ class F4FromScratchCampaignTests(unittest.TestCase):
     @staticmethod
     def _review(slot, decision):
         return AssistantReviewRecord(slot=slot, revision=1, decision=decision, candidate_blind_completed=True,
-            deterministic_recomputation_pass=True, visual_review_pass=True, teacher_rubric_review_pass=True,
+            deterministic_recomputation_pass=True, deliverable_contract_valid=True,
+            visual_review_pass=True, teacher_rubric_review_pass=True,
             verifier_export_pass=True, unresolved_material_ambiguity=False, findings=[], responsibility="none",
             reviewed_at="2026-07-13T00:00:00+00:00")
 
@@ -83,6 +84,8 @@ class F4FromScratchCampaignTests(unittest.TestCase):
             root / "deterministic_validation.json",
             root / "visual_qa" / "visual_qa_report.json",
             root / "final_package" / "materialization_report.json",
+            root / "final_package" / "deliverable_contract.json",
+            root / "final_package" / "deliverable_contract_validation_report.json",
         ]
         for path in paths:
             path.parent.mkdir(parents=True, exist_ok=True)

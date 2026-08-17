@@ -15,6 +15,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from task_generator.v3_deliverable_contract import (  # noqa: E402
+    contract_from_dataset_row,
+    inspect_delivery,
+)
+
 SPEC = ROOT / "SkillRegistry" / "v3_finance_model_difference_eval.experimental.json"
 F4_2_SPEC = ROOT / "SkillRegistry" / "v3_finance_f4_2_model_eval.experimental.json"
 ALLOWED_SOLVER_KEYS = {"task_id", "sector", "occupation", "motif", "prompt", "reference_files", "deliverable_files"}
@@ -529,12 +538,17 @@ def fixed_audit_assignments(selection: dict, models: list[str]) -> dict[str, str
 
 def _delivered_files(campaign_root: Path, record: dict) -> list[Path]:
     output = campaign_root / "solver_outputs" / record["model"] / record["task_id"]
-    return sorted(
-        path for directory in output.rglob("deliverable_files")
-        if directory.is_dir()
-        for path in directory.rglob("*")
-        if path.is_file()
+    case_dir = campaign_root / "single_inputs" / record["task_id"] / record["task_id"]
+    dataset_row_path = case_dir / "dataset_row.json"
+    if not dataset_row_path.exists():
+        return []
+    dataset_row = load_json(dataset_row_path)
+    contract = contract_from_dataset_row(
+        dataset_row,
+        case_dir / "deliverable_contract.json",
     )
+    inspection = inspect_delivery(output, contract)
+    return inspection.valid_paths if inspection.delivery_status == "valid" else []
 
 
 def _grade_one(campaign_root: Path, manifest: dict, target_manifest: Path, record: dict,

@@ -1,0 +1,21 @@
+{
+  "fixture_version": "v3.pipeline_reconstruction_fixture.1",
+  "source_evidence": "F4.3 Slot 2 sanitized regression",
+  "failure_taxonomy": "prompt_deliverable_filename_conflict",
+  "case_id": "slot_02_synthetic",
+  "prompt": "Review the supplied invoices and save the completed output as invoice_match_review.xlsx.",
+  "reference_files": [
+    "reference_files/invoices.xlsx",
+    "reference_files/purchase_orders.xlsx",
+    "reference_files/receipts.xlsx"
+  ],
+  "deliverable_specs": [
+    {
+      "file_name": "three_way_match_review.xlsx"
+    }
+  ],
+  "expected_failed_checks": [
+    "prompt_exact_path:three_way_match_review.xlsx",
+    "prompt_output_name_conflicts"
+  ]
+}

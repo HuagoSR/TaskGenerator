@@ -33,6 +33,7 @@ DEFAULT_WEBFETCH_HEADERS = {
 }
 MAX_SOURCE_BYTES = 5 * 1024 * 1024
 ALLOWED_SOURCE_CONTENT_TYPES = ("text/html", "text/plain", "application/xhtml+xml")
+TRANSPARENT_PROXY_BENCHMARK_NETWORK = ipaddress.ip_network("198.18.0.0/15")
 
 
 @dataclass
@@ -78,6 +79,7 @@ class DirectWebSourceCollector:
         queries: Sequence[str],
         source_count: int,
         collector_model: str = "direct_serper_trafilatura",
+        search_backend: str = "serper_direct",
     ) -> SourceCollectionRequest:
         return build_collection_request(
             topic=topic,
@@ -86,7 +88,7 @@ class DirectWebSourceCollector:
             source_count=source_count,
             collector_model=collector_model,
             e2b_template="not_applicable",
-            search_backend="serper_direct",
+            search_backend=search_backend,
         )
 
     def collect(
@@ -94,6 +96,7 @@ class DirectWebSourceCollector:
         *,
         output_dir: str,
         request: SourceCollectionRequest,
+        seed_urls: Sequence[str] = (),
     ) -> Dict[str, Any]:
         search_metadata: List[Dict[str, Any]] = []
         records: List[CollectedSourceRecord] = []
@@ -101,7 +104,29 @@ class DirectWebSourceCollector:
         seen_urls: set[str] = set()
 
         with httpx.Client(follow_redirects=True, timeout=self.search_timeout_seconds) as client:
-            hits = self._search(client, request, search_metadata)
+            if seed_urls:
+                hits = [
+                    SearchHit(
+                        query="exact_url",
+                        rank=rank,
+                        title=url,
+                        url=url,
+                        snippet="",
+                    )
+                    for rank, url in enumerate(seed_urls, start=1)
+                ]
+                search_metadata.extend(
+                    {
+                        "query": hit.query,
+                        "rank": hit.rank,
+                        "title": hit.title,
+                        "url": hit.url,
+                        "snippet": hit.snippet,
+                    }
+                    for hit in hits
+                )
+            else:
+                hits = self._search(client, request, search_metadata)
             for hit in hits:
                 if len(records) >= request.source_count:
                     break
@@ -139,8 +164,12 @@ class DirectWebSourceCollector:
                         why_relevant=_why_relevant(request.topic, fetched["title"]),
                         raw_text=fetched["raw_text"],
                         collection_trace=[
-                            f"search_query:{hit.query}",
-                            f"search_rank:{hit.rank}",
+                            (
+                                f"exact_url:{hit.url}"
+                                if hit.query == "exact_url"
+                                else f"search_query:{hit.query}"
+                            ),
+                            f"source_rank:{hit.rank}",
                             "collector_backend:direct",
                             "content_extraction:trafilatura",
                         ],
@@ -156,13 +185,18 @@ class DirectWebSourceCollector:
         report = write_collected_sources(output_dir, request, records)
         report.notes.extend(
             [
-                "This collection was produced by deterministic code using Serper search, httpx fetch, and trafilatura extraction.",
+                (
+                    "This collection was produced by deterministic code using exact public URLs, httpx fetch, and trafilatura extraction."
+                    if seed_urls
+                    else "This collection was produced by deterministic code using Serper search, httpx fetch, and trafilatura extraction."
+                ),
                 "No Stirrup agent or E2B sandbox was used for this run.",
             ]
         )
         dump_json_file(report, f"{output_dir}/collection_report.json")
         metadata = {
             "backend": "direct",
+            "input_mode": "exact_urls" if seed_urls else "serper_search",
             "search_queries": request.queries,
             "search_result_count": self.search_result_count,
             "search_hits_examined": len(search_metadata),
@@ -278,6 +312,10 @@ class DirectWebSourceCollector:
         host = parsed.hostname.lower()
         if host == "localhost" or host.endswith(".localhost"):
             raise RuntimeError("Localhost source URLs are forbidden.")
+        try:
+            literal_host = ipaddress.ip_address(host)
+        except ValueError:
+            literal_host = None
         addresses = {
             item[4][0]
             for item in socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
@@ -286,5 +324,10 @@ class DirectWebSourceCollector:
             raise RuntimeError("Source URL did not resolve to an address.")
         for address in addresses:
             ip = ipaddress.ip_address(address)
-            if not ip.is_global:
+            proxy_mapped_public_https = (
+                literal_host is None
+                and parsed.scheme == "https"
+                and ip in TRANSPARENT_PROXY_BENCHMARK_NETWORK
+            )
+            if not ip.is_global and not proxy_mapped_public_https:
                 raise RuntimeError(f"Source URL resolved to a non-public address: {address}")

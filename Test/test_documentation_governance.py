@@ -18,6 +18,7 @@ class DocumentationGovernanceTests(unittest.TestCase):
             ROOT / "docs" / "architecture" / "global_interface_contracts.md",
             ROOT / "docs" / "architecture" / "production_mvp_definition.md",
             ROOT / "docs" / "architecture" / "pipeline_reconstruction_problem_statement.md",
+            ROOT / "docs" / "architecture" / "pipeline_reconstruction_optimization_plan.md",
             ROOT / "docs" / "archive" / "README.md",
         ]
         missing = [str(path.relative_to(ROOT)) for path in expected if not path.is_file()]
@@ -36,7 +37,8 @@ class DocumentationGovernanceTests(unittest.TestCase):
             "E. 第二领域垂直切片",
             "F. 训练数据准备度",
             "MILESTONE_E_COMPLETION_2026-07-10.md",
-            "当前下一主线为里程碑 F",
+            "pipeline_reconstruction_active",
+            "pipeline_reconstruction_optimization_plan.md",
         ]
         missing = [token for token in required if token not in overview]
         self.assertEqual(missing, [])
@@ -49,6 +51,7 @@ class DocumentationGovernanceTests(unittest.TestCase):
             "global_interface_contracts.md",
             "production_mvp_definition.md",
             "pipeline_reconstruction_problem_statement.md",
+            "pipeline_reconstruction_optimization_plan.md",
         }
         self.assertEqual(actual, expected)
 

@@ -1,0 +1,93 @@
+{
+  "proposal_version": "v3.task_design_proposal.1",
+  "proposal_id": "proposal_fixture_valid",
+  "brief_id": "brief_fixture_001",
+  "proposal_origin": "tracked_fixture",
+  "source_ref_ids": ["source_public_001"],
+  "scenario": "A finance audit analyst must validate a close conclusion before manager review.",
+  "actor_role": "finance audit analyst",
+  "trigger_event": "A manager requests an independent validation before close.",
+  "evidence_nodes": [
+    {
+      "node_id": "node_primary",
+      "artifact_role": "primary transaction evidence",
+      "candidate_visible": true,
+      "source_ref_ids": ["source_public_001"],
+      "intended_contents": "Transaction-level observations with stable evidence identifiers."
+    },
+    {
+      "node_id": "node_control",
+      "artifact_role": "independent control evidence",
+      "candidate_visible": true,
+      "source_ref_ids": ["source_public_001"],
+      "intended_contents": "Independent totals and policy conditions used for validation."
+    }
+  ],
+  "evidence_relations": [
+    {
+      "relation_id": "relation_crosscheck",
+      "from_node_id": "node_primary",
+      "to_node_id": "node_control",
+      "relation_type": "independent cross-check",
+      "solver_must_infer": true
+    }
+  ],
+  "required_judgments": [
+    {
+      "judgment_id": "judgment_match",
+      "description": "Determine which evidence items reconcile and explain material mismatches.",
+      "input_node_ids": ["node_primary", "node_control"],
+      "observable_output": "A documented reconciliation judgment.",
+      "capability_ids": ["cap_crosscheck"]
+    },
+    {
+      "judgment_id": "judgment_exception",
+      "description": "Separate confirmed exceptions from gaps that need follow-up.",
+      "input_node_ids": ["node_primary", "node_control"],
+      "observable_output": "An exception and unresolved-gap classification.",
+      "capability_ids": ["cap_exception"]
+    }
+  ],
+  "skill_bindings": [
+    {
+      "skill_id": "skill_crosscheck",
+      "binding_types": ["evidence_relation", "required_judgment"],
+      "bound_element_ids": ["relation_crosscheck", "judgment_match"],
+      "observable_behavior": "The candidate performs and records an independent cross-check."
+    },
+    {
+      "skill_id": "skill_exception",
+      "binding_types": ["required_judgment", "deliverable_requirement"],
+      "bound_element_ids": ["judgment_exception", "deliverable:Exceptions"],
+      "observable_behavior": "The candidate classifies exceptions without inventing missing support."
+    }
+  ],
+  "deliverable_intent": {
+    "artifact_kind": "validation workpaper",
+    "intended_audience": "finance manager",
+    "business_use": "Support a close review and direct follow-up on unresolved items.",
+    "required_sections_or_views": ["Summary", "Cross-checks", "Exceptions"],
+    "allowed_formats": ["xlsx"]
+  },
+  "productive_complexity": [
+    "Connect independent evidence paths before concluding.",
+    "Preserve an unresolved exception requiring professional judgment."
+  ],
+  "accidental_difficulty_to_avoid": [
+    "Avoid hidden join keys and ambiguous submission instructions."
+  ],
+  "deterministic_fact_constraints": [
+    "All identifiers, amounts, policy clauses, and expected classifications must be materialized and verified by code."
+  ],
+  "assumptions_not_allowed": [
+    "Do not assume balances, thresholds, policies, or facts absent from candidate-visible evidence."
+  ],
+  "unresolved_design_questions": [],
+  "authority": {
+    "may_define_truth": false,
+    "may_define_submission_path": false,
+    "may_mutate_registry": false,
+    "may_promote_release": false,
+    "may_define_final_rubric": false
+  }
+}

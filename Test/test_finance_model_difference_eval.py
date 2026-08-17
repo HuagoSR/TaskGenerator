@@ -121,12 +121,39 @@ class FinanceModelDifferenceEvalTests(unittest.TestCase):
         record={"model":"model","task_id":"task"}
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
+            case=root/"single_inputs/task/task"
+            case.mkdir(parents=True)
+            atomic_json(case/"dataset_row.json",{
+                "task_id":"task",
+                "reference_files":[],
+                "deliverable_files":["deliverable_files/output.xlsx"],
+                "extra":{},
+            })
             run=root/"solver_outputs/model/task/run_task"
             (run/"reference_files").mkdir(parents=True)
             (run/"reference_files/input.xlsx").write_bytes(b"input")
             self.assertEqual([],_delivered_files(root,record))
             (run/"deliverable_files").mkdir()
-            (run/"deliverable_files/output.xlsx").write_bytes(b"output")
+            from openpyxl import Workbook
+            workbook=Workbook(); workbook.active.append(["value"]); workbook.save(run/"deliverable_files/output.xlsx")
             self.assertEqual([run/"deliverable_files/output.xlsx"],_delivered_files(root,record))
+
+    def test_delivery_rejects_wrong_name_even_when_a_file_exists(self):
+        record={"model":"model","task_id":"task"}
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            case=root/"single_inputs/task/task"
+            case.mkdir(parents=True)
+            atomic_json(case/"dataset_row.json",{
+                "task_id":"task",
+                "reference_files":[],
+                "deliverable_files":["deliverable_files/output.xlsx"],
+                "extra":{},
+            })
+            run=root/"solver_outputs/model/task/run_task/deliverable_files"
+            run.mkdir(parents=True)
+            from openpyxl import Workbook
+            workbook=Workbook(); workbook.active.append(["value"]); workbook.save(run/"wrong.xlsx")
+            self.assertEqual([],_delivered_files(root,record))
 
 if __name__=="__main__": unittest.main()

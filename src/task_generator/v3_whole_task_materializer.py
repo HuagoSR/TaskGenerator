@@ -8,6 +8,11 @@ from typing import Any, Dict, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from task_generator.v3_deliverable_contract import (
+    DeliverableContractCompiler,
+    DeliverableContractV1,
+    DeliverableContractValidator,
+)
 from task_generator.v3_rw_task_export_validator import RwTaskExportValidator
 from task_generator.v3_semantic_contract_v2 import (
     FinanceSemanticContractAdapter,
@@ -96,6 +101,7 @@ class MaterializationReport(BaseModel):
     semantic_contract_verified: bool = False
     fact_weight_ratio: float = 0.0
     rw_task_export_compatible: bool = False
+    deliverable_contract_valid: bool = False
     candidate_teacher_isolation_pass: bool = False
     file_sha256: Dict[str, str] = Field(default_factory=dict)
 
@@ -177,7 +183,34 @@ class WholeTaskMaterializer:
             if item.get("criterion_type") in {"fact", "deliverable"}
         )
 
-        (output_root / "prompt.md").write_text(revised_prompt.strip() + "\n", encoding="utf-8")
+        deliverable_specs = blueprint.get("deliverable_spec") or [{"file_name": "deliverable.xlsx"}]
+        candidate_reference_paths = [
+            f"reference_files/{path.name}"
+            for path in sorted(reference_root.iterdir())
+            if path.is_file()
+        ]
+        contract_compiler = DeliverableContractCompiler()
+        deliverable_contract = contract_compiler.build(
+            case_id=bundle.task_id,
+            deliverable_specs=deliverable_specs,
+            reference_files=candidate_reference_paths,
+        )
+        compiled_prompt = contract_compiler.compile_prompt(revised_prompt, deliverable_contract)
+        contract_validation = DeliverableContractValidator().validate(
+            deliverable_contract,
+            compiled_prompt,
+            candidate_reference_paths,
+        )
+
+        (output_root / "prompt.md").write_text(compiled_prompt, encoding="utf-8")
+        self._atomic_json(
+            output_root / "deliverable_contract.json",
+            deliverable_contract.model_dump(mode="json"),
+        )
+        self._atomic_json(
+            output_root / "deliverable_contract_validation_report.json",
+            contract_validation.model_dump(mode="json"),
+        )
         self._atomic_json(teacher_root / "task_semantic_contract.json", verified.model_dump(mode="json"))
         self._atomic_json(teacher_root / "semantic_contract_consistency_report.json", consistency.model_dump(mode="json"))
         self._atomic_json(teacher_root / "deterministic_answer_key.json", expected)
@@ -202,9 +235,9 @@ class WholeTaskMaterializer:
             export_dir=export_dir,
             task_id=bundle.task_id,
             motif=bundle.motif,
-            prompt=revised_prompt,
+            prompt=compiled_prompt,
             reference_root=reference_root,
-            blueprint=blueprint,
+            deliverable_contract=deliverable_contract,
             rubric=rubric,
             sector=sector,
             occupation=occupation,
@@ -221,6 +254,8 @@ class WholeTaskMaterializer:
             reasons.append("rubric_weight_imbalance")
         if export_report.validation_status != "candidate_ready_compatible":
             reasons.append("rw_task_export_incompatible")
+        if contract_validation.validation_status != "pass":
+            reasons.append("deliverable_contract_invalid")
         if not isolation:
             reasons.append("candidate_teacher_isolation_failed")
         decision = "pass" if not reasons else "revise_system"
@@ -239,6 +274,7 @@ class WholeTaskMaterializer:
             semantic_contract_verified=verified.lifecycle == "verified",
             fact_weight_ratio=round(fact_weight, 6),
             rw_task_export_compatible=export_report.validation_status == "candidate_ready_compatible",
+            deliverable_contract_valid=contract_validation.validation_status == "pass",
             candidate_teacher_isolation_pass=isolation,
             file_sha256=hashes,
         )
@@ -376,7 +412,8 @@ class WholeTaskMaterializer:
 
     def _build_rw_task_export(
         self, export_dir: Path, task_id: str, motif: str, prompt: str, reference_root: Path,
-        blueprint: Dict[str, Any], rubric: Dict[str, Any], sector: str, occupation: str,
+        deliverable_contract: DeliverableContractV1, rubric: Dict[str, Any],
+        sector: str, occupation: str,
     ) -> None:
         refs = export_dir / "reference_files"
         deliverables = export_dir / "deliverable_files"
@@ -387,8 +424,9 @@ class WholeTaskMaterializer:
         for path in reference_root.iterdir():
             if path.is_file():
                 shutil.copy2(path, refs / path.name)
-        deliverable_specs = blueprint.get("deliverable_spec") or [{"file_name": "deliverable.xlsx"}]
-        deliverable_files = [f"deliverable_files/{item['file_name']}" for item in deliverable_specs]
+        deliverable_files = [
+            item.relative_path for item in deliverable_contract.deliverables
+        ]
         rubric_items = [
             {
                 "score": max(1, round(float(item["weight"]) * 10)),
@@ -419,10 +457,24 @@ class WholeTaskMaterializer:
                 "rw_task_exporter": {"export_version": "v3.whole_task_materialized.1", "export_decision": "exported"},
                 "experimental_motif": motif == "evidence_to_deliverable",
                 "default_promotion_allowed": False,
+                "deliverable_contract_mode": "blocking",
+                "deliverable_contract": deliverable_contract.model_dump(mode="json"),
             },
         }
         self._atomic_json(export_dir / "dataset_row.json", row)
-        self._atomic_json(deliverables / "expected_deliverables.json", {"case_id": task_id, "deliverables": deliverable_files})
+        self._atomic_json(
+            export_dir / "deliverable_contract.json",
+            deliverable_contract.model_dump(mode="json"),
+        )
+        self._atomic_json(
+            deliverables / "expected_deliverables.json",
+            {
+                "case_id": task_id,
+                "deliverables": deliverable_files,
+                "deliverable_contract_version": deliverable_contract.contract_version,
+                "contract_path": "deliverable_contract.json",
+            },
+        )
         self._atomic_json(artifacts / "rubric.json", rubric)
         self._atomic_json(export_dir / "rw_task_export_report.json", {
             "export_version": "v3.whole_task_materialized.1",

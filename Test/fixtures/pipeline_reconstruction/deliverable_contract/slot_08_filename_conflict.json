@@ -1,0 +1,20 @@
+{
+  "fixture_version": "v3.pipeline_reconstruction_fixture.1",
+  "source_evidence": "F4.3 Slot 8 sanitized regression",
+  "failure_taxonomy": "prompt_deliverable_filename_conflict",
+  "case_id": "slot_08_synthetic",
+  "prompt": "Replace management_summary.docx with a completed management-facing summary and submit it.",
+  "reference_files": [
+    "reference_files/control_evidence.xlsx",
+    "reference_files/management_summary.docx"
+  ],
+  "deliverable_specs": [
+    {
+      "file_name": "control_testing_summary.docx"
+    }
+  ],
+  "expected_failed_checks": [
+    "prompt_exact_path:control_testing_summary.docx",
+    "prompt_output_name_conflicts"
+  ]
+}

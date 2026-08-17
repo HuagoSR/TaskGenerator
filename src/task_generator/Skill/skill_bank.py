@@ -32,7 +32,29 @@ class SkillFactoryProxy:
         return operator_class(node_id=node_id, skill_config=self.config)
 
 
+SKILL_CONFIG_DIAGNOSTICS = {
+    "operator_backed_skill_ids": sorted(
+        skill_id
+        for skill_id, skill_config in SKILL_DATABASE.items()
+        if skill_config.get("operator_class") in OPERATOR_REGISTRY
+    ),
+    "metadata_only_skill_ids": sorted(
+        skill_id
+        for skill_id, skill_config in SKILL_DATABASE.items()
+        if not skill_config.get("operator_class")
+    ),
+    "unknown_operator_skill_ids": sorted(
+        skill_id
+        for skill_id, skill_config in SKILL_DATABASE.items()
+        if skill_config.get("operator_class")
+        and skill_config.get("operator_class") not in OPERATOR_REGISTRY
+    ),
+}
+
+# The legacy registry may coexist with newer metadata-only skill records. Only
+# records that explicitly resolve to a legacy operator are callable factories.
 SKILL_REGISTRY = {
     skill_id: SkillFactoryProxy(skill_id, skill_config)
     for skill_id, skill_config in SKILL_DATABASE.items()
+    if skill_config.get("operator_class") in OPERATOR_REGISTRY
 }

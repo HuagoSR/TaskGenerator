@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from src.task_generator.v3_semantic_review_executor import (
     SemanticReviewExecutionError,
     SemanticReviewExecutor,
+    claude_semantic_config,
     tuzi_backup_semantic_config,
 )
 from src.task_generator.v3_semantic_secondary_cost import (
@@ -19,6 +20,16 @@ from src.task_generator.v3_skill_extractor import ProviderConfig
 
 
 class SecondaryReviewGovernanceTests(unittest.TestCase):
+    def test_expensive_claude_semantic_config_is_blocked_by_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = Path(directory) / ".env"
+            env.write_text(
+                "AGENT_API_KEY=secret\nAGENT_BASE_URL=https://example.invalid/v1\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(PermissionError, "project_blocked"):
+                claude_semantic_config(env)
+
     def test_backup_slot_does_not_fall_back_to_primary(self):
         with tempfile.TemporaryDirectory() as directory:
             env = Path(directory) / ".env"

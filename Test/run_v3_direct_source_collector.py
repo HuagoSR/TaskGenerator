@@ -49,6 +49,12 @@ def main() -> None:
     parser.add_argument("--topic", default="audit evidence reconciliation and internal control testing")
     parser.add_argument("--domain", action="append", default=["finance", "audit", "compliance"])
     parser.add_argument("--query", action="append", default=[])
+    parser.add_argument(
+        "--url",
+        action="append",
+        default=[],
+        help="Exact public source URL. When present, bypasses search and fetches only these URLs.",
+    )
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--env-path", type=Path, default=DEFAULT_ENV_PATH)
@@ -67,7 +73,7 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     collector = DirectWebSourceCollector(
-        api_key=require_env(args.serper_api_key_env),
+        api_key=("" if args.url else require_env(args.serper_api_key_env)),
         search_timeout_seconds=args.search_timeout_seconds,
         fetch_timeout_seconds=args.fetch_timeout_seconds,
         search_result_count=args.search_result_count,
@@ -75,8 +81,14 @@ def main() -> None:
     request = collector.build_request(
         topic=args.topic,
         domain_tags=args.domain,
-        queries=args.query or [args.topic],
+        queries=args.url or args.query or [args.topic],
         source_count=args.limit,
+        collector_model=(
+            "direct_url_trafilatura"
+            if args.url
+            else "direct_serper_trafilatura"
+        ),
+        search_backend="direct_url" if args.url else "serper_direct",
     )
     dump_json_file(request, str(args.output_dir / "collection_request.json"))
 
@@ -96,7 +108,11 @@ def main() -> None:
     if not args.allow_web_collection:
         raise RuntimeError("Web source collection requires explicit --allow-web-collection.")
 
-    result = collector.collect(output_dir=str(args.output_dir), request=request)
+    result = collector.collect(
+        output_dir=str(args.output_dir),
+        request=request,
+        seed_urls=args.url,
+    )
     report = result["report"]
     print(report.model_dump_json(indent=2))
 

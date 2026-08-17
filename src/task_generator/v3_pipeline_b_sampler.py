@@ -55,6 +55,8 @@ class PipelineBSelectedSkill(BaseModel):
     capability_tags: List[str] = Field(default_factory=list)
     motif_hints: List[str] = Field(default_factory=list)
     graph_role_hints: List[str] = Field(default_factory=list)
+    source_candidate_ids: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)
     reason_codes: List[str] = Field(default_factory=list)
     selection_reason: str = ""
 
@@ -201,7 +203,11 @@ class PipelineBSubgraphSampler:
             if record.get("skill_id") in entry_by_id
         ]
         selected_skills = [
-            self._selected_skill(record, selected_motif)
+            self._selected_skill(
+                record,
+                selected_motif,
+                entry_by_id.get(record.get("skill_id", "")),
+            )
             for record in selected_records
             if record.get("skill_id") in entry_by_id
         ]
@@ -556,7 +562,12 @@ class PipelineBSubgraphSampler:
                 break
         return selected
 
-    def _selected_skill(self, record: Dict[str, Any], motif: str) -> PipelineBSelectedSkill:
+    def _selected_skill(
+        self,
+        record: Dict[str, Any],
+        motif: str,
+        entry: Optional[SkillRegistryEntry] = None,
+    ) -> PipelineBSelectedSkill:
         reasons = [f"readiness={record.get('readiness_decision', 'unknown')}"]
         if motif in record.get("motif_hints", []):
             reasons.append(f"motif={motif}")
@@ -572,6 +583,8 @@ class PipelineBSubgraphSampler:
             capability_tags=list(record.get("capability_tags", [])),
             motif_hints=list(record.get("motif_hints", [])),
             graph_role_hints=list(record.get("graph_role_hints", [])),
+            source_candidate_ids=sorted(set(entry.source_candidate_ids)) if entry else [],
+            evidence_refs=sorted(set(entry.evidence_refs)) if entry else [],
             reason_codes=list(record.get("reason_codes", [])),
             selection_reason="; ".join(reasons),
         )

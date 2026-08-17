@@ -15,6 +15,7 @@ artifacts/manual_collection/
 artifacts/phase14/
 artifacts/phase15/
 artifacts/phase16/
+artifacts/pipeline_reconstruction/
 artifacts/semantic_calibration_*/
 artifacts/semantic_validation_prepare_smoke/
 artifacts/finance_30_human_review_01/

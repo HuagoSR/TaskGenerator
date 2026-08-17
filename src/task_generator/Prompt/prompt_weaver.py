@@ -1,4 +1,5 @@
 import os
+from task_generator.v3_external_model_policy import enforce_external_model_policy
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -14,6 +15,7 @@ class PromptWeaver:
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.base_url = os.getenv("OPENAI_BASE_URL")
+        enforce_external_model_policy("tuzi" if self.base_url else "openai", self.model)
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is missing. Check the project .env file.")
 

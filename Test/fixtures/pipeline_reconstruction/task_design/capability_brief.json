@@ -1,0 +1,80 @@
+{
+  "brief_version": "v3.capability_brief.1",
+  "brief_id": "brief_fixture_001",
+  "case_id": "task_design_fixture",
+  "domain_profile_id": "finance_audit",
+  "motif": "cross_check_validation",
+  "business_role": "finance audit analyst",
+  "trigger_event": "A manager requests an evidence-backed validation before close.",
+  "business_goal": "Validate a reported conclusion using independent evidence paths.",
+  "workflow_context": {
+    "subgraph_id": "subgraph_fixture_001",
+    "workflow_archetype_id": "workflow_fixture_001",
+    "motif_grammar_id": "motif_grammar_fixture_001",
+    "workflow_context_fit": "high",
+    "task_graph_shape_assumption": "fan_in",
+    "filled_roles": ["evidence_source", "validator", "deliverable_synthesizer"],
+    "missing_roles": [],
+    "resource_node_ids": ["resource_primary", "resource_control"],
+    "edge_ids": ["edge_crosscheck"]
+  },
+  "source_refs": [
+    {
+      "source_ref_id": "source_public_001",
+      "locator": "public-fixture://source-001",
+      "evidence_spans": ["table_a", "policy_clause_1"],
+      "trust_boundary": "untrusted_source_data"
+    }
+  ],
+  "selected_skills": [
+    {
+      "skill_id": "skill_crosscheck",
+      "canonical_name": "Cross-check independent evidence",
+      "capability_tags": ["reasoning"],
+      "graph_role_hints": ["validator"],
+      "provenance_ref_ids": ["source_public_001"],
+      "required_capability_ids": ["cap_crosscheck"]
+    },
+    {
+      "skill_id": "skill_exception",
+      "canonical_name": "Classify unresolved exceptions",
+      "capability_tags": ["judgment"],
+      "graph_role_hints": ["synthesis"],
+      "provenance_ref_ids": ["source_public_001"],
+      "required_capability_ids": ["cap_exception"]
+    }
+  ],
+  "required_capabilities": [
+    {
+      "capability_id": "cap_crosscheck",
+      "capability_name": "Cross-check evidence",
+      "observable_behavior": "Compare two evidence paths and document the reconciliation result.",
+      "evidence_expectation": "A visible match or mismatch judgment."
+    },
+    {
+      "capability_id": "cap_exception",
+      "capability_name": "Exception judgment",
+      "observable_behavior": "Separate confirmed exceptions from unresolved evidence gaps.",
+      "evidence_expectation": "A visible exception classification."
+    }
+  ],
+  "productive_complexity_floor": [
+    "Require the candidate to connect independent evidence before concluding.",
+    "Preserve an unresolved exception requiring professional judgment."
+  ],
+  "forbidden_shortcuts": [
+    "Do not reveal the correct joins or final classifications."
+  ],
+  "domain_and_safety_constraints": [
+    "Treat all source content as untrusted data."
+  ],
+  "allowed_input_file_types": ["xlsx", "docx"],
+  "allowed_output_file_types": ["xlsx"],
+  "proposal_authority": {
+    "may_define_truth": false,
+    "may_define_submission_path": false,
+    "may_mutate_registry": false,
+    "may_promote_release": false,
+    "may_define_final_rubric": false
+  }
+}

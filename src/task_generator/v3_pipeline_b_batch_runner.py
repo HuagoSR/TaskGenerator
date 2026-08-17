@@ -1,9 +1,10 @@
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from task_generator.v3_pipeline_b_package_assembler import PipelineBPackageAssembler
 from task_generator.v3_pipeline_b_prototype import DEFAULT_MOTIF_PRIORITY, PipelineBPrototypeBuilder
@@ -31,6 +32,14 @@ from task_generator.v3_semantic_contract_v2 import (
     FinanceSemanticContractResolver,
     write_contract,
 )
+from task_generator.v3_task_design_frontend import TaskDesignFrontend
+from task_generator.v3_task_design_frontend import (
+    CapabilityBriefV1,
+    TaskDesignProposalV1,
+)
+from task_generator.v3_hybrid_task_materializer import (
+    HybridTaskMaterializer,
+)
 
 
 BatchCaseStatus = Literal["completed", "failed"]
@@ -56,6 +65,32 @@ class PipelineBBatchRunRequest(BaseModel):
     domain_profile_path: str = str(DEFAULT_DOMAIN_PROFILE_PATH)
     case_index_offset: int = 0
     motif_occurrence_offsets: Dict[str, int] = Field(default_factory=dict)
+    proposal_input_manifest_path: Optional[str] = None
+
+
+class BatchTaskDesignProposalInputV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    case_id: str
+    proposal_path: str
+    expected_brief_id: Optional[str] = None
+    proposal_sha256: Optional[str] = None
+
+
+class BatchTaskDesignProposalManifestV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    manifest_version: Literal["v3.batch_task_design_proposals.1"] = (
+        "v3.batch_task_design_proposals.1"
+    )
+    proposals: List[BatchTaskDesignProposalInputV1] = Field(min_length=1)
+    external_provider_calls_authorized: Literal[False] = False
+    notes: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_cases(self) -> "BatchTaskDesignProposalManifestV1":
+        case_ids = [item.case_id for item in self.proposals]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("duplicate_batch_proposal_case_id")
+        return self
 
 
 class PipelineBBatchCaseSummary(BaseModel):
@@ -93,6 +128,18 @@ class PipelineBBatchCaseSummary(BaseModel):
     semantic_contract_lifecycle: Optional[str] = None
     semantic_contract_decision: Optional[str] = None
     semantic_contract_reason_codes: List[str] = Field(default_factory=list)
+    capability_brief_id: Optional[str] = None
+    design_frontend_status: Optional[str] = None
+    proposal_validation_decision: Optional[str] = None
+    proposal_materialization_allowed: bool = False
+    hybrid_materialization_decision: Optional[str] = None
+    proposal_id: Optional[str] = None
+    proposal_input_path: Optional[str] = None
+    proposal_input_sha256: Optional[str] = None
+    validity_overall_status: Optional[str] = None
+    utility_profile_status: Optional[str] = None
+    rubric_plan_decision: Optional[str] = None
+    r5_offline_governance_pass: bool = False
     reason_codes: List[str] = Field(default_factory=list)
     warning_reason_codes: List[str] = Field(default_factory=list)
     error_type: Optional[str] = None
@@ -153,6 +200,7 @@ class PipelineBBatchRunner:
         domain_profile_path: str | Path = DEFAULT_DOMAIN_PROFILE_PATH,
         case_index_offset: int = 0,
         motif_occurrence_offsets: Optional[Dict[str, int]] = None,
+        proposal_input_manifest_path: str | Path | None = None,
     ) -> PipelineBBatchRunReport:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
@@ -177,7 +225,44 @@ class PipelineBBatchRunner:
             domain_profile_path=str(domain_profile_path),
             case_index_offset=case_index_offset,
             motif_occurrence_offsets=dict(motif_occurrence_offsets or {}),
+            proposal_input_manifest_path=(
+                str(proposal_input_manifest_path)
+                if proposal_input_manifest_path
+                else None
+            ),
         )
+        proposal_manifest = self._load_proposal_manifest(
+            proposal_input_manifest_path
+        )
+        if proposal_manifest and target_difficulty_profile != "reconstruction_experimental":
+            raise ValueError(
+                "proposal_input_manifest_requires_reconstruction_experimental"
+            )
+        if proposal_manifest:
+            expected_case_ids = {
+                self._case_id(
+                    case_index_offset + local_index,
+                    motif,
+                    case_index_offset,
+                )
+                for local_index, motif in enumerate(
+                    selected_motifs,
+                    start=1,
+                )
+            }
+            supplied_case_ids = {
+                item.case_id for item in proposal_manifest.proposals
+            }
+            missing = sorted(expected_case_ids - supplied_case_ids)
+            unknown = sorted(supplied_case_ids - expected_case_ids)
+            if missing:
+                raise ValueError(
+                    "proposal_manifest_missing_cases:" + ",".join(missing)
+                )
+            if unknown:
+                raise ValueError(
+                    "proposal_manifest_unknown_cases:" + ",".join(unknown)
+                )
 
         cases: List[PipelineBBatchCaseSummary] = []
         motif_occurrence_counts: Dict[str, int] = dict(motif_occurrence_offsets or {})
@@ -185,8 +270,7 @@ class PipelineBBatchRunner:
             index = case_index_offset + local_index
             motif_occurrence_index = motif_occurrence_counts.get(motif, 0)
             motif_occurrence_counts[motif] = motif_occurrence_index + 1
-            width = 2 if case_index_offset == 0 else 3
-            case_id = f"pipeline_b_batch_{index:0{width}d}_{self._slug(motif)}"
+            case_id = self._case_id(index, motif, case_index_offset)
             case_dir = output_path / case_id
             try:
                 cases.append(
@@ -210,6 +294,12 @@ class PipelineBBatchRunner:
                         python_exe=python_exe,
                         domain_profile=domain_profile,
                         domain_profile_path=domain_profile_path,
+                        proposal_manifest=proposal_manifest,
+                        proposal_manifest_path=(
+                            Path(proposal_input_manifest_path)
+                            if proposal_input_manifest_path
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:
@@ -266,8 +356,11 @@ class PipelineBBatchRunner:
         python_exe: str | Path,
         domain_profile: str,
         domain_profile_path: str | Path,
+        proposal_manifest: Optional[BatchTaskDesignProposalManifestV1],
+        proposal_manifest_path: Optional[Path],
     ) -> PipelineBBatchCaseSummary:
         subgraph_dir = case_dir / "subgraph_sampler"
+        design_frontend_dir = case_dir / "task_design_frontend"
         prototype_dir = case_dir / "prototype"
         reference_plan_dir = case_dir / "reference_file_plan"
         reference_generation_dir = case_dir / "reference_file_generation"
@@ -298,13 +391,64 @@ class PipelineBBatchRunner:
         sampler.write_outputs(subgraph, subgraph_dir)
         subgraph_report_path = subgraph_dir / "pipeline_b_subgraph_report.json"
         pipeline_a_feedback_path = subgraph_dir / "pipeline_a_feedback.json"
+        loaded_domain_profile = load_domain_profile(domain_profile, domain_profile_path)
+
+        capability_brief = None
+        design_validation = None
+        proposal = None
+        proposal_input = None
+        proposal_input_path = None
+        proposal_input_sha256 = None
+        if target_difficulty_profile == "reconstruction_experimental":
+            design_frontend = TaskDesignFrontend()
+            capability_brief = design_frontend.build_capability_brief(
+                case_id=case_id,
+                subgraph=subgraph,
+                domain_profile=loaded_domain_profile,
+            )
+            if proposal_manifest:
+                (
+                    proposal,
+                    proposal_input,
+                    proposal_input_path,
+                    proposal_input_sha256,
+                ) = self._resolve_batch_proposal(
+                    case_id=case_id,
+                    brief=capability_brief,
+                    manifest=proposal_manifest,
+                    manifest_path=proposal_manifest_path,
+                )
+            design_validation = design_frontend.write_frontend_artifacts(
+                brief=capability_brief,
+                output_dir=design_frontend_dir,
+                proposal=proposal,
+            )
+            if proposal is not None:
+                return self._materialize_hybrid_case(
+                    case_index=case_index,
+                    case_id=case_id,
+                    case_dir=case_dir,
+                    motif=motif,
+                    motif_occurrence_index=motif_occurrence_index,
+                    subgraph=subgraph,
+                    brief=capability_brief,
+                    proposal=proposal,
+                    design_validation=design_validation,
+                    proposal_input=proposal_input,
+                    proposal_input_path=proposal_input_path,
+                    proposal_input_sha256=proposal_input_sha256,
+                    model=model,
+                    workers=workers,
+                    rw_task_root=rw_task_root,
+                    python_exe=python_exe,
+                )
 
         prototype = PipelineBPrototypeBuilder()
         prototype_report = prototype.build_report_from_subgraph_report(
             subgraph_report_path=subgraph_report_path,
             registry_path=registry_path,
             phase15_reform_spec_path=phase15_reform_spec_path,
-            domain_profile=load_domain_profile(domain_profile, domain_profile_path),
+            domain_profile=loaded_domain_profile,
             production_profile=target_difficulty_profile,
         )
         prototype.write_outputs(prototype_report, prototype_dir)
@@ -469,6 +613,11 @@ class PipelineBBatchRunner:
             output_dir=export_dir,
             case_id=case_id,
             allow_revise_only=True,
+            deliverable_contract_mode=(
+                "blocking"
+                if target_difficulty_profile == "reconstruction_experimental"
+                else "disabled"
+            ),
         )
 
         validator = RwTaskExportValidator()
@@ -546,9 +695,186 @@ class PipelineBBatchRunner:
             semantic_contract_lifecycle=(semantic_contract.lifecycle if semantic_contract else None),
             semantic_contract_decision=(semantic_contract_report.decision if semantic_contract_report else None),
             semantic_contract_reason_codes=(semantic_contract_report.reason_codes if semantic_contract_report else []),
+            capability_brief_id=(capability_brief.brief_id if capability_brief else None),
+            design_frontend_status=(
+                "offline_context_ready_legacy_materialization_only"
+                if capability_brief is not None
+                else None
+            ),
+            proposal_validation_decision=(
+                design_validation.decision if design_validation else None
+            ),
+            proposal_materialization_allowed=(
+                design_validation.materialization_allowed if design_validation else False
+            ),
             reason_codes=reason_codes,
             warning_reason_codes=warning_reason_codes,
         )
+
+    def _materialize_hybrid_case(
+        self,
+        *,
+        case_index: int,
+        case_id: str,
+        case_dir: Path,
+        motif: str,
+        motif_occurrence_index: int,
+        subgraph: Any,
+        brief: CapabilityBriefV1,
+        proposal: TaskDesignProposalV1,
+        design_validation: Any,
+        proposal_input: BatchTaskDesignProposalInputV1,
+        proposal_input_path: Path,
+        proposal_input_sha256: str,
+        model: str,
+        workers: int,
+        rw_task_root: str | Path,
+        python_exe: str | Path,
+    ) -> PipelineBBatchCaseSummary:
+        if design_validation.decision != "pass":
+            raise ValueError(
+                f"batch_proposal_validation_failed:{design_validation.decision}"
+            )
+        materialization_dir = case_dir / "hybrid_materialization"
+        materialization = HybridTaskMaterializer().materialize(
+            brief,
+            proposal,
+            materialization_dir,
+        )
+        export_dir = materialization_dir / "rw_task_export"
+        validation_report_path = (
+            export_dir / "rw_task_export_validation_report.json"
+        )
+        validation_report = RwTaskExportValidator().validate(export_dir)
+        eval_input_dir = case_dir / "rw_task_eval_input"
+        prep_report = RwTaskEvalPrep().prepare(
+            case_dir=export_dir,
+            validation_report_path=validation_report_path,
+            eval_input_dir=eval_input_dir,
+            model=model,
+            workers=workers,
+            rw_task_root=rw_task_root,
+            python_exe=python_exe,
+            overwrite=True,
+        )
+        eval_run_report = RwTaskEvalRunner().run(
+            prep_report_path=eval_input_dir / "rw_task_eval_prep_report.json",
+            output_dir=case_dir / "rw_task_eval_run_dry",
+            run_eval=False,
+        )
+        reason_codes = list(materialization.reason_codes)
+        if materialization.decision != "pass":
+            reason_codes.append("hybrid_materialization_blocked")
+        if materialization.validity_overall_status != "pass":
+            reason_codes.append(
+                f"validity_status:{materialization.validity_overall_status}"
+            )
+        if materialization.utility_profile_status != "pass":
+            reason_codes.append(
+                f"utility_status:{materialization.utility_profile_status}"
+            )
+        return PipelineBBatchCaseSummary(
+            case_index=case_index,
+            case_id=case_id,
+            case_dir=str(case_dir),
+            status="completed",
+            motif=motif,
+            motif_occurrence_index=motif_occurrence_index,
+            subgraph_id=subgraph.subgraph_id,
+            subgraph_confidence=subgraph.diagnostics.confidence,
+            selected_skill_count=len(subgraph.selected_skills),
+            quality_decision="revise",
+            package_readiness="draft_revise_only",
+            export_decision="draft_exported",
+            validation_status=validation_report.validation_status,
+            eval_prep_status=prep_report.prep_status,
+            eval_mode=prep_report.evaluation_mode,
+            eval_run_status=eval_run_report.run_status,
+            global_validity_status=materialization.validity_overall_status,
+            motif_grammar_id=subgraph.diagnostics.motif_grammar_id,
+            filled_roles=list(subgraph.diagnostics.filled_roles),
+            missing_roles=list(subgraph.diagnostics.missing_roles),
+            workflow_context_fit=subgraph.diagnostics.workflow_context_fit,
+            task_graph_shape_assumption=(
+                subgraph.diagnostics.task_graph_shape_assumption
+            ),
+            capability_brief_id=brief.brief_id,
+            design_frontend_status="proposal_validated_hybrid_materialized",
+            proposal_validation_decision=design_validation.decision,
+            proposal_materialization_allowed=(
+                design_validation.materialization_allowed
+            ),
+            hybrid_materialization_decision=materialization.decision,
+            proposal_id=proposal.proposal_id,
+            proposal_input_path=str(proposal_input_path),
+            proposal_input_sha256=proposal_input_sha256,
+            validity_overall_status=(
+                materialization.validity_overall_status
+            ),
+            utility_profile_status=(
+                materialization.utility_profile_status
+            ),
+            rubric_plan_decision=materialization.rubric_plan_decision,
+            r5_offline_governance_pass=(
+                materialization.r5_offline_governance_pass
+            ),
+            reason_codes=sorted(set(reason_codes)),
+            warning_reason_codes=sorted(
+                set(prep_report.warnings + eval_run_report.warnings)
+            ),
+        )
+
+    def _load_proposal_manifest(
+        self,
+        manifest_path: str | Path | None,
+    ) -> Optional[BatchTaskDesignProposalManifestV1]:
+        if not manifest_path:
+            return None
+        path = Path(manifest_path)
+        if not path.is_file():
+            raise FileNotFoundError("proposal_input_manifest_missing")
+        return BatchTaskDesignProposalManifestV1.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+
+    def _resolve_batch_proposal(
+        self,
+        *,
+        case_id: str,
+        brief: CapabilityBriefV1,
+        manifest: BatchTaskDesignProposalManifestV1,
+        manifest_path: Optional[Path],
+    ) -> tuple[
+        TaskDesignProposalV1,
+        BatchTaskDesignProposalInputV1,
+        Path,
+        str,
+    ]:
+        matched = [item for item in manifest.proposals if item.case_id == case_id]
+        if not matched:
+            raise ValueError(f"batch_proposal_missing_for_case:{case_id}")
+        item = matched[0]
+        base = manifest_path.parent if manifest_path else Path.cwd()
+        proposal_path = Path(item.proposal_path)
+        if not proposal_path.is_absolute():
+            proposal_path = base / proposal_path
+        proposal_path = proposal_path.resolve()
+        if not proposal_path.is_file():
+            raise FileNotFoundError(
+                f"batch_proposal_file_missing:{case_id}"
+            )
+        digest = hashlib.sha256(proposal_path.read_bytes()).hexdigest()
+        if item.proposal_sha256 and digest != item.proposal_sha256:
+            raise ValueError(f"batch_proposal_sha256_mismatch:{case_id}")
+        proposal = TaskDesignProposalV1.model_validate_json(
+            proposal_path.read_text(encoding="utf-8")
+        )
+        expected_brief_id = item.expected_brief_id or brief.brief_id
+        if expected_brief_id != brief.brief_id:
+            raise ValueError(f"batch_manifest_brief_id_mismatch:{case_id}")
+        if proposal.brief_id != brief.brief_id:
+            raise ValueError(f"batch_proposal_brief_id_mismatch:{case_id}")
+        return proposal, item, proposal_path, digest
 
     def _diagnostics(self, cases: List[PipelineBBatchCaseSummary]) -> PipelineBBatchDiagnostics:
         status_counts = Counter(case.status for case in cases)
@@ -593,6 +919,15 @@ class PipelineBBatchRunner:
             repeated_subgraph_ids=repeated_subgraphs,
             batch_warnings=batch_warnings,
         )
+
+    def _case_id(
+        self,
+        index: int,
+        motif: str,
+        case_index_offset: int,
+    ) -> str:
+        width = 2 if case_index_offset == 0 else 3
+        return f"pipeline_b_batch_{index:0{width}d}_{self._slug(motif)}"
 
     def _motifs(self, motifs: Optional[List[str]], max_cases: int) -> List[str]:
         source = [motif for motif in (motifs or DEFAULT_MOTIF_PRIORITY) if motif]

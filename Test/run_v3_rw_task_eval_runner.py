@@ -44,6 +44,15 @@ def main() -> None:
         default=None,
         help="Optional grader model for grade_deliverables; defaults to the evaluated model.",
     )
+    parser.add_argument(
+        "--solver-preflight-report",
+        type=Path,
+        default=None,
+        help=(
+            "Governed solver tool-preflight report. Required for hybrid routes "
+            "when --run-eval is enabled."
+        ),
+    )
     args = parser.parse_args()
 
     runner = RwTaskEvalRunner()
@@ -54,6 +63,7 @@ def main() -> None:
         allow_draft_eval=args.allow_draft_eval,
         command_timeout_seconds=args.command_timeout_seconds,
         grader_model=args.grader_model,
+        solver_preflight_report_path=args.solver_preflight_report,
     )
     print(
         json.dumps(
@@ -64,6 +74,8 @@ def main() -> None:
                 "commands_executed": report.commands_executed,
                 "command_count": report.command_count,
                 "blocking_reasons": report.blocking_reasons,
+                "behavioral_failure_category": report.behavioral_failure_category,
+                "grader_eligible": report.grader_eligible,
                 "warnings": report.warnings,
                 "output_dirs": report.output_dirs,
             },
