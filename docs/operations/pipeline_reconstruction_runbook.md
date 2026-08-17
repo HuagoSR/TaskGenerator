@@ -785,3 +785,9 @@ Recovery production outcome:
 - Treat this recovery cohort as the only R9 evaluation cohort. Never merge the first campaign's seven packages.
 - Run every server solver through `Test/run_v3_huago_cone_eval.py`. The public probe must pass before `solve`; a canary infrastructure failure stops expansion, while three consecutive later infrastructure failures freeze the stack. Persist only secret-redacted stdout/stderr.
 - The pre-run manual GPT public probe passed. The manual DeepSeek probe timed out with no events or delivery and uploaded no private task. The manual Gemini probe failed before model entry because CRLF env substitution made the OpenCode config invalid; its credential-bearing stderr was immediately cleared. Do not reuse the shell probe. Rotate the Tuzi key and use only the tracked in-memory-redacting runner after the replacement release passes parity.
+
+Final pre-private state:
+
+- Current release is `milestone-r9-huago-cone-5d8f76146a38`, source `5d8f7614...3b35a`, commit `4e01a66`; local/fixed parity is 432/432 and smoke passes. Previous release remains selectable and free disk is 127 GiB.
+- Fresh tracked public probes pass for all three stacks: GPT/Codex 24.096s, official DeepSeek/OpenCode 35.950s, Gemini/Tuzi/OpenCode 52.714s. Every probe has empty stderr and an exact valid XLSX.
+- No recovery private task has been submitted. Before `solve`, obtain an explicit authorization naming campaign `r9_huago_cone_recovery_production_10`, its ten route-blind packages, and all three destinations. The earlier broad authorization did not satisfy the runtime permission reviewer for this newly created campaign.
