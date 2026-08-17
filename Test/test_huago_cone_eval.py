@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from task_generator.v3_huago_cone_eval import _read_env, _redact
+from task_generator.v3_huago_cone_eval import R9NativeSolverRunner, _read_env, _redact
 
 
 class HuagoConeEvalTests(unittest.TestCase):
@@ -20,6 +20,26 @@ class HuagoConeEvalTests(unittest.TestCase):
         value = _redact("before secret-value after", ["secret-value"])
         self.assertEqual(value, "before [REDACTED] after")
         self.assertNotIn("secret-value", value)
+
+    def test_public_probe_stages_task_and_delivery_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            runner = R9NativeSolverRunner(
+                stack_id="deepseek-v4-pro@official_opencode",
+                output_root=root,
+            )
+            captured = {}
+
+            def fake_execute(**kwargs):
+                captured.update(kwargs)
+                workspace = kwargs["workspace"]
+                self.assertTrue((workspace / "TASK.md").is_file())
+                self.assertTrue((workspace / "deliverable_files").is_dir())
+                raise RuntimeError("stop_after_staging")
+
+            runner._execute = fake_execute
+            with self.assertRaisesRegex(RuntimeError, "stop_after_staging"):
+                runner.public_probe()
+            self.assertIn("public_probe.xlsx", captured["expected"])
 
 
 if __name__ == "__main__":

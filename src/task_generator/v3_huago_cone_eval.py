@@ -166,6 +166,8 @@ class R9NativeSolverRunner:
             "Use a Summary sheet, three named columns, at least two data rows and one formula. "
             "Reopen the saved workbook to verify it. Do not copy another workbook."
         )
+        (workspace / "TASK.md").write_text(prompt, encoding="utf-8")
+        (workspace / "deliverable_files").mkdir()
         outcome = self._execute(
             kind="public_probe", task_id="public_xlsx_probe", workspace=workspace,
             prompt=prompt, expected=expected, input_hashes=set(), timeout=min(self.timeout, 300),
