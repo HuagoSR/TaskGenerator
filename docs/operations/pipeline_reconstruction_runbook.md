@@ -769,3 +769,11 @@ Frozen R8.8 outcome:
 5. Preserve first failures; only persisted strict/semantic findings receive the one conditioned repair. Continue for ten ready or the allowed 8–9 partial cohort.
 6. In eval, run public probes for GPT/Codex, official DeepSeek/OpenCode and Gemini/Tuzi/OpenCode. A failed probe causes zero private upload. Run one audit and one procurement canary before remaining tasks.
 7. Grade valid deliveries once with both judges. Only format/transport failure may receive one formatting retry; never redraw low scores. Aggregate, publish internal reports, update the active release record and stop.
+
+Frozen first-run outcome (2026-08-17):
+
+- Release commit `d70be7da0589caca4353f1a011e22642984f4d49` is active as `milestone-r9-huago-cone-094cbe481df3`. Local/final parity is 429/429, secret scan found zero exact leaks, factory/eval smoke passed, and 137 GiB remains free.
+- Preserve run `r9_huago_cone_first_production_10` and its six fresh official-source hashes. Scratch skill review did not mutate the canonical registry. The procurement extractor used local Codex only after the existing Tuzi extractor and official DeepSeek fallback failed on public source text; all five resulting candidates passed the existing deterministic reviewer.
+- Preserve generation result `production_insufficient`: 10 normal task-design calls, 7 materialized, 3 `InternalServerError`, zero unconditional redraw. The failed task IDs are `prod_579e378937b75d7c`, `prod_951abfa7ee1b6fb3` and `prod_1323bd30303e8f30`.
+- Preserve generation result SHA `f87b600c...bbb36` and `production_package_integrity_report.json` SHA `c47fb50e...e9d10`: 7/7 package reports pass and 31/31 candidate XLSX files are openable, nonempty and byte-identical to rw-task export copies.
+- Stop before step 6 because the cohort has fewer than eight packages. No model probe, private solver session, grader call or comparison record exists for this run. Do not retry the three tasks inside the consumed run, import historical packages, or lower the threshold. A future attempt requires a new homogeneous production campaign and an explicit provider choice.
