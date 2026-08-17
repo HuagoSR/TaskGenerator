@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
-from task_generator.v3_huago_cone_eval import R9NativeSolverRunner, _read_env, _redact
+from task_generator.v3_huago_cone_eval import (
+    R9DualJudgeRunner,
+    R9JudgeRecordV1,
+    R9NativeSolverRunner,
+    _grade_prompt,
+    _read_env,
+    _redact,
+)
 
 
 class HuagoConeEvalTests(unittest.TestCase):
@@ -40,6 +48,54 @@ class HuagoConeEvalTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "stop_after_staging"):
                 runner.public_probe()
             self.assertIn("public_probe.xlsx", captured["expected"])
+
+    def test_judge_pending_state_is_explicit(self):
+        record = R9JudgeRecordV1(
+            task_id="task-1",
+            judge_id="gpt-5.6-sol@chatgpt_codex",
+            status="pending",
+            attempt_count=0,
+        )
+        self.assertEqual(record.status, "pending")
+        self.assertIsNone(record.first_failure)
+
+    def test_grade_prompt_is_route_and_solver_blind(self):
+        prompt = _grade_prompt("task-1")
+        lowered = prompt.lower()
+        self.assertNotIn("skill_guided", lowered)
+        self.assertNotIn("llm_led", lowered)
+        self.assertNotIn("solver_id", lowered)
+        self.assertIn("task-1", prompt)
+
+    def test_grader_stage_contains_only_contract_inputs(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            package = root / "package"
+            (package / "rw_task_export").mkdir(parents=True)
+            (package / "teacher").mkdir()
+            (package / "rw_task_export" / "dataset_row.json").write_text(
+                json.dumps({"prompt": "candidate request"}), encoding="utf-8"
+            )
+            (package / "teacher" / "rubric_plan_v2.json").write_text(
+                json.dumps({"criteria": []}), encoding="utf-8"
+            )
+            (package / "teacher" / "deterministic_fact_anchors.json").write_text(
+                json.dumps({"anchors": []}), encoding="utf-8"
+            )
+            delivery = root / "answer.xlsx"
+            delivery.write_bytes(b"test-delivery")
+            workspace = root / "workspace"
+            R9DualJudgeRunner._stage(package, delivery, workspace, "task-1", None)
+            self.assertEqual(
+                {item.name for item in workspace.iterdir()},
+                {
+                    "TASK.md", "candidate_prompt.json", "rubric.json",
+                    "fact_anchors.json", "grade_schema.json", "deliverable.xlsx",
+                },
+            )
+            staged_prompt = (workspace / "TASK.md").read_text(encoding="utf-8").lower()
+            self.assertNotIn("skill_guided", staged_prompt)
+            self.assertNotIn("llm_led", staged_prompt)
 
 
 if __name__ == "__main__":
