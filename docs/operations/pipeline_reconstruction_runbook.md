@@ -762,10 +762,10 @@ Frozen R8.8 outcome:
 
 ### R9 Huago-cone production run
 
-1. Work on `codex/r9-huago-cone-production`. Run the full suite and secret scan, stage explicit governed paths, inspect and commit. Never use `git add .`; exclude env, keys, auth, artifacts, logs and `Test/v2_outputs`.
-2. Run `Test/run_v3_huago_cone_release.py --action prepare`, then `--action deploy --host huago-cone`. Install only minimal secrets with `--action secrets`; existing Codex auth stays a mounted secret. If invalid, the user runs `codex login --device-auth`.
+1. Work on `codex/r9-huago-cone-production`. Run the full suite and secret scan, stage explicit governed paths, inspect and commit. Never use `git add .`; exclude env, keys, auth, artifacts, logs and the local legacy `Test/` directory.
+2. Run `taskgen-release --action prepare`, then `taskgen-release --action deploy --host huago-cone`. Install only minimal secrets with `--action secrets`; existing Codex auth stays a mounted secret. If invalid, the user runs `codex login --device-auth`.
 3. Run `--action parity` and `--action smoke`. Only both passes permit `--action activate`. Use `--action status` and `--action rollback` for operations.
-4. In factory, run `Test/run_v3_huago_cone_production.py --action collect`. Pass each domain's fresh files through existing `source_to_skills` with LLM extraction and fresh-scratch registries; bind accepted candidates with `--action compile-briefs`, then `--action compile` and `--action generate`.
+4. In factory, run `taskgen-produce --action collect`. Pass each domain's fresh files through existing `source_to_skills` with LLM extraction and fresh-scratch registries; bind accepted candidates with `--action compile-briefs`, then `--action compile` and `--action generate`.
 5. Preserve first failures; only persisted strict/semantic findings receive the one conditioned repair. Continue for ten ready or the allowed 8–9 partial cohort.
 6. In eval, run public probes for GPT/Codex, official DeepSeek/OpenCode and Gemini/Tuzi/OpenCode. A failed probe causes zero private upload. Run one audit and one procurement canary before remaining tasks.
 7. Grade valid deliveries once with both judges. Only format/transport failure may receive one formatting retry; never redraw low scores. Aggregate, publish internal reports, update the active release record and stop.
@@ -783,7 +783,7 @@ Recovery production outcome:
 - Campaign `r9_huago_cone_recovery_production_10` reuses only the frozen public source/skill/brief inputs. It has ten new blind IDs and imports no proposal, package or result from the 7/10 run.
 - Preserve cohort SHA `77e7835f...15b6bd`, generation SHA `0d519c5d...91812` and integrity SHA `37c31a1b...1ba16`. Ten normal calls produced 10/10 first-attempt materializations, and all 39 candidate XLSX files pass openability, nonempty-content and candidate/export identity checks.
 - Treat this recovery cohort as the only R9 evaluation cohort. Never merge the first campaign's seven packages.
-- Run every server solver through `Test/run_v3_huago_cone_eval.py`. The public probe must pass before `solve`; a canary infrastructure failure stops expansion, while three consecutive later infrastructure failures freeze the stack. Persist only secret-redacted stdout/stderr.
+- Run every server solver through `taskgen-evaluate`. The public probe must pass before `solve`; a canary infrastructure failure stops expansion, while three consecutive later infrastructure failures freeze the stack. Persist only secret-redacted stdout/stderr.
 - The pre-run manual GPT public probe passed. The manual DeepSeek probe timed out with no events or delivery and uploaded no private task. The manual Gemini probe failed before model entry because CRLF env substitution made the OpenCode config invalid; its credential-bearing stderr was immediately cleared. Do not reuse the shell probe. Rotate the Tuzi key and use only the tracked in-memory-redacting runner after the replacement release passes parity.
 
 Final pre-private state:

@@ -55,5 +55,5 @@ RUN python -m pip install --no-cache-dir --no-deps /opt/taskgenerator \
 
 WORKDIR /opt/taskgenerator
 USER taskgenerator
-ENTRYPOINT ["python", "Test/run_v3_end_to_end_pipeline.py"]
+ENTRYPOINT ["taskgen-produce"]
 CMD ["--help"]

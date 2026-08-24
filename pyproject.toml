@@ -9,17 +9,14 @@ description = "Report-first GDPVal-style real-world task generation pipeline."
 requires-python = ">=3.12"
 dependencies = [
   "pydantic>=2",
-  "pandas",
   "openpyxl",
   "requests",
-  "httpx",
-  "trafilatura",
-  "python-dotenv",
-  "datasets",
-  "stirrup[e2b]==0.1.8",
-  "e2b==2.20.0",
-  "e2b-code-interpreter==2.6.0",
 ]
+
+[project.scripts]
+taskgen-produce = "task_generator.cli.production:main"
+taskgen-evaluate = "task_generator.cli.evaluate:main"
+taskgen-release = "task_generator.cli.release:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

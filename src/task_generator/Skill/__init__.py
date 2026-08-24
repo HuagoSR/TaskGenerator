@@ -1,2 +1,0 @@
-﻿"""Legacy skill-graph components."""
-
