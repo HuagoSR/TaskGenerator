@@ -776,6 +776,8 @@ For a provider-backed production generation, launch the server container detache
 
 If a provider response is valid JSON but cannot instantiate even `TaskDesignSemanticDraftProposalV1`, retain the raw-response hash, diagnostics and normalization findings. It may use exactly one same-input **format retry**; it has no proposal and therefore cannot consume feedback-repair authority. Any other broad contract failure remains non-retryable.
 
+Fresh-reproduction execution freeze (2026-08-27): r1 is an SSH-lifecycle interruption diagnostic; r2 is a 9/10 schema-invalid provider-output diagnostic; r3 has 9/10 materialized packages but its final provider request exceeded the configured 15-minute task-design limit without returning. The detached container was stopped with `SIGTERM`; the runner persisted the case as `interrupted`, proving that it does not silently resume. The two allowed correction releases have been consumed. Preserve all three run roots, do not upload their partial private packages, and do not create r4 or any evaluator campaign. Resume only after a new approved plan addresses provider-client timeout enforcement below the process layer.
+
 Frozen first-run outcome (2026-08-17):
 
 - Release commit `d70be7da0589caca4353f1a011e22642984f4d49` is active as `milestone-r9-huago-cone-094cbe481df3`. Local/final parity is 429/429, secret scan found zero exact leaks, factory/eval smoke passed, and 137 GiB remains free.
