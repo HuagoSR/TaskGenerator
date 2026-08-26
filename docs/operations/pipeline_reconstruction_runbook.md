@@ -765,10 +765,12 @@ Frozen R8.8 outcome:
 1. Work on `codex/r9-huago-cone-production`. Run the full suite and secret scan, stage explicit governed paths, inspect and commit. Never use `git add .`; exclude env, keys, auth, artifacts, logs and the local legacy `Test/` directory.
 2. Run `taskgen-release --action prepare`, then `taskgen-release --action deploy --host huago-cone`. Install only minimal secrets with `--action secrets`; existing Codex auth stays a mounted secret. If invalid, the user runs `codex login --device-auth`.
 3. Run `--action parity` and `--action smoke`. Only both passes permit `--action activate`. Use `--action status` and `--action rollback` for operations.
-4. In factory, run `taskgen-produce --action collect`. Pass each domain's fresh files through existing `source_to_skills` with LLM extraction and fresh-scratch registries; bind accepted candidates with `--action compile-briefs`, then `--action compile` and `--action generate`.
+4. In factory, run `taskgen-produce --action collect`, then `taskgen-produce --action build-substrate`. The latter owns HTML visible-text normalization, two domain-specific Tuzi extraction calls, deterministic review and the scratch registry. It must record unchanged canonical-registry hashes and at least three accepted source/block-grounded skills per domain; no fallback extractor is permitted. Bind its accepted-candidate outputs with `--action compile-briefs`, then `--action compile` and `--action generate`.
 5. Preserve first failures; only persisted strict/semantic findings receive the one conditioned repair. Continue for ten ready or the allowed 8–9 partial cohort.
 6. In eval, run public probes for GPT/Codex, official DeepSeek/OpenCode and Gemini/Tuzi/OpenCode. A failed probe causes zero private upload. Run one audit and one procurement canary before remaining tasks.
 7. Grade valid deliveries once with both judges. Only format/transport failure may receive one formatting retry; never redraw low scores. Aggregate, publish internal reports, update the active release record and stop.
+
+Fresh reproduction rule (2026-08-26): run `r9_huago_cone_fresh_reproduction_10_20260826` in a previously absent run root. Re-fetch all six allowlisted pages and regenerate skills, briefs, blind IDs and packages; reuse only code, URL allowlist, model policy and 5+5/4+3+3 schedule. Require 10/10 materialized packages before private solver upload. A generation-side code repair requires a new release and new source-to-package campaign; an evaluation-only repair keeps package fingerprints frozen but restarts the affected full solver or judge stack. Do not modify a task, rubric or answer in response to model scores.
 
 Frozen first-run outcome (2026-08-17):
 

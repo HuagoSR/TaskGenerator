@@ -600,7 +600,7 @@ class ProductionTaskGenerationRunner:
             atomic_json(result_path, result)
             last: Optional[TaskDesignExecutionReportV1] = None
             for attempt in (1, 2):
-                if attempt == 2 and (last is None or not self._repairable(last)):
+                if attempt == 2 and (last is None or not self._second_attempt_allowed(last)):
                     break
                 record = brief_by_id[case.brief_id]
                 run_root = output / "provider_runs" / case.blind_task_id / f"attempt_{attempt:02d}"
@@ -616,9 +616,7 @@ class ProductionTaskGenerationRunner:
                         allow_expensive_model=False,
                         timeout_seconds=900,
                         max_tokens=16000,
-                        repair_from_execution_report_path=(
-                            case.attempt_paths[-1] if case.attempt_paths else None
-                        ),
+                        repair_from_execution_report_path=(case.attempt_paths[-1] if last is not None and self._repairable(last) and case.attempt_paths else None),
                     ),
                     provider_config,
                 )
@@ -681,4 +679,14 @@ class ProductionTaskGenerationRunner:
         return bool(
             (report.status == "proposal_blocked" and report.proposal_path)
             or (report.status == "semantic_proposal_blocked" and report.semantic_proposal_path)
+        )
+
+    @classmethod
+    def _second_attempt_allowed(cls, report: TaskDesignExecutionReportV1) -> bool:
+        return cls._repairable(report) or (
+            report.status == "provider_failed"
+            and report.provider_failure_category in {
+                "timeout", "transport", "http_408", "http_429", "http_5xx",
+                "empty_output", "truncated_output", "invalid_json",
+            }
         )

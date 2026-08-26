@@ -31,6 +31,17 @@ ExecutionStatus = Literal[
     "provider_failed",
     "contract_failed",
 ]
+ProviderFailureCategory = Literal[
+    "timeout",
+    "transport",
+    "http_408",
+    "http_429",
+    "http_5xx",
+    "empty_output",
+    "truncated_output",
+    "invalid_json",
+    "other",
+]
 
 
 class TaskDesignExecutionRequestV1(BaseModel):
@@ -87,6 +98,7 @@ class TaskDesignExecutionReportV1(BaseModel):
     registry_mutation_triggered: Literal[False] = False
     promotion_triggered: Literal[False] = False
     failure_type: Optional[str] = None
+    provider_failure_category: Optional[ProviderFailureCategory] = None
     contract_validation_findings: list[Dict[str, Any]] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
@@ -227,6 +239,7 @@ class TaskDesignProposalExecutor:
                 brief.brief_id,
                 "provider_failed",
                 type(exc).__name__,
+                provider_failure_category=self._provider_failure_category(exc),
             )
             self._atomic_json(report_path, report.model_dump(mode="json"))
             return report
@@ -1086,6 +1099,7 @@ class TaskDesignProposalExecutor:
         semantic_proposal_path: Optional[str] = None,
         normalization_report_path: Optional[str] = None,
         contract_validation_findings: Optional[list[Dict[str, Any]]] = None,
+        provider_failure_category: Optional[ProviderFailureCategory] = None,
     ) -> TaskDesignExecutionReportV1:
         return TaskDesignExecutionReportV1(
             status=status,
@@ -1093,6 +1107,7 @@ class TaskDesignProposalExecutor:
             brief_id=brief_id,
             proposal_id=proposal_id,
             failure_type=failure_type,
+            provider_failure_category=provider_failure_category,
             provider_diagnostics_path=provider_diagnostics_path,
             proposal_interface_mode=proposal_interface_mode,
             semantic_proposal_path=semantic_proposal_path,
@@ -1103,6 +1118,28 @@ class TaskDesignProposalExecutor:
                 "No materialization, registry mutation, or promotion was triggered.",
             ],
         )
+
+    @staticmethod
+    def _provider_failure_category(exc: Exception) -> ProviderFailureCategory:
+        text = str(exc).lower()
+        status = getattr(exc, "status_code", None)
+        if status == 408 or " 408" in text:
+            return "http_408"
+        if status == 429 or " 429" in text:
+            return "http_429"
+        if isinstance(status, int) and 500 <= status <= 599:
+            return "http_5xx"
+        if "timeout" in text or "timed out" in text:
+            return "timeout"
+        if "connection" in text or "network" in text or "transport" in text:
+            return "transport"
+        if "empty_output" in text or "empty output" in text:
+            return "empty_output"
+        if "truncated_output" in text or "truncated output" in text:
+            return "truncated_output"
+        if isinstance(exc, json.JSONDecodeError):
+            return "invalid_json"
+        return "other"
 
     @staticmethod
     def _sanitized_contract_findings(exc: Exception) -> list[Dict[str, Any]]:

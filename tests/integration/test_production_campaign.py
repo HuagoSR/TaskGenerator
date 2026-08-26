@@ -175,6 +175,11 @@ class HuagoConeReleaseDefinitionTests(unittest.TestCase):
         self.assertIn("_prune_forbidden_context(taskgenerator)", text)
         self.assertIn("PYTHONPATH=/opt/taskgenerator/src", text)
 
+    def test_production_cli_exposes_complete_substrate_stage(self):
+        text = (Path(__file__).parents[2] / "src" / "task_generator" / "cli" / "production.py").read_text(encoding="utf-8")
+        self.assertIn('"build-substrate"', text)
+        self.assertIn("ProductionSubstrateBuilder", text)
+
 
 if __name__ == "__main__":
     unittest.main()

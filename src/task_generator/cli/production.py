@@ -19,6 +19,7 @@ from task_generator.production.campaign import (  # noqa: E402
     atomic_json,
     collect_production_sources,
 )
+from task_generator.production.substrate import ProductionSubstrateBuilder  # noqa: E402
 from task_generator.evaluation.model_comparison import (  # noqa: E402
     ModelTaskEvaluationV1,
     aggregate_production_model_comparison,
@@ -28,7 +29,7 @@ from task_generator.substrate.skill_extractor import build_tuzi_config  # noqa: 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Operate the fixed Huago-cone ten-task R9 campaign.")
-    parser.add_argument("--action", choices=["collect", "compile-briefs", "compile", "generate", "aggregate"], required=True)
+    parser.add_argument("--action", choices=["collect", "build-substrate", "compile-briefs", "compile", "generate", "aggregate"], required=True)
     parser.add_argument("--campaign-id", default="r9_huago_cone_first_production_10")
     parser.add_argument("--source-manifest", type=Path)
     parser.add_argument("--brief-specs", type=Path)
@@ -42,6 +43,25 @@ def main() -> None:
     args.output_root.mkdir(parents=True, exist_ok=True)
     if args.action == "collect":
         result = {"sources": [item.model_dump(mode="json") for item in collect_production_sources(args.output_root / "raw_sources")]}
+    elif args.action == "build-substrate":
+        _require(args.source_manifest, parser, "--source-manifest")
+        sources = [
+            ProductionSourceRecordV1.model_validate(item)
+            for item in _json(args.source_manifest)["sources"]
+        ]
+        config = build_tuzi_config(args.env_file, "gpt-5.6-sol", 300)
+        if config is None:
+            raise SystemExit("tuzi_configuration_missing")
+        config.max_tokens = 6000
+        config.output_profile = "bounded_production"
+        result = ProductionSubstrateBuilder().build(
+            campaign_id=args.campaign_id,
+            sources=sources,
+            source_manifest_path=args.source_manifest,
+            output_root=args.output_root / "substrate",
+            canonical_registry_root=ROOT / "data" / "registry",
+            provider_config=config,
+        )
     elif args.action == "compile-briefs":
         _require(args.source_manifest, parser, "--source-manifest")
         _require(args.audit_candidates, parser, "--audit-candidates")

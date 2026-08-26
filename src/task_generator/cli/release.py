@@ -27,6 +27,7 @@ FORBIDDEN_PARTS = {
     "v2_outputs",
     ".git",
     "__pycache__",
+    ".DS_Store",
 }
 
 
@@ -86,7 +87,7 @@ def _copy_rw_task(source: Path, destination: Path) -> None:
             shutil.copytree(
                 item,
                 target,
-                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".env", "artifacts"),
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", ".env", "artifacts"),
             )
         else:
             shutil.copy2(item, target)
@@ -345,14 +346,16 @@ def smoke(*, release_root: Path, host: str) -> dict:
     command = (
         f"cd ~/taskgenerator-deploy/releases/{release_id} && "
         "docker compose --env-file release.env -f compose.yaml run --rm --no-deps "
-        "--entrypoint sh eval -lc 'python -c \"import openpyxl; print(openpyxl.__version__)\" && codex --version && opencode --version'"
+        "--entrypoint sh offline -lc 'python -c \"import bs4, openai, openpyxl; print(bs4.__version__); print(openai.__version__); print(openpyxl.__version__)\"' && "
+        "docker compose --env-file release.env -f compose.yaml run --rm --no-deps "
+        "--entrypoint sh eval -lc 'codex --version && opencode --version'"
     )
     result = ssh(host, command, check=False, timeout=600)
     report = {
         "report_version": "v3.huago_cone_candidate_smoke.1",
         "release_id": release_id,
         "returncode": result.returncode,
-        "passed": result.returncode == 0 and "codex-cli 0.146.0" in result.stdout and "1.17.13" in result.stdout,
+        "passed": result.returncode == 0 and "2.44.0" in result.stdout and "codex-cli 0.146.0" in result.stdout and "1.17.13" in result.stdout,
         "stdout": result.stdout,
         "stderr_tail": result.stderr[-4000:],
     }

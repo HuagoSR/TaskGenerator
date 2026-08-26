@@ -8,6 +8,8 @@ version = "0.1.0"
 description = "Report-first GDPVal-style real-world task generation pipeline."
 requires-python = ">=3.12"
 dependencies = [
+  "beautifulsoup4==4.15.0",
+  "openai==2.44.0",
   "pydantic>=2",
   "openpyxl",
   "requests",
