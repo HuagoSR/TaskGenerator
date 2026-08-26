@@ -774,6 +774,8 @@ Fresh reproduction rule (2026-08-26): run `r9_huago_cone_fresh_reproduction_10_2
 
 For a provider-backed production generation, launch the server container detached and poll its named container plus the persisted result file; a transient SSH session must not be the process lifetime. `generate` converts `SIGTERM`/`SIGHUP` into an `interrupted` case record and refuses to resume that run silently. Preserve the interrupted run as diagnostic evidence and start any from-zero reproduction under a new run root.
 
+If a provider response is valid JSON but cannot instantiate even `TaskDesignSemanticDraftProposalV1`, retain the raw-response hash, diagnostics and normalization findings. It may use exactly one same-input **format retry**; it has no proposal and therefore cannot consume feedback-repair authority. Any other broad contract failure remains non-retryable.
+
 Frozen first-run outcome (2026-08-17):
 
 - Release commit `d70be7da0589caca4353f1a011e22642984f4d49` is active as `milestone-r9-huago-cone-094cbe481df3`. Local/final parity is 429/429, secret scan found zero exact leaks, factory/eval smoke passed, and 137 GiB remains free.

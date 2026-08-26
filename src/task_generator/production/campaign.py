@@ -698,10 +698,21 @@ class ProductionTaskGenerationRunner:
 
     @classmethod
     def _second_attempt_allowed(cls, report: TaskDesignExecutionReportV1) -> bool:
-        return cls._repairable(report) or (
+        if cls._repairable(report):
+            return True
+        if (
             report.status == "provider_failed"
             and report.provider_failure_category in {
                 "timeout", "transport", "http_408", "http_429", "http_5xx",
                 "empty_output", "truncated_output", "invalid_json",
             }
+        ):
+            return True
+        # A JSON response which cannot instantiate even the semantic draft has
+        # no proposal to repair.  Treat this narrowly as one same-input format
+        # retry, never as feedback-conditioned semantic repair authority.
+        return bool(
+            report.status == "contract_failed"
+            and report.failure_type == "TaskDesignSemanticNormalizationBlocked"
+            and report.provider_diagnostics_path
         )

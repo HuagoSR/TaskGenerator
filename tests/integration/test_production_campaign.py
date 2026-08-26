@@ -16,6 +16,11 @@ from task_generator.production.campaign import (
     ProductionBriefRecordV1,
     ProductionSourceRecordV1,
     ProductionTaskCohortV1,
+    ProductionTaskGenerationRunner,
+)
+from task_generator.planning.task_design_executor import (
+    TaskDesignExecutionReportV1,
+    TaskDesignExecutionRequestV1,
 )
 
 
@@ -90,6 +95,22 @@ class HuagoConeProductionContractTests(unittest.TestCase):
         briefs[0] = briefs[0].model_copy(update={"source_ids": ["unknown"]})
         with self.assertRaises(ValidationError):
             ProductionTaskCohortV1(campaign_id="r9", sources=self._sources(), briefs=briefs)
+
+    def test_schema_invalid_provider_output_gets_one_format_retry(self):
+        request = TaskDesignExecutionRequestV1(
+            capability_brief_path="/tmp/brief.json", output_dir="/tmp/out"
+        )
+        schema_failure = TaskDesignExecutionReportV1(
+            status="contract_failed",
+            request=request,
+            failure_type="TaskDesignSemanticNormalizationBlocked",
+            provider_diagnostics_path="/tmp/diagnostics.json",
+        )
+        unrelated_contract_failure = schema_failure.model_copy(
+            update={"failure_type": "unrelated_contract_failure"}
+        )
+        self.assertTrue(ProductionTaskGenerationRunner._second_attempt_allowed(schema_failure))
+        self.assertFalse(ProductionTaskGenerationRunner._second_attempt_allowed(unrelated_contract_failure))
 
     def test_three_model_dual_judge_complete_and_discriminative(self):
         solvers = [
