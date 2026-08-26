@@ -772,6 +772,8 @@ Frozen R8.8 outcome:
 
 Fresh reproduction rule (2026-08-26): run `r9_huago_cone_fresh_reproduction_10_20260826` in a previously absent run root. Re-fetch all six allowlisted pages and regenerate skills, briefs, blind IDs and packages; reuse only code, URL allowlist, model policy and 5+5/4+3+3 schedule. Require 10/10 materialized packages before private solver upload. A generation-side code repair requires a new release and new source-to-package campaign; an evaluation-only repair keeps package fingerprints frozen but restarts the affected full solver or judge stack. Do not modify a task, rubric or answer in response to model scores.
 
+For a provider-backed production generation, launch the server container detached and poll its named container plus the persisted result file; a transient SSH session must not be the process lifetime. `generate` converts `SIGTERM`/`SIGHUP` into an `interrupted` case record and refuses to resume that run silently. Preserve the interrupted run as diagnostic evidence and start any from-zero reproduction under a new run root.
+
 Frozen first-run outcome (2026-08-17):
 
 - Release commit `d70be7da0589caca4353f1a011e22642984f4d49` is active as `milestone-r9-huago-cone-094cbe481df3`. Local/final parity is 429/429, secret scan found zero exact leaks, factory/eval smoke passed, and 137 GiB remains free.

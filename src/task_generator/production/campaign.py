@@ -229,7 +229,12 @@ class ProductionGenerationCaseV1(BaseModel):
     blind_task_id: str
     brief_id: str
     status: Literal[
-        "not_started", "running", "materialized", "blocked", "infrastructure_failed"
+        "not_started",
+        "running",
+        "interrupted",
+        "materialized",
+        "blocked",
+        "infrastructure_failed",
     ] = "not_started"
     attempt_paths: List[str] = Field(default_factory=list, max_length=2)
     first_failure_path: Optional[str] = None
@@ -571,7 +576,7 @@ class ProductionTaskGenerationRunner:
             )
             if result.cohort_manifest_sha256 != file_sha(manifest_path):
                 raise ValueError("production_cohort_manifest_drift")
-            if any(item.status == "running" for item in result.cases):
+            if any(item.status in {"running", "interrupted"} for item in result.cases):
                 raise RuntimeError("production_interrupted_case_requires_review")
         else:
             result = ProductionGenerationResultV1(
@@ -593,75 +598,85 @@ class ProductionTaskGenerationRunner:
         package_materializer = materializer or HybridTaskMaterializer()
         brief_by_id = {item.brief_id: item for item in cohort.briefs}
         fingerprints = {item.package_fingerprint for item in result.cases if item.package_fingerprint}
-        for case in result.cases:
-            if case.status != "not_started":
-                continue
-            case.status = "running"
-            atomic_json(result_path, result)
-            last: Optional[TaskDesignExecutionReportV1] = None
-            for attempt in (1, 2):
-                if attempt == 2 and (last is None or not self._second_attempt_allowed(last)):
-                    break
-                record = brief_by_id[case.brief_id]
-                run_root = output / "provider_runs" / case.blind_task_id / f"attempt_{attempt:02d}"
-                result.provider_call_count += 1
-                atomic_json(result_path, result)
-                last = proposal_executor.run(
-                    TaskDesignExecutionRequestV1(
-                        capability_brief_path=record.brief_path,
-                        output_dir=str(run_root.resolve()),
-                        route_id="llm_led_hybrid",
-                        model="gpt-5.6-sol",
-                        allow_external_provider=True,
-                        allow_expensive_model=False,
-                        timeout_seconds=900,
-                        max_tokens=16000,
-                        repair_from_execution_report_path=(case.attempt_paths[-1] if last is not None and self._repairable(last) and case.attempt_paths else None),
-                    ),
-                    provider_config,
-                )
-                report_path = run_root / "task_design_execution_report.json"
-                case.attempt_paths.append(str(report_path.resolve()))
-                if last.status != "completed":
-                    case.first_failure_path = case.first_failure_path or str(report_path.resolve())
-                    atomic_json(result_path, result)
+        current_case: Optional[ProductionGenerationCaseV1] = None
+        try:
+            for case in result.cases:
+                if case.status != "not_started":
                     continue
-                proposal = TaskDesignProposalV1.model_validate_json(
-                    Path(last.proposal_path or "").read_text(encoding="utf-8")
-                )
-                brief = CapabilityBriefV1.model_validate_json(
-                    Path(record.brief_path).read_text(encoding="utf-8")
-                )
-                materialization = package_materializer.materialize(
-                    brief, proposal, Path(case.package_root)
-                )
-                if materialization.decision != "pass":
-                    case.status = "blocked"
-                    case.first_failure_path = case.first_failure_path or str(
-                        Path(case.package_root) / "hybrid_materialization_report.json"
+                current_case = case
+                case.status = "running"
+                atomic_json(result_path, result)
+                last: Optional[TaskDesignExecutionReportV1] = None
+                for attempt in (1, 2):
+                    if attempt == 2 and (last is None or not self._second_attempt_allowed(last)):
+                        break
+                    record = brief_by_id[case.brief_id]
+                    run_root = output / "provider_runs" / case.blind_task_id / f"attempt_{attempt:02d}"
+                    result.provider_call_count += 1
+                    atomic_json(result_path, result)
+                    last = proposal_executor.run(
+                        TaskDesignExecutionRequestV1(
+                            capability_brief_path=record.brief_path,
+                            output_dir=str(run_root.resolve()),
+                            route_id="llm_led_hybrid",
+                            model="gpt-5.6-sol",
+                            allow_external_provider=True,
+                            allow_expensive_model=False,
+                            timeout_seconds=900,
+                            max_tokens=16000,
+                            repair_from_execution_report_path=(case.attempt_paths[-1] if last is not None and self._repairable(last) and case.attempt_paths else None),
+                        ),
+                        provider_config,
                     )
+                    report_path = run_root / "task_design_execution_report.json"
+                    case.attempt_paths.append(str(report_path.resolve()))
+                    if last.status != "completed":
+                        case.first_failure_path = case.first_failure_path or str(report_path.resolve())
+                        atomic_json(result_path, result)
+                        continue
+                    proposal = TaskDesignProposalV1.model_validate_json(
+                        Path(last.proposal_path or "").read_text(encoding="utf-8")
+                    )
+                    brief = CapabilityBriefV1.model_validate_json(
+                        Path(record.brief_path).read_text(encoding="utf-8")
+                    )
+                    materialization = package_materializer.materialize(
+                        brief, proposal, Path(case.package_root)
+                    )
+                    if materialization.decision != "pass":
+                        case.status = "blocked"
+                        case.first_failure_path = case.first_failure_path or str(
+                            Path(case.package_root) / "hybrid_materialization_report.json"
+                        )
+                        atomic_json(result_path, result)
+                        break
+                    fingerprint = tree_sha(case.package_root)
+                    if fingerprint in fingerprints:
+                        case.status = "blocked"
+                        case.first_failure_path = str(
+                            Path(case.package_root) / "hybrid_materialization_report.json"
+                        )
+                        atomic_json(result_path, result)
+                        break
+                    fingerprints.add(fingerprint)
+                    case.package_fingerprint = fingerprint
+                    case.status = "materialized"
                     atomic_json(result_path, result)
                     break
-                fingerprint = tree_sha(case.package_root)
-                if fingerprint in fingerprints:
-                    case.status = "blocked"
-                    case.first_failure_path = str(
-                        Path(case.package_root) / "hybrid_materialization_report.json"
+                if case.status == "running":
+                    case.status = (
+                        "infrastructure_failed"
+                        if last is not None and last.status == "provider_failed"
+                        else "blocked"
                     )
                     atomic_json(result_path, result)
-                    break
-                fingerprints.add(fingerprint)
-                case.package_fingerprint = fingerprint
-                case.status = "materialized"
+                current_case = None
+        except BaseException:
+            if current_case is not None and current_case.status == "running":
+                current_case.status = "interrupted"
+                current_case.first_failure_path = current_case.first_failure_path or "execution_interrupted"
                 atomic_json(result_path, result)
-                break
-            if case.status == "running":
-                case.status = (
-                    "infrastructure_failed"
-                    if last is not None and last.status == "provider_failed"
-                    else "blocked"
-                )
-                atomic_json(result_path, result)
+            raise
 
         result.package_ready_count = sum(item.status == "materialized" for item in result.cases)
         result.decision = (

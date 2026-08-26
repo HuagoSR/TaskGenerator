@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import sys
 from pathlib import Path
 
@@ -96,11 +97,22 @@ def main() -> None:
         config = build_tuzi_config(args.env_file, "gpt-5.6-sol", 900)
         if config is None:
             raise SystemExit("tuzi_configuration_missing")
-        result = ProductionTaskGenerationRunner().execute(
-            cohort_manifest_path=args.cohort_manifest,
-            output_root=args.output_root,
-            provider_config=config,
-        )
+        previous_handlers = {}
+
+        def _interrupt(_signum, _frame):
+            raise KeyboardInterrupt("production_execution_interrupted")
+
+        for signum in (signal.SIGTERM, signal.SIGHUP):
+            previous_handlers[signum] = signal.signal(signum, _interrupt)
+        try:
+            result = ProductionTaskGenerationRunner().execute(
+                cohort_manifest_path=args.cohort_manifest,
+                output_root=args.output_root,
+                provider_config=config,
+            )
+        finally:
+            for signum, previous in previous_handlers.items():
+                signal.signal(signum, previous)
     else:
         _require(args.evaluation_records, parser, "--evaluation-records")
         records = [
