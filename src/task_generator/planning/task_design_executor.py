@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import signal
 import shutil
+import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
@@ -1041,27 +1045,34 @@ class TaskDesignProposalExecutor:
             raise RuntimeError("openai_sdk_unavailable") from exc
         schema = TaskDesignSemanticProposalV1.model_json_schema()
         started = time.monotonic()
-        response = OpenAI(
-            api_key=config.api_key,
-            base_url=config.base_url,
-            timeout=timeout_seconds,
-        ).chat.completions.create(
-            model=config.model,
-            temperature=0,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Return exactly one JSON object matching this schema. Do not include "
-                        "Markdown or explanatory prose: "
-                        + json.dumps(schema, ensure_ascii=False)
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-        )
+        # The SDK timeout is an I/O timeout, rather than an end-to-end call
+        # deadline, and its default retries can extend a stuck provider call.
+        # Production runs on Linux, where an interval timer can interrupt the
+        # blocking SDK request at the contract deadline.  Non-Linux callers
+        # retain the finite SDK timeout (the server path is the governed one).
+        with self._provider_deadline(timeout_seconds):
+            response = OpenAI(
+                api_key=config.api_key,
+                base_url=config.base_url,
+                timeout=timeout_seconds,
+                max_retries=0,
+            ).chat.completions.create(
+                model=config.model,
+                temperature=0,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"},
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Return exactly one JSON object matching this schema. Do not include "
+                            "Markdown or explanatory prose: "
+                            + json.dumps(schema, ensure_ascii=False)
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+            )
         content = response.choices[0].message.content or ""
         finish_reason = str(response.choices[0].finish_reason or "")
         usage = getattr(response, "usage", None)
@@ -1084,6 +1095,41 @@ class TaskDesignProposalExecutor:
         if not isinstance(payload, dict):
             raise ValueError("task_design_provider_output_not_object")
         return payload, diagnostics
+
+    @staticmethod
+    @contextmanager
+    def _provider_deadline(timeout_seconds: int):
+        """Apply a real per-attempt deadline where signal timers are safe.
+
+        This intentionally lives beside the provider exchange instead of the
+        ten-task loop: a timeout remains a normal ``provider_failed`` outcome,
+        so the existing single governed format retry is still the only retry
+        authority.  ``SIGALRM`` is unavailable on Windows and unsafe outside
+        the main thread; those environments retain the explicit SDK timeout.
+        """
+        enabled = bool(
+            os.name != "nt"
+            and threading.current_thread() is threading.main_thread()
+            and hasattr(signal, "SIGALRM")
+            and hasattr(signal, "setitimer")
+        )
+        if not enabled:
+            yield
+            return
+
+        previous_handler = signal.getsignal(signal.SIGALRM)
+
+        def _deadline_exceeded(signum, frame):  # type: ignore[no-untyped-def]
+            del signum, frame
+            raise TimeoutError("task_design_provider_timeout_deadline_exceeded")
+
+        signal.signal(signal.SIGALRM, _deadline_exceeded)
+        signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
+        try:
+            yield
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous_handler)
 
     @staticmethod
     def _failure_report(

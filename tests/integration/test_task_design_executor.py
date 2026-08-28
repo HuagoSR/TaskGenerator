@@ -4,6 +4,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from task_generator.substrate.skill_extractor import ProviderConfig
 from task_generator.planning.task_design_executor import (
@@ -148,6 +150,37 @@ class TaskDesignExecutorTests(unittest.TestCase):
                 FakeTaskDesignExecutor(self.valid_payload).run(
                     request, self._config()
                 )
+
+    def test_provider_exchange_disables_sdk_retries(self) -> None:
+        response = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=json.dumps(self.valid_payload)),
+                    finish_reason="stop",
+                )
+            ],
+            usage=SimpleNamespace(
+                prompt_tokens=1,
+                completion_tokens=2,
+                total_tokens=3,
+            ),
+        )
+        client = SimpleNamespace(
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(create=lambda **_: response)
+            )
+        )
+        with patch("openai.OpenAI", return_value=client) as factory:
+            payload, diagnostics = TaskDesignProposalExecutor()._call_provider(
+                prompt="fixture prompt",
+                config=self._config(),
+                max_tokens=1000,
+                timeout_seconds=60,
+            )
+        self.assertEqual(payload, self.valid_payload)
+        self.assertEqual(diagnostics.total_tokens, 3)
+        self.assertEqual(factory.call_args.kwargs["max_retries"], 0)
+        self.assertEqual(factory.call_args.kwargs["timeout"], 60)
 
     def test_expensive_claude_model_is_blocked_by_default(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
