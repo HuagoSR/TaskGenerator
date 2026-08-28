@@ -170,7 +170,10 @@ class TaskDesignExecutorTests(unittest.TestCase):
                 completions=SimpleNamespace(create=lambda **_: response)
             )
         )
-        with patch("openai.OpenAI", return_value=client) as factory:
+        with patch("openai.OpenAI", return_value=client) as factory, patch(
+            "task_generator.planning.task_design_executor.run_provider_exchange",
+            side_effect=lambda call, _: call(),
+        ):
             payload, diagnostics = TaskDesignProposalExecutor()._call_provider(
                 prompt="fixture prompt",
                 config=self._config(),
