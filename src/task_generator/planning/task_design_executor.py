@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from task_generator.substrate.skill_extractor import ProviderConfig
-from task_generator.core.provider_deadline import provider_deadline
+from task_generator.core.provider_deadline import run_provider_exchange
 from task_generator.core.external_model_policy import enforce_external_model_policy
 from task_generator.planning.task_design_frontend import (
     CapabilityBriefV1,
@@ -1047,7 +1047,7 @@ class TaskDesignProposalExecutor:
         # Production runs on Linux, where an interval timer can interrupt the
         # blocking SDK request at the contract deadline.  Non-Linux callers
         # retain the finite SDK timeout (the server path is the governed one).
-        with provider_deadline(timeout_seconds):
+        def exchange() -> Dict[str, Any]:
             response = OpenAI(
                 api_key=config.api_key,
                 base_url=config.base_url,
@@ -1070,16 +1070,24 @@ class TaskDesignProposalExecutor:
                     {"role": "user", "content": prompt},
                 ],
             )
-        content = response.choices[0].message.content or ""
-        finish_reason = str(response.choices[0].finish_reason or "")
-        usage = getattr(response, "usage", None)
+            usage = getattr(response, "usage", None)
+            return {
+                "content": response.choices[0].message.content or "",
+                "finish_reason": str(response.choices[0].finish_reason or ""),
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+            }
+        response_data = run_provider_exchange(exchange, timeout_seconds)
+        content = response_data["content"]
+        finish_reason = response_data["finish_reason"]
         diagnostics = TaskDesignProviderDiagnosticsV1(
             provider=config.provider_name,
             model=config.model,
             finish_reason=finish_reason,
-            prompt_tokens=getattr(usage, "prompt_tokens", None),
-            completion_tokens=getattr(usage, "completion_tokens", None),
-            total_tokens=getattr(usage, "total_tokens", None),
+            prompt_tokens=response_data["prompt_tokens"],
+            completion_tokens=response_data["completion_tokens"],
+            total_tokens=response_data["total_tokens"],
             duration_seconds=round(time.monotonic() - started, 3),
             response_char_count=len(content),
             response_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),

@@ -1,42 +1,48 @@
-"""Bounded provider-exchange deadline for governed Linux production calls."""
+"""Hard, process-level deadlines for provider exchanges in Linux production."""
 
 from __future__ import annotations
 
 import os
-import signal
-import threading
-from contextlib import contextmanager
-from typing import Iterator
+import multiprocessing
+import queue
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
 
 
-@contextmanager
-def provider_deadline(timeout_seconds: int) -> Iterator[None]:
-    """Interrupt a Linux main-thread provider call at its contractual deadline.
+def run_provider_exchange(call: Callable[[], T], timeout_seconds: int) -> T:
+    """Run one Linux provider exchange in a child that can be terminated.
 
-    SDK I/O timeouts do not impose an end-to-end deadline.  Windows and worker
-    threads retain their explicit SDK timeout because ``SIGALRM`` is unavailable
-    or unsafe there; governed server calls run in the Linux main thread.
+    Fork keeps credentials in memory only; neither the callable nor secrets are
+    serialized or persisted. Windows retains the finite SDK timeout for local
+    tests, while governed production runs Linux/amd64.
     """
-    enabled = bool(
-        os.name != "nt"
-        and threading.current_thread() is threading.main_thread()
-        and hasattr(signal, "SIGALRM")
-        and hasattr(signal, "setitimer")
-    )
-    if not enabled:
-        yield
-        return
+    if os.name == "nt":
+        return call()
+    context = multiprocessing.get_context("fork")
+    results = context.Queue(maxsize=1)
 
-    previous_handler = signal.getsignal(signal.SIGALRM)
+    def worker() -> None:
+        try:
+            results.put(("ok", call()))
+        except BaseException as exc:
+            results.put(("error", type(exc).__name__, str(exc)[:1000]))
 
-    def _deadline_exceeded(signum: int, frame: object) -> None:
-        del signum, frame
-        raise TimeoutError("provider_timeout_deadline_exceeded")
-
-    signal.signal(signal.SIGALRM, _deadline_exceeded)
-    signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
+    process = context.Process(target=worker, daemon=True)
+    process.start()
     try:
-        yield
+        try:
+            result = results.get(timeout=timeout_seconds)
+        except queue.Empty as exc:
+            raise TimeoutError("provider_timeout_deadline_exceeded") from exc
+        if result[0] == "ok":
+            return result[1]
+        raise RuntimeError(f"provider_child_{result[1]}: {result[2]}")
     finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, previous_handler)
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+            if process.is_alive():
+                process.kill()
+        process.join(timeout=1)
+        results.close()

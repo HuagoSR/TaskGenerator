@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from task_generator.core.external_model_policy import enforce_external_model_policy
-from task_generator.core.provider_deadline import provider_deadline
+from task_generator.core.provider_deadline import run_provider_exchange
 from task_generator.core.source_schema import (
     ExtractedSkillCandidate,
     NormalizedSource,
@@ -545,12 +545,6 @@ class LLMSkillExtractor(BaseSkillExtractor):
         except Exception as exc:  # pragma: no cover - environment-specific
             raise SkillExtractionError(f"OpenAI SDK is unavailable: {exc}") from exc
 
-        client = OpenAI(
-            api_key=self.config.api_key,
-            base_url=self.config.base_url,
-            timeout=self.config.timeout_seconds,
-            max_retries=0,
-        )
         messages = [
             {
                 "role": "system",
@@ -564,7 +558,13 @@ class LLMSkillExtractor(BaseSkillExtractor):
                 "content": self._build_prompt(package, max_candidates),
             },
         ]
-        with provider_deadline(self.config.timeout_seconds):
+        def exchange() -> Dict[str, Any]:
+            client = OpenAI(
+                api_key=self.config.api_key,
+                base_url=self.config.base_url,
+                timeout=self.config.timeout_seconds,
+                max_retries=0,
+            )
             response = client.chat.completions.create(
                 model=self.config.model,
                 messages=messages,
@@ -572,17 +572,25 @@ class LLMSkillExtractor(BaseSkillExtractor):
                 max_tokens=self.config.max_tokens,
                 response_format={"type": "json_object"},
             )
-        content = response.choices[0].message.content
+            usage = getattr(response, "usage", None)
+            return {
+                "content": response.choices[0].message.content,
+                "finish_reason": getattr(response.choices[0], "finish_reason", None),
+                "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                "completion_tokens": getattr(usage, "completion_tokens", None),
+                "total_tokens": getattr(usage, "total_tokens", None),
+            }
+        response_data = run_provider_exchange(exchange, self.config.timeout_seconds)
+        content = response_data["content"]
         if not content:
             raise SkillExtractionError("LLM returned empty content.")
-        usage = getattr(response, "usage", None)
-        finish_reason = getattr(response.choices[0], "finish_reason", None)
+        finish_reason = response_data["finish_reason"]
         self.last_response_diagnostics = ProviderResponseDiagnostics(
             finish_reason=str(finish_reason) if finish_reason is not None else None,
             response_char_count=len(content),
-            prompt_tokens=getattr(usage, "prompt_tokens", None),
-            completion_tokens=getattr(usage, "completion_tokens", None),
-            total_tokens=getattr(usage, "total_tokens", None),
+            prompt_tokens=response_data["prompt_tokens"],
+            completion_tokens=response_data["completion_tokens"],
+            total_tokens=response_data["total_tokens"],
             response_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
             likely_truncated=str(finish_reason).lower() == "length",
         )
