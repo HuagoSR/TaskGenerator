@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "deploy" / "docker"
 DEFAULT_HOST = "huago-cone"
 DEFAULT_RW_TASK = ROOT.parent / "rw-task"
+MIN_AVAILABLE_DISK_BYTES = 95 * 1024 * 1024 * 1024
 ALLOWED_RW_TASK = ("pyproject.toml", "README.md", "bench_standalone")
 FORBIDDEN_PARTS = {
     ".env",
@@ -187,7 +188,7 @@ def deploy_and_build(*, release_root: Path, host: str) -> dict:
                 f"mkdir -p '{home}/taskgenerator-data/runs' '{home}/taskgenerator-data/inputs' '{home}/taskgenerator-data/eval-workspaces'",
                 f"mkdir -p '{home}/taskgenerator-secrets'",
                 f"chmod 700 '{home}/taskgenerator-secrets' '{home}/.codex'",
-                f"test $(df --output=avail -B1 '{home}' | tail -1) -ge 107374182400",
+                f"test $(df --output=avail -B1 '{home}' | tail -1) -ge {MIN_AVAILABLE_DISK_BYTES}",
             ]
         ),
     )

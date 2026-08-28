@@ -172,6 +172,13 @@ class HuagoConeProductionContractTests(unittest.TestCase):
 
 
 class HuagoConeReleaseDefinitionTests(unittest.TestCase):
+    def test_release_runner_requires_95_gib_free_space(self):
+        from task_generator.cli.release import MIN_AVAILABLE_DISK_BYTES
+
+        self.assertEqual(MIN_AVAILABLE_DISK_BYTES, 95 * 1024 * 1024 * 1024)
+        text = (Path(__file__).parents[2] / "src" / "task_generator" / "cli" / "release.py").read_text(encoding="utf-8")
+        self.assertIn("-ge {MIN_AVAILABLE_DISK_BYTES}", text)
+
     def test_eval_image_pins_agent_versions(self):
         text = (Path(__file__).parents[2] / "deploy" / "docker" / "Dockerfile.agent-eval").read_text(encoding="utf-8")
         self.assertIn("CODEX_VERSION=0.146.0", text)
