@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from task_generator.core.external_model_policy import enforce_external_model_policy
+from task_generator.core.provider_deadline import provider_deadline
 from task_generator.core.source_schema import (
     ExtractedSkillCandidate,
     NormalizedSource,
@@ -457,7 +459,6 @@ class SkillExtractionError(RuntimeError):
 
 class LLMSkillExtractor(BaseSkillExtractor):
     def __init__(self, config: ProviderConfig, prompt_block_limit: int = 80, prompt_char_limit: int = 24000):
-        from task_generator.core.external_model_policy import enforce_external_model_policy
         enforce_external_model_policy(config.provider_name, config.model)
         self.config = config
         self.prompt_block_limit = prompt_block_limit
@@ -548,6 +549,7 @@ class LLMSkillExtractor(BaseSkillExtractor):
             api_key=self.config.api_key,
             base_url=self.config.base_url,
             timeout=self.config.timeout_seconds,
+            max_retries=0,
         )
         messages = [
             {
@@ -562,13 +564,14 @@ class LLMSkillExtractor(BaseSkillExtractor):
                 "content": self._build_prompt(package, max_candidates),
             },
         ]
-        response = client.chat.completions.create(
-            model=self.config.model,
-            messages=messages,
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            response_format={"type": "json_object"},
-        )
+        with provider_deadline(self.config.timeout_seconds):
+            response = client.chat.completions.create(
+                model=self.config.model,
+                messages=messages,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+                response_format={"type": "json_object"},
+            )
         content = response.choices[0].message.content
         if not content:
             raise SkillExtractionError("LLM returned empty content.")

@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import signal
 import shutil
-import threading
 import time
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from task_generator.substrate.skill_extractor import ProviderConfig
+from task_generator.core.provider_deadline import provider_deadline
 from task_generator.core.external_model_policy import enforce_external_model_policy
 from task_generator.planning.task_design_frontend import (
     CapabilityBriefV1,
@@ -1050,7 +1047,7 @@ class TaskDesignProposalExecutor:
         # Production runs on Linux, where an interval timer can interrupt the
         # blocking SDK request at the contract deadline.  Non-Linux callers
         # retain the finite SDK timeout (the server path is the governed one).
-        with self._provider_deadline(timeout_seconds):
+        with provider_deadline(timeout_seconds):
             response = OpenAI(
                 api_key=config.api_key,
                 base_url=config.base_url,
@@ -1095,41 +1092,6 @@ class TaskDesignProposalExecutor:
         if not isinstance(payload, dict):
             raise ValueError("task_design_provider_output_not_object")
         return payload, diagnostics
-
-    @staticmethod
-    @contextmanager
-    def _provider_deadline(timeout_seconds: int):
-        """Apply a real per-attempt deadline where signal timers are safe.
-
-        This intentionally lives beside the provider exchange instead of the
-        ten-task loop: a timeout remains a normal ``provider_failed`` outcome,
-        so the existing single governed format retry is still the only retry
-        authority.  ``SIGALRM`` is unavailable on Windows and unsafe outside
-        the main thread; those environments retain the explicit SDK timeout.
-        """
-        enabled = bool(
-            os.name != "nt"
-            and threading.current_thread() is threading.main_thread()
-            and hasattr(signal, "SIGALRM")
-            and hasattr(signal, "setitimer")
-        )
-        if not enabled:
-            yield
-            return
-
-        previous_handler = signal.getsignal(signal.SIGALRM)
-
-        def _deadline_exceeded(signum, frame):  # type: ignore[no-untyped-def]
-            del signum, frame
-            raise TimeoutError("task_design_provider_timeout_deadline_exceeded")
-
-        signal.signal(signal.SIGALRM, _deadline_exceeded)
-        signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
-        try:
-            yield
-        finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, previous_handler)
 
     @staticmethod
     def _failure_report(
