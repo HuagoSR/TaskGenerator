@@ -15,7 +15,7 @@ from task_generator.production.campaign import (
     atomic_json,
     file_sha,
 )
-from task_generator.production.substrate import ProductionSubstrateBuilder
+from task_generator.production.substrate import ProductionSubstrateBuilder, _retryable_error
 from task_generator.substrate.skill_extractor import ProviderConfig
 
 
@@ -61,6 +61,9 @@ class _FakeExtractor:
 
 
 class ProductionSubstrateTests(unittest.TestCase):
+    def test_cloudflare_524_is_a_single_retryable_transport_failure(self):
+        self.assertTrue(_retryable_error(RuntimeError("Error code: 524")))
+
     def test_builds_two_reviewed_scratch_pools_without_registry_mutation(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)

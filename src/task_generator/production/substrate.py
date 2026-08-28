@@ -96,7 +96,7 @@ def _retryable_error(exc: Exception) -> bool:
     markers = (
         "timeout", "timed out", "connection", "empty content", "empty response",
         "invalid json", "json", "schema", "truncat", "finish_reason=length",
-        " 408", " 429", " 500", " 502", " 503", " 504",
+        " 408", " 429", " 500", " 502", " 503", " 504", " 524",
     )
     return any(marker in text for marker in markers)
 

@@ -1143,7 +1143,7 @@ class TaskDesignProposalExecutor:
             return "http_408"
         if status == 429 or " 429" in text:
             return "http_429"
-        if isinstance(status, int) and 500 <= status <= 599:
+        if (isinstance(status, int) and 500 <= status <= 599) or " 524" in text:
             return "http_5xx"
         if "timeout" in text or "timed out" in text:
             return "timeout"
