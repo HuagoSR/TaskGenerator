@@ -28,9 +28,9 @@
 
 已建立公开来源目录、候选 seed、规则集和离线 admission CLI。每个领域审查四个候选、接纳两个：审计为公司自产信息可靠性与控制缺陷组合评估；采购为简易采购价格合理性与商业交付验收处置。所有种子描述角色、触发、目标、输入、自然问题、交付物和受众，并明确“规则/方法论”与“未来组织事实”的边界。该轮通过直接公开来源调研完成，未调用 Tuzi 或 DeepSeek；若未来语义批次使用 provider，仍按整批冻结和整批重启规则执行。
 
-### R10.2 — Scenario Bible compiler — `next / not_implemented`
+### R10.2 — Scenario Bible compiler — `incomplete / provider compatibility freeze`
 
-实现 teacher-only `ScenarioBibleV1` 与 `ProfessionalRuleSetV1`。每个世界必须有组织、角色、时间线、业务对象、正常背景、真实异常、未决问题、政策适用、决策后果和正确处理。验证事实唯一性、时间可行性、角色权限和政策适用边界。
+已实现 teacher-only Bible compiler、静态 validator 和单批官方 DeepSeek JSON 调用合同。它要求每个世界有组织、角色、时间线、业务对象、正常背景、真实异常、未决问题、政策适用、决策后果和正确处理，并验证事实唯一性、时间可行性、角色权限和政策边界。首次外部批次在 provider/SDK response validation 边界冻结为 `incomplete`，未产生 admitted Bible；不重跑、不混用或推断模型能力。后续新 batch 必须先完成独立 compatibility preflight，且保持单 provider、单次调用、零 SDK retry。
 
 ### R10.3 — Evidence projection — `not_implemented`
 
