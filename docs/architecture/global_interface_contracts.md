@@ -15,7 +15,8 @@
 | R10.3 readiness diagnostic | `implemented / historical diagnostic` | 证明叙事 Bible 不适合由严格确定性投影器直接物化；不建设 Bible V2。 |
 | R10.3 professional Skill foundation | `implemented / offline draft` | 两个 draft factory-side Skill、薄目录与渐进加载器已实现；未调用 provider、未生成任务，旧 Registry 未变。 |
 | R10.4 professional Skill curation | `implemented / public-source` | 两个 curated Skill 各绑定规范、工作实践和失败模式来源；DeepSeek 仅起草冻结公开来源批次，原始响应留在 ignored artifacts。 |
-| R10 derived evidence | `proposed / not_implemented` | 选择记录和派生证据包尚未实现。 |
+| R10.5 derived-evidence public probe | `incomplete / infrastructure` | 当前 eval image 中 Codex 可认证但 Shell 被宿主 Bubblewrap user-namespace policy 拒绝；零私有 Bible 上传。 |
+| R10 derived evidence | `proposed / blocked by public probe` | 选择记录和派生证据包尚未实现，不得在当前运行环境中执行。 |
 | R10 task/evaluation | `proposed / not_implemented` | Task/truth compilation、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts

@@ -40,9 +40,9 @@
 
 两个 Skill 已由同一冻结公开来源批次完成策展并升为 `curated`。每个 Skill 同时拥有规则、工作实践与失败模式来源；每条专业 instruction 均绑定 source ID。官方 DeepSeek 一次正常调用成功，原始响应和诊断仅留在 ignored artifacts。该阶段未生成任务，也未修改历史 Registry。
 
-### R10.5 — Derived evidence bundle experiment — `next / not_implemented`
+### R10.5 — Derived evidence bundle experiment — `incomplete / infrastructure`
 
-在 Scenario Bible 后选择至多 2–4 个 factory-side 专业 Skill，由 Agent 产生独立 `ScenarioEvidenceBundleV1`。该包绑定父 Bible 和 Skill 选择，记录非冲突场景扩展、candidate 文件和 teacher-only 映射。先对一个审计和一个采购 Bible 比较无 Skill/有 Skill 生成，不因单例失败手改任务；Skill 未产生可见专业增益时先修订 Skill。
+计划中的无 Skill/有 Skill 成对实验尚未开始。当前 `taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的公开 Codex/Terra probe 显示：认证可用，但所有 agent Shell 调用均被宿主机禁止非特权 Bubblewrap user namespace 拒绝。该状态为基础设施 `incomplete`，零私有 Bible 上传。必须先单独制定最小运行环境修复计划；不得以特权容器、Stirrup、临时换 agent 或选择性绕过 public probe 继续。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 

@@ -39,7 +39,7 @@ R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开
 
 ## R10 Execution Preconditions
 
-R10.0–R10.4 已完成。下一阶段是派生证据包实验：仅对 `scenario_audit_company_information_reliability` 与 `scenario_procurement_price_reasonableness` 运行无 Skill／有 Skill 的成对生成。该阶段必须先通过公开 agent/filesystem probe；每个条件一个独立 session，私有 Bible 不得超出该实验范围，且不得编译候选任务。
+R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已失败并冻结：现有 eval image 的 Codex/Terra 可认证，但所有 shell tool call 被 Bubblewrap user-namespace policy 拒绝。不得上传 `scenario_audit_company_information_reliability` 或 `scenario_procurement_price_reasonableness`，不得编译候选任务，也不得以特权容器或另一套 agent 框架绕过。恢复前须形成新的最小运行环境修复计划，并先重新通过公开 probe。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
