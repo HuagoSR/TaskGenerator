@@ -13,7 +13,7 @@ R9/R7 的服务器、任务包和评测证据均已冻结。R7 从零复验停�
 - 依据旧 receipt、旧 provider scope 或旧 campaign 继续调用；
 - 因模型分数或个别任务表现重抽、手改或重评已冻结任务。
 
-R10.0 与 R10.1 已完成：离线 schema/static admission，以及四个接纳的公开 Work Seed、两套专业规则和 seed-admission CLI 均已冻结。R10.2 首次官方 DeepSeek batch 已因 provider/SDK response validation 冻结为 `incomplete`；没有 admitted Bible 或任务包。不得把公开 seed、离线 fixture 或该失败 run 解释为生产结果、私有任务上传授权或模型能力证据。
+R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI，以及四份 teacher-only Scenario Bible 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。当前尚无候选文件或任务包。
 
 ## Stable Operational Rules
 
@@ -39,12 +39,12 @@ R10.0 与 R10.1 已完成：离线 schema/static admission，以及四个接纳�
 
 ## R10 Execution Preconditions
 
-R10.0/R10.1 已完成；R10.2 首次 batch 已冻结。开始新的 R10.2 compatibility preflight 或语义执行前，必须先完成并批准一个执行计划，至少冻结：
+R10.0/R10.1/R10.2 已完成。开始 R10.3 evidence projection 前，必须先完成并批准一个执行计划，至少冻结：
 
-1. 四个接纳 seed 对应的 Bible semantic input、teacher-only 输出边界和隐私边界。
-2. R10.2 provider compatibility preflight、冻结输入、整批重启与失败证据合同；schema 失败必须保存 response SHA 与 teacher-only 原文。
-3. Bible/projection/compiler、文件渲染和完整 package-isolation 测试。
-4. R10 release、parity、campaign、solver 和 grader 的独立执行合同。
+1. 四个冻结 Bible 的 candidate-visible 投影边界、teacher-only 输出边界和隐私边界。
+2. Evidence projection 的事实映射、文件/记录配额、正常背景、答案泄漏与不确定性合同。
+3. Projection/compiler、文件渲染和完整 package-isolation 测试。
+4. R10.4 task/truth、R10.5 solver/grader 和 release 的独立执行合同。
 
 只有这些前置条件通过后，才能启动新的 R10 source-to-package campaign；任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt。
 
