@@ -66,7 +66,7 @@ class ScenarioBibleCompilerTests(unittest.TestCase):
             saved_response = (output / "provider_response_content.json").is_file()
         self.assertEqual(report.decision, "pass")
         self.assertEqual(holder["body"]["response_format"], {"type": "json_object"})
-        self.assertEqual(holder["body"]["thinking"], {"type": "enabled"})
+        self.assertEqual(holder["body"]["thinking"], {"type": "disabled"})
         self.assertIn('"work_seed_id"', holder["body"]["messages"][0]["content"])
         self.assertIn("Use kind, never type", holder["body"]["messages"][0]["content"])
         self.assertEqual(holder["api_key"], "deepseek-secret-marker")
@@ -119,6 +119,20 @@ class ScenarioBibleCompilerTests(unittest.TestCase):
         self.assertEqual(report.first_failure, "provider_http_429")
         self.assertEqual(report.provider_http_status, 429)
         self.assertIsNone(report.response_sha256)
+
+    def test_truncated_content_is_preserved_without_retry(self):
+        seeds, rules = _inputs()
+        content = '{"bibles": ['
+        def executor(*args):
+            return 200, {"choices": [{"message": {"content": content}, "finish_reason": "length"}], "usage": {}}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "batch"
+            report = OfficialDeepSeekScenarioBibleCompiler(executor).compile(
+                seeds=seeds, rule_sets=rules, api_key="secret", output_root=output,
+            )
+            persisted = json.loads((output / "provider_response_content.json").read_text(encoding="utf-8"))
+        self.assertEqual(report.first_failure, "empty_or_truncated_provider_content")
+        self.assertEqual(persisted["response_sha256"], report.response_sha256)
 
     def test_static_validator_blocks_incomplete_world(self):
         seeds, rules = _inputs()

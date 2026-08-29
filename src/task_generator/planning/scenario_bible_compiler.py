@@ -139,13 +139,15 @@ class OfficialDeepSeekScenarioBibleCompiler:
             content = message.get("content")
             finish_reason = choice.get("finish_reason")
             usage = self._usage(response)
+            response_sha = None
+            if isinstance(content, str) and content:
+                response_sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+                self._write_json(output / "provider_response_content.json", {
+                    "response_sha256": response_sha,
+                    "content": content,
+                })
             if not content or finish_reason == "length":
-                return self._failure(output, input_sha, model, "empty_or_truncated_provider_content", finish_reason, usage, provider_http_status=status, provider_call_count=1)
-            response_sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
-            self._write_json(output / "provider_response_content.json", {
-                "response_sha256": response_sha,
-                "content": content,
-            })
+                return self._failure(output, input_sha, model, "empty_or_truncated_provider_content", finish_reason, usage, response_sha, status, provider_call_count=1)
             try:
                 payload = json.loads(content)
             except json.JSONDecodeError:
@@ -215,7 +217,7 @@ class OfficialDeepSeekScenarioBibleCompiler:
 
     @staticmethod
     def _messages(payload: dict[str, Any]) -> list[dict[str, str]]:
-        system = """You are compiling teacher-only professional Scenario Bibles. Return JSON only with exactly {\"bibles\":[...]}. Do not create candidate files, prompts, task packages, answer labels, or hidden reasoning.\n\nEach bibles item MUST be exactly this object shape (no aliases and no additional top-level keys):\n{\"contract_version\":\"r10.scenario_bible.1\",\"scenario_id\":\"string\",\"work_seed_id\":\"one supplied seed_id\",\"rule_set_id\":\"one supplied rule_set_id\",\"organization_name\":\"fictional name\",\"roles\":[{\"role_id\":\"string\",\"title\":\"string\",\"authorities\":[\"string\"]}],\"facts\":[{\"fact_id\":\"string\",\"kind\":\"organization|role|transaction|timeline|policy_application|normal_background|anomaly|open_issue|consequence|treatment\",\"statement\":\"string\",\"occurred_at\":0,\"actor_role_id\":\"role_id or null\",\"authority_required\":\"string or null\",\"knowledge\":\"confirmed|unresolved\",\"rule_ids\":[\"supplied rule id\"]}],\"correct_treatments\":[\"string\"]}\n\nRoles must be objects, not strings. policy_application, consequence, and treatment are fact.kind values inside facts, never top-level fields. Use kind, never type. Each Bible must bind one supplied seed and rule set; include 2-5 roles, 12-30 unique facts, at least six normal_background facts, 1-3 anomaly facts, 1-2 open_issue facts, policy_application, consequence, treatment, and correct_treatments. Use integer occurred_at sequence values. Facts must be fictional but operationally plausible and must not claim that a public source supplied organization-specific facts."""
+        system = """You are compiling teacher-only professional Scenario Bibles. Return JSON only with exactly {\"bibles\":[...]}. Do not create candidate files, prompts, task packages, answer labels, or hidden reasoning.\n\nEach bibles item MUST be exactly this object shape (no aliases and no additional top-level keys):\n{\"contract_version\":\"r10.scenario_bible.1\",\"scenario_id\":\"string\",\"work_seed_id\":\"one supplied seed_id\",\"rule_set_id\":\"one supplied rule_set_id\",\"organization_name\":\"fictional name\",\"roles\":[{\"role_id\":\"string\",\"title\":\"string\",\"authorities\":[\"string\"]}],\"facts\":[{\"fact_id\":\"string\",\"kind\":\"organization|role|transaction|timeline|policy_application|normal_background|anomaly|open_issue|consequence|treatment\",\"statement\":\"string\",\"occurred_at\":0,\"actor_role_id\":\"role_id or null\",\"authority_required\":\"string or null\",\"knowledge\":\"confirmed|unresolved\",\"rule_ids\":[\"supplied rule id\"]}],\"correct_treatments\":[\"string\"]}\n\nRoles must be objects, not strings. policy_application, consequence, and treatment are fact.kind values inside facts, never top-level fields. Use kind, never type. Each Bible must bind one supplied seed and rule set. Use two or three roles and exactly 12 to 14 unique facts: at least six normal_background facts, exactly one anomaly, exactly one open_issue, and at least one each of policy_application, consequence, treatment. Use integer occurred_at sequence values. Facts must be fictional but operationally plausible and must not claim that a public source supplied organization-specific facts."""
         return [{"role": "system", "content": system}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]
 
     @staticmethod
@@ -223,7 +225,7 @@ class OfficialDeepSeekScenarioBibleCompiler:
         return {
             "model": model, "messages": OfficialDeepSeekScenarioBibleCompiler._messages(payload),
             "response_format": {"type": "json_object"},
-            "thinking": {"type": "enabled"}, "reasoning_effort": "high",
+            "thinking": {"type": "disabled"},
             "max_tokens": 16000, "stream": False,
         }
 
