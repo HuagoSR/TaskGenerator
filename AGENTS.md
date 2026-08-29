@@ -21,23 +21,24 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness is implemented but blocked: V1 Bibles lack structured business objects, candidate visibility, artifact hints and field values, so no candidate file may be fabricated from prose alone. A structured-fact extension and fresh Bible batch are required before projection. Solver/grader runs, registry mutation, release activation, training and promotion remain unauthorized.
+R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness exposed that a deterministic projection of narrative Bibles is the wrong abstraction. Keep those Bibles frozen; do not build a structured Bible V2 or fabricate files from prose. The next implementation slice creates lightweight, source-grounded professional Skill packages and then lets the factory Agent produce a derived evidence bundle linked to its parent Bible. Solver/grader runs, registry mutation, release activation, training and promotion remain unauthorized.
 
 ## Architecture Boundaries
 
 ```text
 Public Work Seed → Professional Rules → Scenario Bible
-→ Evidence Projection → Candidate Task → Teacher Truth / Rubric
+→ Professional Skill Selection → Derived Evidence Bundle
+→ Candidate Task → Teacher Truth / Rubric
 → Static Admission → Behavioral Admission
 ```
 
 - A `WorkSeed` explains why a real worker receives a task; it is not a prompt or complete case.
-- `ScenarioBible` is teacher-only and the single authority for business facts.
+- `ScenarioBible` is the teacher-only parent authority for business facts. A frozen derived evidence bundle may add explicit, non-conflicting task facts while retaining its parent Bible link.
 - Candidate files are projections of the same world state. Facts, not labels such as `Questionable` or `Exception`, must reveal conflicts and gaps.
-- Skill constrains professional judgment, coverage and failure attribution. Motif is a relationship label, quota and analysis dimension; neither determines task form alone.
+- Professional Skill is an agent-native, source-grounded knowledge package for factory-side professional judgment, coverage and failure attribution. Generic tool skills are reused rather than duplicated. Motif is a relationship label and analysis dimension; neither determines task form alone.
 - GDPval is `eval_calibration_only`; never use its tasks, hidden rubrics or content as generation or training inputs.
 - Candidate-visible truth, teacher-only supervision and run/governance evidence must remain separate.
-- LLM may propose semantic content; deterministic code retains authority over facts, projections, submission paths, manifests, validation, registry and promotion.
+- LLM may propose semantic content and evidence extensions. Deterministic code retains only the hard boundaries: source linkage, candidate/teacher isolation, openable files, answer-leakage checks, submission paths, manifests and state changes.
 
 ## Repository Layout
 
@@ -46,7 +47,7 @@ Public Work Seed → Professional Rules → Scenario Bible
 - Active architecture docs: `docs/architecture/`.
 - Operational docs: `docs/operations/`.
 - Historical plans and reports: `docs/archive/`.
-- Active registry and governed stores: `SkillRegistry/`.
+- Historical registry: `SkillRegistry/` (read-only for R10); new professional Skill packages will live in `.agents/skills/r10/` only after their dedicated implementation stage.
 - Generated outputs and run reports: ignored `artifacts/`.
 
 Do not add implementation modules, experiments, screenshots, generated outputs or notebooks to the repository root. `Test/v2_outputs/` is no-touch unless the user explicitly reopens it.
@@ -77,4 +78,4 @@ Do not add implementation modules, experiments, screenshots, generated outputs o
 
 ## R10 Implementation Boundary
 
-The first implementation slice defines and tests `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1` and `ScenarioFirstAdmissionReportV1`. It establishes one source of business facts, requires 4–7 files and 20–60 records per task, preserves normal background records, and forbids answer-label leakage. The next slice may admit public Work Seeds and professional rules, but cannot create a provider campaign until its execution scope is separately frozen. Four tasks require full static and multi-model behavioral admission before any ten-task production plan.
+The implemented foundation defines `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1` and `ScenarioFirstAdmissionReportV1`. For the active R10 path, file and record counts are quality guidance, not new hard contracts. Hard boundaries are source linkage, normal business context, candidate/teacher isolation, no answer-label leakage, solvability (including supported uncertainty), openable deliverables and exact submission paths. The next slice creates two factory-side professional Skill packages; it must not call providers or create tasks. Four tasks require static and multi-model behavioral admission before any ten-task production plan.

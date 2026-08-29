@@ -29,16 +29,16 @@ R7 的 5/10 冻结结果没有达到 `production_ready_for_evaluation`，不得�
 
 ## R10 Admission Boundary
 
-R10 目前是 `proposed / not_implemented`，不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
+R10.0–R10.2 的离线合同、公开 seed 和 teacher-only Bible 已实现；R10 的候选任务、行为验收仍是 `not_implemented`。R10 不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
 
 1. 公开可追溯 Work Seed 与 Professional Rule Set；
 2. teacher-only Scenario Bible；
-3. 所有候选文件的 Evidence Projection Plan；
+3. factory-side 专业 Skill selection 与带父 Bible 追溯的派生证据包；
 4. Task Decision Matrix 与 task-specific rubric；
-5. 世界一致性、可解性、答案泄漏、文件和交付合同检查；
+5. 来源追溯、可解性、答案泄漏、文件可用性和交付合同检查；
 6. 四题 pilot 的多模型行为验收。
 
-只有 R10.5 pilot 的全部准入条件通过后，才可定义十题 production cohort。R10 不改变 R9 服务器发布器，也不授权任何 provider、solver、grader、训练、public release 或 promotion 操作。
+只有 R10.6 pilot 的全部准入条件通过后，才可定义十题 production cohort。R10 不改变 R9 服务器发布器，也不授权任何 provider、solver、grader、训练、public release 或 promotion 操作。
 
 ## Non-Goals
 

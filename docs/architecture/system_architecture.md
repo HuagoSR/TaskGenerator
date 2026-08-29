@@ -25,11 +25,11 @@ R9/R7 证明了工程闭环可运行，但不能证明自动任务具备职业�
 ```text
 公开真实工作种子
         ↓
-专业规则与 Skill 约束
+专业规则与按需加载的专业 Skill
         ↓
 teacher-only Scenario Bible
         ↓
-Evidence Projection Plan
+Agent 生成的派生证据包
         ↓
 candidate-visible 多来源文件
         ↓
@@ -46,11 +46,13 @@ teacher truth / task-specific rubric
 
 ### Scenario Bible
 
-`ScenarioBibleV1` 是单题业务事实的唯一权威，teacher-only。它包含组织、角色、时间线、交易或业务对象、政策适用、真实异常、未决问题、决策后果和正确处理。它先于候选文件存在，禁止由候选文件反推或与候选输入混存。
+`ScenarioBibleV1` 是单题原始业务事实的 teacher-only 父权威。它包含组织、角色、时间线、交易或业务对象、政策适用、真实异常、未决问题、决策后果和正确处理。它先于候选文件存在，禁止由候选文件反推或与候选输入混存。后续派生证据包只能显式补充不冲突的任务事实，并始终保留父 Bible 链接。
 
-### Evidence Projection
+### 专业 Skill 与派生证据包
 
-`EvidenceProjectionPlanV1` 将同一 Scenario Bible 投影为不同业务来源的文件、记录或消息。文件应保留各自产生目的、时间和口径；冲突必须由日期、金额、审批、版本或缺失等事实体现，不能用结论性标签替代。
+专业 Skill 是 Agent-native 知识包，而不是任务装配图。其 `SKILL.md` 只说明触发条件、工作目标、专业判断步骤和严重错误；长法规、模板和失败案例按需置于 `references/`、`assets/` 或 `scripts/`。通用表格、文档和 PDF 操作由现成工具 Skill 提供。
+
+原始 `ScenarioBibleV1` 保持冻结。出题 Agent 依据 Bible 与选中的 2–4 个专业 Skill 产生一个带父 Bible ID 的派生证据包，其中记录新增且不冲突的情景事实、candidate 文件和 teacher-only 证据映射。文件必须保留形成目的、时间和口径；冲突只能由日期、金额、审批、版本或缺失等事实体现，不能使用结论性标签。
 
 ### Task Compilation
 
@@ -58,14 +60,14 @@ teacher truth / task-specific rubric
 
 ### Admission 与反馈
 
-静态门禁检查来源、世界一致性、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
+静态门禁只检查来源追溯、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。文件与记录规模、正常背景比例和多 motif 覆盖作为质量指导，由用户审阅和行为实验检验，而不再驱动新的复杂本体。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
 
 ## Skill 与 Motif 的新职责
 
 | 对象 | R10 职责 | 不再承担的职责 |
 | --- | --- | --- |
-| Skill | 约束专业判断、验证能力覆盖、解释模型错误 | 直接决定题目模板或表格外形。 |
-| Motif | 描述信息关系、控制配额、分析复杂度 | 作为先验的业务故事生成器。 |
+| 专业 Skill | 为出题 Agent 提供专业判断、工作步骤和错误归因 | 直接决定题目模板、表格外形或 candidate 的默认能力。 |
+| Motif | 描述生成后出现的信息关系与分析维度 | 作为先验的业务故事生成器。 |
 | Scenario Bible | 提供业务因果和事实权威 | 向 candidate 直接暴露答案。 |
 
 一个情景可以包含多个 motif；motif 应从情景关系中识别，而不是先选 motif 再拼接业务故事。
@@ -75,4 +77,4 @@ teacher truth / task-specific rubric
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- R10 接口目前均为 proposed；在代码、离线测试和新授权完成前，不可调用 provider 或执行私有任务。
+- 已实现的 R10.0–R10.2 合同继续只读保留；Professional Skill、选择记录和派生证据包属于下一实现阶段。在获得该阶段验收前，不可调用 provider 或执行私有任务。

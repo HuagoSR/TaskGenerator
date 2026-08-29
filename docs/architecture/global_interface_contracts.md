@@ -12,7 +12,8 @@
 | R10 foundation | `implemented / offline only` | 六个 V1 合同和静态 admission validator 已实现；无 provider、文件物化或 campaign 权限。 |
 | R10.1 seed admission | `implemented / public-source only` | 来源目录、四候选×两领域的确定性准入、两套专业规则和离线 CLI 已实现。 |
 | R10.2 Bible compilation | `implemented / teacher-only` | 四份 Scenario Bible 已通过静态 admission；仍是叙事事实，不可直接物化。 |
-| R10.3 projection readiness | `implemented / blocked` | 确定性审计确认 V1 Bible 缺少对象、可见性、文件归属和字段值；不得凭空物化候选记录。 |
+| R10.3 readiness diagnostic | `implemented / historical diagnostic` | 证明叙事 Bible 不适合由严格确定性投影器直接物化；不建设 Bible V2。 |
+| R10 professional skills | `proposed / not_implemented` | 轻量 Skill 目录、选择记录和派生证据包尚未实现。 |
 | R10 task/evaluation | `proposed / not_implemented` | Task/truth compilation、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
@@ -67,11 +68,11 @@ Program: source boundary, facts, file projection, deliverable path,
 
 ### `ScenarioBibleV1` — implemented / offline only
 
-teacher-only 单一事实权威。应含组织、角色、时间线、业务对象/交易、政策适用、正常背景、真实异常、未决问题、决策后果和正确处理。每个候选文件及 teacher truth 都必须可追溯到该对象。
+teacher-only 原始事实父权威。应含组织、角色、时间线、业务对象/交易、政策适用、正常背景、真实异常、未决问题、决策后果和正确处理。后续候选文件和 teacher truth 必须可追溯到该 Bible 或其带父链接的派生证据包。
 
-### `EvidenceProjectionPlanV1` — implemented / offline only
+### `EvidenceProjectionPlanV1` — implemented / offline-only historical foundation
 
-将 Scenario Bible 投影为候选文件、记录或消息。每份投影记录原始业务目的、产生者、时间、可见字段和与世界状态的映射。不得使用结论性状态字段替代异常事实。
+旧的严格投影合同。它保留读取与诊断价值，但不再要求 R10 通过补全结构化 Bible 来满足它。
 
 ### `TaskDecisionMatrixV1` — implemented / offline only
 
@@ -83,9 +84,11 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 
 ## Skill and Motif Semantics in R10
 
-- Skill 约束专业判断、验证能力覆盖，并用于模型错误归因。
-- Motif 从 Scenario Bible 的关系中标注，用于配额、复杂度分析和覆盖报告。
-- 一个情景可有多个 motif；任一 motif 或 skill 都不能独自决定候选文件结构。
+- `ProfessionalSkillCatalogEntryV1` — `proposed`：仅包含 skill ID、名称、触发描述、领域、路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。
+- `SkillSelectionRecordV1` — `proposed`：记录父 Bible、factory-side 选择的 2–4 个专业 Skill 及选择理由；不暴露给 candidate 或 solver。
+- `ScenarioEvidenceBundleV1` — `proposed`：派生运行清单，绑定父 Bible 与 Skill selection，包含新增但不冲突的情景说明、candidate 文件和 teacher-only 证据映射；不是新的业务对象本体。
+- 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
+- Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
 
 ## R10.1 Public Seed Admission
 

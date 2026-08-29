@@ -13,7 +13,7 @@ R9/R7 的服务器、任务包和评测证据均已冻结。R7 从零复验停�
 - 依据旧 receipt、旧 provider scope 或旧 campaign 继续调用；
 - 因模型分数或个别任务表现重抽、手改或重评已冻结任务。
 
-R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI，以及四份 teacher-only Scenario Bible 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。当前尚无候选文件或任务包。
+R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI，以及四份 teacher-only Scenario Bible 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。R10.3 readiness gate 同时证明：不得用更复杂的结构化 Bible V2 或手工补字段来绕过叙事 Bible 的确定性投影限制。当前尚无候选文件或任务包。
 
 ## Stable Operational Rules
 
@@ -39,14 +39,16 @@ R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接�
 
 ## R10 Execution Preconditions
 
-R10.0/R10.1/R10.2 已完成。R10.3 projection-readiness gate 已确认当前 V1 Bible 无法确定性物化；开始结构化事实层修复和新的 Bible batch 前，必须先完成并批准一个执行计划，至少冻结：
+R10.0/R10.1/R10.2 已完成。下一阶段是离线的专业 Skill foundation：建立两个 factory-side Skill 包、轻量目录和按需加载测试；该阶段不得调用 provider、生成候选文件或修改历史 registry。
 
-1. 结构化事实层的对象 ID、candidate visibility、artifact hints 与 field values 合同，以及从 V1 Bible 重启的边界。
-2. 新 Bible batch 的冻结输入、单 provider、单次调用与失败证据合同。
-3. Evidence projection 的事实映射、文件/记录配额、正常背景、答案泄漏与不确定性测试。
-4. Projection/compiler、文件渲染、package-isolation，以及后续 task/truth、solver/grader 的独立执行合同。
+后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
-只有这些前置条件通过后，才能启动新的 R10 source-to-package campaign；任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt。
+1. 专业 Skill 的来源、版本、触发边界与只供 factory-side 使用的范围。
+2. 父 Bible、Skill selection、派生证据包、candidate 文件和 teacher-only 映射的隔离方式。
+3. 无 Skill/有 Skill 的相同输入比较、最小硬检查和失败归因方式。
+4. task/truth、solver/grader 各自独立的执行边界。
+
+任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt；每个阶段结束后必须先汇报并等待验收。
 
 ## Closeout
 
