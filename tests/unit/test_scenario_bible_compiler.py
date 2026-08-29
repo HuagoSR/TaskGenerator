@@ -69,6 +69,7 @@ class ScenarioBibleCompilerTests(unittest.TestCase):
         self.assertEqual(holder["body"]["thinking"], {"type": "disabled"})
         self.assertIn('"work_seed_id"', holder["body"]["messages"][0]["content"])
         self.assertIn("Use kind, never type", holder["body"]["messages"][0]["content"])
+        self.assertIn("produce exactly 14 facts", holder["body"]["messages"][0]["content"])
         self.assertEqual(holder["api_key"], "deepseek-secret-marker")
         self.assertNotIn("deepseek-secret-marker", persisted)
         self.assertTrue(saved_response)
