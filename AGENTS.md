@@ -21,7 +21,7 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. It will begin with four tasks, two audit and two procurement, derived only from public traceable work seeds. R10 is currently `proposed / not_implemented`: no provider calls, task uploads, solver/grader runs, registry mutation, release activation, training or promotion are authorized merely by this plan.
+R10 Scenario-First is the active research boundary. Its offline foundation is implemented: six V1 contracts and a report-only static admission validator. It will begin with four tasks, two audit and two procurement, derived only from public traceable work seeds. R10 external execution remains `proposed / not_implemented`: no provider calls, task uploads, solver/grader runs, registry mutation, release activation, training or promotion are authorized merely by the offline foundation.
 
 ## Architecture Boundaries
 
@@ -77,4 +77,4 @@ Do not add implementation modules, experiments, screenshots, generated outputs o
 
 ## R10 Implementation Boundary
 
-The first implementation slice must define and test `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1` and `ScenarioFirstAdmissionReportV1`. It must establish one source of business facts, project 4–7 files and 20–60 records per task, preserve normal background records, and forbid answer-label leakage. Four tasks require full static and multi-model behavioral admission before any ten-task production plan.
+The first implementation slice defines and tests `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1` and `ScenarioFirstAdmissionReportV1`. It establishes one source of business facts, requires 4–7 files and 20–60 records per task, preserves normal background records, and forbids answer-label leakage. The next slice may admit public Work Seeds and professional rules, but cannot create a provider campaign until its execution scope is separately frozen. Four tasks require full static and multi-model behavioral admission before any ten-task production plan.

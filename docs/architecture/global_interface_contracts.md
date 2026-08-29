@@ -9,7 +9,8 @@
 | --- | --- | --- |
 | Stable | `implemented` | 当前 R9 工厂或评测链使用，字段以代码 schema 为准。 |
 | Historical | `frozen` | 已关闭实验或 campaign 的读取兼容；不作为新执行入口。 |
-| R10 | `proposed / not_implemented` | 已批准研究设计，尚无代码、外部调用或生产权限。 |
+| R10 foundation | `implemented / offline only` | 六个 V1 合同和静态 admission validator 已实现；无 provider、文件物化或 campaign 权限。 |
+| R10 execution | `proposed / not_implemented` | Work Seed 调研、Scenario Bible 编译、证据投影、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
 
@@ -49,33 +50,33 @@ Program: source boundary, facts, file projection, deliverable path,
 - registry、默认链、release 和训练状态只能由显式 review/apply 路径改变。
 - 外部调用必须绑定当前实现、任务包、provider policy、预算和 retry 边界；历史 receipt 不可复用。
 
-## R10 Proposed Contracts
+## R10 Scenario-First Contracts
 
-以下合同尚未实现。任何实际 schema、CLI、provider 调用、文件格式或授权策略必须在 R10.0–R10.4 的代码设计与离线测试中重新冻结。
+以下六个合同已在 `task_generator.core.scenario_first` 实现为严格、可规范化哈希的离线 Pydantic schema。它们不包含 provider、CLI、文件物化或外部执行语义；后续执行层仍须单独设计、测试与授权。
 
-### `WorkSeedV1`
+### `WorkSeedV1` — implemented / offline only
 
 公开可追溯的职业工作原型。最少记录：公开来源、角色、触发事件、业务目标、典型输入、自然问题、交付物、受众和来源到抽象的说明。它不包含完整题目、答案或私有工作材料。
 
-### `ProfessionalRuleSetV1`
+### `ProfessionalRuleSetV1` — implemented / offline only
 
 从来源提炼的适用条件、证据要求、例外、禁止假设和可接受处理。它约束 Scenario Bible 与评分，不得冒充具体组织的事实。
 
-### `ScenarioBibleV1`
+### `ScenarioBibleV1` — implemented / offline only
 
 teacher-only 单一事实权威。应含组织、角色、时间线、业务对象/交易、政策适用、正常背景、真实异常、未决问题、决策后果和正确处理。每个候选文件及 teacher truth 都必须可追溯到该对象。
 
-### `EvidenceProjectionPlanV1`
+### `EvidenceProjectionPlanV1` — implemented / offline only
 
 将 Scenario Bible 投影为候选文件、记录或消息。每份投影记录原始业务目的、产生者、时间、可见字段和与世界状态的映射。不得使用结论性状态字段替代异常事实。
 
-### `TaskDecisionMatrixV1`
+### `TaskDecisionMatrixV1` — implemented / offline only
 
 每个关键判断点绑定候选可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。它是 teacher truth 与 task-specific rubric 的中间权威，不允许直接暴露给 candidate。
 
-### `ScenarioFirstAdmissionReportV1`
+### `ScenarioFirstAdmissionReportV1` — implemented / static only
 
-R10 静态和行为准入报告。至少覆盖来源追溯、世界一致性、文件投影、candidate/teacher isolation、可解性、答案泄漏、交付合同、模型交付和模型区分度。
+R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文件投影、直接 teacher-treatment 泄漏、可解性和决策覆盖；完整 package isolation、交付合同、模型交付和模型区分度属于后续阶段。
 
 ## Skill and Motif Semantics in R10
 
@@ -85,4 +86,4 @@ R10 静态和行为准入报告。至少覆盖来源追溯、世界一致性、�
 
 ## Compatibility
 
-R10 不修改当前已持久化的 R9 package、manifest、report、rubric 或 archive。现有稳定合同保持读取兼容，直到 R10 离线实现和迁移方案经单独批准。
+R10 不修改当前已持久化的 R9 package、manifest、report、rubric 或 archive。现有稳定合同保持读取兼容；R10 的外部执行、生产迁移和 release 方案仍须单独批准。

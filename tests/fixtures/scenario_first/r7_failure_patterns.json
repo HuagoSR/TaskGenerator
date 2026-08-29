@@ -1,0 +1,10 @@
+{
+  "fixture_version": "r10.r7_failure_patterns.1",
+  "content_policy": "diagnostic-only; no historical task text, identifiers, rows, or provider output",
+  "patterns": [
+    {"pattern_id": "small_evidence_set", "expected_category": "projection_integrity", "reason": "A multi-file task needs normal operational background, not only a few decisive rows."},
+    {"pattern_id": "answer_label_column", "expected_category": "answer_leakage", "reason": "Conclusion labels in candidate-visible files turn review into lookup."},
+    {"pattern_id": "weak_business_timeline", "expected_category": "world_consistency", "reason": "Facts must have a feasible operational sequence."},
+    {"pattern_id": "generic_rubric_without_decision_truth", "expected_category": "decision_coverage", "reason": "Professional decisions need task-specific evidence and major-error definitions."}
+  ]
+}

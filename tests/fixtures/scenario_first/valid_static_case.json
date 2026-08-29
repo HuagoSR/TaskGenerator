@@ -1,0 +1,86 @@
+{
+  "work_seed": {
+    "seed_id": "seed_procurement_receipt_review",
+    "domain": "procurement_operations",
+    "public_sources": [{"source_id": "source_far", "normalized_source_id": "norm_far", "block_ids": ["block_13"], "locator": "https://example.gov/far/receipt", "abstraction_note": "Explains the public method, not organization facts."}],
+    "role": "Procurement analyst",
+    "trigger_event": "A receiving-period review is due before invoice approval.",
+    "business_goal": "Determine which invoice lines can proceed and what requires follow-up.",
+    "typical_inputs": ["purchase order lines", "receiving records"],
+    "natural_questions": ["Does receipt evidence support approval?"],
+    "expected_deliverable": "review workbook",
+    "audience": "accounts payable supervisor",
+    "abstraction_boundary": "The seed supplies a work pattern; all organization facts belong only to the scenario bible."
+  },
+  "rule_set": {
+    "rule_set_id": "rules_procurement_receipt_review",
+    "domain": "procurement_operations",
+    "rules": [{
+      "rule_id": "rule_receipt_evidence",
+      "title": "Receipt evidence before approval",
+      "source_refs": [{"source_id": "source_far", "normalized_source_id": "norm_far", "block_ids": ["block_13"], "locator": "https://example.gov/far/receipt", "abstraction_note": "Supports the evidence requirement."}],
+      "applicability_conditions": ["Invoice is matched to a purchase order."],
+      "evidence_requirements": ["Receiving record identifies the order line and quantity."],
+      "exceptions": ["Documented partial receipt may justify a partial disposition."],
+      "forbidden_assumptions": ["Do not assume a receipt occurred when evidence is missing."],
+      "acceptable_handling": ["Hold the unsupported portion and request evidence."]
+    }]
+  },
+  "bible": {
+    "scenario_id": "scenario_northstar_receipt_review",
+    "work_seed_id": "seed_procurement_receipt_review",
+    "rule_set_id": "rules_procurement_receipt_review",
+    "organization_name": "Northstar Public Services",
+    "roles": [
+      {"role_id": "role_buyer", "title": "Buyer", "authorities": ["issues purchase orders"]},
+      {"role_id": "role_analyst", "title": "Procurement analyst", "authorities": ["reviews evidence", "recommends disposition"]}
+    ],
+    "facts": [
+      {"fact_id": "fact_normal", "kind": "normal_background", "statement": "Routine order lines have matched receipts.", "occurred_at": 1, "actor_role_id": "role_buyer", "rule_ids": ["rule_receipt_evidence"]},
+      {"fact_id": "fact_anomaly", "kind": "anomaly", "statement": "One invoice quantity exceeds the recorded receipt quantity.", "occurred_at": 2, "actor_role_id": "role_analyst", "rule_ids": ["rule_receipt_evidence"]},
+      {"fact_id": "fact_open", "kind": "open_issue", "statement": "A receiving record is unavailable for one order line.", "occurred_at": 3, "actor_role_id": "role_analyst", "knowledge": "unresolved", "rule_ids": ["rule_receipt_evidence"]}
+    ],
+    "correct_treatments": ["Approve supported lines, hold unsupported quantities, and request missing receipt evidence."]
+  },
+  "projection": {
+    "scenario_id": "scenario_northstar_receipt_review",
+    "artifacts": [
+      {"artifact_id": "po_lines", "business_purpose": "Authorized order detail", "producer_role_id": "role_buyer", "created_at": 1, "format": "xlsx", "candidate_visible_fields": ["line_id", "ordered_qty", "unit_price"], "records": [
+        {"record_id": "po_1", "fact_ids": ["fact_normal"], "values": {"line_id": "L1", "ordered_qty": 10, "unit_price": 8}, "record_class": "normal"},
+        {"record_id": "po_2", "fact_ids": ["fact_normal"], "values": {"line_id": "L2", "ordered_qty": 8, "unit_price": 6}, "record_class": "normal"},
+        {"record_id": "po_3", "fact_ids": ["fact_normal"], "values": {"line_id": "L3", "ordered_qty": 5, "unit_price": 4}, "record_class": "normal"},
+        {"record_id": "po_4", "fact_ids": ["fact_anomaly"], "values": {"line_id": "L4", "ordered_qty": 12, "unit_price": 9}, "record_class": "decision_relevant"},
+        {"record_id": "po_5", "fact_ids": ["fact_open"], "values": {"line_id": "L5", "ordered_qty": 7, "unit_price": 7}, "record_class": "decision_relevant"}
+      ]},
+      {"artifact_id": "receipts", "business_purpose": "Warehouse receiving history", "producer_role_id": "role_buyer", "created_at": 2, "format": "xlsx", "candidate_visible_fields": ["line_id", "received_qty", "receipt_date"], "records": [
+        {"record_id": "rcv_1", "fact_ids": ["fact_normal"], "values": {"line_id": "L1", "received_qty": 10, "receipt_date": "2026-08-01"}, "record_class": "normal"},
+        {"record_id": "rcv_2", "fact_ids": ["fact_normal"], "values": {"line_id": "L2", "received_qty": 8, "receipt_date": "2026-08-01"}, "record_class": "normal"},
+        {"record_id": "rcv_3", "fact_ids": ["fact_normal"], "values": {"line_id": "L3", "received_qty": 5, "receipt_date": "2026-08-02"}, "record_class": "normal"},
+        {"record_id": "rcv_4", "fact_ids": ["fact_anomaly"], "values": {"line_id": "L4", "received_qty": 10, "receipt_date": "2026-08-02"}, "record_class": "decision_relevant"},
+        {"record_id": "rcv_5", "fact_ids": ["fact_open"], "values": {"line_id": "L5", "received_qty": "", "receipt_date": ""}, "record_class": "decision_relevant"}
+      ]},
+      {"artifact_id": "invoices", "business_purpose": "Supplier invoice detail", "producer_role_id": "role_buyer", "created_at": 3, "format": "xlsx", "candidate_visible_fields": ["line_id", "invoiced_qty", "invoice_date"], "records": [
+        {"record_id": "inv_1", "fact_ids": ["fact_normal"], "values": {"line_id": "L1", "invoiced_qty": 10, "invoice_date": "2026-08-03"}, "record_class": "normal"},
+        {"record_id": "inv_2", "fact_ids": ["fact_normal"], "values": {"line_id": "L2", "invoiced_qty": 8, "invoice_date": "2026-08-03"}, "record_class": "normal"},
+        {"record_id": "inv_3", "fact_ids": ["fact_normal"], "values": {"line_id": "L3", "invoiced_qty": 5, "invoice_date": "2026-08-03"}, "record_class": "normal"},
+        {"record_id": "inv_4", "fact_ids": ["fact_anomaly"], "values": {"line_id": "L4", "invoiced_qty": 12, "invoice_date": "2026-08-03"}, "record_class": "decision_relevant"},
+        {"record_id": "inv_5", "fact_ids": ["fact_open"], "values": {"line_id": "L5", "invoiced_qty": 7, "invoice_date": "2026-08-03"}, "record_class": "decision_relevant"}
+      ]},
+      {"artifact_id": "request_log", "business_purpose": "Operational request history", "producer_role_id": "role_analyst", "created_at": 4, "format": "email", "candidate_visible_fields": ["line_id", "request_text", "sent_date"], "records": [
+        {"record_id": "req_1", "fact_ids": ["fact_normal"], "values": {"line_id": "L1", "request_text": "routine review", "sent_date": "2026-08-04"}, "record_class": "normal"},
+        {"record_id": "req_2", "fact_ids": ["fact_normal"], "values": {"line_id": "L2", "request_text": "routine review", "sent_date": "2026-08-04"}, "record_class": "normal"},
+        {"record_id": "req_3", "fact_ids": ["fact_normal"], "values": {"line_id": "L3", "request_text": "routine review", "sent_date": "2026-08-04"}, "record_class": "normal"},
+        {"record_id": "req_4", "fact_ids": ["fact_anomaly"], "values": {"line_id": "L4", "request_text": "confirm partial receipt", "sent_date": "2026-08-04"}, "record_class": "decision_relevant"},
+        {"record_id": "req_5", "fact_ids": ["fact_open"], "values": {"line_id": "L5", "request_text": "receipt record not supplied", "sent_date": "2026-08-04"}, "record_class": "decision_relevant"}
+      ]}
+    ]
+  },
+  "matrix": {
+    "scenario_id": "scenario_northstar_receipt_review",
+    "decision_points": [
+      {"decision_id": "decision_l1", "question": "Can line L1 proceed?", "evidence_refs": [{"artifact_id": "po_lines", "record_id": "po_1", "field_names": ["line_id", "ordered_qty"]}, {"artifact_id": "receipts", "record_id": "rcv_1", "field_names": ["received_qty"]}], "rule_ids": ["rule_receipt_evidence"], "skill_ids": ["skill_evidence_review"], "acceptable_conclusions": ["Approve L1."], "major_errors": ["Rejecting supported L1."], "required_follow_up_actions": ["Document the match."]},
+      {"decision_id": "decision_l4", "question": "How should L4 be handled?", "evidence_refs": [{"artifact_id": "invoices", "record_id": "inv_4", "field_names": ["invoiced_qty"]}, {"artifact_id": "receipts", "record_id": "rcv_4", "field_names": ["received_qty"]}], "rule_ids": ["rule_receipt_evidence"], "skill_ids": ["skill_evidence_review"], "acceptable_conclusions": ["Hold the unsupported quantity."], "major_errors": ["Approve the unsupported quantity."], "required_follow_up_actions": ["Request support for the difference."]},
+      {"decision_id": "decision_l5", "question": "How should L5 be handled while receipt evidence is absent?", "evidence_refs": [{"artifact_id": "po_lines", "record_id": "po_5", "field_names": ["line_id"]}, {"artifact_id": "receipts", "record_id": "rcv_5", "field_names": ["received_qty"]}], "rule_ids": ["rule_receipt_evidence"], "skill_ids": ["skill_evidence_review"], "acceptable_conclusions": ["Do not approve without evidence."], "major_errors": ["Assuming the missing receipt occurred."], "allowed_uncertainty_conclusions": ["Evidence is insufficient to determine receipt."], "required_follow_up_actions": ["Request the missing receiving record."]}
+    ]
+  }
+}
