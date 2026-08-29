@@ -32,9 +32,9 @@
 
 已实现 teacher-only Bible compiler、静态 validator 和单批官方 DeepSeek JSON 调用合同。四份正式 Bible 已通过 admission：每份含 3 个角色、14 条事实（6 条正常背景、1 条异常、1 条未决问题及政策、后果、处理事实），并验证事实唯一性、时间可行性、角色权限和政策边界。原始 SDK/schema 与输出截断 run 保留为冻结诊断，不混入正式 evidence；后续任何新 Bible batch 仍须保持单 provider、单次调用、零 SDK retry。
 
-### R10.3 — Evidence projection — `not_implemented`
+### R10.3 — Evidence projection — `blocked / structured-fact gap`
 
-实现 `EvidenceProjectionPlanV1`，从单一世界状态生成 4–7 份候选文件、20–60 条记录。文件应模拟不同业务来源与形成时间；正常记录占多数，3–5 个关键判断点跨文件出现。异常只能由底层事实、缺失、版本、金额、日期或权限关系表达。
+已实现 report-only projection-readiness gate。四份正式 Bible 均缺少业务对象 ID、candidate visibility、artifact hints 和 field values；因此它们不能在不新增/臆造组织事实的前提下确定性生成 4–7 份候选文件和 20–60 条记录。下一步不是手工补题，而是设计新的 teacher-only 结构化事实扩展，随后从新的、完整 Bible batch 重启投影。文件应模拟不同业务来源与形成时间；正常记录占多数，3–5 个关键判断点跨文件出现。异常只能由底层事实、缺失、版本、金额、日期或权限关系表达。
 
 ### R10.4 — Task and truth compilation — `not_implemented`
 

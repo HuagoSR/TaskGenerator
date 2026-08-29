@@ -21,7 +21,7 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 evidence projection is next; no candidate task, solver/grader run, registry mutation, release activation, training or promotion is authorized merely by the completed upstream slices.
+R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness is implemented but blocked: V1 Bibles lack structured business objects, candidate visibility, artifact hints and field values, so no candidate file may be fabricated from prose alone. A structured-fact extension and fresh Bible batch are required before projection. Solver/grader runs, registry mutation, release activation, training and promotion remain unauthorized.
 
 ## Architecture Boundaries
 

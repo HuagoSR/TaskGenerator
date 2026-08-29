@@ -39,12 +39,12 @@ R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接�
 
 ## R10 Execution Preconditions
 
-R10.0/R10.1/R10.2 已完成。开始 R10.3 evidence projection 前，必须先完成并批准一个执行计划，至少冻结：
+R10.0/R10.1/R10.2 已完成。R10.3 projection-readiness gate 已确认当前 V1 Bible 无法确定性物化；开始结构化事实层修复和新的 Bible batch 前，必须先完成并批准一个执行计划，至少冻结：
 
-1. 四个冻结 Bible 的 candidate-visible 投影边界、teacher-only 输出边界和隐私边界。
-2. Evidence projection 的事实映射、文件/记录配额、正常背景、答案泄漏与不确定性合同。
-3. Projection/compiler、文件渲染和完整 package-isolation 测试。
-4. R10.4 task/truth、R10.5 solver/grader 和 release 的独立执行合同。
+1. 结构化事实层的对象 ID、candidate visibility、artifact hints 与 field values 合同，以及从 V1 Bible 重启的边界。
+2. 新 Bible batch 的冻结输入、单 provider、单次调用与失败证据合同。
+3. Evidence projection 的事实映射、文件/记录配额、正常背景、答案泄漏与不确定性测试。
+4. Projection/compiler、文件渲染、package-isolation，以及后续 task/truth、solver/grader 的独立执行合同。
 
 只有这些前置条件通过后，才能启动新的 R10 source-to-package campaign；任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt。
 

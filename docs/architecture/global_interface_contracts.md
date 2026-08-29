@@ -11,7 +11,9 @@
 | Historical | `frozen` | 已关闭实验或 campaign 的读取兼容；不作为新执行入口。 |
 | R10 foundation | `implemented / offline only` | 六个 V1 合同和静态 admission validator 已实现；无 provider、文件物化或 campaign 权限。 |
 | R10.1 seed admission | `implemented / public-source only` | 来源目录、四候选×两领域的确定性准入、两套专业规则和离线 CLI 已实现。 |
-| R10 execution | `proposed / not_implemented` | Scenario Bible 编译、证据投影、任务包与行为验收尚未实现。 |
+| R10.2 Bible compilation | `implemented / teacher-only` | 四份 Scenario Bible 已通过静态 admission；仍是叙事事实，不可直接物化。 |
+| R10.3 projection readiness | `implemented / blocked` | 确定性审计确认 V1 Bible 缺少对象、可见性、文件归属和字段值；不得凭空物化候选记录。 |
+| R10 task/evaluation | `proposed / not_implemented` | Task/truth compilation、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
 
