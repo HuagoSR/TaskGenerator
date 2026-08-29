@@ -24,11 +24,11 @@
 
 已实现六个严格 V1 合同、规范化 SHA、report-only 静态 admission validator 与不含私有任务内容的 R7 诊断 fixture。当前验证来源追溯、世界引用/时间线、投影规模与事实映射、正常背景比例、答案标签与直接 teacher-treatment 泄漏、决策证据覆盖和不确定性处理。该层不读取密钥、不调用 provider、不抓取来源、不物化文件，也不改变 R9/R7。
 
-### R10.1 — Public Work Seed admission — `next / not_implemented`
+### R10.1 — Public Work Seed admission — `implemented / public-source only`
 
-实现 `WorkSeedV1` 与公开来源准入。每个 seed 必须描述角色、触发事件、业务目标、典型输入、自然问题、交付物和受众，并链接到公开案例、监管/审计报告、公开模板或流程说明。首轮为审计、采购各选两个 seed；LLM 不得凭规范直接编造 seed。
+已建立公开来源目录、候选 seed、规则集和离线 admission CLI。每个领域审查四个候选、接纳两个：审计为公司自产信息可靠性与控制缺陷组合评估；采购为简易采购价格合理性与商业交付验收处置。所有种子描述角色、触发、目标、输入、自然问题、交付物和受众，并明确“规则/方法论”与“未来组织事实”的边界。该轮通过直接公开来源调研完成，未调用 Tuzi 或 DeepSeek；若未来语义批次使用 provider，仍按整批冻结和整批重启规则执行。
 
-### R10.2 — Scenario Bible compiler — `not_implemented`
+### R10.2 — Scenario Bible compiler — `next / not_implemented`
 
 实现 teacher-only `ScenarioBibleV1` 与 `ProfessionalRuleSetV1`。每个世界必须有组织、角色、时间线、业务对象、正常背景、真实异常、未决问题、政策适用、决策后果和正确处理。验证事实唯一性、时间可行性、角色权限和政策适用边界。
 

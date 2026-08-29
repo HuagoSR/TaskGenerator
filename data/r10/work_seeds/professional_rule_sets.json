@@ -1,0 +1,68 @@
+[
+  {
+    "rule_set_id": "r10_rules_audit_evidence_and_deficiency",
+    "domain": "audit_compliance",
+    "rules": [
+      {
+        "rule_id": "audit_company_information_reliability",
+        "title": "Evaluate company-produced information before relying on it",
+        "source_refs": [{"source_id": "pcaob_as1105", "normalized_source_id": "r10_norm_pcaob_as1105", "block_ids": ["as1105_10"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105", "abstraction_note": "Defines the professional evidence requirement, not the future organization facts."}],
+        "applicability_conditions": ["The audit team intends to use company-produced information as audit evidence."],
+        "evidence_requirements": ["Evaluate accuracy and completeness or relevant controls.", "Evaluate whether the information is sufficiently precise and detailed."],
+        "forbidden_assumptions": ["Do not treat management output as reliable solely because it agrees with an unsupported summary."],
+        "acceptable_handling": ["Perform corroborating procedures or document why evidence remains insufficient."]
+      },
+      {
+        "rule_id": "audit_evidence_conflict_response",
+        "title": "Respond to doubts about evidence reliability",
+        "source_refs": [{"source_id": "pcaob_as1105", "normalized_source_id": "r10_norm_pcaob_as1105", "block_ids": ["as1105_09"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105", "abstraction_note": "Defines a response when records conflict or authenticity is doubtful."}],
+        "applicability_conditions": ["Evidence appears modified, inconsistent, or otherwise unreliable."],
+        "evidence_requirements": ["Identify the reliability concern and perform an appropriate additional response."],
+        "forbidden_assumptions": ["Do not resolve a conflict by selecting the record that is most convenient."],
+        "acceptable_handling": ["Seek corroboration, revise procedures, or leave the conclusion unresolved with follow-up."]
+      },
+      {
+        "rule_id": "audit_control_deficiency_severity",
+        "title": "Evaluate control deficiencies individually and in combination",
+        "source_refs": [{"source_id": "pcaob_as2201", "normalized_source_id": "r10_norm_pcaob_as2201", "block_ids": ["as2201_62_65"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS2201", "abstraction_note": "Provides the evaluation factors, not a conclusion for a future scenario."}],
+        "applicability_conditions": ["Control deficiencies have been identified during an integrated audit."],
+        "evidence_requirements": ["Consider reasonable possibility, potential magnitude, and interactions among deficiencies."],
+        "forbidden_assumptions": ["Do not conclude severity solely because a misstatement did or did not occur."],
+        "acceptable_handling": ["Document the evaluation and escalate conclusions supported by the combined evidence."]
+      }
+    ]
+  },
+  {
+    "rule_set_id": "r10_rules_procurement_award_and_acceptance",
+    "domain": "procurement_operations",
+    "rules": [
+      {
+        "rule_id": "procurement_price_reasonableness_before_award",
+        "title": "Establish fair and reasonable price before award",
+        "source_refs": [{"source_id": "far_13_106_3", "normalized_source_id": "r10_norm_far_13_106_3", "block_ids": ["far13_106_3a"], "locator": "https://www.acquisition.gov/far/13.106-3", "abstraction_note": "Defines the award-file requirement, not a supplier or price fact."}],
+        "applicability_conditions": ["A simplified acquisition is ready for award."],
+        "evidence_requirements": ["Determine price fairness and reasonableness.", "When only one response is received, document the supporting basis."],
+        "forbidden_assumptions": ["Do not treat a catalog price alone as sufficient proof of fairness and reasonableness."],
+        "acceptable_handling": ["Use a permitted comparison or research basis and record it in the file."]
+      },
+      {
+        "rule_id": "procurement_file_documentation",
+        "title": "Retain support sufficient for management review",
+        "source_refs": [{"source_id": "far_13_106_3", "normalized_source_id": "r10_norm_far_13_106_3", "block_ids": ["far13_106_3b"], "locator": "https://www.acquisition.gov/far/13.106-3", "abstraction_note": "Defines minimum documentation concepts, not future file content."}],
+        "applicability_conditions": ["Quotation or offer information supports a simplified acquisition decision."],
+        "evidence_requirements": ["Retain the relevant price, delivery, supplier-contact, and other support."],
+        "forbidden_assumptions": ["Do not omit the basis for a non-price selection factor."],
+        "acceptable_handling": ["Prepare a concise reviewable record linked to the decision."]
+      },
+      {
+        "rule_id": "procurement_commercial_acceptance_boundary",
+        "title": "Apply the appropriate quality assurance and acceptance boundary",
+        "source_refs": [{"source_id": "far_46_202_1", "normalized_source_id": "r10_norm_far_46_202_1", "block_ids": ["far46_202_1"], "locator": "https://www.acquisition.gov/far/46.202-1", "abstraction_note": "Defines the general commercial quality-assurance boundary, not product facts."}],
+        "applicability_conditions": ["Commercial products or services are tendered under a contract with relevant quality requirements."],
+        "evidence_requirements": ["Identify the contract requirement and available contractor quality evidence before disposition."],
+        "forbidden_assumptions": ["Do not accept an item merely because delivery occurred."],
+        "acceptable_handling": ["Accept conforming support, or document hold/follow-up when evidence does not establish conformity."]
+      }
+    ]
+  }
+]

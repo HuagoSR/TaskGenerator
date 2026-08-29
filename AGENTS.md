@@ -21,7 +21,7 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. Its offline foundation is implemented: six V1 contracts and a report-only static admission validator. It will begin with four tasks, two audit and two procurement, derived only from public traceable work seeds. R10 external execution remains `proposed / not_implemented`: no provider calls, task uploads, solver/grader runs, registry mutation, release activation, training or promotion are authorized merely by the offline foundation.
+R10 Scenario-First is the active research boundary. R10.0 offline contracts and R10.1 public seed admission are implemented: four admitted public Work Seeds (two audit, two procurement), two professional rule sets, six V1 contracts and report-only validators. R10 Scenario Bible and external execution remain `proposed / not_implemented`: no provider calls, task uploads, solver/grader runs, registry mutation, release activation, training or promotion are authorized merely by these offline/public-source slices.
 
 ## Architecture Boundaries
 

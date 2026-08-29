@@ -1,0 +1,158 @@
+[
+  {
+    "candidate_id": "candidate_audit_company_information_reliability",
+    "work_pattern_id": "audit_company_information_reliability_review",
+    "status": "admitted",
+    "selection_rationale": "A recurring audit work trigger with natural multi-file evidence, a real reviewer audience, and a clear distinction between corroboration and unsupported reliance.",
+    "seed": {
+      "seed_id": "seed_audit_company_information_reliability",
+      "domain": "audit_compliance",
+      "public_sources": [{"source_id": "pcaob_as1105", "normalized_source_id": "r10_norm_pcaob_as1105", "block_ids": ["as1105_10", "as1105_09"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105", "abstraction_note": "The source supports evidence evaluation method; later business records will be invented only in the Scenario Bible."}],
+      "role": "Audit senior",
+      "trigger_event": "A client-generated operational report is proposed as support for a substantive audit conclusion.",
+      "business_goal": "Determine whether the report can be relied on, what corroboration is required, and what remains unresolved.",
+      "typical_inputs": ["client system export", "management summary", "supporting transaction records"],
+      "natural_questions": ["Are the report's population and calculations sufficiently supported?", "Does conflicting evidence require expanded procedures?"],
+      "expected_deliverable": "audit evidence reliability workpaper",
+      "audience": "audit manager",
+      "abstraction_boundary": "The seed supplies an occupational trigger and methodology only; no client identity, account, amount, or outcome is imported from the source."
+    }
+  },
+  {
+    "candidate_id": "candidate_audit_control_deficiency_aggregation",
+    "work_pattern_id": "audit_control_deficiency_aggregation",
+    "status": "admitted",
+    "selection_rationale": "This seed requires professional synthesis across observations and avoids a simple one-row exception lookup; combined effects create natural judgment and escalation choices.",
+    "seed": {
+      "seed_id": "seed_audit_control_deficiency_aggregation",
+      "domain": "audit_compliance",
+      "public_sources": [{"source_id": "pcaob_as2201", "normalized_source_id": "r10_norm_pcaob_as2201", "block_ids": ["as2201_62_65"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS2201", "abstraction_note": "The source provides severity factors; future control observations and outcomes must be Scenario Bible facts."}],
+      "role": "Audit senior",
+      "trigger_event": "Control walkthrough and testing observations are ready for a deficiency evaluation meeting.",
+      "business_goal": "Assess whether deficiencies individually or together require escalation and document the evidence-based rationale.",
+      "typical_inputs": ["control test results", "walkthrough notes", "account-risk context", "management remediation evidence"],
+      "natural_questions": ["Which observations affect the same assertion or account?", "Does the combination change the severity assessment?"],
+      "expected_deliverable": "control deficiency evaluation memorandum",
+      "audience": "audit manager and engagement partner",
+      "abstraction_boundary": "The seed defines the work pattern and evaluation criteria, not a preset severity conclusion or actual company control environment."
+    }
+  },
+  {
+    "candidate_id": "candidate_audit_conflicting_evidence_follow_up",
+    "work_pattern_id": "audit_conflicting_evidence_follow_up",
+    "status": "rejected",
+    "selection_rationale": "The source gives a valid audit response pattern.",
+    "rejection_reason": "Overlaps the admitted company-information reliability seed without adding a distinct deliverable or business trigger for the four-task pilot.",
+    "seed": {
+      "seed_id": "seed_audit_conflicting_evidence_follow_up",
+      "domain": "audit_compliance",
+      "public_sources": [{"source_id": "pcaob_as1105", "normalized_source_id": "r10_norm_pcaob_as1105", "block_ids": ["as1105_09"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105", "abstraction_note": "Methodology only."}],
+      "role": "Audit associate",
+      "trigger_event": "Two records used in a test disagree.",
+      "business_goal": "Plan follow-up audit procedures.",
+      "typical_inputs": ["client record", "external response"],
+      "natural_questions": ["What should be corroborated?"],
+      "expected_deliverable": "follow-up procedure note",
+      "audience": "audit senior",
+      "abstraction_boundary": "No organization facts are supplied."
+    }
+  },
+  {
+    "candidate_id": "candidate_audit_test_item_selection",
+    "work_pattern_id": "audit_test_item_selection",
+    "status": "rejected",
+    "selection_rationale": "The source describes a legitimate audit planning activity.",
+    "rejection_reason": "The current seed is too method-centric and does not yet establish a sufficiently rich workplace trigger or multi-file deliverable for the initial reality pilot.",
+    "seed": {
+      "seed_id": "seed_audit_test_item_selection",
+      "domain": "audit_compliance",
+      "public_sources": [{"source_id": "pcaob_as1105", "normalized_source_id": "r10_norm_pcaob_as1105", "block_ids": ["as1105_22_25"], "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105", "abstraction_note": "Methodology only."}],
+      "role": "Audit senior",
+      "trigger_event": "The audit team must select a population for detailed testing.",
+      "business_goal": "Document a selection approach that supports the audit objective.",
+      "typical_inputs": ["population listing", "risk assessment", "testing objective"],
+      "natural_questions": ["Which items warrant focused testing?"],
+      "expected_deliverable": "test selection memorandum",
+      "audience": "audit manager",
+      "abstraction_boundary": "No client transaction facts are supplied."
+    }
+  },
+  {
+    "candidate_id": "candidate_procurement_price_reasonableness",
+    "work_pattern_id": "simplified_acquisition_price_reasonableness",
+    "status": "admitted",
+    "selection_rationale": "A genuine pre-award workflow with natural competing quotations, market evidence, documentation requirements, and a clear operational decision maker.",
+    "seed": {
+      "seed_id": "seed_procurement_price_reasonableness",
+      "domain": "procurement_operations",
+      "public_sources": [{"source_id": "far_13_106_3", "normalized_source_id": "r10_norm_far_13_106_3", "block_ids": ["far13_106_3a", "far13_106_3b"], "locator": "https://www.acquisition.gov/far/13.106-3", "abstraction_note": "The source defines award and file documentation principles, not a supplier, price, or award outcome."}],
+      "role": "Contract specialist",
+      "trigger_event": "A simplified acquisition file is ready for award review after quotations are received.",
+      "business_goal": "Establish a supportable fair-and-reasonable price basis and produce a concise award-file record.",
+      "typical_inputs": ["supplier quotations", "independent estimate", "market research note", "delivery terms"],
+      "natural_questions": ["Does the selected quotation have a documented price basis?", "What evidence is needed when competition is limited?"],
+      "expected_deliverable": "price reasonableness and award documentation worksheet",
+      "audience": "contracting officer",
+      "abstraction_boundary": "The source supplies regulatory decision criteria only; future requirement, suppliers, quotations, and outcome are Scenario Bible facts."
+    }
+  },
+  {
+    "candidate_id": "candidate_procurement_acceptance_disposition",
+    "work_pattern_id": "commercial_delivery_acceptance_disposition",
+    "status": "admitted",
+    "selection_rationale": "A post-delivery work trigger that naturally joins contract requirements, delivery evidence, quality records, and an authorized disposition without labeling the answer in advance.",
+    "seed": {
+      "seed_id": "seed_procurement_acceptance_disposition",
+      "domain": "procurement_operations",
+      "public_sources": [{"source_id": "far_46_202_1", "normalized_source_id": "r10_norm_far_46_202_1", "block_ids": ["far46_202_1"], "locator": "https://www.acquisition.gov/far/46.202-1", "abstraction_note": "The source defines the quality-assurance boundary; later delivery and acceptance facts are Scenario Bible content."}],
+      "role": "Contracting officer representative",
+      "trigger_event": "A commercial delivery has been tendered and the receiving team needs an acceptance disposition.",
+      "business_goal": "Determine whether the available contract and quality evidence supports acceptance, a hold, or a documented follow-up.",
+      "typical_inputs": ["contract line requirements", "delivery receipt", "contractor quality record", "inspection or service evidence"],
+      "natural_questions": ["Which requirements are evidenced by the delivery materials?", "What remains unsupported or needs follow-up before acceptance?"],
+      "expected_deliverable": "acceptance disposition and follow-up log",
+      "audience": "contracting officer and receiving official",
+      "abstraction_boundary": "The seed provides a work pattern and regulatory boundary, not future product, supplier, delivery, or acceptance facts."
+    }
+  },
+  {
+    "candidate_id": "candidate_procurement_quote_record",
+    "work_pattern_id": "oral_quote_record_documentation",
+    "status": "rejected",
+    "selection_rationale": "The source identifies a real documentation duty.",
+    "rejection_reason": "This is a narrow sub-step of the admitted price-reasonableness seed and would duplicate its evidence family rather than provide an independent pilot world.",
+    "seed": {
+      "seed_id": "seed_procurement_quote_record",
+      "domain": "procurement_operations",
+      "public_sources": [{"source_id": "far_13_106_3", "normalized_source_id": "r10_norm_far_13_106_3", "block_ids": ["far13_106_3b"], "locator": "https://www.acquisition.gov/far/13.106-3", "abstraction_note": "Methodology only."}],
+      "role": "Purchasing agent",
+      "trigger_event": "Oral quotations were received for a small purchase.",
+      "business_goal": "Record the quotations for review.",
+      "typical_inputs": ["supplier names", "quoted prices"],
+      "natural_questions": ["What should be retained?"],
+      "expected_deliverable": "quotation abstract",
+      "audience": "contracting officer",
+      "abstraction_boundary": "No actual supplier facts are supplied."
+    }
+  },
+  {
+    "candidate_id": "candidate_procurement_quality_assurance_reliance",
+    "work_pattern_id": "commercial_quality_assurance_setup",
+    "status": "rejected",
+    "selection_rationale": "The source frames a valid quality-assurance boundary.",
+    "rejection_reason": "It is primarily a contract-setup decision and has a weaker naturally occurring review trigger than the admitted delivery-acceptance disposition seed.",
+    "seed": {
+      "seed_id": "seed_procurement_quality_assurance_reliance",
+      "domain": "procurement_operations",
+      "public_sources": [{"source_id": "far_46_202_1", "normalized_source_id": "r10_norm_far_46_202_1", "block_ids": ["far46_202_1"], "locator": "https://www.acquisition.gov/far/46.202-1", "abstraction_note": "Methodology only."}],
+      "role": "Contract specialist",
+      "trigger_event": "A commercial requirement is being prepared for solicitation.",
+      "business_goal": "Identify an appropriate quality-assurance approach.",
+      "typical_inputs": ["requirement description", "commercial practice"],
+      "natural_questions": ["What quality evidence should be required?"],
+      "expected_deliverable": "quality-assurance planning note",
+      "audience": "contracting officer",
+      "abstraction_boundary": "No product or supplier facts are supplied."
+    }
+  }
+]

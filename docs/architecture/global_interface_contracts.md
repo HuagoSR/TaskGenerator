@@ -10,7 +10,8 @@
 | Stable | `implemented` | 当前 R9 工厂或评测链使用，字段以代码 schema 为准。 |
 | Historical | `frozen` | 已关闭实验或 campaign 的读取兼容；不作为新执行入口。 |
 | R10 foundation | `implemented / offline only` | 六个 V1 合同和静态 admission validator 已实现；无 provider、文件物化或 campaign 权限。 |
-| R10 execution | `proposed / not_implemented` | Work Seed 调研、Scenario Bible 编译、证据投影、任务包与行为验收尚未实现。 |
+| R10.1 seed admission | `implemented / public-source only` | 来源目录、四候选×两领域的确定性准入、两套专业规则和离线 CLI 已实现。 |
+| R10 execution | `proposed / not_implemented` | Scenario Bible 编译、证据投影、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
 
@@ -83,6 +84,13 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - Skill 约束专业判断、验证能力覆盖，并用于模型错误归因。
 - Motif 从 Scenario Bible 的关系中标注，用于配额、复杂度分析和覆盖报告。
 - 一个情景可有多个 motif；任一 motif 或 skill 都不能独自决定候选文件结构。
+
+## R10.1 Public Seed Admission
+
+- `PublicWorkSourceCatalogV1`：公开来源 URL、检索方式、可用内容 SHA 或浏览器验证说明，以及可引用的段落块。
+- `WorkSeedCandidateV1`：一个候选 Work Seed、独立工作模式 ID、接纳/拒绝状态及理由。
+- `WorkSeedAdmissionReportV1`：要求每领域四个候选、两个接纳、来源块闭合和匹配的规则集；它不调用 provider、写 registry 或创建 Scenario Bible。
+- 当前来源目录和规则集只保存公开来源摘要、段落引用与方法论边界，不保存完整网页副本。
 
 ## Compatibility
 

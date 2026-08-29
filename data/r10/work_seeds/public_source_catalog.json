@@ -1,0 +1,56 @@
+{
+  "catalog_id": "r10_public_work_seed_sources_20260829",
+  "sources": [
+    {
+      "source_id": "pcaob_as1105",
+      "normalized_source_id": "r10_norm_pcaob_as1105",
+      "domains": ["audit_compliance"],
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105",
+      "retrieved_at": "2026-08-29T19:40:00+08:00",
+      "retrieval_mode": "content_hashed",
+      "content_sha256": "18a010a0f68ac85d7d658504be710f726e65ff51aa98dcc38bf81c76bb2aa31b",
+      "blocks": [
+        {"block_id": "as1105_10", "section_reference": "AS 1105.10", "source_summary": "Company-produced information used as evidence requires accuracy, completeness, and precision evaluation."},
+        {"block_id": "as1105_09", "section_reference": "AS 1105.09", "source_summary": "Doubt about authenticity or undisclosed modifications requires modified or additional procedures."},
+        {"block_id": "as1105_22_25", "section_reference": "AS 1105.22-.25", "source_summary": "Selection method must provide sufficient appropriate evidence for the audit objective."}
+      ]
+    },
+    {
+      "source_id": "pcaob_as2201",
+      "normalized_source_id": "r10_norm_pcaob_as2201",
+      "domains": ["audit_compliance"],
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS2201",
+      "retrieved_at": "2026-08-29T19:40:00+08:00",
+      "retrieval_mode": "content_hashed",
+      "content_sha256": "79efcc1ac75f4d304928eaacfb679c81b72a6543f5a7365711846bb2ee872ed3",
+      "blocks": [
+        {"block_id": "as2201_62_65", "section_reference": "AS 2201.62-.65", "source_summary": "Control deficiency severity considers reasonable possibility, potential magnitude, and combined effects."}
+      ]
+    },
+    {
+      "source_id": "far_13_106_3",
+      "normalized_source_id": "r10_norm_far_13_106_3",
+      "domains": ["procurement_operations"],
+      "locator": "https://www.acquisition.gov/far/13.106-3",
+      "retrieved_at": "2026-08-29T19:40:00+08:00",
+      "retrieval_mode": "browser_verified",
+      "verification_note": "Official page was read through the verified browser after direct non-browser retrieval returned a bot-protection response; section references were checked against the current page.",
+      "blocks": [
+        {"block_id": "far13_106_3a", "section_reference": "FAR 13.106-3(a)", "source_summary": "Before award, the proposed price must be determined fair and reasonable; a single response requires a documented basis."},
+        {"block_id": "far13_106_3b", "section_reference": "FAR 13.106-3(b)", "source_summary": "Purchase files retain only the quotation, price, delivery, supplier-contact, and related support needed for review."}
+      ]
+    },
+    {
+      "source_id": "far_46_202_1",
+      "normalized_source_id": "r10_norm_far_46_202_1",
+      "domains": ["procurement_operations"],
+      "locator": "https://www.acquisition.gov/far/46.202-1",
+      "retrieved_at": "2026-08-29T19:40:00+08:00",
+      "retrieval_mode": "browser_verified",
+      "verification_note": "Official page was read through the verified browser after direct non-browser retrieval returned a bot-protection response; section references were checked against the current page.",
+      "blocks": [
+        {"block_id": "far46_202_1", "section_reference": "FAR 46.202-1", "source_summary": "For commercial products and services, contractor quality assurance normally substitutes for Government inspection before tender, subject to applicable practice and contract requirements."}
+      ]
+    }
+  ]
+}

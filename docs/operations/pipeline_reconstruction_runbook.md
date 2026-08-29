@@ -13,7 +13,7 @@ R9/R7 的服务器、任务包和评测证据均已冻结。R7 从零复验停�
 - 依据旧 receipt、旧 provider scope 或旧 campaign 继续调用；
 - 因模型分数或个别任务表现重抽、手改或重评已冻结任务。
 
-R10 已有离线 schema 与静态 admission validator，但尚无可执行 CLI、provider scope、campaign receipt 或任务包。不得把离线 fixture 解释为真实 Work Seed、生产结果或 provider 授权。
+R10.0 与 R10.1 已完成：离线 schema/static admission，以及四个接纳的公开 Work Seed、两套专业规则和 seed-admission CLI 均已冻结。当前仍没有 Scenario Bible provider scope、campaign receipt 或任务包。不得把公开 seed 或离线 fixture 解释为生产结果、私有任务上传授权或 provider 授权。
 
 ## Stable Operational Rules
 
@@ -39,11 +39,11 @@ R10 已有离线 schema 与静态 admission validator，但尚无可执行 CLI�
 
 ## R10 Execution Preconditions
 
-R10.0 已完成。开始 R10.1 外部执行前，必须先完成并批准一个执行计划，至少冻结：
+R10.0/R10.1 已完成。开始 R10.2 语义执行前，必须先完成并批准一个执行计划，至少冻结：
 
-1. 四题 pilot 的公开 Work Seed 来源、审计/采购配额、文件/记录规模和隐私边界。
-2. R10.1 provider 批次、冻结输入、整批重启与失败证据合同。
-3. R10.2–R10.4 的 Bible/projection/compiler、文件渲染和完整 package-isolation 测试。
+1. 四个接纳 seed 对应的 Bible semantic input、teacher-only 输出边界和隐私边界。
+2. R10.2 provider 批次、冻结输入、整批重启与失败证据合同。
+3. Bible/projection/compiler、文件渲染和完整 package-isolation 测试。
 4. R10 release、parity、campaign、solver 和 grader 的独立执行合同。
 
 只有这些前置条件通过后，才能启动新的 R10 source-to-package campaign；任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt。

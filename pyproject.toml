@@ -19,6 +19,7 @@ dependencies = [
 taskgen-produce = "task_generator.cli.production:main"
 taskgen-evaluate = "task_generator.cli.evaluate:main"
 taskgen-release = "task_generator.cli.release:main"
+taskgen-scenario-first = "task_generator.cli.scenario_first:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
