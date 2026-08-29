@@ -15,10 +15,11 @@ Create evidence that requires the worker to select and explain a defensible pric
 
 ## Professional judgment to preserve
 
-- Distinguish the existence of multiple prices from evidence that makes a specific price reasonable for the acquisition at hand.
-- Make the comparability, timing, quantities, specifications, and source of market information matter to the conclusion.
-- Require documentation of the method and basis used, while preserving cases where the available record supports only a qualified conclusion or further market research.
-- Include routine quotations and background records so the task is not a pre-labelled outlier hunt.
+- Before award, require a price analysis appropriate to the acquisition circumstances. [`procurement_far_13_106_3`](references/source-map.md#procurement_far_13_106_3) [`procurement_far_15_404_1_methods`](references/source-map.md#procurement_far_15_404_1_methods)
+- When only one quotation is responsive, make the basis for reasonableness and the retained award-file support consequential. [`procurement_far_13_106_3`](references/source-map.md#procurement_far_13_106_3)
+- Make adequacy and comparability of competitive, historical, market, or independent-estimate data affect the analysis; the existence of a number alone is not enough. [`procurement_far_15_404_1_methods`](references/source-map.md#procurement_far_15_404_1_methods)
+- If an independent estimate is used, preserve its data sources, development basis, and role in the conclusion. [`procurement_dau_igce_workflow`](references/source-map.md#procurement_dau_igce_workflow)
+- When available data are thin, support a request for further information or escalation rather than treating the record as sufficient. [`procurement_dfars_pgi_insufficient_data`](references/source-map.md#procurement_dfars_pgi_insufficient_data)
 
 ## Serious failure modes
 
@@ -29,4 +30,4 @@ Create evidence that requires the worker to select and explain a defensible pric
 
 ## Sources
 
-Read [the source map](references/source-map.md) before relying on this Skill for a scenario. It identifies the current R10 public-rule anchors and the limits of this draft package.
+Read [the source map](references/source-map.md) before relying on this Skill for a scenario. It identifies the rule, work-practice, and failure-mode evidence behind the curated instructions.

@@ -32,7 +32,7 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
 
     def test_catalog_is_thin_and_has_two_draft_skills(self) -> None:
         self.assertEqual(self.catalog.contract_version, CATALOG_VERSION)
-        self.assertEqual({entry.status for entry in self.catalog.entries}, {"draft"})
+        self.assertEqual({entry.status for entry in self.catalog.entries}, {"curated"})
         self.assertEqual(
             {entry.skill_id for entry in self.catalog.entries},
             {"r10.audit-evidence-reliability", "r10.procurement-price-reasonableness"},
@@ -120,6 +120,14 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
         self.assertNotIn("openai", source.lower())
         self.assertNotIn("requests", source.lower())
         self.assertEqual(ENTRY_VERSION, "r10.professional_skill_catalog_entry.1")
+
+    def test_curated_skills_do_not_contain_bible_answers_or_organizations(self) -> None:
+        for entry in self.catalog.entries:
+            loaded = self.loader.load_skill(entry, skills_root=SKILLS_ROOT)
+            text = loaded.skill_markdown.lower()
+            self.assertNotIn("correct treatment", text)
+            self.assertNotIn("heliotrack", text)
+            self.assertNotIn("harborview", text)
 
 
 if __name__ == "__main__":

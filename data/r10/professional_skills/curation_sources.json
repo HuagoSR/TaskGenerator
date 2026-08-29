@@ -1,0 +1,76 @@
+{
+  "contract_version": "r10.professional_skill_curation_sources.1",
+  "accessed_at": "2026-08-30",
+  "sources": [
+    {
+      "source_id": "audit_as1105_reliability",
+      "skill_id": "r10.audit-evidence-reliability",
+      "evidence_kind": "rule",
+      "title": "PCAOB AS 1105: Audit Evidence",
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1105",
+      "section": "AS 1105.06–.10, .29",
+      "content_sha256": "18a010a0f68ac85d7d658504be710f726e65ff51aa98dcc38bf81c76bb2aa31b",
+      "summary": "Appropriateness includes relevance and reliability; company-produced information requires accuracy, completeness, and sufficient precision evaluation; inconsistent or doubtful evidence requires procedures to resolve the matter."
+    },
+    {
+      "source_id": "audit_as1215_workpaper",
+      "skill_id": "r10.audit-evidence-reliability",
+      "evidence_kind": "practice",
+      "title": "PCAOB AS 1215: Audit Documentation",
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1215",
+      "section": "AS 1215.09–.10",
+      "content_sha256": null,
+      "summary": "Audit documentation identifies procedures, evidence obtained, and conclusions; documentation of inspected items must identify the items, source population, or selection criteria as applicable."
+    },
+    {
+      "source_id": "audit_pcaob_remediation_monitoring",
+      "skill_id": "r10.audit-evidence-reliability",
+      "evidence_kind": "failure_mode",
+      "title": "PCAOB Staff Guidance Concerning the Remediation Process",
+      "locator": "https://pcaobus.org/oversight/inspections/remediation/remediation_process",
+      "section": "Evidence from a firm's monitoring process; repeated or persistent quality-control criticisms",
+      "content_sha256": null,
+      "summary": "Evidence of implementation and effectiveness matters, but selectively favourable monitoring results can mislead; persistent deficiencies require considering why earlier remediation did not resolve the problem."
+    },
+    {
+      "source_id": "procurement_far_13_106_3",
+      "skill_id": "r10.procurement-price-reasonableness",
+      "evidence_kind": "rule",
+      "title": "FAR 13.106-3: Award and documentation",
+      "locator": "https://www.acquisition.gov/far/13.106-3",
+      "section": "FAR 13.106-3(a)–(b)",
+      "content_sha256": null,
+      "summary": "Before award, the contracting officer must determine a proposed price fair and reasonable; when one response is received, the file documents the supporting basis and retains the relevant quotation, price, delivery, supplier-contact, and related support."
+    },
+    {
+      "source_id": "procurement_far_15_404_1_methods",
+      "skill_id": "r10.procurement-price-reasonableness",
+      "evidence_kind": "rule",
+      "title": "FAR 15.404-1: Proposal analysis techniques",
+      "locator": "https://www.acquisition.gov/far/15.404-1",
+      "section": "FAR 15.404-1(a), (b)(1)–(3)",
+      "content_sha256": null,
+      "summary": "The analysis detail depends on acquisition circumstances; price analysis evaluates the offered price rather than cost elements; competitive, historical, market, independent-estimate, and other techniques require attention to data adequacy and comparability."
+    },
+    {
+      "source_id": "procurement_dau_igce_workflow",
+      "skill_id": "r10.procurement-price-reasonableness",
+      "evidence_kind": "practice",
+      "title": "DAU WSC 030 and WSC 031 course descriptions",
+      "locator": "https://www.dau.edu/courses?field_course_area_value=&field_course_delivery_mode_value=All&page=34",
+      "section": "WSC 030: Determining Fair and Reasonable Workshop; WSC 031: Independent Government Cost Estimates",
+      "content_sha256": null,
+      "summary": "The public course descriptions frame price analysis as determining a fair and reasonable price and IGCE work as identifying pricing data sources, developing and documenting the estimate, and explaining its use."
+    },
+    {
+      "source_id": "procurement_dfars_pgi_insufficient_data",
+      "skill_id": "r10.procurement-price-reasonableness",
+      "evidence_kind": "failure_mode",
+      "title": "DFARS PGI 215.404-1: Proposal analysis techniques",
+      "locator": "https://www.acquisition.gov/dfarspgi/pgi-215.404-1-proposal-analysis-techniques.",
+      "section": "PGI 215.404-1(a)(i), insufficient data sequence",
+      "content_sha256": null,
+      "summary": "When data are insufficient for price analysis, the guidance describes clearly requesting necessary data, explaining why it is needed, and escalating unresolved refusal rather than treating an unsupported record as adequate."
+    }
+  ]
+}

@@ -15,10 +15,11 @@ Create evidence that lets a candidate explain what is reliable, what needs corro
 
 ## Professional judgment to preserve
 
-- Consider the source, nature, and circumstances of each item of evidence, including whether company-produced information is accurate and complete for its intended use.
-- Make corroboration, system lineage, or control evidence consequential when the scenario depends on internally generated information.
-- Preserve the possibility that available evidence is insufficient; a defensible follow-up may be preferable to an unsupported conclusion.
-- Keep normal operating evidence alongside the conflict so the task requires assessment rather than locating an explicitly marked exception.
+- Assess whether company-produced information is sufficiently accurate, complete, and precise for the audit purpose. [`audit_as1105_reliability`](references/source-map.md#audit_as1105_reliability)
+- When sources conflict or reliability is doubtful, make resolving procedures consequential rather than choosing one source by convenience. [`audit_as1105_reliability`](references/source-map.md#audit_as1105_reliability)
+- Preserve an identifiable workpaper trail: items inspected, population or selection criteria, evidence obtained, and procedures performed should be distinguishable. [`audit_as1215_workpaper`](references/source-map.md#audit_as1215_workpaper)
+- Treat selectively favourable monitoring evidence cautiously, especially when a related deficiency has persisted despite earlier remediation. [`audit_pcaob_remediation_monitoring`](references/source-map.md#audit_pcaob_remediation_monitoring)
+- Preserve the possibility that evidence is insufficient; a defensible follow-up may be preferable to an unsupported conclusion.
 
 ## Serious failure modes
 
@@ -29,4 +30,4 @@ Create evidence that lets a candidate explain what is reliable, what needs corro
 
 ## Sources
 
-Read [the source map](references/source-map.md) before relying on this Skill for a scenario. It identifies the current R10 public-rule anchors and the limits of this draft package.
+Read [the source map](references/source-map.md) before relying on this Skill for a scenario. It identifies the rule, work-practice, and failure-mode evidence behind the curated instructions.

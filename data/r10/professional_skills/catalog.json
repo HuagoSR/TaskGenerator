@@ -9,7 +9,7 @@
       "domain": "audit_compliance",
       "relative_path": "audit-evidence-reliability",
       "version": "0.1.0",
-      "status": "draft"
+      "status": "curated"
     },
     {
       "contract_version": "r10.professional_skill_catalog_entry.1",
@@ -19,7 +19,7 @@
       "domain": "procurement_operations",
       "relative_path": "procurement-price-reasonableness",
       "version": "0.1.0",
-      "status": "draft"
+      "status": "curated"
     }
   ]
 }

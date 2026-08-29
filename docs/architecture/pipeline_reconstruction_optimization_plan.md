@@ -36,11 +36,11 @@
 
 冻结四份现有 Bible，不建设结构化 Bible V2。已建立两个 draft 专业 Skill 包：审计证据可靠性与采购价格合理性；各含简洁 `SKILL.md` 与现有 R10 规则锚点 source map。薄目录和按需 loader 已验证：先按元数据发现，至多返回四项，再读取选中正文。通用表格、文档和 PDF 能力不重复实现；旧 Registry 只读保留且哈希不变。
 
-### R10.4 — Professional Skill curation — `next / not_implemented`
+### R10.4 — Professional Skill curation — `implemented / public-source`
 
-为两个 draft Skill 统一策展公开规范、工作实践和失败模式来源。只有每条非显然专业指令都可定位到公开来源，且每个 Skill 同时具备规则、实践或失败模式支持时，才可升为 `curated`。该阶段不生成任务；若使用 provider，必须冻结输入、整批执行并单独获得执行授权。
+两个 Skill 已由同一冻结公开来源批次完成策展并升为 `curated`。每个 Skill 同时拥有规则、工作实践与失败模式来源；每条专业 instruction 均绑定 source ID。官方 DeepSeek 一次正常调用成功，原始响应和诊断仅留在 ignored artifacts。该阶段未生成任务，也未修改历史 Registry。
 
-### R10.5 — Derived evidence bundle experiment — `not_implemented`
+### R10.5 — Derived evidence bundle experiment — `next / not_implemented`
 
 在 Scenario Bible 后选择至多 2–4 个 factory-side 专业 Skill，由 Agent 产生独立 `ScenarioEvidenceBundleV1`。该包绑定父 Bible 和 Skill 选择，记录非冲突场景扩展、candidate 文件和 teacher-only 映射。先对一个审计和一个采购 Bible 比较无 Skill/有 Skill 生成，不因单例失败手改任务；Skill 未产生可见专业增益时先修订 Skill。
 
@@ -74,5 +74,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10.0–R10.3 已完成；Skill foundation 未调用 provider、上传任务、激活 release、改变历史 registry 或开始训练。
+- R10.0–R10.4 已完成；Skill curation 仅调用一次公开来源 provider batch，未上传私有 Bible、生成任务、激活 release、改变历史 registry 或开始训练。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。
