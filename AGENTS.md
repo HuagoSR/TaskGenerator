@@ -21,7 +21,7 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness exposed that a deterministic projection of narrative Bibles is the wrong abstraction. Keep those Bibles frozen; do not build a structured Bible V2 or fabricate files from prose. The next implementation slice creates lightweight, source-grounded professional Skill packages and then lets the factory Agent produce a derived evidence bundle linked to its parent Bible. Solver/grader runs, registry mutation, release activation, training and promotion remain unauthorized.
+R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness exposed that a deterministic projection of narrative Bibles is the wrong abstraction. Keep those Bibles frozen; do not build a structured Bible V2 or fabricate files from prose. The R10.3 offline Skill foundation is implemented: two draft professional Skill packages, a thin catalog and progressive loader exist, while the historical Registry remains unchanged. The next slice curates their public professional evidence; it must not create tasks. Solver/grader runs, registry mutation, release activation, training and promotion remain unauthorized.
 
 ## Architecture Boundaries
 
@@ -47,7 +47,7 @@ Public Work Seed → Professional Rules → Scenario Bible
 - Active architecture docs: `docs/architecture/`.
 - Operational docs: `docs/operations/`.
 - Historical plans and reports: `docs/archive/`.
-- Historical registry: `SkillRegistry/` (read-only for R10); new professional Skill packages will live in `.agents/skills/r10/` only after their dedicated implementation stage.
+- Historical registry: `SkillRegistry/` (read-only for R10); draft professional Skill packages live in `.agents/skills/r10/`, with discovery metadata in `data/r10/professional_skills/catalog.json`.
 - Generated outputs and run reports: ignored `artifacts/`.
 
 Do not add implementation modules, experiments, screenshots, generated outputs or notebooks to the repository root. `Test/v2_outputs/` is no-touch unless the user explicitly reopens it.
@@ -78,4 +78,4 @@ Do not add implementation modules, experiments, screenshots, generated outputs o
 
 ## R10 Implementation Boundary
 
-The implemented foundation defines `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1` and `ScenarioFirstAdmissionReportV1`. For the active R10 path, file and record counts are quality guidance, not new hard contracts. Hard boundaries are source linkage, normal business context, candidate/teacher isolation, no answer-label leakage, solvability (including supported uncertainty), openable deliverables and exact submission paths. The next slice creates two factory-side professional Skill packages; it must not call providers or create tasks. Four tasks require static and multi-model behavioral admission before any ten-task production plan.
+The implemented foundation defines `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1`, `ScenarioFirstAdmissionReportV1` and the draft `ProfessionalSkillCatalogEntryV1` loader contract. For the active R10 path, file and record counts are quality guidance, not new hard contracts. Hard boundaries are source linkage, normal business context, candidate/teacher isolation, no answer-label leakage, solvability (including supported uncertainty), openable deliverables and exact submission paths. The next slice curates public professional evidence for the two draft Skills; it must not create tasks. Four tasks require static and multi-model behavioral admission before any ten-task production plan.

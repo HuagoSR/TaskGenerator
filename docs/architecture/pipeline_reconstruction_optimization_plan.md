@@ -32,25 +32,29 @@
 
 已实现 teacher-only Bible compiler、静态 validator 和单批官方 DeepSeek JSON 调用合同。四份正式 Bible 已通过 admission：每份含 3 个角色、14 条事实（6 条正常背景、1 条异常、1 条未决问题及政策、后果、处理事实），并验证事实唯一性、时间可行性、角色权限和政策边界。原始 SDK/schema 与输出截断 run 保留为冻结诊断，不混入正式 evidence；后续任何新 Bible batch 仍须保持单 provider、单次调用、零 SDK retry。
 
-### R10.3 — Agent-native professional Skill foundation — `next / not_implemented`
+### R10.3 — Agent-native professional Skill foundation — `implemented / offline draft`
 
-冻结四份现有 Bible，不建设结构化 Bible V2。先建立两个 source-grounded 专业 Skill 包：审计证据可靠性与采购价格合理性。每个包含简洁 `SKILL.md`，并按需引用公开规范、工作模板/流程和失败模式材料；通用表格、文档和 PDF 能力不重复实现。旧 Registry 只读保留。
+冻结四份现有 Bible，不建设结构化 Bible V2。已建立两个 draft 专业 Skill 包：审计证据可靠性与采购价格合理性；各含简洁 `SKILL.md` 与现有 R10 规则锚点 source map。薄目录和按需 loader 已验证：先按元数据发现，至多返回四项，再读取选中正文。通用表格、文档和 PDF 能力不重复实现；旧 Registry 只读保留且哈希不变。
 
-### R10.4 — Derived evidence bundle experiment — `not_implemented`
+### R10.4 — Professional Skill curation — `next / not_implemented`
+
+为两个 draft Skill 统一策展公开规范、工作实践和失败模式来源。只有每条非显然专业指令都可定位到公开来源，且每个 Skill 同时具备规则、实践或失败模式支持时，才可升为 `curated`。该阶段不生成任务；若使用 provider，必须冻结输入、整批执行并单独获得执行授权。
+
+### R10.5 — Derived evidence bundle experiment — `not_implemented`
 
 在 Scenario Bible 后选择至多 2–4 个 factory-side 专业 Skill，由 Agent 产生独立 `ScenarioEvidenceBundleV1`。该包绑定父 Bible 和 Skill 选择，记录非冲突场景扩展、candidate 文件和 teacher-only 映射。先对一个审计和一个采购 Bible 比较无 Skill/有 Skill 生成，不因单例失败手改任务；Skill 未产生可见专业增益时先修订 Skill。
 
-### R10.5 — Two-task task and truth compilation — `not_implemented`
+### R10.6 — Two-task task and truth compilation — `not_implemented`
 
 从触发事件编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。
 
-### R10.6 — Four-task pilot admission — `not_implemented`
+### R10.7 — Four-task pilot admission — `not_implemented`
 
 对四题运行离线一致性、candidate/teacher isolation、可解性、答案泄漏、文件渲染和交付合同测试。通过后，以同一冻结任务包运行多模型 solver 与独立 grader，测量交付有效率、关键判断准确性、major defect、评分分歧和模型分离度。
 
 每题都必须同时满足：来源完整、世界因果一致、无答案泄漏、信息足以支持结论、存在正常背景与真实不确定性、有效交付可评分。低分或失败不得触发单题重写；应归因并修复 compiler、seed admission 或 projection 规则。
 
-### R10.7 — Scale decision — `not_implemented`
+### R10.8 — Scale decision — `not_implemented`
 
 仅当四题均通过静态准入，且至少两个模型在共同任务上表现出可解释的差异，才编写十题 production plan。若失败，冻结 pilot，保留证据并优先修复共性合同；不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 
@@ -70,5 +74,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- 文档基线和 Skill foundation 阶段不调用 provider、上传任务、激活 release、改变历史 registry 或开始训练。
-- R10.0–R10.2 已完成；每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。
+- R10.0–R10.3 已完成；Skill foundation 未调用 provider、上传任务、激活 release、改变历史 registry 或开始训练。
+- 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。

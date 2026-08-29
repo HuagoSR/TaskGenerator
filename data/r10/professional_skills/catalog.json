@@ -1,0 +1,25 @@
+{
+  "contract_version": "r10.professional_skill_catalog.1",
+  "entries": [
+    {
+      "contract_version": "r10.professional_skill_catalog_entry.1",
+      "skill_id": "r10.audit-evidence-reliability",
+      "name": "audit-evidence-reliability",
+      "description": "Guide factory-side construction of audit evidence scenarios when a professional must assess the accuracy, completeness, or reliability of company-produced information or conflicting audit records. Do not use for generic spreadsheet reconciliation or routine formatting.",
+      "domain": "audit_compliance",
+      "relative_path": "audit-evidence-reliability",
+      "version": "0.1.0",
+      "status": "draft"
+    },
+    {
+      "contract_version": "r10.professional_skill_catalog_entry.1",
+      "skill_id": "r10.procurement-price-reasonableness",
+      "name": "procurement-price-reasonableness",
+      "description": "Guide factory-side construction of simplified-acquisition scenarios where a professional assesses price reasonableness from quotations, market support, estimates, and award-file documentation. Do not use for generic vendor comparison or routine spreadsheet formatting.",
+      "domain": "procurement_operations",
+      "relative_path": "procurement-price-reasonableness",
+      "version": "0.1.0",
+      "status": "draft"
+    }
+  ]
+}

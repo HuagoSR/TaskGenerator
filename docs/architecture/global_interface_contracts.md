@@ -13,7 +13,8 @@
 | R10.1 seed admission | `implemented / public-source only` | 来源目录、四候选×两领域的确定性准入、两套专业规则和离线 CLI 已实现。 |
 | R10.2 Bible compilation | `implemented / teacher-only` | 四份 Scenario Bible 已通过静态 admission；仍是叙事事实，不可直接物化。 |
 | R10.3 readiness diagnostic | `implemented / historical diagnostic` | 证明叙事 Bible 不适合由严格确定性投影器直接物化；不建设 Bible V2。 |
-| R10 professional skills | `proposed / not_implemented` | 轻量 Skill 目录、选择记录和派生证据包尚未实现。 |
+| R10.3 professional Skill foundation | `implemented / offline draft` | 两个 draft factory-side Skill、薄目录与渐进加载器已实现；未调用 provider、未生成任务，旧 Registry 未变。 |
+| R10 skill curation and derived evidence | `proposed / not_implemented` | 公开证据策展、选择记录和派生证据包尚未实现。 |
 | R10 task/evaluation | `proposed / not_implemented` | Task/truth compilation、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
@@ -84,7 +85,7 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 
 ## Skill and Motif Semantics in R10
 
-- `ProfessionalSkillCatalogEntryV1` — `proposed`：仅包含 skill ID、名称、触发描述、领域、路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。
+- `ProfessionalSkillCatalogEntryV1` — `implemented / offline draft`：仅包含 contract version、skill ID、名称、触发描述、领域、相对路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。loader 先读取目录，按 domain/text 返回至多四项，再安全加载被选中的完整正文与引用。
 - `SkillSelectionRecordV1` — `proposed`：记录父 Bible、factory-side 选择的 2–4 个专业 Skill 及选择理由；不暴露给 candidate 或 solver。
 - `ScenarioEvidenceBundleV1` — `proposed`：派生运行清单，绑定父 Bible 与 Skill selection，包含新增但不冲突的情景说明、candidate 文件和 teacher-only 证据映射；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。

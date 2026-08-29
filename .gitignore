@@ -1,6 +1,10 @@
 .env
 deepseek-key.txt
 .agents/
+!.agents/
+!.agents/skills/
+!.agents/skills/r10/
+!.agents/skills/r10/**
 .codex/
 __pycache__/
 *.pyc

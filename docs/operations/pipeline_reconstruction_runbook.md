@@ -13,7 +13,7 @@ R9/R7 的服务器、任务包和评测证据均已冻结。R7 从零复验停�
 - 依据旧 receipt、旧 provider scope 或旧 campaign 继续调用；
 - 因模型分数或个别任务表现重抽、手改或重评已冻结任务。
 
-R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI，以及四份 teacher-only Scenario Bible 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。R10.3 readiness gate 同时证明：不得用更复杂的结构化 Bible V2 或手工补字段来绕过叙事 Bible 的确定性投影限制。当前尚无候选文件或任务包。
+R10.0、R10.1、R10.2 与 R10.3 offline Skill foundation 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI、四份 teacher-only Scenario Bible、两个 draft factory-side Skill、薄目录和按需加载测试均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。R10.3 readiness gate 同时证明：不得用更复杂的结构化 Bible V2 或手工补字段来绕过叙事 Bible 的确定性投影限制。当前尚无候选文件或任务包。
 
 ## Stable Operational Rules
 
@@ -39,7 +39,7 @@ R10.0、R10.1 与 R10.2 已完成：离线 schema/static admission、四个接�
 
 ## R10 Execution Preconditions
 
-R10.0/R10.1/R10.2 已完成。下一阶段是离线的专业 Skill foundation：建立两个 factory-side Skill 包、轻量目录和按需加载测试；该阶段不得调用 provider、生成候选文件或修改历史 registry。
+R10.0–R10.3 已完成。下一阶段是专业 Skill curation：以冻结的公开来源包补齐两个 draft Skill 的规范、工作实践和失败模式证据。该阶段不得生成候选文件或修改历史 registry；若使用 provider，须以整批冻结输入和当前阶段的单独授权执行。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
