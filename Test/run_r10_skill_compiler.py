@@ -77,8 +77,8 @@ def _public_probe(args: argparse.Namespace) -> None:
     (probe / "TASK.md").write_text("Create compiled_skills/probe.txt containing the words 'public compiler probe'. Do not access any private input.\n", encoding="utf-8")
     home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     remote = f"{home}/taskgenerator-data/r10-skill-compiler/{args.run_id}/public_probe"
-    _ssh(args.host, f"mkdir -p '{remote}'", timeout=120)
-    _run(["scp", "-r", str(probe / "."), f"{args.host}:{remote}"], timeout=180)
+    _ssh(args.host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
+    _run(["scp", "-r", str(probe), f"{args.host}:{remote}"], timeout=180)
     executed = _ssh(args.host, "sh -s", input_text=_remote_script(remote), timeout=1900, check=False)
     completed = probe / "completed"
     completed.mkdir()
@@ -115,8 +115,8 @@ def main() -> None:
     _write(args.output_root / "compiler_manifest.json", manifest.model_dump(mode="json"))
     home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     remote = f"{home}/taskgenerator-data/r10-skill-compiler/{args.run_id}/compiler"
-    _ssh(args.host, f"mkdir -p '{remote}'", timeout=120)
-    _run(["scp", "-r", str(args.output_root / "compiler" / "."), f"{args.host}:{remote}"], timeout=240)
+    _ssh(args.host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
+    _run(["scp", "-r", str(args.output_root / "compiler"), f"{args.host}:{remote}"], timeout=240)
     executed = _ssh(args.host, "sh -s", input_text=_remote_script(remote), timeout=1900, check=False)
     completed = args.output_root / "completed"
     completed.mkdir()
