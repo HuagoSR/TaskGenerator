@@ -71,6 +71,24 @@ def _stage(args: argparse.Namespace) -> tuple[dict, dict]:
     return {entry.skill_id: entry for entry in catalog.entries}, {"catalog": catalog.model_dump(mode="json"), "sources": sources, "seeds": seeds, "rules": rules, "feedback": feedback.get("blind_reviews", [])}
 
 
+def _public_probe(args: argparse.Namespace) -> None:
+    probe = args.output_root / "public_probe"
+    probe.mkdir(parents=True)
+    (probe / "TASK.md").write_text("Create compiled_skills/probe.txt containing the words 'public compiler probe'. Do not access any private input.\n", encoding="utf-8")
+    home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
+    remote = f"{home}/taskgenerator-data/r10-skill-compiler/{args.run_id}/public_probe"
+    _ssh(args.host, f"mkdir -p '{remote}'", timeout=120)
+    _run(["scp", "-r", str(probe / "."), f"{args.host}:{remote}"], timeout=180)
+    executed = _ssh(args.host, "sh -s", input_text=_remote_script(remote), timeout=1900, check=False)
+    completed = probe / "completed"
+    completed.mkdir()
+    _run(["scp", "-r", f"{args.host}:{remote}/.", str(completed)], timeout=180)
+    _write(probe / "diagnostics.json", {"exit_code": executed.returncode, "stdout": executed.stdout[-4000:], "stderr": executed.stderr[-4000:]})
+    if executed.returncode or not (completed / "compiled_skills" / "probe.txt").is_file():
+        raise RuntimeError("public_skill_compiler_probe_failed")
+    _write(args.output_root / "public_probe.json", {"decision": "pass"})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="huago-cone")
@@ -83,9 +101,14 @@ def main() -> None:
     parser.add_argument("--skills-root", type=Path, default=ROOT / ".agents/skills/r10")
     parser.add_argument("--feedback", type=Path, default=ROOT / "artifacts/r10/r10_5_skill_evidence_ab_restart2_execute1/experiment_result.json")
     parser.add_argument("--deepseek-key", type=Path, default=ROOT / "deepseek-key.txt")
+    parser.add_argument("--public-probe", action="store_true")
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("skill_compiler_output_already_exists")
+    if args.public_probe:
+        _public_probe(args)
+        print(json.dumps({"decision": "pass", "output_root": str(args.output_root)}, ensure_ascii=False))
+        return
     entries, payload = _stage(args)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
     manifest = SkillCompilerManifestV1(source_commit=commit, input_sha256=sha256_json(payload), decision="incomplete")
