@@ -39,7 +39,7 @@ R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开
 
 ## R10 Execution Preconditions
 
-R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已失败并冻结：现有 eval image 的 Codex/Terra 可认证，但所有 shell tool call 被 Bubblewrap user-namespace policy 拒绝。不得上传 `scenario_audit_company_information_reliability` 或 `scenario_procurement_price_reasonableness`，不得编译候选任务，也不得以特权容器或另一套 agent 框架绕过。恢复前须形成新的最小运行环境修复计划，并先重新通过公开 probe。
+R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 现已通过：原先的 Bubblewrap 嵌套 user-namespace 问题改由受限外层 Docker 承担隔离，Codex 在其中使用非嵌套 Shell；外层仍须保持只读根、无额外 capability、`no-new-privileges`、资源上限、单一临时工作区和只读认证挂载。公开 probe 已验证 XLSX、DOCX、PDF。可以重新开始既定的两领域 A/B，但不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件；在该实验实际开始前，私有 Bible 仍未上传。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

@@ -71,4 +71,6 @@ services:
       - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
       - ${TASKGEN_EVAL_TUZI_ENV_FILE:?must_set}:/run/secrets/eval_tuzi_env:ro
       - ${TASKGEN_E2B_KEY_FILE:?must_set}:/run/secrets/e2b_api_key:ro
-      - ${TASKGEN_CODEX_AUTH_FILE:?must_set}:/home/taskgenerator/.codex/auth.json
+      # Codex may read its login state, but agent commands must never be able to
+      # refresh or alter the host-side credential.
+      - ${TASKGEN_CODEX_AUTH_FILE:?must_set}:/home/taskgenerator/.codex/auth.json:ro
