@@ -16,7 +16,7 @@
 | R10.3 professional Skill foundation | `implemented / offline draft` | 两个 draft factory-side Skill、薄目录与渐进加载器已实现；未调用 provider、未生成任务，旧 Registry 未变。 |
 | R10.4 professional Skill curation | `implemented / public-source` | 两个 curated Skill 各绑定规范、工作实践和失败模式来源；DeepSeek 仅起草冻结公开来源批次，原始响应留在 ignored artifacts。 |
 | R10.5 derived-evidence public probe | `implemented / public-only pass` | 受限外层 Docker 中的非嵌套 Codex Shell 已创建并验证公开 XLSX、DOCX、PDF；零私有 Bible 上传。 |
-| R10 derived evidence | `proposed / execution-ready` | 选择记录和派生证据包尚未实现；私有 A/B 执行仍须按冻结实验边界单独开始。 |
+| R10 paired derived-evidence experiment | `implemented / frozen incomplete` | 四个隔离 session、candidate/teacher admission、condition-blind payload 和一次格式补跑受限的 DeepSeek reviewer 已实现。首个私有 run 因审计 A 的 evidence-map 字段缺失而冻结；未产生 pair review 或 Skill 效果结论。 |
 | R10 task/evaluation | `proposed / not_implemented` | Task/truth compilation、任务包与行为验收尚未实现。 |
 
 ## Stable Implemented Contracts
@@ -89,8 +89,9 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 
 - `ProfessionalSkillCatalogEntryV1` — `implemented / curated`：仅包含 contract version、skill ID、名称、触发描述、领域、相对路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。loader 先读取目录，按 domain/text 返回至多四项，再安全加载被选中的完整正文与引用。
 - `ProfessionalSkillCurationSourcesV1` / `ProfessionalSkillCurationReportV1` — `implemented / public-source`：记录短摘要、章节、URL、访问日期、可获得的内容 SHA 与每条专业 instruction 的 source ID；只允许一次正常 provider 调用及一次格式/传输补跑。
-- `SkillSelectionRecordV1` — `proposed`：记录父 Bible、factory-side 选择的 2–4 个专业 Skill 及选择理由；不暴露给 candidate 或 solver。
-- `ScenarioEvidenceBundleV1` — `proposed`：派生运行清单，绑定父 Bible 与 Skill selection，包含新增但不冲突的情景说明、candidate 文件和 teacher-only 证据映射；不是新的业务对象本体。
+- `ScenarioEvidenceSessionV1` / `ScenarioEvidenceExperimentPlanV1` — `implemented / experimental`：冻结父 Bible、规则、条件、可选 Skill/source map、模型、镜像与一次 session 的输入身份；不是生产任务合同。
+- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；首个 run 为 `incomplete`，不可作为 Skill 效果结论。
+- `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
 

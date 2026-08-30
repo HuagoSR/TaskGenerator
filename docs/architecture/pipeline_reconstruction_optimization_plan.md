@@ -40,9 +40,9 @@
 
 两个 Skill 已由同一冻结公开来源批次完成策展并升为 `curated`。每个 Skill 同时拥有规则、工作实践与失败模式来源；每条专业 instruction 均绑定 source ID。官方 DeepSeek 一次正常调用成功，原始响应和诊断仅留在 ignored artifacts。该阶段未生成任务，也未修改历史 Registry。
 
-### R10.5 — Derived evidence bundle experiment — `public runtime ready / private experiment not started`
+### R10.5 — Derived evidence bundle experiment — `implemented / first run frozen incomplete`
 
-计划中的无 Skill/有 Skill 成对实验尚未开始。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 显示 Bubblewrap 嵌套 user namespace 问题；该问题已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其内运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。零私有 Bible 上传。下一步仍须按既定成对实验边界开始，不能选择性绕过 A/B。
+无 Skill/有 Skill 成对实验已实现并执行一次。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 所见 Bubblewrap 嵌套 user namespace 问题，已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其中运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。首个私有 run 的四个 session 均完成，审计无 Skill 条件因 evidence-map 缺少合同必填的空 source-ID 数组而被 admission 阻断；按零选择性补跑规则，pair review 未开始，run 冻结为 `incomplete`。下一步不是补单题，而是审阅并改善统一的 evidence-map 输出合同后，用新的完整 audit A/B pair 重启。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 
@@ -74,5 +74,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10.0–R10.4 已完成；Skill curation 仅调用一次公开来源 provider batch，未上传私有 Bible、生成任务、激活 release、改变历史 registry 或开始训练。
+- R10.0–R10.4 已完成；Skill curation 仅调用一次公开来源 provider batch，未生成任务、激活 release、改变历史 registry 或开始训练。R10.5 曾在明确授权下上传两份冻结 Bible；其首个 A/B run 已冻结，不得重解释或与未来 run 混合。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。
