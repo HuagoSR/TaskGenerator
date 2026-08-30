@@ -90,6 +90,7 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `ProfessionalSkillCatalogEntryV1` — `implemented / curated`：仅包含 contract version、skill ID、名称、触发描述、领域、相对路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。loader 先读取目录，按 domain/text 返回至多四项，再安全加载被选中的完整正文与引用。
 - `ProfessionalSkillCurationSourcesV1` / `ProfessionalSkillCurationReportV1` — `implemented / public-source`：记录短摘要、章节、URL、访问日期、可获得的内容 SHA 与每条专业 instruction 的 source ID；只允许一次正常 provider 调用及一次格式/传输补跑。
 - `ScenarioEvidenceSessionV1` / `ScenarioEvidenceExperimentPlanV1` — `implemented / experimental`：冻结父 Bible、规则、条件、可选 Skill/source map、模型、镜像与一次 session 的输入身份；不是生产任务合同。
+- `ScenarioEvidenceCampaignScopeV1` — `implemented / awaiting authorization`：绑定一个完整四-session cohort、源码提交、plan SHA、模型/镜像、两次盲审上限与明确排除动作；只有新的私有上传授权才能消费。
 - `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；首个 run 为 `incomplete`，不可作为 Skill 效果结论。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。

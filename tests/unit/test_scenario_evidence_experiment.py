@@ -13,10 +13,12 @@ from task_generator.planning.scenario_evidence_experiment import (
     ConditionBlindPairReviewV1,
     OfficialDeepSeekConditionBlindReviewer,
     ScenarioEvidenceAdmissionReportV1,
+    ScenarioEvidenceCampaignScopeV1,
     ScenarioEvidenceExperiment,
     ScenarioEvidenceExperimentPlanV1,
     ScenarioEvidenceSessionV1,
     aggregate_experiment,
+    compile_campaign_scope,
 )
 from task_generator.substrate.professional_skills import (
     LoadedProfessionalSkillV1,
@@ -76,7 +78,7 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
         )
 
     @staticmethod
-    def _valid_output(workspace: Path, *, with_skill: bool, leak: bool = False) -> None:
+    def _valid_output(workspace: Path, *, with_skill: bool, leak: bool = False, omit_no_skill_sources: bool = False) -> None:
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = "Evidence"
@@ -87,7 +89,10 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
         (workspace / "teacher" / "scenario_extension.md").write_text("The report was exported after close.", encoding="utf-8")
         artifacts = []
         for name in ("report.xlsx", "controller_note.txt"):
-            artifacts.append({"path": f"candidate/{name}", "fact_ids": ["f1", "f2"], "professional_judgments": ["Assess report reliability"], "skill_source_ids": ["source-a"] if with_skill else []})
+            entry = {"path": f"candidate/{name}", "fact_ids": ["f1", "f2"], "professional_judgments": ["Assess report reliability"]}
+            if with_skill or not omit_no_skill_sources:
+                entry["skill_source_ids"] = ["source-a"] if with_skill else []
+            artifacts.append(entry)
         (workspace / "teacher" / "evidence_map.json").write_text(json.dumps({"artifacts": artifacts}), encoding="utf-8")
 
     def test_staging_preserves_ab_difference_only_at_skill_package(self):
@@ -112,6 +117,21 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             report = experiment.admit(session=self._session("without_skill"), workspace=workspace, bible=bible)
             self.assertEqual(report.decision, "blocked")
             self.assertIn("answer_leakage_absent", [item.code for item in report.findings if not item.passed])
+
+    def test_without_skill_accepts_omitted_optional_source_ids_but_rejects_nonempty_ids(self):
+        experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root) / "workspace"
+            session = self._session("without_skill")
+            experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rules, skill=None)
+            self._valid_output(workspace, with_skill=False, omit_no_skill_sources=True)
+            self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
+            payload = json.loads((workspace / "teacher" / "evidence_map.json").read_text(encoding="utf-8"))
+            payload["artifacts"][0]["skill_source_ids"] = ["forbidden"]
+            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
+            report = experiment.admit(session=session, workspace=workspace, bible=bible)
+            closed = next(item for item in report.findings if item.code == "evidence_map_closed")
+            self.assertIn("without_skill_evidence_map_has_skill_source", closed.details["errors"])
 
     def test_with_skill_requires_two_curated_source_bound_artifacts(self):
         experiment, bible, rules, skill = ScenarioEvidenceExperiment(), _bible(), _rules(), _skill()
@@ -186,6 +206,18 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
                 ConditionBlindFindingV1(favored_bundle="bundle_2", dimension="judgment_depth", file_paths=["controller_note.txt"], reason="The note and report create a substantive evidence reliability decision."),
             ]))
         self.assertEqual(aggregate_experiment(plan=plan, admissions=reports, reviews=reviews).decision, "skill_effect_supported")
+
+    def test_campaign_scope_requires_exact_complete_pair_and_private_authorization(self):
+        sessions = []
+        for scenario_id in ("scenario-audit", "scenario-procurement"):
+            for condition in ("without_skill", "with_skill"):
+                sessions.append(self._session(condition).model_copy(update={"session_id": f"{scenario_id}-{condition}", "scenario_id": scenario_id}))
+        plan = ScenarioEvidenceExperimentPlanV1(sessions=sessions)
+        scope = compile_campaign_scope(campaign_id="r10-restart", source_commit="a" * 40, plan=plan)
+        self.assertEqual(scope.plan_sha256, plan.canonical_sha256())
+        self.assertTrue(scope.private_upload_authorization_required)
+        with self.assertRaises(ValueError):
+            ScenarioEvidenceCampaignScopeV1(campaign_id="bad", source_commit="a" * 40, plan_sha256=plan.canonical_sha256(), sessions=sessions[:3])
 
 
 if __name__ == "__main__":

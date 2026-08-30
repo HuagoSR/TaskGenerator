@@ -72,6 +72,37 @@ class ScenarioEvidenceExperimentPlanV1(ScenarioFirstModel):
         return self
 
 
+class ScenarioEvidenceCampaignScopeV1(ScenarioFirstModel):
+    """Immutable authorization boundary for one complete four-session rerun."""
+
+    scope_version: Literal["r10.scenario_evidence_campaign_scope.1"] = "r10.scenario_evidence_campaign_scope.1"
+    campaign_id: str = Field(min_length=1)
+    source_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    plan_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    sessions: list[ScenarioEvidenceSessionV1] = Field(min_length=4, max_length=4)
+    codex_session_limit: Literal[4] = 4
+    pair_review_limit: Literal[2] = 2
+    pair_review_max_attempts: Literal[2] = 2
+    private_upload_authorization_required: Literal[True] = True
+    excluded_actions: list[str] = Field(default_factory=lambda: ["task_compilation", "solver", "grader", "production_release"])
+
+    @model_validator(mode="after")
+    def _scope_matches_plan_shape(self) -> "ScenarioEvidenceCampaignScopeV1":
+        ScenarioEvidenceExperimentPlanV1(sessions=self.sessions)
+        return self
+
+
+def compile_campaign_scope(
+    *, campaign_id: str, source_commit: str, plan: ScenarioEvidenceExperimentPlanV1,
+) -> ScenarioEvidenceCampaignScopeV1:
+    return ScenarioEvidenceCampaignScopeV1(
+        campaign_id=campaign_id,
+        source_commit=source_commit,
+        plan_sha256=plan.canonical_sha256(),
+        sessions=plan.sessions,
+    )
+
+
 class EvidenceAdmissionFindingV1(ScenarioFirstModel):
     code: str = Field(min_length=1)
     passed: bool
@@ -254,12 +285,19 @@ class ScenarioEvidenceExperiment:
 
     @staticmethod
     def _task_prompt(condition: Condition) -> str:
-        skill_instruction = "Read teacher/professional_skill/SKILL.md and its source map before planning." if condition == "with_skill" else "Do not load or infer any professional Skill package."
+        if condition == "with_skill":
+            skill_instruction = "Read teacher/professional_skill/SKILL.md and its source map before planning. At least two artifacts must cite an applicable source ID from that map."
+            map_example = '{"artifacts":[{"path":"candidate/price_comparison.csv","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"],"skill_source_ids":["curated-source-id"]}]}'
+        else:
+            skill_instruction = "Do not load or infer any professional Skill package."
+            map_example = '{"artifacts":[{"path":"candidate/business_record.csv","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"]}]}'
         return f"""You are a factory-side evidence author. Read teacher/scenario_bible.json, teacher/professional_rules.json, and teacher/condition.json. {skill_instruction}
 
 Create a plausible candidate-visible evidence bundle only in candidate/. Choose the natural business file types yourself, but include at least one table-like file (XLSX or CSV) and one narrative file (TXT, DOCX, or PDF). Candidate files must express underlying facts, not answer labels. Never put any of these in candidate/: the Scenario Bible, correct treatments, professional rules, Skill text, source citations, Questionable, Exception, Requires Follow-Up, or a direct final disposition.
 
-Create teacher/scenario_extension.md with only new facts that are compatible with the parent Bible. Create teacher/evidence_map.json exactly as JSON object {{"artifacts":[{{"path":"candidate/relative-file","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"],"skill_source_ids":["source-id only when a loaded Skill supports this artifact"]}}]}}. Every candidate file needs one artifacts entry. Do not create a task prompt, deliverable contract, rubric, teacher truth, solver answer, or package.
+Create teacher/scenario_extension.md with only new facts that are compatible with the parent Bible. Create teacher/evidence_map.json with exactly one top-level key, `artifacts`; every candidate file needs one entry. Each entry requires only `path`, `fact_ids`, and `professional_judgments`. `skill_source_ids` is allowed only when a loaded Skill directly supports that artifact. For this condition, the minimal valid shape is: {map_example}
+
+Before finishing, run `python3 -m json.tool teacher/evidence_map.json` and compare the artifact paths to the files in candidate/. Do not create a task prompt, deliverable contract, rubric, teacher truth, solver answer, or package.
 """
 
     @classmethod
@@ -269,9 +307,17 @@ Create teacher/scenario_extension.md with only new facts that are compatible wit
         seen: set[str] = set()
         errors: list[str] = []
         fact_ids = {item.fact_id for item in bible.facts}
+        required_keys = {"path", "fact_ids", "professional_judgments"}
+        allowed_keys = required_keys | {"skill_source_ids"}
         for item in payload["artifacts"]:
-            if not isinstance(item, dict) or set(item) != {"path", "fact_ids", "professional_judgments", "skill_source_ids"}:
-                errors.append("evidence_map_entry_shape_invalid")
+            if not isinstance(item, dict):
+                errors.append("evidence_map_entry_not_object")
+                continue
+            if not required_keys <= set(item):
+                errors.append("evidence_map_entry_missing_core_field")
+                continue
+            if not set(item) <= allowed_keys:
+                errors.append("evidence_map_entry_unknown_field")
                 continue
             path = item.get("path")
             if not isinstance(path, str) or not path.startswith("candidate/") or ".." in Path(path).parts:
@@ -284,19 +330,22 @@ Create teacher/scenario_extension.md with only new facts that are compatible wit
                 errors.append("evidence_map_fact_reference_invalid")
             if not isinstance(item.get("professional_judgments"), list) or not item["professional_judgments"]:
                 errors.append("evidence_map_judgment_missing")
-            if not isinstance(item.get("skill_source_ids"), list):
+            # The optional field is semantically normalized to an empty list for
+            # the no-Skill condition without changing the model's raw output.
+            skill_source_ids = item.get("skill_source_ids", [])
+            if not isinstance(skill_source_ids, list):
                 errors.append("evidence_map_skill_source_invalid")
-            elif session.condition == "without_skill" and item["skill_source_ids"]:
+            elif session.condition == "without_skill" and skill_source_ids:
                 errors.append("without_skill_evidence_map_has_skill_source")
-            elif not all(isinstance(value, str) and value for value in item["skill_source_ids"]):
+            elif not all(isinstance(value, str) and value for value in skill_source_ids):
                 errors.append("evidence_map_skill_source_invalid")
-            elif not set(item["skill_source_ids"]) <= set(session.skill_source_ids):
+            elif not set(skill_source_ids) <= set(session.skill_source_ids):
                 errors.append("evidence_map_skill_source_not_curated")
         actual = {f"candidate/{path.relative_to(candidate_root).as_posix()}" for path in files}
         if seen != actual:
             errors.append("evidence_map_candidate_coverage_incomplete")
         if session.condition == "with_skill":
-            source_bound = sum(bool(item.get("skill_source_ids")) for item in payload["artifacts"] if isinstance(item, dict))
+            source_bound = sum(bool(item.get("skill_source_ids", [])) for item in payload["artifacts"] if isinstance(item, dict))
             if source_bound < 2:
                 errors.append("with_skill_requires_two_source_bound_artifacts")
         return sorted(set(errors))

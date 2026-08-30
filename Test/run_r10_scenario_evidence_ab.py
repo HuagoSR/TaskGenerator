@@ -20,6 +20,7 @@ from task_generator.planning.scenario_evidence_experiment import (
     ScenarioEvidenceExperimentPlanV1,
     ScenarioEvidenceSessionV1,
     aggregate_experiment,
+    compile_campaign_scope,
 )
 from task_generator.planning.work_seed_admission import WorkSeedCandidateV1
 from task_generator.substrate.professional_skills import ProfessionalSkillLoader
@@ -123,6 +124,15 @@ def _load(args: argparse.Namespace) -> tuple[dict[str, ScenarioBibleV1], dict[st
     return selected, rule_sets, seeds, skills, source_ids
 
 
+def _build_plan(*, selected: dict[str, ScenarioBibleV1], rules: dict[str, ProfessionalRuleSetV1], skills: dict[str, Any], source_ids: dict[str, list[str]], image_sha: str) -> ScenarioEvidenceExperimentPlanV1:
+    experiment, sessions = ScenarioEvidenceExperiment(), []
+    for scenario_id, config in SCENARIOS.items():
+        bible, rule_set, skill = selected[scenario_id], rules[selected[scenario_id].rule_set_id], skills[config["skill_id"]]
+        for condition in ("without_skill", "with_skill"):
+            sessions.append(ScenarioEvidenceSessionV1(session_id=f"{scenario_id}__{condition}", scenario_id=scenario_id, domain=config["domain"], condition=condition, bible_sha256=bible.canonical_sha256(), rule_set_sha256=rule_set.canonical_sha256(), image=IMAGE, image_sha256=image_sha, skill_id=skill.entry.skill_id if condition == "with_skill" else None, skill_sha256=experiment.sha256_json(skill.model_dump(mode="json")) if condition == "with_skill" else None, skill_source_ids=source_ids[skill.entry.skill_id] if condition == "with_skill" else []))
+    return ScenarioEvidenceExperimentPlanV1(sessions=sessions)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="huago-cone")
@@ -135,26 +145,35 @@ def main() -> None:
     parser.add_argument("--curation-sources", type=Path, default=ROOT / "data" / "r10" / "professional_skills" / "curation_sources.json")
     parser.add_argument("--skills-root", type=Path, default=ROOT / ".agents" / "skills" / "r10")
     parser.add_argument("--deepseek-key", type=Path, default=ROOT / "deepseek-key.txt")
+    parser.add_argument("--campaign-id", default="r10_5_skill_evidence_ab_restart1")
+    parser.add_argument("--source-commit")
+    parser.add_argument("--scope-only", action="store_true")
+    parser.add_argument("--image-sha256", default="02b79e7f6c1b9966918fc986c7624f50c2f45c6e32a5502bc30f65ccd328a722")
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("r10_evidence_experiment_output_already_exists")
     selected, rules, seeds, skills, source_ids = _load(args)
     args.output_root.mkdir(parents=True)
+    if args.scope_only:
+        source_commit = args.source_commit or subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8", capture_output=True, check=True).stdout.strip()
+        plan = _build_plan(selected=selected, rules=rules, skills=skills, source_ids=source_ids, image_sha=args.image_sha256)
+        scope = compile_campaign_scope(campaign_id=args.campaign_id, source_commit=source_commit, plan=plan)
+        _write(args.output_root / "campaign_scope.json", scope.model_dump(mode="json"))
+        print(json.dumps({"scope_sha256": scope.canonical_sha256(), "output_root": str(args.output_root), "decision": "awaiting_private_upload_authorization"}, ensure_ascii=False))
+        return
     remote_home = _ssh(args.host, "printf %s \"$HOME\"", timeout=120).stdout.strip()
     remote_root = f"{remote_home}/taskgenerator-data/r10-evidence-ab/{args.run_id}"
     _probe(args.host, remote_root, args.output_root)
     _write(args.output_root / "public_probe.json", {"decision": "pass", "created_at": _now()})
     image_sha = _image_digest(args.host)
-    experiment, sessions, staged = ScenarioEvidenceExperiment(), [], {}
-    for scenario_id, config in SCENARIOS.items():
-        bible, rule_set, skill = selected[scenario_id], rules[selected[scenario_id].rule_set_id], skills[config["skill_id"]]
-        for condition in ("without_skill", "with_skill"):
-            session = ScenarioEvidenceSessionV1(session_id=f"{scenario_id}__{condition}", scenario_id=scenario_id, domain=config["domain"], condition=condition, bible_sha256=bible.canonical_sha256(), rule_set_sha256=rule_set.canonical_sha256(), image=IMAGE, image_sha256=image_sha, skill_id=skill.entry.skill_id if condition == "with_skill" else None, skill_sha256=experiment.sha256_json(skill.model_dump(mode="json")) if condition == "with_skill" else None, skill_source_ids=source_ids[skill.entry.skill_id] if condition == "with_skill" else [])
-            workspace = args.output_root / "staged" / session.session_id
-            experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rule_set, skill=skill if condition == "with_skill" else None)
-            sessions.append(session)
-            staged[(scenario_id, condition)] = workspace
-    plan = ScenarioEvidenceExperimentPlanV1(sessions=sessions)
+    experiment, staged = ScenarioEvidenceExperiment(), {}
+    plan = _build_plan(selected=selected, rules=rules, skills=skills, source_ids=source_ids, image_sha=image_sha)
+    sessions = plan.sessions
+    for session in sessions:
+        workspace = args.output_root / "staged" / session.session_id
+        skill = skills[SCENARIOS[session.scenario_id]["skill_id"]]
+        experiment.stage_session(workspace=workspace, session=session, bible=selected[session.scenario_id], rules=rules[selected[session.scenario_id].rule_set_id], skill=skill if session.condition == "with_skill" else None)
+        staged[(session.scenario_id, session.condition)] = workspace
     _write(args.output_root / "experiment_plan.json", plan.model_dump(mode="json"))
     admissions = []
     for session in sessions:
