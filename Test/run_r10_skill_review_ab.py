@@ -16,7 +16,7 @@ from run_r10_scenario_evidence_ab import IMAGE, SCENARIOS, _image_digest, _now, 
 from task_generator.core.scenario_first import ProfessionalRuleSetV1, ScenarioBibleV1, WorkSeedV1
 from task_generator.planning.scenario_evidence_experiment import OfficialDeepSeekConditionBlindReviewer, ScenarioEvidenceExperiment, ScenarioEvidenceExperimentPlanV1, ScenarioEvidenceSessionV1, aggregate_experiment
 from task_generator.planning.work_seed_admission import WorkSeedCandidateV1
-from task_generator.substrate.professional_skill_compiler import tree_sha256
+from task_generator.substrate.professional_skill_compiler import sha256_json, tree_sha256
 from task_generator.substrate.professional_skills import ProfessionalSkillLoader
 
 
@@ -69,7 +69,19 @@ def main() -> None:
     selected, rules, seeds, skills = _load(args)
     args.output_root.mkdir(parents=True)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
-    _write(args.output_root / "campaign_manifest.json", {"source_commit": commit, "compiled_skills_sha256": tree_sha256(args.compiled_skills_root), "model": "gpt-5.6-terra", "common_base_per_scenario": True, "review_sessions": 4, "pair_review_limit": 2})
+    compiled_skills_sha256 = tree_sha256(args.compiled_skills_root)
+    scope = {
+        "scope_version": "r10.skill_review_ab_scope.1",
+        "source_commit": commit,
+        "compiled_skills_sha256": compiled_skills_sha256,
+        "scenarios": sorted(SCENARIOS),
+        "generator": {"model": "gpt-5.6-terra", "base_sessions": 2, "review_sessions": 4, "timeout_seconds": 1800},
+        "reviewer": {"provider": "deepseek", "model": "deepseek-v4-pro", "pair_review_limit": 2, "format_retry_limit": 1},
+        "excluded": ["task_compilation", "solver", "grader", "release", "training", "promotion"],
+    }
+    _write(args.output_root / "campaign_scope.json", scope)
+    _write(args.output_root / "scope_receipt.json", {"scope_sha256": sha256_json(scope), "status": "consumed", "consumed_at": _now()})
+    _write(args.output_root / "campaign_manifest.json", {"source_commit": commit, "compiled_skills_sha256": compiled_skills_sha256, "model": "gpt-5.6-terra", "common_base_per_scenario": True, "review_sessions": 4, "pair_review_limit": 2})
     remote_home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     remote_root = f"{remote_home}/taskgenerator-data/r10-skill-review-ab/{args.run_id}"
     _probe(args.host, remote_root, args.output_root)
