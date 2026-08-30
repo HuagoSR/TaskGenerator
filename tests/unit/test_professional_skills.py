@@ -30,12 +30,17 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
         self.loader = ProfessionalSkillLoader()
         self.catalog = self.loader.load_catalog(CATALOG_PATH)
 
-    def test_catalog_is_thin_and_has_two_draft_skills(self) -> None:
+    def test_catalog_is_thin_and_exposes_curated_and_draft_skills(self) -> None:
         self.assertEqual(self.catalog.contract_version, CATALOG_VERSION)
-        self.assertEqual({entry.status for entry in self.catalog.entries}, {"curated"})
+        self.assertEqual({entry.status for entry in self.catalog.entries}, {"curated", "draft"})
         self.assertEqual(
             {entry.skill_id for entry in self.catalog.entries},
-            {"r10.audit-evidence-reliability", "r10.procurement-price-reasonableness"},
+            {
+                "r10.audit-evidence-reliability",
+                "r10.procurement-price-reasonableness",
+                "r10.audit-control-deficiency-evaluation",
+                "r10.procurement-delivery-acceptance",
+            },
         )
 
     def test_domain_and_text_search_return_metadata_only(self) -> None:
@@ -45,7 +50,10 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
                 query="audit evidence reliability",
                 domain="audit_compliance",
             )
-        self.assertEqual([entry.name for entry in audit], ["audit-evidence-reliability"])
+        self.assertEqual(
+            [entry.name for entry in audit],
+            ["audit-evidence-reliability", "audit-control-deficiency-evaluation"],
+        )
         self.assertEqual(
             self.loader.search(
                 self.catalog,
@@ -123,6 +131,8 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
 
     def test_curated_skills_do_not_contain_bible_answers_or_organizations(self) -> None:
         for entry in self.catalog.entries:
+            if entry.status != "curated":
+                continue
             loaded = self.loader.load_skill(entry, skills_root=SKILLS_ROOT)
             text = loaded.skill_markdown.lower()
             self.assertNotIn("correct treatment", text)

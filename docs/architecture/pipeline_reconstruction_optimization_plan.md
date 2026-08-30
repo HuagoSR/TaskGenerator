@@ -54,7 +54,13 @@
 
 从两份冻结的有 Skill evidence bundle 编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。审计题交付 XLSX 工作底稿，采购题交付 DOCX 价格分析备忘录；采购题不要求供应商选择。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。两题已在第三个独立 scope 下通过静态 admission；前两次 cohort 的事实投影与路径规范化诊断保留。下一步先由用户检查形态，不运行 solver 或 grader。
 
-### R10.7 — Four-task pilot admission — `not_implemented`
+### R10.7A — Complete the remaining two user-review tasks — `implementation_ready / not_executed`
+
+现有两题已完成静态 admission 并由用户进行表面审题。下一切片仅补齐另外两题：控制缺陷组合评估交付 DOCX 评估备忘录，商业交付验收处置交付 XLSX 跟进工作簿。新增的两项 factory-side Skill 先以 draft 元数据登记，再由 Skill Compiler 基于官方 PCAOB AS 2201 与 FAR Part 46 材料自动编译并经 DeepSeek 独立来源/内容审查；不人工补写专业结论，不重复 R10.5 A/B 实验。
+
+两份有 Skill evidence bundle 与两道 task/truth package 均须完整静态通过，并生成中文用户检查包。已有两题候选树与 SHA 不得变化。该切片不运行 solver、grader、release 或十题扩展。
+
+### R10.7B — Four-task pilot behavioral admission — `not_implemented`
 
 对四题运行离线一致性、candidate/teacher isolation、可解性、答案泄漏、文件渲染和交付合同测试。通过后，以同一冻结任务包运行多模型 solver 与独立 grader，测量交付有效率、关键判断准确性、major defect、评分分歧和模型分离度。
 

@@ -71,6 +71,76 @@
       "section": "PGI 215.404-1(a)(i), insufficient data sequence",
       "content_sha256": null,
       "summary": "When data are insufficient for price analysis, the guidance describes clearly requesting necessary data, explaining why it is needed, and escalating unresolved refusal rather than treating an unsupported record as adequate."
+    },
+    {
+      "source_id": "audit_as2201_deficiency_severity",
+      "skill_id": "r10.audit-control-deficiency-evaluation",
+      "evidence_kind": "rule",
+      "title": "PCAOB AS 2201: An Audit of Internal Control Over Financial Reporting",
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS2201",
+      "section": "AS 2201.62–.70",
+      "content_sha256": null,
+      "summary": "Control deficiencies are evaluated based on reasonable possibility and potential magnitude; deficiencies must be evaluated individually and in combination, and material weaknesses have specified communication implications."
+    },
+    {
+      "source_id": "audit_as1215_deficiency_documentation",
+      "skill_id": "r10.audit-control-deficiency-evaluation",
+      "evidence_kind": "practice",
+      "title": "PCAOB AS 1215: Audit Documentation",
+      "locator": "https://pcaobus.org/oversight/standards/auditing-standards/details/AS1215",
+      "section": "AS 1215.06–.10",
+      "content_sha256": null,
+      "summary": "Audit documentation records procedures performed, evidence obtained, conclusions reached, and enough identifying information for an experienced auditor to understand the work."
+    },
+    {
+      "source_id": "audit_pcaob_inspection_control_deficiencies",
+      "skill_id": "r10.audit-control-deficiency-evaluation",
+      "evidence_kind": "failure_mode",
+      "title": "PCAOB inspection reports and remediation materials",
+      "locator": "https://pcaobus.org/oversight/inspections",
+      "section": "Inspection observations concerning ICFR testing and evaluation",
+      "content_sha256": null,
+      "summary": "Inspection observations illustrate the risk of unsupported severity assessment, incomplete consideration of related deficiencies, and premature reliance on remediation evidence."
+    },
+    {
+      "source_id": "procurement_far_46_202_1_boundary",
+      "skill_id": "r10.procurement-delivery-acceptance",
+      "evidence_kind": "rule",
+      "title": "FAR 46.202-1: Quality assurance for commercial products",
+      "locator": "https://www.acquisition.gov/far/46.202-1",
+      "section": "FAR 46.202-1",
+      "content_sha256": null,
+      "summary": "Commercial quality assurance should rely on the contractor's existing quality system when appropriate, while retaining an acceptance decision grounded in contract requirements and available evidence."
+    },
+    {
+      "source_id": "procurement_far_46_407_nonconforming",
+      "skill_id": "r10.procurement-delivery-acceptance",
+      "evidence_kind": "rule",
+      "title": "FAR 46.407: Nonconforming supplies or services",
+      "locator": "https://www.acquisition.gov/far/46.407",
+      "section": "FAR 46.407(a)–(c)",
+      "content_sha256": null,
+      "summary": "Nonconforming supplies or services require an authorized disposition and documented decision rather than an informal acceptance based only on delivery or convenience."
+    },
+    {
+      "source_id": "procurement_far_46_501_acceptance",
+      "skill_id": "r10.procurement-delivery-acceptance",
+      "evidence_kind": "practice",
+      "title": "FAR 46.501: General",
+      "locator": "https://www.acquisition.gov/far/46.501",
+      "section": "FAR 46.501",
+      "content_sha256": null,
+      "summary": "Acceptance is a contract action with a defined authority boundary; receiving and inspection evidence supports, but does not silently replace, an authorized acceptance disposition."
+    },
+    {
+      "source_id": "procurement_far_46_503_receiving",
+      "skill_id": "r10.procurement-delivery-acceptance",
+      "evidence_kind": "failure_mode",
+      "title": "FAR 46.503: Place of acceptance",
+      "locator": "https://www.acquisition.gov/far/46.503",
+      "section": "FAR 46.503",
+      "content_sha256": null,
+      "summary": "Acceptance evidence must be reconciled to the contract's stated acceptance arrangement; delivery records alone can leave a quantity, condition, or authority discrepancy unresolved."
     }
   ]
 }

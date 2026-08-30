@@ -20,6 +20,26 @@
       "relative_path": "procurement-price-reasonableness",
       "version": "0.1.0",
       "status": "curated"
+    },
+    {
+      "contract_version": "r10.professional_skill_catalog_entry.1",
+      "skill_id": "r10.audit-control-deficiency-evaluation",
+      "name": "audit-control-deficiency-evaluation",
+      "description": "Guide factory-side construction of integrated-audit scenarios where a professional evaluates control deficiencies individually and in combination, documents severity rationale, and escalates for review. Do not use for generic control checklists or formatting.",
+      "domain": "audit_compliance",
+      "relative_path": "audit-control-deficiency-evaluation",
+      "version": "0.1.0",
+      "status": "draft"
+    },
+    {
+      "contract_version": "r10.professional_skill_catalog_entry.1",
+      "skill_id": "r10.procurement-delivery-acceptance",
+      "name": "procurement-delivery-acceptance",
+      "description": "Guide factory-side construction of commercial-delivery scenarios where a contracting representative assesses acceptance support, holds unresolved discrepancies, and records follow-up. Do not use for generic receiving logs or routine spreadsheet formatting.",
+      "domain": "procurement_operations",
+      "relative_path": "procurement-delivery-acceptance",
+      "version": "0.1.0",
+      "status": "draft"
     }
   ]
 }

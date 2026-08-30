@@ -43,7 +43,8 @@ class ProfessionalSkillCurationTests(unittest.TestCase):
                     {"text": "When the record is insufficient, request or escalate for needed support instead of treating a thin record as adequate.", "source_ids": ["procurement_dfars_pgi_insufficient_data"]}], "trigger_examples": ["A contract specialist prepares a pre-award file."], "exclusions": ["Generic vendor sorting."]}
             ]})}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
         with tempfile.TemporaryDirectory() as directory:
-            report, drafts = OfficialDeepSeekProfessionalSkillCurator(executor).curate(catalog=self.catalog, sources=self.sources, api_key="secret", output_root=Path(directory) / "result")
+            curated_catalog = self.catalog.model_copy(update={"entries": [entry for entry in self.catalog.entries if entry.status == "curated"]})
+            report, drafts = OfficialDeepSeekProfessionalSkillCurator(executor).curate(catalog=curated_catalog, sources=self.sources, api_key="secret", output_root=Path(directory) / "result")
         self.assertEqual(report.decision, "pass")
         self.assertEqual(len(drafts), 2)
 

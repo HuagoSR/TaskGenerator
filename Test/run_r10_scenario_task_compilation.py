@@ -37,7 +37,8 @@ SKILL_CATALOG = ROOT / "data" / "r10" / "professional_skills" / "catalog.json"
 SKILLS_ROOT = ROOT / ".agents" / "skills" / "r10"
 IMAGE_SHA256 = "02b79e7f6c1b9966918fc986c7624f50c2f45c6e32a5502bc30f65ccd328a722"
 
-TASKS = {
+TASK_SETS = {
+"r10_6": {
     "r10_audit_revenue_evidence_reliability": {
         "scenario_id": "scenario_audit_company_information_reliability",
         "domain": "audit_compliance",
@@ -52,6 +53,23 @@ TASKS = {
         "bundle": "scenario_procurement_price_reasonableness__with_skill",
         "deliverable": {"file_name": "price_reasonableness_memo.docx", "format": "docx", "creation_mode": "create"},
     },
+},
+"r10_7a": {
+    "r10_audit_control_deficiency_evaluation": {
+        "scenario_id": "scenario_audit_control_deficiency_aggregation",
+        "domain": "audit_compliance",
+        "skill_id": "r10.audit-control-deficiency-evaluation",
+        "bundle": "scenario_audit_control_deficiency_aggregation__with_skill",
+        "deliverable": {"file_name": "control_deficiency_evaluation_memo.docx", "format": "docx", "creation_mode": "create"},
+    },
+    "r10_procurement_delivery_acceptance": {
+        "scenario_id": "scenario_procurement_acceptance_disposition",
+        "domain": "procurement_operations",
+        "skill_id": "r10.procurement-delivery-acceptance",
+        "bundle": "scenario_procurement_acceptance_disposition__with_skill",
+        "deliverable": {"file_name": "acceptance_disposition_followup.xlsx", "format": "xlsx", "creation_mode": "create"},
+    },
+},
 }
 
 
@@ -70,10 +88,10 @@ def _load_bibles_and_rules() -> tuple[dict[str, ScenarioBibleV1], dict[str, Prof
     return bibles, rules
 
 
-def build_plan() -> ScenarioTaskCompilationPlanV1:
+def build_plan(*, tasks: dict[str, dict[str, Any]], bundle_root: Path) -> ScenarioTaskCompilationPlanV1:
     specs = []
-    for task_id, config in TASKS.items():
-        bundle = FINAL_BUNDLE_ROOT / config["bundle"]
+    for task_id, config in tasks.items():
+        bundle = bundle_root / config["bundle"]
         candidate = bundle / "candidate"
         contract = DeliverableContractCompiler().build(case_id=task_id, deliverable_specs=[config["deliverable"]])
         specs.append(ScenarioTaskSpecV1(
@@ -83,9 +101,8 @@ def build_plan() -> ScenarioTaskCompilationPlanV1:
     return ScenarioTaskCompilationPlanV1(tasks=specs)
 
 
-def _stage_task(*, workspace: Path, spec: ScenarioTaskSpecV1, bible: ScenarioBibleV1, rules: ProfessionalRuleSetV1) -> None:
-    config = TASKS[spec.task_id]
-    bundle = FINAL_BUNDLE_ROOT / config["bundle"]
+def _stage_task(*, workspace: Path, spec: ScenarioTaskSpecV1, bible: ScenarioBibleV1, rules: ProfessionalRuleSetV1, config: dict[str, Any], bundle_root: Path) -> None:
+    bundle = bundle_root / config["bundle"]
     candidate = bundle / "candidate"
     reference = workspace / "reference_files"
     frozen = workspace / "_frozen_candidate"
@@ -155,9 +172,9 @@ def _execute_remote(*, host: str, remote: str, workspace: Path) -> subprocess.Co
     return result
 
 
-def _compile_one(*, host: str, remote_root: str, output_root: Path, spec: ScenarioTaskSpecV1, bible: ScenarioBibleV1, rules: ProfessionalRuleSetV1) -> dict[str, Any]:
+def _compile_one(*, host: str, remote_root: str, output_root: Path, spec: ScenarioTaskSpecV1, bible: ScenarioBibleV1, rules: ProfessionalRuleSetV1, config: dict[str, Any], bundle_root: Path) -> dict[str, Any]:
     workspace = output_root / "tasks" / spec.task_id
-    _stage_task(workspace=workspace, spec=spec, bible=bible, rules=rules)
+    _stage_task(workspace=workspace, spec=spec, bible=bible, rules=rules, config=config, bundle_root=bundle_root)
     executed = _execute_remote(host=host, remote=f"{remote_root}/{spec.task_id}", workspace=workspace)
     output_path = workspace / "teacher" / "task_compilation.json"
     first_failure: str | None = None
@@ -198,16 +215,20 @@ def main() -> None:
     parser.add_argument("--campaign-id", default="r10_6_task_compilation_20260831_execute1")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts" / "r10" / "r10_6_task_compilation_20260831_execute1")
     parser.add_argument("--scope-only", action="store_true")
+    parser.add_argument("--task-set", choices=sorted(TASK_SETS), default="r10_6")
+    parser.add_argument("--bundle-root", type=Path)
     parser.add_argument("--review-only", action="store_true", help="Rebuild the local user review pack from an already admitted run; no provider call.")
     parser.add_argument("--revalidate", action="store_true", help="Recalculate static admission after a tracked validator-only fix; preserves the initial report and makes no provider call.")
     args = parser.parse_args()
     if sum(bool(value) for value in (args.scope_only, args.review_only, args.revalidate)) > 1:
         parser.error("scope_only_review_only_and_revalidate_are_mutually_exclusive")
+    tasks = TASK_SETS[args.task_set]
+    bundle_root = args.bundle_root or FINAL_BUNDLE_ROOT
     if args.revalidate:
         if not args.output_root.is_dir():
             raise FileNotFoundError("r10_task_compilation_revalidation_root_missing")
         bibles, rules = _load_bibles_and_rules()
-        plan = build_plan()
+        plan = build_plan(tasks=tasks, bundle_root=bundle_root)
         reports = []
         for spec in plan.tasks:
             workspace = args.output_root / "tasks" / spec.task_id
@@ -228,7 +249,7 @@ def main() -> None:
     if args.review_only:
         if not args.output_root.is_dir():
             raise FileNotFoundError("r10_task_compilation_review_root_missing")
-        plan = build_plan()
+        plan = build_plan(tasks=tasks, bundle_root=bundle_root)
         for spec in plan.tasks:
             workspace = args.output_root / "tasks" / spec.task_id
             report = json.loads((workspace / "admission_report.json").read_text(encoding="utf-8"))
@@ -240,7 +261,7 @@ def main() -> None:
     if args.output_root.exists():
         raise FileExistsError("r10_task_compilation_output_already_exists")
     bibles, rules = _load_bibles_and_rules()
-    plan = build_plan()
+    plan = build_plan(tasks=tasks, bundle_root=bundle_root)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8", capture_output=True, check=True).stdout.strip()
     scope = compile_scope(campaign_id=args.campaign_id, source_commit=commit, plan=plan, image=IMAGE, image_sha256=IMAGE_SHA256)
     args.output_root.mkdir(parents=True)
@@ -254,7 +275,7 @@ def main() -> None:
     remote_root = f"{remote_home}/taskgenerator-data/r10-task-compilation/{args.run_id}"
     reports = []
     for spec in plan.tasks:
-        reports.append(_compile_one(host=args.host, remote_root=remote_root, output_root=args.output_root, spec=spec, bible=bibles[spec.scenario_id], rules=rules[bibles[spec.scenario_id].rule_set_id]))
+        reports.append(_compile_one(host=args.host, remote_root=remote_root, output_root=args.output_root, spec=spec, bible=bibles[spec.scenario_id], rules=rules[bibles[spec.scenario_id].rule_set_id], config=tasks[spec.task_id], bundle_root=bundle_root))
     decision = "compiled_for_user_review" if all(item.get("decision") == "pass" for item in reports) else "incomplete"
     _write(args.output_root / "compilation_result.json", {"result_version": "r10.scenario_task_compilation_result.1", "plan_sha256": plan.canonical_sha256(), "decision": decision, "reports": reports})
     print(json.dumps({"decision": decision, "output_root": str(args.output_root)}, ensure_ascii=False))

@@ -15,6 +15,7 @@ from task_generator.planning.scenario_task_compiler import (
     TaskSpecificRubricV1,
     TeacherTruthPointV1,
     tree_sha256,
+    compiler_prompt,
 )
 
 
@@ -139,6 +140,16 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
             output = output.model_copy(update={"teacher_truth": truth})
             report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
         self.assertEqual(report.decision, "pass")
+
+    def test_compiler_prompt_selects_the_new_professional_judgment(self):
+        with tempfile.TemporaryDirectory() as root:
+            candidate = Path(root) / "candidate"
+            candidate.mkdir()
+            (candidate / "report.txt").write_text("x", encoding="utf-8")
+            spec = self._spec(candidate).model_copy(update={"skill_id": "r10.audit-control-deficiency-evaluation"})
+            self.assertIn("deficiencies individually and in combination", compiler_prompt(spec=spec))
+            procurement = spec.model_copy(update={"domain": "procurement_operations", "skill_id": "r10.procurement-delivery-acceptance"})
+            self.assertIn("commercial-delivery acceptance", compiler_prompt(spec=procurement))
 
 
 if __name__ == "__main__":

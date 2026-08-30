@@ -238,11 +238,15 @@ class ScenarioTaskAdmissionValidator:
 
 def compiler_prompt(*, spec: ScenarioTaskSpecV1) -> str:
     deliverable = spec.deliverable_contract.deliverables[0]
-    domain_instruction = (
-        "Construct an audit-evidence reliability task. The candidate must assess conflicting company-produced revenue evidence, document reliability/completeness limits, and propose consequential follow-up procedures."
-        if spec.domain == "audit_compliance" else
-        "Construct a pre-award price-reasonableness task. The candidate must choose and explain a price-analysis approach, assess comparability and documentation gaps, and state whether the current record supports a defensible conclusion. Do not ask for supplier selection."
-    )
+    instructions = {
+        "r10.audit-evidence-reliability": "Construct an audit-evidence reliability task. The candidate must assess conflicting company-produced evidence, document reliability/completeness limits, and propose consequential follow-up procedures.",
+        "r10.procurement-price-reasonableness": "Construct a pre-award price-reasonableness task. The candidate must choose and explain a price-analysis approach, assess comparability and documentation gaps, and state whether the current record supports a defensible conclusion. Do not ask for supplier selection.",
+        "r10.audit-control-deficiency-evaluation": "Construct an integrated-audit control-deficiency evaluation task. The candidate must assess deficiencies individually and in combination, explain a supportable severity rationale, preserve uncertainty, and recommend appropriate escalation or follow-up.",
+        "r10.procurement-delivery-acceptance": "Construct a commercial-delivery acceptance task. The candidate must reconcile contract requirements, delivery and quality evidence, state whether acceptance can be supported or must be held, and document authorized follow-up. Do not ask the candidate to select a supplier.",
+    }
+    domain_instruction = instructions.get(spec.skill_id)
+    if domain_instruction is None:
+        raise ValueError("scenario_task_compiler_unknown_professional_skill")
     return f"""You are a factory-side R10 task compiler. Read only teacher/ inputs. Do not edit reference_files/ or _frozen_candidate/.
 
 {domain_instruction}

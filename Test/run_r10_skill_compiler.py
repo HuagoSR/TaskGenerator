@@ -54,13 +54,24 @@ def _stage(args: argparse.Namespace) -> tuple[dict, dict]:
     seeds = [item for item in json.loads(args.work_seeds.read_text(encoding="utf-8")) if item["status"] == "admitted"]
     rules = [ProfessionalRuleSetV1.model_validate(item).model_dump(mode="json") for item in json.loads(args.rule_sets.read_text(encoding="utf-8"))]
     feedback = json.loads(args.feedback.read_text(encoding="utf-8"))
+    selected_entries = [entry for entry in catalog.entries if not args.skill_ids or entry.skill_id in args.skill_ids]
+    if not selected_entries:
+        raise ValueError("requested_skill_ids_not_in_catalog")
+    selected_ids = {entry.skill_id for entry in selected_entries}
+    selected_catalog = catalog.model_copy(update={"entries": selected_entries})
+    selected_sources = [source for source in sources if source["skill_id"] in selected_ids]
     root = args.output_root / "compiler"
     inputs = root / "inputs"
     inputs.mkdir(parents=True)
-    for name, value in {"catalog.json": catalog.model_dump(mode="json"), "public_sources.json": sources, "work_seeds.json": {"seeds": seeds}, "professional_rules.json": {"rules": rules}, "previous_blind_feedback.json": {"blind_reviews": feedback.get("blind_reviews", [])}}.items():
+    for name, value in {"catalog.json": selected_catalog.model_dump(mode="json"), "public_sources.json": {"sources": selected_sources}, "work_seeds.json": {"seeds": seeds}, "professional_rules.json": {"rules": rules}, "previous_blind_feedback.json": {"blind_reviews": feedback.get("blind_reviews", [])}}.items():
         _write(inputs / name, value)
-    for entry in catalog.entries:
-        loaded = loader.load_skill(entry, skills_root=args.skills_root)
+    for entry in selected_entries:
+        try:
+            loaded = loader.load_skill(entry, skills_root=args.skills_root)
+        except Exception:
+            if entry.status != "draft":
+                raise
+            continue
         package = inputs / "current_skills" / entry.relative_path
         package.mkdir(parents=True)
         (package / "SKILL.md").write_text(loaded.skill_markdown, encoding="utf-8")
@@ -68,8 +79,8 @@ def _stage(args: argparse.Namespace) -> tuple[dict, dict]:
             target = package / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
-    (root / "TASK.md").write_text("You are a Skill Compiler Agent. Read inputs/ and create revised factory-side Skill packages in compiled_skills/, one directory per catalog relative_path, each containing SKILL.md and references/source-map.md. Preserve catalog name and description exactly. You may consult official PCAOB, Acquisition.gov, or DAU material. Write concise occupational-situation review guidance: roles, trigger, natural source-system materials, plausible gaps, and what must remain for the candidate to decide. Do not prescribe candidate/teacher paths, fixed file layouts, answer labels, company facts, amounts, task answers, or generic file-tool procedures. Source maps must cite official URLs and explain how each source constrains the guidance. Previous blind feedback is diagnosis only; do not recreate old files. Do not alter inputs/.\n", encoding="utf-8")
-    return {entry.skill_id: entry for entry in catalog.entries}, {"catalog": catalog.model_dump(mode="json"), "sources": sources, "seeds": seeds, "rules": rules, "feedback": feedback.get("blind_reviews", [])}
+    (root / "TASK.md").write_text("You are a Skill Compiler Agent. Read inputs/ and create factory-side Skill packages in compiled_skills/, one directory per selected catalog relative_path, each containing SKILL.md and references/source-map.md. Preserve catalog name and description exactly. You may consult official PCAOB, Acquisition.gov, or DAU material. Write concise occupational-situation review guidance: roles, trigger, natural source-system materials, plausible gaps, and what must remain for the candidate to decide. Do not prescribe candidate/teacher paths, fixed file layouts, answer labels, company facts, amounts, task answers, or generic file-tool procedures. Source maps must cite official URLs and explain how each source constrains the guidance. Previous blind feedback is diagnosis only; do not recreate old files. Do not alter inputs/.\n", encoding="utf-8")
+    return {entry.skill_id: entry for entry in selected_entries}, {"catalog": selected_catalog.model_dump(mode="json"), "sources": selected_sources, "seeds": seeds, "rules": rules, "feedback": feedback.get("blind_reviews", [])}
 
 
 def _public_probe(args: argparse.Namespace) -> None:
@@ -105,6 +116,7 @@ def main() -> None:
     parser.add_argument("--public-probe", action="store_true")
     parser.add_argument("--review-compiled-root", type=Path)
     parser.add_argument("--only-skill-id")
+    parser.add_argument("--skill-id", dest="skill_ids", action="append", default=[])
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("skill_compiler_output_already_exists")
@@ -116,7 +128,10 @@ def main() -> None:
         args.output_root.mkdir(parents=True)
         loader = ProfessionalSkillLoader()
         catalog = loader.load_catalog(args.skill_catalog)
-        entries = [entry for entry in catalog.entries if args.only_skill_id is None or entry.skill_id == args.only_skill_id]
+        selected_ids = set(args.skill_ids)
+        if args.only_skill_id:
+            selected_ids.add(args.only_skill_id)
+        entries = [entry for entry in catalog.entries if not selected_ids or entry.skill_id in selected_ids]
         if not entries:
             raise ValueError("requested_skill_id_not_in_catalog")
         key = args.deepseek_key.read_text(encoding="utf-8").strip()
