@@ -44,7 +44,9 @@
 
 无 Skill/有 Skill 成对实验已实现并执行两次。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 所见 Bubblewrap 嵌套 user namespace 问题，已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其中运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。首个私有 run 因无 Skill map 缺少空 source-ID 数组而冻结，后验修复已将该字段设为条件化可选。
 
-完整重启的四个 session 都正常完成了自然候选文件与 teacher 输出；文件可打开、隔离且无答案标签。四份 Agent 输出均在自由文本 `scenario_extension.md` 中补充了新事实，并在 evidence map 使用这些 ID；现有 validator 只接受父 Bible fact ID，因此四份 map 统一被阻断，DeepSeek pair review 未开始。该缺口不能被单题补写掩盖，也不产生任何 Skill 效果结论。下一步先选择一个最小、统一的 extension/evidence-map 接口，之后才可能以新 scope 从头重跑完整 cohort。
+完整重启的四个 session 都正常完成了自然候选文件与 teacher 输出；文件可打开、隔离且无答案标签。四份 Agent 输出均在自由文本 extension 中补充了新事实，并在 evidence map 使用这些 ID；旧 validator 只接受父 Bible fact ID，因此四份 map 统一被阻断，DeepSeek pair review 未开始。该缺口不能被单题补写掩盖，也不产生任何 Skill 效果结论。
+
+已完成的最小接口修复要求 teacher-only `scenario_extension.json` 显式登记唯一、`extension_` 前缀的 `{fact_id, statement}`；evidence map 只可引用父 Bible 或已登记的 extension ID。这解决追溯身份，不建立 Bible V2、对象本体或确定性专业真值判断。只有新的完整 scope 才能从头验证它。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 

@@ -148,6 +148,25 @@ class ScenarioEvidenceExperimentResultV1(ScenarioFirstModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class ScenarioExtensionFactV1(ScenarioFirstModel):
+    """A teacher-only fact added by the evidence author outside the parent Bible."""
+
+    fact_id: str = Field(pattern=r"^extension_[a-z0-9_]+$")
+    statement: str = Field(min_length=1, max_length=2_000)
+
+
+class ScenarioExtensionRegistryV1(ScenarioFirstModel):
+    """Small machine-readable registry for derived, non-parent facts."""
+
+    facts: list[ScenarioExtensionFactV1] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _unique_ids(self) -> "ScenarioExtensionRegistryV1":
+        if len({item.fact_id for item in self.facts}) != len(self.facts):
+            raise ValueError("scenario_extension_fact_id_duplicate")
+        return self
+
+
 class ScenarioEvidenceExperiment:
     """Stages a frozen A/B pair and performs only lightweight admission."""
 
@@ -231,15 +250,20 @@ class ScenarioEvidenceExperiment:
                 format_errors.append(f"invalid_file:{path.name}:{type(exc).__name__}")
         findings.append(self._finding("candidate_files_openable", not format_errors, {"errors": format_errors}))
 
-        extension = teacher / "scenario_extension.md"
+        extension_path = teacher / "scenario_extension.json"
         evidence_map_path = teacher / "evidence_map.json"
+        extension: ScenarioExtensionRegistryV1 | None = None
         map_payload: dict[str, Any] | None = None
+        try:
+            extension = ScenarioExtensionRegistryV1.model_validate_json(extension_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
         try:
             map_payload = json.loads(evidence_map_path.read_text(encoding="utf-8"))
         except Exception:
             pass
-        findings.append(self._finding("teacher_outputs_present", extension.is_file() and extension.stat().st_size > 0 and isinstance(map_payload, dict)))
-        map_errors = self._validate_evidence_map(map_payload, candidate, files, bible, session)
+        findings.append(self._finding("teacher_outputs_present", extension is not None and isinstance(map_payload, dict)))
+        map_errors = self._validate_evidence_map(map_payload, candidate, files, bible, session, extension)
         findings.append(self._finding("evidence_map_closed", not map_errors, {"errors": map_errors}))
 
         candidate_text = "\n".join(text_parts).casefold()
@@ -295,18 +319,20 @@ class ScenarioEvidenceExperiment:
 
 Create a plausible candidate-visible evidence bundle only in candidate/. Choose the natural business file types yourself, but include at least one table-like file (XLSX or CSV) and one narrative file (TXT, DOCX, or PDF). Candidate files must express underlying facts, not answer labels. Never put any of these in candidate/: the Scenario Bible, correct treatments, professional rules, Skill text, source citations, Questionable, Exception, Requires Follow-Up, or a direct final disposition.
 
-Create teacher/scenario_extension.md with only new facts that are compatible with the parent Bible. Create teacher/evidence_map.json with exactly one top-level key, `artifacts`; every candidate file needs one entry. Each entry requires only `path`, `fact_ids`, and `professional_judgments`. `skill_source_ids` is allowed only when a loaded Skill directly supports that artifact. For this condition, the minimal valid shape is: {map_example}
+Create `teacher/scenario_extension.json` with exactly one key, `facts`. Each new fact must be an object with a unique ID like `extension_fact_1` and a short `statement`; use `{{"facts":[]}}` when no new facts are needed. These are teacher-only additions compatible with the parent Bible. Create teacher/evidence_map.json with exactly one top-level key, `artifacts`; every candidate file needs one entry. Each entry requires only `path`, `fact_ids`, and `professional_judgments`. A fact ID may be either a parent Bible ID or a registered extension ID. `skill_source_ids` is allowed only when a loaded Skill directly supports that artifact. For this condition, the minimal valid shape is: {map_example}
 
-Before finishing, run `python3 -m json.tool teacher/evidence_map.json` and compare the artifact paths to the files in candidate/. Do not create a task prompt, deliverable contract, rubric, teacher truth, solver answer, or package.
+Before finishing, run `python3 -m json.tool teacher/scenario_extension.json` and `python3 -m json.tool teacher/evidence_map.json`, then compare the artifact paths to the files in candidate/. Do not create a task prompt, deliverable contract, rubric, teacher truth, solver answer, or package.
 """
 
     @classmethod
-    def _validate_evidence_map(cls, payload: dict[str, Any] | None, candidate_root: Path, files: list[Path], bible: ScenarioBibleV1, session: ScenarioEvidenceSessionV1) -> list[str]:
+    def _validate_evidence_map(cls, payload: dict[str, Any] | None, candidate_root: Path, files: list[Path], bible: ScenarioBibleV1, session: ScenarioEvidenceSessionV1, extension: ScenarioExtensionRegistryV1 | None) -> list[str]:
         if not isinstance(payload, dict) or set(payload) != {"artifacts"} or not isinstance(payload.get("artifacts"), list):
             return ["evidence_map_shape_invalid"]
         seen: set[str] = set()
         errors: list[str] = []
-        fact_ids = {item.fact_id for item in bible.facts}
+        parent_fact_ids = {item.fact_id for item in bible.facts}
+        extension_fact_ids = {item.fact_id for item in extension.facts} if extension is not None else set()
+        fact_ids = parent_fact_ids | extension_fact_ids
         required_keys = {"path", "fact_ids", "professional_judgments"}
         allowed_keys = required_keys | {"skill_source_ids"}
         for item in payload["artifacts"]:

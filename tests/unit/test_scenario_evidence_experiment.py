@@ -86,7 +86,7 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
         sheet.append(["INV-01", 100])
         workbook.save(workspace / "candidate" / "report.xlsx")
         (workspace / "candidate" / "controller_note.txt").write_text("The controller sent the report for the review file." + (" Exception" if leak else ""), encoding="utf-8")
-        (workspace / "teacher" / "scenario_extension.md").write_text("The report was exported after close.", encoding="utf-8")
+        (workspace / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": []}), encoding="utf-8")
         artifacts = []
         for name in ("report.xlsx", "controller_note.txt"):
             entry = {"path": f"candidate/{name}", "fact_ids": ["f1", "f2"], "professional_judgments": ["Assess report reliability"]}
@@ -151,6 +151,38 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             report = experiment.admit(session=session, workspace=workspace, bible=bible)
             closed = next(item for item in report.findings if item.code == "evidence_map_closed")
             self.assertIn("evidence_map_skill_source_not_curated", closed.details["errors"])
+
+    def test_admission_accepts_registered_extension_fact_and_blocks_unregistered_one(self):
+        experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root) / "workspace"
+            session = self._session("without_skill")
+            experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rules, skill=None)
+            self._valid_output(workspace, with_skill=False)
+            (workspace / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": [{"fact_id": "extension_fact_1", "statement": "A system export was produced after close."}]}), encoding="utf-8")
+            payload = json.loads((workspace / "teacher" / "evidence_map.json").read_text(encoding="utf-8"))
+            payload["artifacts"][0]["fact_ids"].append("extension_fact_1")
+            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
+            payload["artifacts"][0]["fact_ids"][-1] = "extension_unregistered"
+            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
+            report = experiment.admit(session=session, workspace=workspace, bible=bible)
+            closed = next(item for item in report.findings if item.code == "evidence_map_closed")
+            self.assertIn("evidence_map_fact_reference_invalid", closed.details["errors"])
+
+    def test_admission_blocks_invalid_or_duplicate_extension_registry(self):
+        experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root) / "workspace"
+            session = self._session("without_skill")
+            experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rules, skill=None)
+            self._valid_output(workspace, with_skill=False)
+            (workspace / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": [{"fact_id": "bad-id", "statement": "Invalid ID."}]}), encoding="utf-8")
+            report = experiment.admit(session=session, workspace=workspace, bible=bible)
+            self.assertIn("teacher_outputs_present", [item.code for item in report.findings if not item.passed])
+            (workspace / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": [{"fact_id": "extension_fact_1", "statement": "One."}, {"fact_id": "extension_fact_1", "statement": "Two."}]}), encoding="utf-8")
+            report = experiment.admit(session=session, workspace=workspace, bible=bible)
+            self.assertIn("teacher_outputs_present", [item.code for item in report.findings if not item.passed])
 
     def test_blind_payload_excludes_teacher_and_skill_identity(self):
         experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()

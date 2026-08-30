@@ -91,7 +91,8 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `ProfessionalSkillCurationSourcesV1` / `ProfessionalSkillCurationReportV1` — `implemented / public-source`：记录短摘要、章节、URL、访问日期、可获得的内容 SHA 与每条专业 instruction 的 source ID；只允许一次正常 provider 调用及一次格式/传输补跑。
 - `ScenarioEvidenceSessionV1` / `ScenarioEvidenceExperimentPlanV1` — `implemented / experimental`：冻结父 Bible、规则、条件、可选 Skill/source map、模型、镜像与一次 session 的输入身份；不是生产任务合同。
 - `ScenarioEvidenceCampaignScopeV1` — `implemented / awaiting authorization`：绑定一个完整四-session cohort、源码提交、plan SHA、模型/镜像、两次盲审上限与明确排除动作；只有新的私有上传授权才能消费。
-- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；两个完整 cohort 均为 `incomplete`，不可作为 Skill 效果结论。下一步先收敛 extension-ID 的最小可验证边界。
+- `ScenarioExtensionRegistryV1` — `implemented / teacher-only`：仅登记唯一、`extension_` 前缀的 `{fact_id, statement}`；不是结构化 Bible，也不声称确定性验证新增事实的专业正确性。
+- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；两个完整 cohort 均为 `incomplete`，不可作为 Skill 效果结论。新的完整 cohort 才能检验 extension registry 修复。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
