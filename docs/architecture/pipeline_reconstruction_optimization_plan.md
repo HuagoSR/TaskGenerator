@@ -50,9 +50,9 @@
 
 活跃准入不使用 instruction 配额、来源类型配额或文件级 source ID要求，只保留来源追溯、包安全、隔离、可打开性、evidence-map 闭合和答案泄漏。该结果允许进入两题 task/truth compilation 规划，但仍不是专家有效性、大规模生产或 solver 评测准入。
 
-### R10.6 — Two-task task and truth compilation — `not_implemented`
+### R10.6 — Two-task task and truth compilation — `implemented / controlled execution pending`
 
-从触发事件编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。
+从两份冻结的有 Skill evidence bundle 编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。审计题交付 XLSX 工作底稿，采购题交付 DOCX 价格分析备忘录；采购题不要求供应商选择。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。执行后先由用户检查两题形态，不运行 solver 或 grader。
 
 ### R10.7 — Four-task pilot admission — `not_implemented`
 

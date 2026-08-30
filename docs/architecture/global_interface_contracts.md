@@ -78,7 +78,7 @@ teacher-only 原始事实父权威。应含组织、角色、时间线、业务�
 
 旧的严格投影合同。它保留读取与诊断价值，但不再要求 R10 通过补全结构化 Bible 来满足它。
 
-### `TaskDecisionMatrixV1` — implemented / offline only
+### `TaskDecisionMatrixV1` — implemented / R10.6 compiler input
 
 每个关键判断点绑定候选可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。它是 teacher truth 与 task-specific rubric 的中间权威，不允许直接暴露给 candidate。
 
@@ -94,7 +94,8 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `ScenarioEvidenceCampaignScopeV1` — `implemented / awaiting authorization`：绑定一个完整四-session cohort、源码提交、plan SHA、模型/镜像、两次盲审上限与明确排除动作；只有新的私有上传授权才能消费。
 - `ScenarioExtensionRegistryV1` — `implemented / teacher-only`：登记唯一、安全的 `{fact_id, statement}`，可保留不影响闭合的 Agent 上下文；不是结构化 Bible，也不声称确定性验证新增事实的专业正确性。
 - `SkillCompilerManifestV1` / `SkillContentReviewV1` — `implemented / experimental`：仅记录自动编译输入/输出、首次失败和独立内容审查；不写入当前 catalog，也不取代旧 curation 历史。
-- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；最新完整 cohort 得到 `skill_effect_supported`，允许规划两题 task/truth compilation，但不构成专家有效性或大规模生产准入。
+- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；最新完整 cohort 得到 `skill_effect_supported`，允许进入两题 task/truth controlled compilation，但不构成专家有效性或大规模生产准入。
+- `TaskCompilationOutputV1` / `TaskSpecificRubricV1` / `ScenarioTaskCompilationPlanV1` / `ScenarioTaskCompilationScopeV1` / `ScenarioTaskAdmissionReportV1` — `implemented / R10.6`：冻结父 bundle 与候选树，统一生成 candidate-facing base prompt、teacher truth、决策矩阵与一对一评分权重；交付路径仍由 `DeliverableContractV1` 编译。静态 admission 只检查闭合、隔离、路径、候选不变性、泄漏与不确定性，不决定专业答案优劣。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
