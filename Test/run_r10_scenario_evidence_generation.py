@@ -107,7 +107,12 @@ def main() -> None:
             reports.append(report.model_dump(mode="json"))
             continue
         local = args.output_root / "staged" / session.session_id
-        experiment.stage_session(workspace=local, session=session, bible=bible, rules=rules[bible.rule_set_id], skill=skill)
+        if local.exists():
+            condition_path = local / "teacher" / "condition.json"
+            if not args.resume or not condition_path.is_file() or json.loads(condition_path.read_text(encoding="utf-8")) != session.model_dump(mode="json"):
+                raise RuntimeError("r10_7a_evidence_staged_workspace_drift")
+        else:
+            experiment.stage_session(workspace=local, session=session, bible=bible, rules=rules[bible.rule_set_id], skill=skill)
         remote = f"{remote_root}/{session.session_id}"
         _run(["scp", "-r", str(local), f"{args.host}:{remote}"], timeout=240)
         result = _ssh(args.host, "sh -s", input_text=_remote_session_script(remote), timeout=1900, check=False)
