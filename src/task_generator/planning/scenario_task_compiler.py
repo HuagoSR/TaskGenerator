@@ -190,14 +190,28 @@ class ScenarioTaskAdmissionValidator:
         except Exception:
             extension_valid = False
         allowed_fact_ids = fact_ids | extension_ids
+        fact_paths: dict[str, set[str]] = {}
+        evidence_map_valid = True
+        try:
+            evidence_map = json.loads((teacher_root / "evidence_map.json").read_text(encoding="utf-8"))
+            for artifact in evidence_map["artifacts"]:
+                path = str(artifact["path"])
+                if not path.startswith("candidate/"):
+                    raise ValueError("evidence_map_candidate_path_invalid")
+                candidate_path = path.removeprefix("candidate/")
+                for fact_id in artifact["fact_ids"]:
+                    fact_paths.setdefault(str(fact_id), set()).add(candidate_path)
+        except Exception:
+            evidence_map_valid = False
         rule_ids = {rule.rule_id for rule in rules.rules}
         candidate_names = {path.name for path in candidate_root.rglob("*") if path.is_file()}
         evidence_paths = {path.relative_to(candidate_root).as_posix() for path in candidate_root.rglob("*") if path.is_file()}
         invalid_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if fact_id not in allowed_fact_ids})
         invalid_truth_rules = sorted({rule_id for item in output.teacher_truth for rule_id in item.rule_ids if rule_id not in rule_ids})
         invalid_truth_paths = sorted({path for item in output.teacher_truth for path in item.evidence_paths if path not in evidence_paths})
-        truth_ok = extension_valid and not invalid_truth_facts and not invalid_truth_rules and not invalid_truth_paths
-        add("teacher_truth_references_closed", truth_ok, extension_registry_valid=extension_valid, invalid_fact_ids=invalid_truth_facts, invalid_rule_ids=invalid_truth_rules, invalid_evidence_paths=invalid_truth_paths)
+        invisible_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if not (set(item.evidence_paths) & fact_paths.get(fact_id, set()))})
+        truth_ok = extension_valid and evidence_map_valid and not invalid_truth_facts and not invalid_truth_rules and not invalid_truth_paths and not invisible_truth_facts
+        add("teacher_truth_references_closed", truth_ok, extension_registry_valid=extension_valid, evidence_map_valid=evidence_map_valid, invalid_fact_ids=invalid_truth_facts, invalid_rule_ids=invalid_truth_rules, invalid_evidence_paths=invalid_truth_paths, invisible_fact_ids=invisible_truth_facts)
         matrix = output.decision_matrix
         matrix_ok = matrix.scenario_id == bible.scenario_id and 3 <= len(matrix.decision_points) <= 5 and all(
             set(point.rule_ids) <= rule_ids and point.skill_ids == [spec.skill_id]
@@ -234,5 +248,5 @@ Write exactly one JSON object to teacher/task_compilation.json with this shape:
   "task_specific_rubric": {{"rubric_version":"r10.task_specific_rubric.1","criteria":[{{"criterion_id":"...","decision_id":"...","weight":0.25,"description":"...","major_error_blocks_credit":true}}]}}
 }}
 
-Use three to five decision points and one rubric criterion per decision point; weights must sum exactly to 1.0. Cite only visible reference file basenames in evidence refs. Acknowledging insufficient evidence and requesting follow-up is valid when justified. The candidate's final deliverable must be a {deliverable.format.upper()} named `{deliverable.file_name}`; do not write it yourself.
+Use three to five decision points and one rubric criterion per decision point; weights must sum exactly to 1.0. Cite only visible reference file basenames in evidence refs. In each teacher-truth item, cite only Bible or extension fact IDs that the supplied evidence_map projects into that item's listed visible evidence paths; do not cite teacher-only policy, consequence, treatment, or unseen background facts as factual support. Acknowledging insufficient evidence and requesting follow-up is valid when justified. The candidate's final deliverable must be a {deliverable.format.upper()} named `{deliverable.file_name}`; do not write it yourself.
 """

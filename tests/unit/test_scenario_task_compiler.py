@@ -79,6 +79,7 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
         (package / "TASK.md").write_text(prompt, encoding="utf-8")
         (package / "teacher").mkdir()
         (package / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": []}), encoding="utf-8")
+        (package / "teacher" / "evidence_map.json").write_text(json.dumps({"artifacts": [{"path": "candidate/report.txt", "fact_ids": ["f1", "f2"]}]}), encoding="utf-8")
         return package, spec, output
 
     def test_valid_package_passes_hard_admission(self):
@@ -115,11 +116,21 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             package, spec, output = self._package(Path(root))
             (package / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": [{"fact_id": "fact_ext_1", "statement": "The export lacks report parameters."}]}), encoding="utf-8")
+            (package / "teacher" / "evidence_map.json").write_text(json.dumps({"artifacts": [{"path": "candidate/report.txt", "fact_ids": ["f1", "f2", "fact_ext_1"]}]}), encoding="utf-8")
             truth = list(output.teacher_truth)
             truth[0] = truth[0].model_copy(update={"fact_ids": ["f1", "fact_ext_1"]})
             output = output.model_copy(update={"teacher_truth": truth})
             report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
         self.assertEqual(report.decision, "pass")
+
+    def test_teacher_truth_is_blocked_when_a_fact_is_not_projected_to_its_visible_evidence(self):
+        with tempfile.TemporaryDirectory() as root:
+            package, spec, output = self._package(Path(root))
+            (package / "teacher" / "evidence_map.json").write_text(json.dumps({"artifacts": [{"path": "candidate/report.txt", "fact_ids": ["f1"]}]}), encoding="utf-8")
+            report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
+        self.assertEqual(report.decision, "blocked")
+        finding = next(item for item in report.findings if item.code == "teacher_truth_references_closed")
+        self.assertIn("f2", finding.details["invisible_fact_ids"])
 
 
 if __name__ == "__main__":
