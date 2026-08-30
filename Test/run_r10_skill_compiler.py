@@ -6,6 +6,7 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +114,9 @@ def main() -> None:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
     manifest = SkillCompilerManifestV1(source_commit=commit, input_sha256=sha256_json(payload), decision="incomplete")
     _write(args.output_root / "compiler_manifest.json", manifest.model_dump(mode="json"))
+    scope = {"scope_version": "r10.skill_compiler_campaign_scope.1", "source_commit": commit, "input_sha256": manifest.input_sha256, "compiler_model": "gpt-5.6-sol", "content_reviewer": "deepseek-v4-pro", "compiler_call_limit": 1, "review_call_limit": 2, "excluded_actions": ["task_compilation", "solver", "grader", "production_release"]}
+    _write(args.output_root / "campaign_scope.json", scope)
+    _write(args.output_root / "scope_receipt.json", {"scope_sha256": sha256_json(scope), "consumed_at": datetime.now(UTC).isoformat()})
     home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     remote = f"{home}/taskgenerator-data/r10-skill-compiler/{args.run_id}/compiler"
     _ssh(args.host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
