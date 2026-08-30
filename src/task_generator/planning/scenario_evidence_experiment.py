@@ -147,7 +147,10 @@ class ScenarioEvidenceExperimentResultV1(ScenarioFirstModel):
 class ScenarioExtensionFactV1(ScenarioFirstModel):
     """A teacher-only fact added by the evidence author outside the parent Bible."""
 
-    fact_id: str = Field(pattern=r"^extension_[a-z0-9_]+$")
+    # Extension facts remain teacher-only and must be safe identifiers, but
+    # their prefix has no semantic value.  Do not reject a closed map merely
+    # because an evidence author chose e.g. ``ext_fact_gap_1``.
+    fact_id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
     statement: str = Field(min_length=1, max_length=2_000)
 
 
