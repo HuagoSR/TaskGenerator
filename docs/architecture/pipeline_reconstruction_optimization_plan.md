@@ -40,17 +40,15 @@
 
 两个 Skill 已由同一冻结公开来源批次完成策展并升为 `curated`。每个 Skill 同时拥有规则、工作实践与失败模式来源；每条专业 instruction 均绑定 source ID。官方 DeepSeek 一次正常调用成功，原始响应和诊断仅留在 ignored artifacts。该阶段未生成任务，也未修改历史 Registry。
 
-### R10.5 — Derived evidence bundle experiment — `implemented / skill revision required`
+### R10.5 — Derived evidence bundle experiment — `implemented / skill effect supported`
 
 无 Skill/有 Skill 成对实验已实现并执行两次。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 所见 Bubblewrap 嵌套 user namespace 问题，已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其中运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。首个私有 run 因无 Skill map 缺少空 source-ID 数组而冻结，后验修复已将该字段设为条件化可选。
 
-完整重启的四个 session 都正常完成了自然候选文件与 teacher 输出；文件可打开、隔离且无答案标签。四份 Agent 输出均在自由文本 extension 中补充了新事实，并在 evidence map 使用这些 ID；旧 validator 只接受父 Bible fact ID，因此四份 map 统一被阻断，DeepSeek pair review 未开始。该缺口不能被单题补写掩盖，也不产生任何 Skill 效果结论。
+两个历史 cohort 因过窄的 extension 事实合同冻结，未形成 Skill 效果结论。最小修复只保留 extension 的唯一、安全 ID 与 statement，并允许 Agent 保留不影响闭合判断的 Bible-like 上下文；不建设 Bible V2 或业务对象本体。
 
-已完成的最小接口修复要求 teacher-only `scenario_extension.json` 显式登记唯一、`extension_` 前缀的 `{fact_id, statement}`；evidence map 只可引用父 Bible 或已登记的 extension ID。这解决追溯身份，不建立 Bible V2、对象本体或确定性专业真值判断。
+自动 Skill Compiler 已完成：Codex/Sol 直接基于 Seed、Rules、公开来源与历史反馈生成完整 Skill 包，DeepSeek独立通过两项来源/内容审查。最新 cohort 的每领域先生成共同基础 bundle，再以无 Skill/有 Skill 的等条件审阅派生两份候选包。四份 bundle 均通过隔离、可打开性、evidence-map 闭合和泄漏检查；DeepSeek 条件盲审在审计与采购都给出至少两项有 Skill 的文件级职业真实性、证据自然度或判断深度改进，聚合为 `skill_effect_supported`。
 
-第三个完整 cohort 已验证该接口：四个 session 均通过静态 admission；审计与采购各一次 DeepSeek 条件盲审完成，采购只因格式原因使用了一次允许补跑。审计四维均偏向无 Skill bundle；采购只有 evidence naturalness 偏向有 Skill，professional realism 与 judgment depth 偏向无 Skill，leakage risk 无偏好。两领域均没有两项来源可解释的增益，聚合为 `skill_revision_required`。
-
-下一步是自动 Skill Compiler 和审阅式 A/B：一个 Codex/Sol Agent 直接由 Seed、Rules、公开来源与历史反馈生成完整 Skill 包；DeepSeek独立审查其来源与候选人决策空间。每领域先生成共同基础 bundle，再由无 Skill 与有 Skill 的等回合审阅分别修订。活跃准入删除 instruction 配额、来源类型配额和文件级 source ID 要求，只保留来源追溯、包安全、隔离、可打开性、evidence-map 闭合和答案泄漏。该实验失败即停止在 Skill 层。
+活跃准入不使用 instruction 配额、来源类型配额或文件级 source ID要求，只保留来源追溯、包安全、隔离、可打开性、evidence-map 闭合和答案泄漏。该结果允许进入两题 task/truth compilation 规划，但仍不是专家有效性、大规模生产或 solver 评测准入。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 
@@ -82,5 +80,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10.0–R10.4 已完成；Skill curation 仅调用一次公开来源 provider batch，未生成任务、激活 release、改变历史 registry 或开始训练。R10.5 曾在明确授权下上传两份冻结 Bible；其首个 A/B run 已冻结，不得重解释或与未来 run 混合。
+- R10.0–R10.5 已完成；所有历史失败 cohort 保持冻结且不与最终 cohort 混合。R10 尚未生成任务、激活 release、改变历史 registry 或开始训练。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。

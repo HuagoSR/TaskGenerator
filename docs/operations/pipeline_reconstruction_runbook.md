@@ -41,11 +41,11 @@ R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开
 
 R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已通过：原先的 Bubblewrap 嵌套 user-namespace 问题改由受限外层 Docker 承担隔离，Codex 在其中使用非嵌套 Shell；外层仍须保持只读根、无额外 capability、`no-new-privileges`、资源上限、单一临时工作区和只读认证挂载。公开 probe 已验证 XLSX、DOCX、PDF。
 
-两个私有两领域 A/B run 均冻结为 `incomplete`。首个 run 的无 Skill map 少了只在有 Skill 条件下相关的空数组；该字段已被后验改为条件化可选。完整重启 run 的四个 session 都只运行一次、均正常产生可打开且隔离的文件，但所有自由文本 `scenario_extension.md` 的新事实 ID 均没有被 Bible-only evidence-map validator 登记，故四份静态 admission 不完整、两次 DeepSeek pair review 均未调用。不得补写这些产物、重跑单一条件、复用任一 bundle 或从两个 run 推断 Skill 效果。
+两个早期私有 cohort 均冻结为 `incomplete`，不得混入或选择性复用。extension/evidence-map 的最终接口只要求 teacher-only extension 登记安全、唯一的 ID 与 statement，并允许保留不参与闭合判断的 Agent 上下文；evidence map 只能使用父 Bible 或已登记 ID。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
 
-extension/evidence-map 的最小共同接口已由第三个完整 cohort 验证：Agent 将新增事实写入 teacher-only `scenario_extension.json`，每项只含唯一 `extension_` ID 和 statement；evidence map 只能使用父 Bible 或该登记表的 ID。四个 session 均静态通过，DeepSeek 两次盲审完成，但结论为 `skill_revision_required`；停止于共享 Skill 策展/提示修订，不得进入任务编译。任何修订仍须使用新 campaign scope 和新 run ID，完整重跑四个 session 与两次盲审。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
+自动 Skill Compiler 已在 Codex/Sol 上完成两项完整专业 Skill 包，并通过两项独立 DeepSeek 来源/内容审查。最新共同基础 A/B cohort 的四个 Terra session 均静态通过，DeepSeek 两次盲审完成并聚合为 `skill_effect_supported`。用户已授予 R10持续外部调用授权，每个新 run 仍须落盘新的 scope/receipt。
 
-自动修订使用一个 Codex/Sol Skill Compiler，并以 DeepSeek内容审查作为独立门槛。只有编译包通过公开来源、包安全与无答案泄漏检查后，才执行共同基础 bundle 的双审阅实验；基础 bundle、无 Skill 审阅和有 Skill 审阅均使用同一 Terra 环境与单次 session。用户已授予 R10持续外部调用授权，但每次 run 仍须落盘新的 scope/receipt。任何结果均不得进入任务编译。
+当前允许的下一步是规划并实现两题 task/truth compilation。不得自动扩展到 solver、grader、生产发布、训练或 registry mutation。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

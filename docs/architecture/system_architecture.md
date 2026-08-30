@@ -77,4 +77,4 @@ teacher truth / task-specific rubric
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.2 合同继续只读保留；Professional Skill curation 与薄型 A/B evidence-experiment 支持已实现。首个私有 run 因 evidence-map 合同不完整而冻结，尚未形成可接纳的派生证据包；在新的完整 A/B run 获得验收前，不可编译任务或扩展到 solver。
+- 已实现的 R10.0–R10.2 合同继续只读保留；Professional Skill curation、自动 Skill Compiler 与薄型 A/B evidence experiment 均已实现。最新完整 cohort 的四份 bundle 通过静态 admission，两个领域的条件盲审均支持有 Skill 的文件级改进；可规划两题 task/truth compilation，但尚未扩展到 solver。
