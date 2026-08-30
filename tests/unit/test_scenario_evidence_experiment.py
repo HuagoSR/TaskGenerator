@@ -118,7 +118,7 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             self.assertEqual(report.decision, "blocked")
             self.assertIn("answer_leakage_absent", [item.code for item in report.findings if not item.passed])
 
-    def test_without_skill_accepts_omitted_optional_source_ids_but_rejects_nonempty_ids(self):
+    def test_source_attribution_is_optional_and_does_not_control_admission(self):
         experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
         with tempfile.TemporaryDirectory() as root:
             workspace = Path(root) / "workspace"
@@ -127,13 +127,11 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             self._valid_output(workspace, with_skill=False, omit_no_skill_sources=True)
             self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
             payload = json.loads((workspace / "teacher" / "evidence_map.json").read_text(encoding="utf-8"))
-            payload["artifacts"][0]["skill_source_ids"] = ["forbidden"]
+            payload["artifacts"][0]["skill_source_ids"] = ["optional-source"]
             (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
-            report = experiment.admit(session=session, workspace=workspace, bible=bible)
-            closed = next(item for item in report.findings if item.code == "evidence_map_closed")
-            self.assertIn("without_skill_evidence_map_has_skill_source", closed.details["errors"])
+            self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
 
-    def test_with_skill_requires_two_curated_source_bound_artifacts(self):
+    def test_with_skill_does_not_require_file_level_source_attribution(self):
         experiment, bible, rules, skill = ScenarioEvidenceExperiment(), _bible(), _rules(), _skill()
         with tempfile.TemporaryDirectory() as root:
             workspace = Path(root) / "workspace"
@@ -141,16 +139,15 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rules, skill=skill)
             self._valid_output(workspace, with_skill=True)
             payload = json.loads((workspace / "teacher" / "evidence_map.json").read_text(encoding="utf-8"))
-            payload["artifacts"][1]["skill_source_ids"] = []
+            payload["artifacts"][0].pop("skill_source_ids")
+            payload["artifacts"][1].pop("skill_source_ids")
+            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
+            payload["artifacts"][0]["skill_source_ids"] = [1]
             (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
             report = experiment.admit(session=session, workspace=workspace, bible=bible)
             closed = next(item for item in report.findings if item.code == "evidence_map_closed")
-            self.assertIn("with_skill_requires_two_source_bound_artifacts", closed.details["errors"])
-            payload["artifacts"][0]["skill_source_ids"] = ["not-curated"]
-            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
-            report = experiment.admit(session=session, workspace=workspace, bible=bible)
-            closed = next(item for item in report.findings if item.code == "evidence_map_closed")
-            self.assertIn("evidence_map_skill_source_not_curated", closed.details["errors"])
+            self.assertIn("evidence_map_skill_source_invalid", closed.details["errors"])
 
     def test_admission_accepts_registered_extension_fact_and_blocks_unregistered_one(self):
         experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()

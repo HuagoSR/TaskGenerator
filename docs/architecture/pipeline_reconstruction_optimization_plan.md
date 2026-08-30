@@ -48,7 +48,9 @@
 
 已完成的最小接口修复要求 teacher-only `scenario_extension.json` 显式登记唯一、`extension_` 前缀的 `{fact_id, statement}`；evidence map 只可引用父 Bible 或已登记的 extension ID。这解决追溯身份，不建立 Bible V2、对象本体或确定性专业真值判断。
 
-第三个完整 cohort 已验证该接口：四个 session 均通过静态 admission；审计与采购各一次 DeepSeek 条件盲审完成，采购只因格式原因使用了一次允许补跑。审计四维均偏向无 Skill bundle；采购只有 evidence naturalness 偏向有 Skill，professional realism 与 judgment depth 偏向无 Skill，leakage risk 无偏好。两领域均没有两项来源可解释的增益，聚合为 `skill_revision_required`。下一步修订共性 Skill 内容/使用提示，不进入任务编译，也不手改本轮 bundle。
+第三个完整 cohort 已验证该接口：四个 session 均通过静态 admission；审计与采购各一次 DeepSeek 条件盲审完成，采购只因格式原因使用了一次允许补跑。审计四维均偏向无 Skill bundle；采购只有 evidence naturalness 偏向有 Skill，professional realism 与 judgment depth 偏向无 Skill，leakage risk 无偏好。两领域均没有两项来源可解释的增益，聚合为 `skill_revision_required`。
+
+下一步是自动 Skill Compiler 和审阅式 A/B：一个 Codex/Sol Agent 直接由 Seed、Rules、公开来源与历史反馈生成完整 Skill 包；DeepSeek独立审查其来源与候选人决策空间。每领域先生成共同基础 bundle，再由无 Skill 与有 Skill 的等回合审阅分别修订。活跃准入删除 instruction 配额、来源类型配额和文件级 source ID 要求，只保留来源追溯、包安全、隔离、可打开性、evidence-map 闭合和答案泄漏。该实验失败即停止在 Skill 层。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 

@@ -45,6 +45,8 @@ R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已通过：原
 
 extension/evidence-map 的最小共同接口已由第三个完整 cohort 验证：Agent 将新增事实写入 teacher-only `scenario_extension.json`，每项只含唯一 `extension_` ID 和 statement；evidence map 只能使用父 Bible 或该登记表的 ID。四个 session 均静态通过，DeepSeek 两次盲审完成，但结论为 `skill_revision_required`；停止于共享 Skill 策展/提示修订，不得进入任务编译。任何修订仍须使用新 campaign scope 和新 run ID，完整重跑四个 session 与两次盲审。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
 
+自动修订使用一个 Codex/Sol Skill Compiler，并以 DeepSeek内容审查作为独立门槛。只有编译包通过公开来源、包安全与无答案泄漏检查后，才执行共同基础 bundle 的双审阅实验；基础 bundle、无 Skill 审阅和有 Skill 审阅均使用同一 Terra 环境与单次 session。用户已授予 R10持续外部调用授权，但每次 run 仍须落盘新的 scope/receipt。任何结果均不得进入任务编译。
+
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
 1. 专业 Skill 的来源、版本、触发边界与只供 factory-side 使用的范围。

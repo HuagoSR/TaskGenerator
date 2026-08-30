@@ -45,12 +45,8 @@ class ScenarioEvidenceSessionV1(ScenarioFirstModel):
     def _skill_condition_matches(self) -> "ScenarioEvidenceSessionV1":
         if self.condition == "with_skill" and not (self.skill_id and self.skill_sha256):
             raise ValueError("with_skill_session_requires_skill_identity")
-        if self.condition == "with_skill" and not self.skill_source_ids:
-            raise ValueError("with_skill_session_requires_curated_source_ids")
         if self.condition == "without_skill" and (self.skill_id or self.skill_sha256):
             raise ValueError("without_skill_session_must_not_include_skill")
-        if self.condition == "without_skill" and self.skill_source_ids:
-            raise ValueError("without_skill_session_must_not_include_skill_sources")
         if len(set(self.skill_source_ids)) != len(self.skill_source_ids):
             raise ValueError("duplicate_skill_source_id")
         return self
@@ -361,19 +357,11 @@ Before finishing, run `python3 -m json.tool teacher/scenario_extension.json` and
             skill_source_ids = item.get("skill_source_ids", [])
             if not isinstance(skill_source_ids, list):
                 errors.append("evidence_map_skill_source_invalid")
-            elif session.condition == "without_skill" and skill_source_ids:
-                errors.append("without_skill_evidence_map_has_skill_source")
             elif not all(isinstance(value, str) and value for value in skill_source_ids):
                 errors.append("evidence_map_skill_source_invalid")
-            elif not set(skill_source_ids) <= set(session.skill_source_ids):
-                errors.append("evidence_map_skill_source_not_curated")
         actual = {f"candidate/{path.relative_to(candidate_root).as_posix()}" for path in files}
         if seen != actual:
             errors.append("evidence_map_candidate_coverage_incomplete")
-        if session.condition == "with_skill":
-            source_bound = sum(bool(item.get("skill_source_ids", [])) for item in payload["artifacts"] if isinstance(item, dict))
-            if source_bound < 2:
-                errors.append("with_skill_requires_two_source_bound_artifacts")
         return sorted(set(errors))
 
     @staticmethod
