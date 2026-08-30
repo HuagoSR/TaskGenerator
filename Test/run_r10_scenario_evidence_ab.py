@@ -149,25 +149,32 @@ def main() -> None:
     parser.add_argument("--source-commit")
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--image-sha256", default="02b79e7f6c1b9966918fc986c7624f50c2f45c6e32a5502bc30f65ccd328a722")
+    parser.add_argument("--authorized-scope-sha256")
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("r10_evidence_experiment_output_already_exists")
     selected, rules, seeds, skills, source_ids = _load(args)
     args.output_root.mkdir(parents=True)
+    source_commit = args.source_commit or subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8", capture_output=True, check=True).stdout.strip()
+    authorized_plan = _build_plan(selected=selected, rules=rules, skills=skills, source_ids=source_ids, image_sha=args.image_sha256)
+    scope = compile_campaign_scope(campaign_id=args.campaign_id, source_commit=source_commit, plan=authorized_plan)
     if args.scope_only:
-        source_commit = args.source_commit or subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8", capture_output=True, check=True).stdout.strip()
-        plan = _build_plan(selected=selected, rules=rules, skills=skills, source_ids=source_ids, image_sha=args.image_sha256)
-        scope = compile_campaign_scope(campaign_id=args.campaign_id, source_commit=source_commit, plan=plan)
         _write(args.output_root / "campaign_scope.json", scope.model_dump(mode="json"))
         print(json.dumps({"scope_sha256": scope.canonical_sha256(), "output_root": str(args.output_root), "decision": "awaiting_private_upload_authorization"}, ensure_ascii=False))
         return
+    if args.authorized_scope_sha256 != scope.canonical_sha256():
+        raise PermissionError("scenario_evidence_scope_authorization_mismatch")
+    _write(args.output_root / "campaign_scope.json", scope.model_dump(mode="json"))
+    _write(args.output_root / "scope_receipt.json", {"scope_sha256": scope.canonical_sha256(), "campaign_id": scope.campaign_id, "consumed_at": _now()})
     remote_home = _ssh(args.host, "printf %s \"$HOME\"", timeout=120).stdout.strip()
     remote_root = f"{remote_home}/taskgenerator-data/r10-evidence-ab/{args.run_id}"
     _probe(args.host, remote_root, args.output_root)
     _write(args.output_root / "public_probe.json", {"decision": "pass", "created_at": _now()})
     image_sha = _image_digest(args.host)
+    if image_sha != args.image_sha256:
+        raise RuntimeError("scenario_evidence_remote_image_drift")
     experiment, staged = ScenarioEvidenceExperiment(), {}
-    plan = _build_plan(selected=selected, rules=rules, skills=skills, source_ids=source_ids, image_sha=image_sha)
+    plan = authorized_plan
     sessions = plan.sessions
     for session in sessions:
         workspace = args.output_root / "staged" / session.session_id
