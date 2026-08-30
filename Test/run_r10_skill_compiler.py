@@ -50,7 +50,10 @@ def _remote_script(workspace: str) -> str:
 def _stage(args: argparse.Namespace) -> tuple[dict, dict]:
     loader = ProfessionalSkillLoader()
     catalog = loader.load_catalog(args.skill_catalog)
-    sources = json.loads(args.curation_sources.read_text(encoding="utf-8"))
+    source_document = json.loads(args.curation_sources.read_text(encoding="utf-8"))
+    sources = source_document.get("sources") if isinstance(source_document, dict) else source_document
+    if not isinstance(sources, list):
+        raise ValueError("professional_skill_curation_sources_invalid")
     seeds = [item for item in json.loads(args.work_seeds.read_text(encoding="utf-8")) if item["status"] == "admitted"]
     rules = [ProfessionalRuleSetV1.model_validate(item).model_dump(mode="json") for item in json.loads(args.rule_sets.read_text(encoding="utf-8"))]
     feedback = json.loads(args.feedback.read_text(encoding="utf-8"))
