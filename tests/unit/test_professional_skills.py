@@ -30,9 +30,9 @@ class ProfessionalSkillLoaderTests(unittest.TestCase):
         self.loader = ProfessionalSkillLoader()
         self.catalog = self.loader.load_catalog(CATALOG_PATH)
 
-    def test_catalog_is_thin_and_exposes_curated_and_draft_skills(self) -> None:
+    def test_catalog_is_thin_and_exposes_four_curated_skills(self) -> None:
         self.assertEqual(self.catalog.contract_version, CATALOG_VERSION)
-        self.assertEqual({entry.status for entry in self.catalog.entries}, {"curated", "draft"})
+        self.assertEqual({entry.status for entry in self.catalog.entries}, {"curated"})
         self.assertEqual(
             {entry.skill_id for entry in self.catalog.entries},
             {

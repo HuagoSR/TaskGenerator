@@ -313,7 +313,7 @@ class ScenarioEvidenceExperiment:
     @staticmethod
     def _task_prompt(condition: Condition) -> str:
         if condition == "with_skill":
-            skill_instruction = "Read teacher/professional_skill/SKILL.md and its source map before planning. At least two artifacts must cite an applicable source ID from that map."
+            skill_instruction = "Read teacher/professional_skill/SKILL.md and its source map before planning. Use the Skill to improve professional realism and judgment space; source attribution in the evidence map is optional."
             map_example = '{"artifacts":[{"path":"candidate/price_comparison.csv","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"],"skill_source_ids":["curated-source-id"]}]}'
         else:
             skill_instruction = "Do not load or infer any professional Skill package."
