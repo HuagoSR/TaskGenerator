@@ -23,6 +23,7 @@ from task_generator.core.scenario_first import (
     ScenarioFirstModel,
     TaskDecisionMatrixV1,
 )
+from task_generator.planning.scenario_evidence_experiment import ScenarioExtensionRegistryV1
 
 
 TaskCompilationDecision = Literal["pass", "blocked", "incomplete"]
@@ -181,14 +182,22 @@ class ScenarioTaskAdmissionValidator:
         contract_report = DeliverableContractValidator().validate(contract, prompt, [path.relative_to(candidate_root).as_posix() for path in candidate_root.rglob("*") if path.is_file()])
         add("deliverable_contract_compiled", contract_report.validation_status == "pass", blocking_count=contract_report.blocking_count)
         fact_ids = {fact.fact_id for fact in bible.facts}
+        extension_ids: set[str] = set()
+        extension_valid = True
+        try:
+            extension = ScenarioExtensionRegistryV1.model_validate_json((teacher_root / "scenario_extension.json").read_text(encoding="utf-8"))
+            extension_ids = {fact.fact_id for fact in extension.facts}
+        except Exception:
+            extension_valid = False
+        allowed_fact_ids = fact_ids | extension_ids
         rule_ids = {rule.rule_id for rule in rules.rules}
         candidate_names = {path.name for path in candidate_root.rglob("*") if path.is_file()}
         evidence_paths = {path.relative_to(candidate_root).as_posix() for path in candidate_root.rglob("*") if path.is_file()}
-        truth_ok = all(
-            set(item.fact_ids) <= fact_ids and set(item.rule_ids) <= rule_ids and set(item.evidence_paths) <= evidence_paths
-            for item in output.teacher_truth
-        )
-        add("teacher_truth_references_closed", truth_ok)
+        invalid_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if fact_id not in allowed_fact_ids})
+        invalid_truth_rules = sorted({rule_id for item in output.teacher_truth for rule_id in item.rule_ids if rule_id not in rule_ids})
+        invalid_truth_paths = sorted({path for item in output.teacher_truth for path in item.evidence_paths if path not in evidence_paths})
+        truth_ok = extension_valid and not invalid_truth_facts and not invalid_truth_rules and not invalid_truth_paths
+        add("teacher_truth_references_closed", truth_ok, extension_registry_valid=extension_valid, invalid_fact_ids=invalid_truth_facts, invalid_rule_ids=invalid_truth_rules, invalid_evidence_paths=invalid_truth_paths)
         matrix = output.decision_matrix
         matrix_ok = matrix.scenario_id == bible.scenario_id and 3 <= len(matrix.decision_points) <= 5 and all(
             set(point.rule_ids) <= rule_ids and point.skill_ids == [spec.skill_id]

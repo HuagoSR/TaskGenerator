@@ -78,6 +78,7 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
         prompt = DeliverableContractCompiler().compile_prompt(output.base_prompt, spec.deliverable_contract)
         (package / "TASK.md").write_text(prompt, encoding="utf-8")
         (package / "teacher").mkdir()
+        (package / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": []}), encoding="utf-8")
         return package, spec, output
 
     def test_valid_package_passes_hard_admission(self):
@@ -109,6 +110,16 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
         payload["task_specific_rubric"]["criteria"][0]["decision_id"] = "unknown"
         with self.assertRaises(ValueError):
             TaskCompilationOutputV1.model_validate(payload)
+
+    def test_teacher_truth_may_reference_registered_derived_fact(self):
+        with tempfile.TemporaryDirectory() as root:
+            package, spec, output = self._package(Path(root))
+            (package / "teacher" / "scenario_extension.json").write_text(json.dumps({"facts": [{"fact_id": "fact_ext_1", "statement": "The export lacks report parameters."}]}), encoding="utf-8")
+            truth = list(output.teacher_truth)
+            truth[0] = truth[0].model_copy(update={"fact_ids": ["f1", "fact_ext_1"]})
+            output = output.model_copy(update={"teacher_truth": truth})
+            report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
+        self.assertEqual(report.decision, "pass")
 
 
 if __name__ == "__main__":
