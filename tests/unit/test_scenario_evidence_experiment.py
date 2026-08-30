@@ -180,6 +180,20 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
             self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
 
+    def test_admission_accepts_bible_like_context_on_registered_extension_fact(self):
+        experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root) / "workspace"
+            session = self._session("without_skill")
+            experiment.stage_session(workspace=workspace, session=session, bible=bible, rules=rules, skill=None)
+            self._valid_output(workspace, with_skill=False)
+            extension = {"facts": [{"fact_id": "fact_ext_context_1", "statement": "The report was run after close.", "kind": "artifact_context", "occurred_at": 12, "actor_role_id": "role_controller"}]}
+            (workspace / "teacher" / "scenario_extension.json").write_text(json.dumps(extension), encoding="utf-8")
+            payload = json.loads((workspace / "teacher" / "evidence_map.json").read_text(encoding="utf-8"))
+            payload["artifacts"][0]["fact_ids"].append("fact_ext_context_1")
+            (workspace / "teacher" / "evidence_map.json").write_text(json.dumps(payload), encoding="utf-8")
+            self.assertEqual(experiment.admit(session=session, workspace=workspace, bible=bible).decision, "pass")
+
     def test_admission_blocks_invalid_or_duplicate_extension_registry(self):
         experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
         with tempfile.TemporaryDirectory() as root:

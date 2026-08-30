@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from openpyxl import load_workbook
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from task_generator.core.scenario_first import ProfessionalRuleSetV1, ScenarioBibleV1, ScenarioFirstModel, WorkSeedV1
 from task_generator.substrate.professional_skills import LoadedProfessionalSkillV1
@@ -147,6 +147,10 @@ class ScenarioEvidenceExperimentResultV1(ScenarioFirstModel):
 class ScenarioExtensionFactV1(ScenarioFirstModel):
     """A teacher-only fact added by the evidence author outside the parent Bible."""
 
+    # A derived fact only needs a safe ID and a statement for map closure.
+    # Evidence authors may preserve useful Bible-like context (role, timing,
+    # kind) without the registry becoming a second business-world schema.
+    model_config = ConfigDict(extra="ignore")
     # Extension facts remain teacher-only and must be safe identifiers, but
     # their prefix has no semantic value.  Do not reject a closed map merely
     # because an evidence author chose e.g. ``ext_fact_gap_1``.
