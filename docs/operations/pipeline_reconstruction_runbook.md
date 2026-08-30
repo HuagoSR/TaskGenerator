@@ -41,9 +41,9 @@ R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开
 
 R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已通过：原先的 Bubblewrap 嵌套 user-namespace 问题改由受限外层 Docker 承担隔离，Codex 在其中使用非嵌套 Shell；外层仍须保持只读根、无额外 capability、`no-new-privileges`、资源上限、单一临时工作区和只读认证挂载。公开 probe 已验证 XLSX、DOCX、PDF。
 
-首个私有两领域 A/B run 已冻结为 `incomplete`。四个 session 都只运行一次；审计无 Skill bundle 的 evidence map 少了只在有 Skill 条件下相关的空数组，故静态 admission 不完整、两次 DeepSeek pair review 均未调用。不得补写该产物、重跑单一条件、复用其余三份 bundle 或从该 run 推断 Skill 效果。
+两个私有两领域 A/B run 均冻结为 `incomplete`。首个 run 的无 Skill map 少了只在有 Skill 条件下相关的空数组；该字段已被后验改为条件化可选。完整重启 run 的四个 session 都只运行一次、均正常产生可打开且隔离的文件，但所有自由文本 `scenario_extension.md` 的新事实 ID 均没有被 Bible-only evidence-map validator 登记，故四份静态 admission 不完整、两次 DeepSeek pair review 均未调用。不得补写这些产物、重跑单一条件、复用任一 bundle 或从两个 run 推断 Skill 效果。
 
-后验修复已将 `skill_source_ids` 设为条件化可选字段：无 Skill 缺失时仅在 admission 内按空数组解释；有 Skill 条件仍必须至少两份文件绑定 curated source ID。恢复必须使用新 campaign scope 和新 run ID，重新执行四个 session 与两次盲审；需要新的私有 Bible 上传授权。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
+恢复前必须先完成 extension/evidence-map 的最小共同接口设计与离线验证；之后使用新 campaign scope 和新 run ID，重新执行四个 session 与两次盲审，并取得新的私有 Bible 上传授权。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

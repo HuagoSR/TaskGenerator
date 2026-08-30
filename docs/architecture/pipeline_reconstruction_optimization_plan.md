@@ -40,11 +40,11 @@
 
 两个 Skill 已由同一冻结公开来源批次完成策展并升为 `curated`。每个 Skill 同时拥有规则、工作实践与失败模式来源；每条专业 instruction 均绑定 source ID。官方 DeepSeek 一次正常调用成功，原始响应和诊断仅留在 ignored artifacts。该阶段未生成任务，也未修改历史 Registry。
 
-### R10.5 — Derived evidence bundle experiment — `implemented / first run frozen incomplete`
+### R10.5 — Derived evidence bundle experiment — `implemented / twice frozen incomplete`
 
-无 Skill/有 Skill 成对实验已实现并执行一次。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 所见 Bubblewrap 嵌套 user namespace 问题，已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其中运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。首个私有 run 的四个 session 均完成，审计无 Skill 条件因 evidence-map 缺少只在有 Skill 时相关的空 source-ID 数组而被 admission 阻断；按零选择性补跑规则，pair review 未开始，run 冻结为 `incomplete`。
+无 Skill/有 Skill 成对实验已实现并执行两次。`taskgenerator-eval:milestone-r9-huago-cone-746ff9b55f1b` 的初次 probe 所见 Bubblewrap 嵌套 user namespace 问题，已在不使用特权容器、Stirrup 或临时换 agent 的前提下修复。受限外层 Docker 保留只读根、无额外 capability、`no-new-privileges`、资源上限和单一临时工作区，Codex 在其中运行非嵌套 Shell；公开 probe 已生成并验证 XLSX、DOCX、PDF。首个私有 run 因无 Skill map 缺少空 source-ID 数组而冻结，后验修复已将该字段设为条件化可选。
 
-最小后验修复已完成：映射核心为 path、Bible facts 和专业判断；source-ID 仅是有 Skill 条件下的可选归因，且至少两份文件必须使用 curated ID。提示同时提供条件化 JSON 示例与 JSON/覆盖自检。新 scope 绑定完整四-session cohort、源码提交、plan SHA、固定镜像和两次盲审上限；只有新的私有上传授权后才从头执行，旧 run 的三份成功 bundle 不得混入。
+完整重启的四个 session 都正常完成了自然候选文件与 teacher 输出；文件可打开、隔离且无答案标签。四份 Agent 输出均在自由文本 `scenario_extension.md` 中补充了新事实，并在 evidence map 使用这些 ID；现有 validator 只接受父 Bible fact ID，因此四份 map 统一被阻断，DeepSeek pair review 未开始。该缺口不能被单题补写掩盖，也不产生任何 Skill 效果结论。下一步先选择一个最小、统一的 extension/evidence-map 接口，之后才可能以新 scope 从头重跑完整 cohort。
 
 ### R10.6 — Two-task task and truth compilation — `not_implemented`
 
