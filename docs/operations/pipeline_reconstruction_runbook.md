@@ -43,7 +43,7 @@ R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已通过：原
 
 两个私有两领域 A/B run 均冻结为 `incomplete`。首个 run 的无 Skill map 少了只在有 Skill 条件下相关的空数组；该字段已被后验改为条件化可选。完整重启 run 的四个 session 都只运行一次、均正常产生可打开且隔离的文件，但所有自由文本 `scenario_extension.md` 的新事实 ID 均没有被 Bible-only evidence-map validator 登记，故四份静态 admission 不完整、两次 DeepSeek pair review 均未调用。不得补写这些产物、重跑单一条件、复用任一 bundle 或从两个 run 推断 Skill 效果。
 
-extension/evidence-map 的最小共同接口已完成离线验证：Agent 将新增事实写入 teacher-only `scenario_extension.json`，每项只含唯一 `extension_` ID 和 statement；evidence map 只能使用父 Bible 或该登记表的 ID。恢复时使用新 campaign scope 和新 run ID，重新执行四个 session 与两次盲审，并取得新的私有 Bible 上传授权。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
+extension/evidence-map 的最小共同接口已由第三个完整 cohort 验证：Agent 将新增事实写入 teacher-only `scenario_extension.json`，每项只含唯一 `extension_` ID 和 statement；evidence map 只能使用父 Bible 或该登记表的 ID。四个 session 均静态通过，DeepSeek 两次盲审完成，但结论为 `skill_revision_required`；停止于共享 Skill 策展/提示修订，不得进入任务编译。任何修订仍须使用新 campaign scope 和新 run ID，完整重跑四个 session 与两次盲审。不得以特权容器、Stirrup 或另一套 agent 框架改变实验条件。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
