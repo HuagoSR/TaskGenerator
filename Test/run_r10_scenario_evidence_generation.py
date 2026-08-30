@@ -49,8 +49,9 @@ def main() -> None:
     parser.add_argument("--run-id", default="r10_7a_evidence_generation")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts" / "r10" / "r10_7a_evidence_generation")
     parser.add_argument("--image-sha256", default=IMAGE_SHA256)
+    parser.add_argument("--resume", action="store_true", help="Continue only sessions without a persisted admission report.")
     args = parser.parse_args()
-    if args.output_root.exists():
+    if args.output_root.exists() and not args.resume:
         raise FileExistsError("r10_7a_evidence_output_already_exists")
 
     bibles = {path.stem: ScenarioBibleV1.model_validate_json(path.read_text(encoding="utf-8")) for path in BIBLES.glob("*.json")}
@@ -78,22 +79,38 @@ def main() -> None:
         sessions.append(session)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, encoding="utf-8", capture_output=True, check=True).stdout.strip()
     scope = {"scope_version": "r10.7a_evidence_generation_scope.1", "campaign_id": args.run_id, "source_commit": commit, "sessions": [item.model_dump(mode="json") for item in sessions], "codex_session_limit": 2, "excluded_actions": ["task_compilation", "solver", "grader", "release", "training"]}
-    args.output_root.mkdir(parents=True)
-    _write(args.output_root / "campaign_scope.json", scope)
-    _write(args.output_root / "scope_receipt.json", {"scope_sha256": experiment.sha256_json(scope), "status": "consumed", "consumed_at": _now()})
+    args.output_root.mkdir(parents=True, exist_ok=True)
+    existing_scope = args.output_root / "campaign_scope.json"
+    if args.resume:
+        prior_scope = json.loads(existing_scope.read_text(encoding="utf-8")) if existing_scope.is_file() else None
+        if not isinstance(prior_scope, dict) or prior_scope.get("campaign_id") != scope["campaign_id"] or prior_scope.get("sessions") != scope["sessions"]:
+            raise RuntimeError("r10_7a_evidence_resume_scope_drift")
+    else:
+        _write(existing_scope, scope)
+        _write(args.output_root / "scope_receipt.json", {"scope_sha256": experiment.sha256_json(scope), "status": "consumed", "consumed_at": _now()})
     home = _ssh(args.host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     remote_root = f"{home}/taskgenerator-data/r10-evidence-generation/{args.run_id}"
-    _probe(args.host, remote_root, args.output_root)
-    _write(args.output_root / "public_probe.json", {"decision": "pass", "created_at": _now()})
+    if not (args.output_root / "public_probe.json").is_file():
+        _probe(args.host, remote_root, args.output_root)
+        _write(args.output_root / "public_probe.json", {"decision": "pass", "created_at": _now()})
     reports = []
     for session in sessions:
+        completed = args.output_root / "completed" / session.session_id
+        report_path = completed / "admission_report.json"
+        if args.resume and report_path.is_file():
+            reports.append(json.loads(report_path.read_text(encoding="utf-8")))
+            continue
         bible, skill = selected[session.scenario_id]
+        if args.resume and completed.is_dir() and (completed / "teacher" / "evidence_map.json").is_file():
+            report = experiment.admit(session=session, workspace=completed, bible=bible)
+            _write(report_path, report.model_dump(mode="json"))
+            reports.append(report.model_dump(mode="json"))
+            continue
         local = args.output_root / "staged" / session.session_id
         experiment.stage_session(workspace=local, session=session, bible=bible, rules=rules[bible.rule_set_id], skill=skill)
         remote = f"{remote_root}/{session.session_id}"
         _run(["scp", "-r", str(local), f"{args.host}:{remote}"], timeout=240)
         result = _ssh(args.host, "sh -s", input_text=_remote_session_script(remote), timeout=1900, check=False)
-        completed = args.output_root / "completed" / session.session_id
         completed.mkdir(parents=True)
         _run(["scp", "-r", f"{args.host}:{remote}/.", str(completed)], timeout=240)
         _write(completed / "execution_diagnostics.json", {"exit_code": result.returncode, "stdout": result.stdout[-4000:], "stderr": result.stderr[-4000:]})
