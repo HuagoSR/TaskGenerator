@@ -206,10 +206,14 @@ class ScenarioTaskAdmissionValidator:
         rule_ids = {rule.rule_id for rule in rules.rules}
         candidate_names = {path.name for path in candidate_root.rglob("*") if path.is_file()}
         evidence_paths = {path.relative_to(candidate_root).as_posix() for path in candidate_root.rglob("*") if path.is_file()}
+        normalized_truth_paths = {
+            path: self._normalize_candidate_path(path)
+            for item in output.teacher_truth for path in item.evidence_paths
+        }
         invalid_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if fact_id not in allowed_fact_ids})
         invalid_truth_rules = sorted({rule_id for item in output.teacher_truth for rule_id in item.rule_ids if rule_id not in rule_ids})
-        invalid_truth_paths = sorted({path for item in output.teacher_truth for path in item.evidence_paths if path not in evidence_paths})
-        invisible_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if not (set(item.evidence_paths) & fact_paths.get(fact_id, set()))})
+        invalid_truth_paths = sorted({path for path, normalized in normalized_truth_paths.items() if normalized not in evidence_paths})
+        invisible_truth_facts = sorted({fact_id for item in output.teacher_truth for fact_id in item.fact_ids if not ({normalized_truth_paths[path] for path in item.evidence_paths} & fact_paths.get(fact_id, set()))})
         truth_ok = extension_valid and evidence_map_valid and not invalid_truth_facts and not invalid_truth_rules and not invalid_truth_paths and not invisible_truth_facts
         add("teacher_truth_references_closed", truth_ok, extension_registry_valid=extension_valid, evidence_map_valid=evidence_map_valid, invalid_fact_ids=invalid_truth_facts, invalid_rule_ids=invalid_truth_rules, invalid_evidence_paths=invalid_truth_paths, invisible_fact_ids=invisible_truth_facts)
         matrix = output.decision_matrix
@@ -226,6 +230,10 @@ class ScenarioTaskAdmissionValidator:
         add("task_specific_rubric_aligned", rubric_ok)
         decision = "pass" if all(item.passed for item in findings) else "blocked"
         return ScenarioTaskAdmissionReportV1(task_id=spec.task_id, decision=decision, output_sha256=output.canonical_sha256(), findings=findings)
+
+    @staticmethod
+    def _normalize_candidate_path(value: str) -> str:
+        return value.replace("\\", "/").removeprefix("candidate/")
 
 
 def compiler_prompt(*, spec: ScenarioTaskSpecV1) -> str:

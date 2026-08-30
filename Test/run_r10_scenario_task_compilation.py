@@ -199,9 +199,32 @@ def main() -> None:
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts" / "r10" / "r10_6_task_compilation_20260831_execute1")
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--review-only", action="store_true", help="Rebuild the local user review pack from an already admitted run; no provider call.")
+    parser.add_argument("--revalidate", action="store_true", help="Recalculate static admission after a tracked validator-only fix; preserves the initial report and makes no provider call.")
     args = parser.parse_args()
-    if args.scope_only and args.review_only:
-        parser.error("scope_only_and_review_only_are_mutually_exclusive")
+    if sum(bool(value) for value in (args.scope_only, args.review_only, args.revalidate)) > 1:
+        parser.error("scope_only_review_only_and_revalidate_are_mutually_exclusive")
+    if args.revalidate:
+        if not args.output_root.is_dir():
+            raise FileNotFoundError("r10_task_compilation_revalidation_root_missing")
+        bibles, rules = _load_bibles_and_rules()
+        plan = build_plan()
+        reports = []
+        for spec in plan.tasks:
+            workspace = args.output_root / "tasks" / spec.task_id
+            initial = workspace / "admission_report.json"
+            if initial.is_file() and not (workspace / "admission_report_initial.json").exists():
+                shutil.copy2(initial, workspace / "admission_report_initial.json")
+            output = _parse_output(workspace / "teacher" / "task_compilation.json")
+            report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=workspace, bible=bibles[spec.scenario_id], rules=rules[bibles[spec.scenario_id].rule_set_id], output=output)
+            _write(workspace / "admission_report.json", report.model_dump(mode="json"))
+            _write(workspace / "admission_revalidation.json", {"revalidated_at": _now(), "reason": "candidate_path_normalization_only", "report": report.model_dump(mode="json")})
+            if report.decision == "pass":
+                _write_user_review_pack(workspace=workspace, target=args.output_root / "user_review" / spec.task_id, spec=spec, output=output)
+            reports.append(report.model_dump(mode="json"))
+        decision = "compiled_for_user_review" if all(item["decision"] == "pass" for item in reports) else "incomplete"
+        _write(args.output_root / "compilation_result.json", {"result_version": "r10.scenario_task_compilation_result.1", "plan_sha256": plan.canonical_sha256(), "decision": decision, "reports": reports, "revalidated_after": "candidate_path_normalization_only"})
+        print(json.dumps({"decision": decision, "output_root": str(args.output_root)}, ensure_ascii=False))
+        return
     if args.review_only:
         if not args.output_root.is_dir():
             raise FileNotFoundError("r10_task_compilation_review_root_missing")

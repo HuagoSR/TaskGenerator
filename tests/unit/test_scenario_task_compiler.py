@@ -132,6 +132,14 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
         finding = next(item for item in report.findings if item.code == "teacher_truth_references_closed")
         self.assertIn("f2", finding.details["invisible_fact_ids"])
 
+    def test_teacher_truth_accepts_candidate_prefixed_evidence_path(self):
+        with tempfile.TemporaryDirectory() as root:
+            package, spec, output = self._package(Path(root))
+            truth = [item.model_copy(update={"evidence_paths": [f"candidate/{path}" for path in item.evidence_paths]}) for item in output.teacher_truth]
+            output = output.model_copy(update={"teacher_truth": truth})
+            report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
+        self.assertEqual(report.decision, "pass")
+
 
 if __name__ == "__main__":
     unittest.main()
