@@ -104,6 +104,7 @@ def main() -> None:
     parser.add_argument("--deepseek-key", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--public-probe", action="store_true")
     parser.add_argument("--review-compiled-root", type=Path)
+    parser.add_argument("--only-skill-id")
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("skill_compiler_output_already_exists")
@@ -115,8 +116,11 @@ def main() -> None:
         args.output_root.mkdir(parents=True)
         loader = ProfessionalSkillLoader()
         catalog = loader.load_catalog(args.skill_catalog)
+        entries = [entry for entry in catalog.entries if args.only_skill_id is None or entry.skill_id == args.only_skill_id]
+        if not entries:
+            raise ValueError("requested_skill_id_not_in_catalog")
         key = args.deepseek_key.read_text(encoding="utf-8").strip()
-        reviews = [OfficialDeepSeekSkillContentReviewer().review(entry=entry, package_root=args.review_compiled_root / entry.relative_path, api_key=key) for entry in catalog.entries]
+        reviews = [OfficialDeepSeekSkillContentReviewer().review(entry=entry, package_root=args.review_compiled_root / entry.relative_path, api_key=key) for entry in entries]
         _write(args.output_root / "content_reviews.json", {"reviews": [item.model_dump(mode="json") for item in reviews]})
         decision = "pass" if all(item.decision == "pass" for item in reviews) else ("incomplete" if any(item.decision == "incomplete" for item in reviews) else "blocked")
         print(json.dumps({"decision": decision, "output_root": str(args.output_root)}, ensure_ascii=False))
