@@ -37,6 +37,8 @@ class SkillContentReviewV1(ScenarioFirstModel):
     skill_id: str
     provider: Literal["deepseek"] = "deepseek"
     model: Literal["deepseek-v4-pro"] = "deepseek-v4-pro"
+    provider_call_count: int = Field(ge=0, le=2)
+    provider_retry_count: int = Field(default=0, ge=0, le=1)
     decision: CompilerDecision
     response_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     supported_source_ids: list[str] = Field(default_factory=list)
@@ -99,18 +101,30 @@ class OfficialDeepSeekSkillContentReviewer:
             ],
             "response_format": {"type": "json_object"}, "thinking": {"type": "enabled"}, "max_tokens": 3000, "stream": False,
         }
-        try:
-            status, response = self.request_executor(body, api_key, timeout_seconds)
-            content = ((response.get("choices") or [{}])[0].get("message") or {}).get("content") if isinstance(response, dict) else None
-            if not 200 <= status < 300 or not content:
-                return SkillContentReviewV1(skill_id=entry.skill_id, decision="incomplete", first_failure=f"provider_http_{status}" if not 200 <= status < 300 else "empty_provider_content")
-            raw = json.loads(content)
-            decision = raw.get("decision")
-            if decision not in {"pass", "blocked"}:
-                return SkillContentReviewV1(skill_id=entry.skill_id, decision="incomplete", first_failure="provider_json_or_schema_invalid")
-            return SkillContentReviewV1(skill_id=entry.skill_id, decision=decision, response_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(), supported_source_ids=[item for item in raw.get("supported_source_ids", []) if isinstance(item, str)], issues=[item for item in raw.get("issues", []) if isinstance(item, str)])
-        except Exception as exc:
-            return SkillContentReviewV1(skill_id=entry.skill_id, decision="incomplete", first_failure=f"provider_transport_failure:{type(exc).__name__}")
+        first_failure: str | None = None
+        for attempt in range(2):
+            try:
+                status, response = self.request_executor(body, api_key, timeout_seconds)
+                content = ((response.get("choices") or [{}])[0].get("message") or {}).get("content") if isinstance(response, dict) else None
+                if not 200 <= status < 300:
+                    failure = f"provider_http_{status}"
+                elif not content:
+                    failure = "empty_provider_content"
+                else:
+                    raw = json.loads(content)
+                    decision = raw.get("decision")
+                    if decision not in {"pass", "blocked"}:
+                        failure = "provider_json_or_schema_invalid"
+                    else:
+                        return SkillContentReviewV1(skill_id=entry.skill_id, decision=decision, provider_call_count=attempt + 1, provider_retry_count=attempt, response_sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(), supported_source_ids=[item for item in raw.get("supported_source_ids", []) if isinstance(item, str)], issues=[item for item in raw.get("issues", []) if isinstance(item, str)])
+            except Exception as exc:
+                failure = f"provider_transport_failure:{type(exc).__name__}"
+            if first_failure is None:
+                first_failure = failure
+            retryable = failure in {"empty_provider_content", "provider_json_or_schema_invalid", "provider_http_408", "provider_http_429"} or failure.startswith("provider_http_5") or failure.startswith("provider_transport_failure")
+            if not retryable:
+                break
+        return SkillContentReviewV1(skill_id=entry.skill_id, decision="incomplete", provider_call_count=2 if first_failure and retryable else 1, provider_retry_count=1 if first_failure and retryable else 0, first_failure=first_failure)
 
     @staticmethod
     def _official_request(body: dict[str, Any], api_key: str, timeout_seconds: int) -> tuple[int, dict[str, Any]]:

@@ -41,6 +41,20 @@ class ProfessionalSkillCompilerTests(unittest.TestCase):
             review = OfficialDeepSeekSkillContentReviewer(executor).review(entry=self._entry(), package_root=package, api_key="secret")
         self.assertEqual(review.decision, "pass")
         self.assertEqual(review.supported_source_ids, ["as1105"])
+        self.assertEqual(review.provider_call_count, 1)
+
+    def test_reviewer_retries_empty_response_once(self):
+        calls = 0
+        def executor(body, api_key, timeout):
+            nonlocal calls
+            calls += 1
+            content = "" if calls == 1 else json.dumps({"decision": "pass", "supported_source_ids": [], "issues": []})
+            return 200, {"choices": [{"message": {"content": content}}]}
+        with tempfile.TemporaryDirectory() as directory:
+            review = OfficialDeepSeekSkillContentReviewer(executor).review(entry=self._entry(), package_root=self._package(Path(directory)), api_key="secret")
+        self.assertEqual(review.decision, "pass")
+        self.assertEqual(review.provider_call_count, 2)
+        self.assertEqual(review.provider_retry_count, 1)
 
 
 if __name__ == "__main__":

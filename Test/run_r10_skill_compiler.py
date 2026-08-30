@@ -103,12 +103,23 @@ def main() -> None:
     parser.add_argument("--feedback", type=Path, default=ROOT / "artifacts/r10/r10_5_skill_evidence_ab_restart2_execute1/experiment_result.json")
     parser.add_argument("--deepseek-key", type=Path, default=ROOT / "deepseek-key.txt")
     parser.add_argument("--public-probe", action="store_true")
+    parser.add_argument("--review-compiled-root", type=Path)
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("skill_compiler_output_already_exists")
     if args.public_probe:
         _public_probe(args)
         print(json.dumps({"decision": "pass", "output_root": str(args.output_root)}, ensure_ascii=False))
+        return
+    if args.review_compiled_root:
+        args.output_root.mkdir(parents=True)
+        loader = ProfessionalSkillLoader()
+        catalog = loader.load_catalog(args.skill_catalog)
+        key = args.deepseek_key.read_text(encoding="utf-8").strip()
+        reviews = [OfficialDeepSeekSkillContentReviewer().review(entry=entry, package_root=args.review_compiled_root / entry.relative_path, api_key=key) for entry in catalog.entries]
+        _write(args.output_root / "content_reviews.json", {"reviews": [item.model_dump(mode="json") for item in reviews]})
+        decision = "pass" if all(item.decision == "pass" for item in reviews) else ("incomplete" if any(item.decision == "incomplete" for item in reviews) else "blocked")
+        print(json.dumps({"decision": decision, "output_root": str(args.output_root)}, ensure_ascii=False))
         return
     entries, payload = _stage(args)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
