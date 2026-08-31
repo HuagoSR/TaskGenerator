@@ -82,7 +82,7 @@ mkdir -p .codex
 ln -sf /run/codex-auth/auth.json .codex/auth.json
 trap 'rm -rf /workspace/.codex' EXIT
 export CODEX_HOME=/workspace/.codex
-codex --ask-for-approval never --model gpt-5.6-terra exec -c project_doc_max_bytes=0 -c agents.enabled=false --disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral --ignore-user-config --ignore-rules --sandbox danger-full-access --skip-git-repo-check -C /workspace - < TASK.md > codex.jsonl 2> stderr.txt
+codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-terra -c project_doc_max_bytes=0 -c agents.enabled=false --disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral --ignore-user-config --ignore-rules --skip-git-repo-check -C /workspace - < TASK.md > codex.jsonl 2> stderr.txt
 CONTAINER_SCRIPT
 """
 

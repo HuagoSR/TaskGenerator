@@ -31,7 +31,7 @@ from task_generator.evaluation.r10_behavioral import (
     sha256_json,
 )
 from task_generator.planning.scenario_task_compiler import TaskSpecificRubricV1, tree_sha256
-from run_r10_behavioral_pilot import STACKS, _execute_judge, _safe_remote_root, _write
+from run_r10_behavioral_pilot import IMAGE, IMAGE_SHA256, STACKS, _execute_judge, _safe_remote_root, _write
 
 
 TASK_ID = "r10_procurement_delivery_acceptance"
@@ -76,7 +76,7 @@ def _aggregate(*, output_root: Path) -> dict[str, Any]:
     return result
 
 
-def _scope(run_id: str) -> dict[str, Any]:
+def _scope(run_id: str, *, image: str = IMAGE, image_sha256: str = IMAGE_SHA256) -> dict[str, Any]:
     deliveries = {
         solver: SOLVER_ROOT / solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
         for solver in STACKS
@@ -84,6 +84,8 @@ def _scope(run_id: str) -> dict[str, Any]:
     return {
         "scope_version": "r10.teacher_anchor_regrade_scope.1",
         "campaign_id": run_id,
+        "image": image,
+        "image_sha256": image_sha256,
         "task_id": TASK_ID,
         "candidate_tree_sha256": tree_sha256(TASK_ROOT / "reference_files"),
         "teacher_tree_sha256": tree_sha256(TASK_ROOT / "teacher"),
@@ -94,8 +96,8 @@ def _scope(run_id: str) -> dict[str, Any]:
     }
 
 
-def _stage_public_judge_probe(root: Path) -> tuple[Path, Path]:
-    """Create a wholly public XLSX task that exercises the exact Judge path."""
+def _stage_public_judge_probe(root: Path, *, complex_input: bool = False) -> tuple[Path, Path]:
+    """Create a wholly public task that exercises the exact Judge path."""
     task = root / "public_task"
     teacher = task / "teacher"
     reference = task / "reference_files"
@@ -116,12 +118,35 @@ def _stage_public_judge_probe(root: Path) -> tuple[Path, Path]:
     ]}
     (teacher / "task_specific_rubric.json").write_text(json.dumps(rubric), encoding="utf-8")
     (reference / "source.txt").write_text("Public source: 40 units were received; three require review.", encoding="utf-8")
+    if complex_input:
+        (reference / "receipt_log.csv").write_text(
+            "receipt_id,units,inspection_status\nR-001,40,limited exterior review\nR-002,0,not applicable\n",
+            encoding="utf-8",
+        )
+        (reference / "quality_note.txt").write_text(
+            "The public sample certificate supports a claimed standard but does not establish lot traceability or signer authority.",
+            encoding="utf-8",
+        )
+        (reference / "authority_matrix.txt").write_text(
+            "A receiving official records receipt facts. A contracting officer makes the final acceptance decision.",
+            encoding="utf-8",
+        )
+        (reference / "follow_up_template.txt").write_text(
+            "A complete follow-up records issue, owner, requested support, target date, and closure evidence.",
+            encoding="utf-8",
+        )
     delivery = root / "public_delivery.xlsx"
     book = Workbook()
     sheet = book.active
     sheet.title = "Review"
-    sheet.append(["Source reviewed", "Calculation", "Follow-up"])
-    sheet.append(["Yes", "3/40 = 7.5%", "Escalate for review"])
+    sheet.append(["Source reviewed", "Calculation", "Follow-up", "Authority"])
+    sheet.append(["Yes", "3/40 = 7.5%", "Escalate for review with closure evidence", "Contracting Officer retains final acceptance"])
+    if complex_input:
+        detail = book.create_sheet("Evidence Review")
+        detail.append(["Source", "Observation", "Conclusion", "Required follow-up"])
+        detail.append(["receipt_log.csv", "40 units independently supported", "Receiving record differs from unsupported count", "Obtain controlled correction"])
+        detail.append(["quality_note.txt", "No lot traceability", "Certificate is not conclusive", "Request issuer and lot support"])
+        detail.append(["authority_matrix.txt", "Receiving official lacks final authority", "Do not record acceptance", "Route recommendation to Contracting Officer"])
     book.save(delivery)
     return task, delivery
 
@@ -132,33 +157,36 @@ def main() -> None:
     parser.add_argument("--run-id", default="r10_8a_procurement_acceptance_anchor_regrade_20260831")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_8a_procurement_acceptance_anchor_regrade_20260831")
     parser.add_argument("--public-probe", action="store_true")
+    parser.add_argument("--public-complex-probe", action="store_true")
     parser.add_argument("--single-solver", choices=STACKS)
     parser.add_argument("--single-judge", choices=STACKS)
     parser.add_argument("--collect", action="store_true", help="Parse one already-downloaded response; never calls a provider.")
     parser.add_argument("--aggregate", action="store_true", help="Aggregate four collected reviews; never calls a provider.")
     parser.add_argument("--scope-only", action="store_true", help="Create the immutable receipt without calling a provider.")
     parser.add_argument("--mark-incomplete", action="store_true", help="Persist a verified infrastructure stop; never calls a provider.")
+    parser.add_argument("--image", default=IMAGE)
+    parser.add_argument("--image-sha256", default=IMAGE_SHA256)
     args = parser.parse_args()
     single = bool(args.single_solver or args.single_judge)
     if single != bool(args.single_solver and args.single_judge):
         parser.error("single_solver_and_single_judge_must_be_supplied_together")
-    if sum(bool(value) for value in (args.public_probe, args.aggregate, args.scope_only, args.mark_incomplete, single and not args.collect, args.collect)) > 1:
+    if sum(bool(value) for value in (args.public_probe, args.public_complex_probe, args.aggregate, args.scope_only, args.mark_incomplete, single and not args.collect, args.collect)) > 1:
         parser.error("probe_single_collect_and_aggregate_are_mutually_exclusive")
     if args.output_root.exists() and not (single or args.collect or args.aggregate or args.mark_incomplete):
         raise FileExistsError("r10_teacher_anchor_regrade_output_already_exists")
 
-    if args.public_probe:
+    if args.public_probe or args.public_complex_probe:
         args.output_root.mkdir(parents=True)
-        task, delivery = _stage_public_judge_probe(args.output_root)
+        task, delivery = _stage_public_judge_probe(args.output_root, complex_input=args.public_complex_probe)
         remote_root = _safe_remote_root(args.host, args.run_id)
-        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=task, task_id="public-probe", delivery=delivery, judge="gpt-5.6-sol@chatgpt_codex")
+        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=task, task_id="public-probe", delivery=delivery, judge="gpt-5.6-sol@chatgpt_codex", image=args.image)
         _write(args.output_root / "result.json", {"decision": "pass" if result["status"] == "completed" else "incomplete", "judge_result": result})
         print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
         return
 
     if args.mark_incomplete:
         scope_path = args.output_root / "scope.json"
-        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != _scope(args.run_id):
+        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != _scope(args.run_id, image=args.image, image_sha256=args.image_sha256):
             raise RuntimeError("r10_teacher_anchor_regrade_scope_mismatch")
         _write(args.output_root / "result.json", {
             "decision": "evaluation_inconclusive",
@@ -191,7 +219,7 @@ def main() -> None:
         _write(args.output_root / "result.json", {"decision": "teacher_anchor_conflict", "reason": "corrected_anchor_did_not_pass"})
         return
 
-    scope = _scope(args.run_id)
+    scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256)
     scope_path = args.output_root / "scope.json"
     if single:
         if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != scope:
@@ -205,7 +233,7 @@ def main() -> None:
     remote_root = _safe_remote_root(args.host, args.run_id)
     if single:
         delivery = SOLVER_ROOT / args.single_solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
-        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge)
+        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge, image=args.image)
         _write(args.output_root / "judge_runs" / args.single_solver / f"{args.single_judge}.json", result)
         print(json.dumps({"decision": result["status"]}, ensure_ascii=False))
         return
@@ -218,7 +246,7 @@ def main() -> None:
         for judge in STACKS:
             result = _execute_judge(
                 host=args.host, remote_root=remote_root, output_root=args.output_root,
-                task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=judge,
+                task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=judge, image=args.image,
             )
             _write(args.output_root / "judge_runs" / solver / f"{judge}.json", result)
             if result["status"] != "completed":

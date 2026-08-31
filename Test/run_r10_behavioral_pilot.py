@@ -71,9 +71,9 @@ def _task_bindings():
     return [binding_from_task(path, domain=domain) for path, domain in TASK_ROOTS.values()]
 
 
-def _scope(run_id: str) -> R10BehavioralScopeV1:
+def _scope(run_id: str, *, image: str = IMAGE, image_sha256: str = IMAGE_SHA256) -> R10BehavioralScopeV1:
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
-    return R10BehavioralScopeV1(campaign_id=run_id, source_commit=commit, image=IMAGE, image_sha256=IMAGE_SHA256, bindings=_task_bindings())
+    return R10BehavioralScopeV1(campaign_id=run_id, source_commit=commit, image=image, image_sha256=image_sha256, bindings=_task_bindings())
 
 
 def _scope_sha256(scope: R10BehavioralScopeV1) -> str:
@@ -92,9 +92,9 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
     if stack not in STACKS:
         raise ValueError("r10_behavioral_unknown_stack")
     agent_command = (
-        "codex --ask-for-approval never --model gpt-5.6-sol exec -c project_doc_max_bytes=0 -c agents.enabled=false "
+        "codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol -c project_doc_max_bytes=0 -c agents.enabled=false "
         "--disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral "
-        "--ignore-user-config --ignore-rules --sandbox danger-full-access --skip-git-repo-check "
+        "--ignore-user-config --ignore-rules --skip-git-repo-check "
         + ("--output-schema /workspace/grade_schema.json --output-last-message /workspace/grade.raw.json " if grade else "")
         + "-C /workspace - < TASK.md > agent.jsonl 2> stderr.txt"
         if stack.startswith("gpt")
@@ -117,7 +117,7 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
     return "\n".join(inner) + "\n"
 
 
-def _remote_command(remote: str, *, stack: str) -> str:
+def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
     mounts = '-v "$auth_file:/run/codex-auth/auth.json:ro"'
     if not stack.startswith("gpt"):
         mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
@@ -131,7 +131,7 @@ def _remote_command(remote: str, *, stack: str) -> str:
         '--user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" ' + mounts +
-        ' -w /workspace --entrypoint /bin/sh ' + IMAGE + ' /workspace/.r10_agent.sh > docker_stdout.txt 2> docker_stderr.txt; '
+        ' -w /workspace --entrypoint /bin/sh ' + image + ' /workspace/.r10_agent.sh > docker_stdout.txt 2> docker_stderr.txt; '
         'status=$?; rm -f .r10_agent.sh; exit $status'
     )
 
@@ -141,11 +141,11 @@ def _write_agent_script(path: Path, content: str) -> None:
     path.write_bytes(content.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
 
 
-def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False) -> tuple[int, str, str]:
+def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False, image: str = IMAGE) -> tuple[int, str, str]:
     _write_agent_script(local / ".r10_agent.sh", _remote_script(remote, stack=stack, grade=grade))
     _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
     _run(["scp", "-r", str(local), f"{host}:{remote}"], timeout=240)
-    result = _ssh(host, _remote_command(remote, stack=stack), timeout=1900, check=False)
+    result = _ssh(host, _remote_command(remote, stack=stack, image=image), timeout=1900, check=False)
     _run(["scp", "-r", f"{host}:{remote}/.", str(local)], timeout=240)
     (local / ".r10_agent.sh").unlink(missing_ok=True)
     return result.returncode, result.stdout[-4000:], result.stderr[-4000:]
@@ -186,10 +186,10 @@ def _is_infrastructure(returncode: int, stderr: str) -> bool:
     return returncode == 124 or any(marker in lowered for marker in INFRA_MARKERS)
 
 
-def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str) -> bool:
+def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str, image: str = IMAGE) -> bool:
     workspace = output_root / "public_probes" / stack / "workspace"
     _public_probe_workspace(workspace)
-    code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/public/{stack}", local=workspace, stack=stack)
+    code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/public/{stack}", local=workspace, stack=stack, image=image)
     _write(workspace.parent / "diagnostics.json", {"returncode": code, "stdout": stdout, "stderr": stderr})
     xlsx = inspect_delivery(workspace, expected="deliverable_files/probe.xlsx", input_hashes=set())
     docx = inspect_delivery(
@@ -201,14 +201,14 @@ def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str)
     return passed
 
 
-def _execute_solver(*, host: str, remote_root: str, output_root: Path, binding, stack: str) -> R10SolverOutcomeV1:
+def _execute_solver(*, host: str, remote_root: str, output_root: Path, binding, stack: str, image: str = IMAGE) -> R10SolverOutcomeV1:
     task_root = Path(binding.package_root)
     if binding_from_task(task_root, domain=binding.domain) != binding:
         raise RuntimeError("r10_behavioral_binding_drift")
     workspace = output_root / "solvers" / stack / binding.task_id / "workspace"
     _stage_solver(task_root, workspace)
     started = time.monotonic()
-    code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/solvers/{stack}/{binding.task_id}", local=workspace, stack=stack)
+    code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/solvers/{stack}/{binding.task_id}", local=workspace, stack=stack, image=image)
     duration = round(time.monotonic() - started, 3)
     stdout_path, stderr_path = workspace.parent / "agent.jsonl", workspace.parent / "stderr.txt"
     if (workspace / "agent.jsonl").is_file():
@@ -273,14 +273,14 @@ def _extract_opencode_json(text: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _execute_judge(*, host: str, remote_root: str, output_root: Path, task_root: Path, task_id: str, delivery: Path, judge: str) -> dict[str, Any]:
+def _execute_judge(*, host: str, remote_root: str, output_root: Path, task_root: Path, task_id: str, delivery: Path, judge: str, image: str = IMAGE) -> dict[str, Any]:
     feedback: str | None = None
     raw_paths: list[str] = []
     first_failure: str | None = None
     for attempt in (1, 2):
         workspace = output_root / "judges" / judge / task_id / f"attempt_{attempt:02d}" / "workspace"
         rubric = _stage_grade(task_root=task_root, delivery=delivery, target=workspace, task_id=task_id, feedback=feedback)
-        code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/judges/{judge}/{task_id}/attempt_{attempt:02d}", local=workspace, stack=judge, grade=True)
+        code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/judges/{judge}/{task_id}/attempt_{attempt:02d}", local=workspace, stack=judge, grade=True, image=image)
         raw = workspace / "grade.raw.json"
         if not raw.is_file() and judge.startswith("deepseek"):
             candidate = _extract_opencode_json((workspace / "agent.jsonl").read_text(encoding="utf-8", errors="replace") if (workspace / "agent.jsonl").is_file() else stdout)
@@ -308,10 +308,12 @@ def main() -> None:
     parser.add_argument("--run-id", default="r10_7b_behavioral_pilot_20260831")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_7b_behavioral_pilot_20260831")
     parser.add_argument("--scope-only", action="store_true")
+    parser.add_argument("--image", default=IMAGE)
+    parser.add_argument("--image-sha256", default=IMAGE_SHA256)
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("r10_behavioral_output_already_exists")
-    scope = _scope(args.run_id)
+    scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256)
     args.output_root.mkdir(parents=True)
     scope_sha256 = _scope_sha256(scope)
     _write(args.output_root / "scope.json", scope)
@@ -320,7 +322,7 @@ def main() -> None:
         print(json.dumps({"decision": "scope_ready", "scope_sha256": scope_sha256}, ensure_ascii=False))
         return
     remote_root = _safe_remote_root(args.host, args.run_id)
-    probes = {stack: _record_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, stack=stack) for stack in STACKS}
+    probes = {stack: _record_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, stack=stack, image=args.image) for stack in STACKS}
     if not all(probes.values()):
         _write(args.output_root / "result.json", {"decision": "behaviorally_inconclusive", "reason": "public_probe_failed", "probes": probes})
         print(json.dumps({"decision": "behaviorally_inconclusive", "probes": probes}, ensure_ascii=False))
@@ -329,7 +331,7 @@ def main() -> None:
     for stack in STACKS:
         consecutive_infra = 0
         for binding in scope.bindings:
-            outcome = _execute_solver(host=args.host, remote_root=remote_root, output_root=args.output_root, binding=binding, stack=stack)
+            outcome = _execute_solver(host=args.host, remote_root=remote_root, output_root=args.output_root, binding=binding, stack=stack, image=args.image)
             outcomes[stack][binding.task_id] = outcome
             consecutive_infra = consecutive_infra + 1 if outcome.status == "infrastructure_failed" else 0
             if consecutive_infra >= 3:
@@ -343,7 +345,7 @@ def main() -> None:
             if outcome and outcome.delivery.valid:
                 delivery = args.output_root / "solvers" / stack / binding.task_id / "workspace" / binding.expected_delivery
                 for judge in STACKS:
-                    result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=Path(binding.package_root), task_id=binding.task_id, delivery=delivery, judge=judge)
+                    result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=Path(binding.package_root), task_id=binding.task_id, delivery=delivery, judge=judge, image=args.image)
                     judge_manifest[f"{stack}:{binding.task_id}:{judge}"] = {key: (value.model_dump(mode="json") if hasattr(value, "model_dump") else value) for key, value in result.items()}
                     if result["status"] == "completed":
                         reviews.append(result["review"])

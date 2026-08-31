@@ -42,7 +42,7 @@ def _remote_script(workspace: str) -> str:
         "set -eu", f"workspace='{workspace}'", 'auth_file="$HOME/.codex/auth.json"', 'test -r "$auth_file"', 'cd "$workspace"',
         'timeout --preserve-status 1800 docker run -i --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true --user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" -v "$auth_file:/run/codex-auth/auth.json:ro" -w /workspace --entrypoint /bin/sh ' + IMAGE + " -s > docker_stdout.txt 2> docker_stderr.txt <<'INNER'",
         'set -eu', 'mkdir -p .codex', 'ln -sf /run/codex-auth/auth.json .codex/auth.json', "trap 'rm -rf /workspace/.codex' EXIT", 'export CODEX_HOME=/workspace/.codex',
-        'codex --ask-for-approval never --model gpt-5.6-sol exec -c project_doc_max_bytes=0 -c agents.enabled=false --disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral --ignore-user-config --ignore-rules --sandbox danger-full-access --skip-git-repo-check -C /workspace - < TASK.md > codex.jsonl 2> stderr.txt', 'INNER',
+        'codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol -c project_doc_max_bytes=0 -c agents.enabled=false --disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral --ignore-user-config --ignore-rules --skip-git-repo-check -C /workspace - < TASK.md > codex.jsonl 2> stderr.txt', 'INNER',
     ]
     return "\n".join(lines) + "\n"
 

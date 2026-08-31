@@ -181,7 +181,7 @@ class HuagoConeReleaseDefinitionTests(unittest.TestCase):
 
     def test_eval_image_pins_agent_versions(self):
         text = (Path(__file__).parents[2] / "deploy" / "docker" / "Dockerfile.agent-eval").read_text(encoding="utf-8")
-        self.assertIn("CODEX_VERSION=0.146.0", text)
+        self.assertIn("CODEX_VERSION=0.149.1", text)
         self.assertIn("OPENCODE_VERSION=1.17.13", text)
 
     def test_compose_is_read_only_and_single_concurrency(self):

@@ -110,6 +110,9 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("/run/secrets/deepseek_api_key", deepseek)
         self.assertNotIn("tuzi", deepseek.casefold())
         self.assertNotIn("stirrup", deepseek.casefold())
+        self.assertIn("--dangerously-bypass-approvals-and-sandbox", gpt)
+        self.assertNotIn("--ask-for-approval", gpt)
+        self.assertNotIn("--sandbox danger-full-access", gpt)
 
     def test_remote_transport_uses_mounted_script_without_stdin_or_tty(self):
         command = _remote_command("/remote/workspace", stack="gpt-5.6-sol@chatgpt_codex")

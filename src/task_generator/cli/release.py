@@ -19,6 +19,8 @@ DEPLOY = ROOT / "deploy" / "docker"
 DEFAULT_HOST = "huago-cone"
 DEFAULT_RW_TASK = ROOT.parent / "rw-task"
 MIN_AVAILABLE_DISK_BYTES = 95 * 1024 * 1024 * 1024
+CODEX_VERSION = "0.149.1"
+OPENCODE_VERSION = "1.17.13"
 ALLOWED_RW_TASK = ("pyproject.toml", "README.md", "bench_standalone")
 FORBIDDEN_PARTS = {
     ".env",
@@ -163,8 +165,8 @@ def prepare_context(*, output_root: Path, rw_task_root: Path) -> Path:
         "architecture": "linux/amd64",
         "factory_image": f"taskgenerator-factory:{release_id}",
         "eval_image": f"taskgenerator-eval:{release_id}",
-        "codex_version": "0.146.0",
-        "opencode_version": "1.17.13",
+        "codex_version": CODEX_VERSION,
+        "opencode_version": OPENCODE_VERSION,
         "context_archive_sha256": sha_file(context_archive),
         "context_archive_size_bytes": context_archive.stat().st_size,
         "forbidden_context_findings": [],
@@ -218,7 +220,7 @@ def deploy_and_build(*, release_root: Path, host: str) -> dict:
             (
                 "docker build --platform linux/amd64 "
                 f"--build-arg FACTORY_IMAGE='{factory}' "
-                "--build-arg CODEX_VERSION=0.146.0 --build-arg OPENCODE_VERSION=1.17.13 "
+                f"--build-arg CODEX_VERSION={CODEX_VERSION} --build-arg OPENCODE_VERSION={OPENCODE_VERSION} "
                 f"-t '{evaluation}' -f context/Dockerfile.agent-eval context"
             ),
             "rm -rf context context.tar.gz",
@@ -356,7 +358,7 @@ def smoke(*, release_root: Path, host: str) -> dict:
         "report_version": "v3.huago_cone_candidate_smoke.1",
         "release_id": release_id,
         "returncode": result.returncode,
-        "passed": result.returncode == 0 and "2.44.0" in result.stdout and "codex-cli 0.146.0" in result.stdout and "1.17.13" in result.stdout,
+        "passed": result.returncode == 0 and "2.44.0" in result.stdout and f"codex-cli {CODEX_VERSION}" in result.stdout and OPENCODE_VERSION in result.stdout,
         "stdout": result.stdout,
         "stderr_tail": result.stderr[-4000:],
     }
