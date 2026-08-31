@@ -107,31 +107,42 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
         mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
     inner = [
         "set -eu", "mkdir -p .codex", "ln -sf /run/codex-auth/auth.json .codex/auth.json",
-        "trap 'rm -rf /workspace/.codex' EXIT", "export CODEX_HOME=/workspace/.codex", agent_command,
+        "trap 'rm -rf /workspace/.codex' EXIT", "export HOME=/tmp", "export CODEX_HOME=/workspace/.codex", agent_command,
     ]
     if not grade:
         inner.extend([
             "rm -rf /workspace/.docx_office_check; mkdir -p /workspace/.docx_office_check",
             "for doc in /workspace/deliverable_files/*.docx; do [ -f \"$doc\" ] || continue; libreoffice --headless --convert-to pdf:writer_pdf_Export --outdir /workspace/.docx_office_check \"$doc\" >/dev/null 2>&1 && printf '%s\\n' \"${doc#/workspace/}\"; done > /workspace/docx_office_opened.txt",
         ])
-    return "\n".join([
-        "set -eu", f"workspace='{workspace}'", 'auth_file="$HOME/.codex/auth.json"',
-        'deepseek_file="$HOME/taskgenerator-secrets/deepseek_api_key"', 'test -r "$auth_file"',
-        ("test -r \"$deepseek_file\"" if not stack.startswith("gpt") else ":"), 'cd "$workspace"',
-        'timeout --preserve-status 1800 docker run -i --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
+    return "\n".join(inner) + "\n"
+
+
+def _remote_command(remote: str, *, stack: str) -> str:
+    mounts = '-v "$auth_file:/run/codex-auth/auth.json:ro"'
+    if not stack.startswith("gpt"):
+        mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
+    preflight = 'test -r "$auth_file"'
+    if not stack.startswith("gpt"):
+        preflight += '; test -r "$deepseek_file"'
+    return (
+        'set -u; workspace=' + repr(remote) + '; auth_file="$HOME/.codex/auth.json"; '
+        'deepseek_file="$HOME/taskgenerator-secrets/deepseek_api_key"; ' + preflight + '; cd "$workspace"; '
+        'timeout --preserve-status 1800 docker run --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
         '--user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
-        '--tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" '
-        + mounts + ' -w /workspace --entrypoint /bin/sh ' + IMAGE + " -s > docker_stdout.txt 2> docker_stderr.txt <<'INNER'",
-        *inner, "INNER",
-    ]) + "\n"
+        '--tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" ' + mounts +
+        ' -w /workspace --entrypoint /bin/sh ' + IMAGE + ' /workspace/.r10_agent.sh > docker_stdout.txt 2> docker_stderr.txt; '
+        'status=$?; rm -f .r10_agent.sh; exit $status'
+    )
 
 
 def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False) -> tuple[int, str, str]:
+    (local / ".r10_agent.sh").write_text(_remote_script(remote, stack=stack, grade=grade), encoding="utf-8")
     _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
     _run(["scp", "-r", str(local), f"{host}:{remote}"], timeout=240)
-    result = _ssh(host, "sh -s", input_text=_remote_script(remote, stack=stack, grade=grade), timeout=1900, check=False)
+    result = _ssh(host, _remote_command(remote, stack=stack), timeout=1900, check=False)
     _run(["scp", "-r", f"{host}:{remote}/.", str(local)], timeout=240)
+    (local / ".r10_agent.sh").unlink(missing_ok=True)
     return result.returncode, result.stdout[-4000:], result.stderr[-4000:]
 
 

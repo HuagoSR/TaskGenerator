@@ -28,7 +28,7 @@ from task_generator.planning.scenario_task_compiler import (
 TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
-from run_r10_behavioral_pilot import _remote_script, _scope_sha256, _stage_solver
+from run_r10_behavioral_pilot import _remote_command, _remote_script, _scope_sha256, _stage_solver
 
 
 def workbook_bytes(value: str) -> bytes:
@@ -85,6 +85,12 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("/run/secrets/deepseek_api_key", deepseek)
         self.assertNotIn("tuzi", deepseek.casefold())
         self.assertNotIn("stirrup", deepseek.casefold())
+
+    def test_remote_transport_uses_mounted_script_without_stdin_or_tty(self):
+        command = _remote_command("/remote/workspace", stack="gpt-5.6-sol@chatgpt_codex")
+        self.assertIn("/workspace/.r10_agent.sh", command)
+        self.assertNotIn("docker run -i", command)
+        self.assertNotIn("sh -s", command)
 
     def test_xlsx_delivery_rejects_copy_and_accepts_real_workbook(self):
         with tempfile.TemporaryDirectory() as root:
