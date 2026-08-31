@@ -28,7 +28,7 @@ from task_generator.planning.scenario_task_compiler import (
 TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
-from run_r10_behavioral_pilot import _remote_command, _remote_script, _scope_sha256, _stage_solver
+from run_r10_behavioral_pilot import _remote_command, _remote_script, _scope_sha256, _stage_solver, _write_agent_script
 
 
 def workbook_bytes(value: str) -> bytes:
@@ -91,6 +91,12 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("/workspace/.r10_agent.sh", command)
         self.assertNotIn("docker run -i", command)
         self.assertNotIn("sh -s", command)
+
+    def test_mounted_linux_script_is_written_with_lf_only(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "agent.sh"
+            _write_agent_script(path, "set -eu\r\necho ready\r\n")
+            self.assertEqual(path.read_bytes(), b"set -eu\necho ready\n")
 
     def test_xlsx_delivery_rejects_copy_and_accepts_real_workbook(self):
         with tempfile.TemporaryDirectory() as root:

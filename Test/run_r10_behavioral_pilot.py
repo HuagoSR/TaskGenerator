@@ -136,8 +136,13 @@ def _remote_command(remote: str, *, stack: str) -> str:
     )
 
 
+def _write_agent_script(path: Path, content: str) -> None:
+    """The mounted Linux shell script must never inherit Windows CRLF newlines."""
+    path.write_bytes(content.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
+
+
 def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False) -> tuple[int, str, str]:
-    (local / ".r10_agent.sh").write_text(_remote_script(remote, stack=stack, grade=grade), encoding="utf-8")
+    _write_agent_script(local / ".r10_agent.sh", _remote_script(remote, stack=stack, grade=grade))
     _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
     _run(["scp", "-r", str(local), f"{host}:{remote}"], timeout=240)
     result = _ssh(host, _remote_command(remote, stack=stack), timeout=1900, check=False)
