@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from task_generator.evaluation.r10_behavioral import (
     R10JudgeDraftV1,
+    R10JudgeReviewV1,
     R10ModelTaskResultV1,
     TeacherAnchorCheckV1,
     aggregate_behavioral_result,
@@ -69,17 +70,14 @@ def _load_records(path: Path) -> list[R10ModelTaskResultV1]:
 
 
 def _collect_review(*, output_root: Path, solver: str, judge: str):
-    """Parse a downloaded remote response without submitting another request."""
-    workspace = output_root / "judges" / judge / TASK_ID / "attempt_01" / "workspace"
-    raw = workspace / "grade.raw.json"
-    if not raw.is_file():
+    """Read an assignment result; it never submits or reparses a provider response."""
+    path = output_root / "judge_runs" / solver / f"{judge}.json"
+    if not path.is_file():
         raise FileNotFoundError("r10_teacher_anchor_collected_grade_missing")
-    draft = R10JudgeDraftV1.model_validate_json(raw.read_text(encoding="utf-8"))
-    rubric = TaskSpecificRubricV1.model_validate_json((TASK_ROOT / "teacher" / "task_specific_rubric.json").read_text(encoding="utf-8"))
-    review = finalize_judge_review(judge_id=judge, draft=draft, rubric=rubric)
-    _write(workspace.parent / "review.json", review)
-    _write(output_root / "judge_runs" / solver / f"{judge}.json", {"status": "completed", "review": review})
-    return review
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("status") != "completed":
+        raise RuntimeError("r10_teacher_anchor_collected_grade_not_completed")
+    return R10JudgeReviewV1.model_validate(payload["review"])
 
 
 def _aggregate(*, output_root: Path) -> dict[str, Any]:
@@ -146,13 +144,17 @@ def _execute_local_gpt_judge(
     task_id: str,
     delivery: Path,
     codex_command: str,
+    assignment_id: str = "",
 ) -> dict[str, Any]:
     """Execute a local GPT judge; only format failures may receive one retry."""
     feedback: str | None = None
     raw_paths: list[str] = []
     first_failure: str | None = None
     for attempt in (1, 2):
-        workspace = output_root / "judges" / "gpt-5.6-sol@chatgpt_codex" / task_id / f"attempt_{attempt:02d}" / "workspace"
+        base = output_root / "judges"
+        if assignment_id:
+            base = output_root / "judge_assignments" / assignment_id / "judges"
+        workspace = base / "gpt-5.6-sol@chatgpt_codex" / task_id / f"attempt_{attempt:02d}" / "workspace"
         rubric = _stage_grade(task_root=task_root, delivery=delivery, target=workspace, task_id=task_id, feedback=feedback)
         result = run_local_codex_judge(
             workspace=workspace,
@@ -277,6 +279,7 @@ def main() -> None:
             task_id="public-probe",
             delivery=delivery,
             codex_command=args.local_codex_command,
+            assignment_id="public_probe",
         )
         _write(args.output_root / "result.json", {"decision": "pass" if result["status"] == "completed" else "incomplete", "judge_result": result})
         print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
@@ -340,9 +343,10 @@ def main() -> None:
                 task_id=TASK_ID,
                 delivery=delivery,
                 codex_command=args.local_codex_command,
+                assignment_id=args.single_solver,
             )
             if args.single_judge.startswith("gpt")
-            else _execute_judge(host=args.host, remote_root=remote_root or "", output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge, image=args.image)
+            else _execute_judge(host=args.host, remote_root=remote_root or "", output_root=args.output_root / "judge_assignments" / args.single_solver, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge, image=args.image)
         )
         _write(args.output_root / "judge_runs" / args.single_solver / f"{args.single_judge}.json", result)
         print(json.dumps({"decision": result["status"]}, ensure_ascii=False))
@@ -361,10 +365,11 @@ def main() -> None:
                     task_id=TASK_ID,
                     delivery=delivery,
                     codex_command=args.local_codex_command,
+                    assignment_id=solver,
                 )
                 if judge.startswith("gpt")
                 else _execute_judge(
-                    host=args.host, remote_root=remote_root or "", output_root=args.output_root,
+                    host=args.host, remote_root=remote_root or "", output_root=args.output_root / "judge_assignments" / solver,
                     task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=judge, image=args.image,
                 )
             )
