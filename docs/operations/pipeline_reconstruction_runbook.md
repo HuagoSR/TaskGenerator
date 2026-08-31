@@ -49,7 +49,7 @@ R10.6 两题 task/truth compilation 已完成：第三个 scope/receipt 绑定�
 
 R10.7A 已完成：控制缺陷组合评估与商业交付验收处置已形成两份有 Skill evidence bundle、两道 task/truth package 和中文用户检查包。四题均通过静态 admission 并获用户形态验收；候选 package 保持冻结。
 
-R10.7B 原始结果为 `behaviorally_admitted`：两条 solver 均通过公开 XLSX/DOCX probe、各完成四份有效交付；16 次 route-blind LLM proxy 评分完整。随后 R10.8A 发现采购验收题的 teacher-side 容差算术错误（3/40 为 7.5%，不是 5% 以内）。候选文件和题干不变，原结果冻结为历史记录。修正后的 judge-only receipt 在首个 GPT Judge 十分钟无输出后停止为 `evaluation_inconclusive`；不得复用该 receipt、不得重跑 Solver 或用其他模型替代其评分。下一步仅限先完成公开 GPT Judge 会话链 probe，再另建 receipt 重评两份既有交付。
+R10.7B 原始结果为 `behaviorally_admitted`：两条 solver 均通过公开 XLSX/DOCX probe、各完成四份有效交付；16 次 route-blind LLM proxy 评分完整。随后 R10.8A 发现采购验收题的 teacher-side 容差算术错误（3/40 为 7.5%，不是 5% 以内）。候选文件和题干不变，原结果冻结为历史记录。修正后的 Teacher Anchor Audit 与公开 GPT Judge probe 均已通过；但两个独立的私有 judge-only receipt 均在首个 GPT Judge 只产生启动事件后无进展而受控停止。诊断性成功会话因 scope 绑定缺陷不可混入。当前为 `evaluation_inconclusive`：不得复用任一 receipt、不得重跑 Solver、不得以其他 Judge 替代 GPT，也不得启动十题扩展；只有会话级基础设施得到独立修复并重新建立完整 judge-only campaign 后，才能重新评估。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

@@ -58,15 +58,19 @@
 
 控制缺陷组合评估（DOCX 评估备忘录）和商业交付验收处置（XLSX 跟进工作簿）已补齐。两项 factory-side Skill 由自动 Skill Compiler 基于 PCAOB AS 2201 与 FAR Part 46 公开材料生成，并经 DeepSeek 独立来源/内容审查；不人工补写专业结论，不重复 R10.5 A/B 实验。两份有 Skill evidence bundle、两道 task/truth package、中文检查包与静态 admission 均通过；原两题候选树与 SHA 未变化，四题均获用户形态验收。
 
-### R10.7B — Four-task pilot behavioral admission — `completed / behaviorally_admitted`
+### R10.7B — Four-task pilot behavioral admission — `completed / historical teacher-anchor error`
 
 独立的 R10 行为 runner 已绑定四个冻结 package tree、任务编译输出、交付合同、镜像与源码提交。它先以 GPT-5.6 Sol/Codex 与官方 DeepSeek V4 Pro/OpenCode 各运行公开 XLSX/DOCX 探针；两个探针均通过后才上传 route-blind candidate package。每栈每题仅一次、30 分钟硬超时、零项目级重试。有效 XLSX 用 `openpyxl` 验证；有效 DOCX 同时要求 OOXML 结构与远端 LibreOffice 打开验证。
 
-每份有效交付由两位 route-blind LLM judge 根据冻结的 teacher truth、决策矩阵与 task-specific rubric 逐项评价；程序重算加权分数，不接受模型自报总分。该层是 LLM proxy，不是专家证据。运行尚未开始。
+每份有效交付由两位 route-blind LLM judge 根据冻结的 teacher truth、决策矩阵与 task-specific rubric 逐项评价；程序重算加权分数，不接受模型自报总分。该层是 LLM proxy，不是专家证据。原始运行完整，但采购验收题的 Teacher Truth 锚点存在已确认算术错误，故只能保留为历史诊断。
 
 每题都必须同时满足：来源完整、世界因果一致、无答案泄漏、信息足以支持结论、存在正常背景与真实不确定性、有效交付可评分。低分或失败不得触发单题重写；应归因并修复 compiler、seed admission 或 projection 规则。
 
-### R10.8 — Scale decision — `not_implemented`
+### R10.8A — Teacher-anchor correction and judge-only regrade — `blocked / evaluation_inconclusive`
+
+采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 用于审计可计算的比例、合计、日期顺序与阈值关系。公开 GPT Judge probe 通过，但两个独立私有重评 receipt 都出现 Codex 会话仅启动、无工具/完成事件的同类故障；不得把单次诊断成功或旧评分拼入正式重评。先修复并独立验证会话级基础设施，才能建立新的完整 judge-only campaign。
+
+### R10.8B — Ten-task scale decision — `not_implemented / gated`
 
 仅当四题均通过静态准入，且至少两个模型在共同任务上表现出可解释的差异，才编写十题 production plan。若失败，冻结 pilot，保留证据并优先修复共性合同；不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 

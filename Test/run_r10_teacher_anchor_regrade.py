@@ -137,13 +137,14 @@ def main() -> None:
     parser.add_argument("--collect", action="store_true", help="Parse one already-downloaded response; never calls a provider.")
     parser.add_argument("--aggregate", action="store_true", help="Aggregate four collected reviews; never calls a provider.")
     parser.add_argument("--scope-only", action="store_true", help="Create the immutable receipt without calling a provider.")
+    parser.add_argument("--mark-incomplete", action="store_true", help="Persist a verified infrastructure stop; never calls a provider.")
     args = parser.parse_args()
     single = bool(args.single_solver or args.single_judge)
     if single != bool(args.single_solver and args.single_judge):
         parser.error("single_solver_and_single_judge_must_be_supplied_together")
-    if sum(bool(value) for value in (args.public_probe, args.aggregate, args.scope_only, single and not args.collect, args.collect)) > 1:
+    if sum(bool(value) for value in (args.public_probe, args.aggregate, args.scope_only, args.mark_incomplete, single and not args.collect, args.collect)) > 1:
         parser.error("probe_single_collect_and_aggregate_are_mutually_exclusive")
-    if args.output_root.exists() and not (single or args.collect or args.aggregate):
+    if args.output_root.exists() and not (single or args.collect or args.aggregate or args.mark_incomplete):
         raise FileExistsError("r10_teacher_anchor_regrade_output_already_exists")
 
     if args.public_probe:
@@ -153,6 +154,21 @@ def main() -> None:
         result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=task, task_id="public-probe", delivery=delivery, judge="gpt-5.6-sol@chatgpt_codex")
         _write(args.output_root / "result.json", {"decision": "pass" if result["status"] == "completed" else "incomplete", "judge_result": result})
         print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
+        return
+
+    if args.mark_incomplete:
+        scope_path = args.output_root / "scope.json"
+        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != _scope(args.run_id):
+            raise RuntimeError("r10_teacher_anchor_regrade_scope_mismatch")
+        _write(args.output_root / "result.json", {
+            "decision": "evaluation_inconclusive",
+            "first_failure": {
+                "category": "provider_session_no_progress",
+                "detail": "codex emitted thread.started and turn.started but no tool or completion event before the controlled stop.",
+                "observed_at": datetime.now(UTC).isoformat(),
+            },
+        })
+        print(json.dumps({"decision": "evaluation_inconclusive"}, ensure_ascii=False))
         return
 
     if args.collect:

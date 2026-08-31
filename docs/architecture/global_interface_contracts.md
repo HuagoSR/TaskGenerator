@@ -98,6 +98,7 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；最新完整 cohort 得到 `skill_effect_supported`，允许进入两题 task/truth controlled compilation，但不构成专家有效性或大规模生产准入。
 - `TaskCompilationOutputV1` / `TaskSpecificRubricV1` / `ScenarioTaskCompilationPlanV1` / `ScenarioTaskCompilationScopeV1` / `ScenarioTaskAdmissionReportV1` — `implemented / R10.6`：冻结父 bundle 与候选树，统一生成 candidate-facing base prompt、teacher truth、决策矩阵与一对一评分权重；交付路径仍由 `DeliverableContractV1` 编译。静态 admission 只检查闭合、隔离、路径、候选不变性、泄漏与不确定性，不决定专业答案优劣。
 - `R10BehavioralScopeV1` / `R10SolverOutcomeV1` / `R10JudgeDraftV1` / `R10JudgeReviewV1` / `R10BehavioralResultV1` — `implemented / R10.7B`：仅绑定四道冻结 R10 任务、两条原生 solver 栈、两名 route-blind LLM judge、混合 DOCX/XLSX 交付检查与任务级决策评分。它不复用 R9 的 24 题格式，也不构成专家、训练或 release 证据。
+- `TeacherAnchorCheckV1` / `TeacherAnchorAuditV1` — `implemented / R10.8A`：对 teacher-only 可计算锚点进行比例、合计、日期、数量差和阈值关系审计；它可阻断错误监督材料，但不替代专业审查或 Judge 运行可靠性。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
