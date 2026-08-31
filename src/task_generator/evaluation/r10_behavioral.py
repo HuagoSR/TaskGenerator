@@ -142,6 +142,13 @@ class DecisionAssessmentV1(BaseModel):
     rationale: str = Field(min_length=1, max_length=1600)
     evidence_insufficient: bool = False
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema, handler):  # type: ignore[no-untyped-def]
+        """Keep the Python default while satisfying Responses strict-schema mode."""
+        schema = handler(core_schema)
+        schema["required"] = list(schema.get("properties", {}))
+        return schema
+
 
 class R10JudgeDraftV1(BaseModel):
     model_config = ConfigDict(extra="forbid")

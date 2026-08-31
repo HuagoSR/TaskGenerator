@@ -54,6 +54,11 @@ def rubric() -> TaskSpecificRubricV1:
 
 
 class R10BehavioralTests(unittest.TestCase):
+
+    def test_judge_schema_requires_all_declared_assessment_fields(self) -> None:
+        schema = R10JudgeDraftV1.model_json_schema()
+        assessment = schema["$defs"]["DecisionAssessmentV1"]
+        self.assertEqual(set(assessment["properties"]), set(assessment["required"]))
     def test_scope_hash_uses_canonical_json_not_an_inherited_mixin(self):
         bindings = [
             R10PilotTaskBindingV1(task_id=f"task-{index}", domain="audit_compliance" if index < 2 else "procurement_operations", package_root=f"/task/{index}", package_tree_sha256=f"{index:064x}", candidate_tree_sha256=f"{index + 4:064x}", task_compilation_sha256=f"{index + 8:064x}", deliverable_contract_sha256=f"{index + 12:064x}", expected_delivery="deliverable_files/result.xlsx")
