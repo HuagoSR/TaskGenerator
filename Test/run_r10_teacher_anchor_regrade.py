@@ -39,7 +39,7 @@ from run_r10_behavioral_pilot import (
     _execute_judge,
     _safe_remote_root,
     _stage_grade,
-    _write,
+    _write as _write_raw,
 )
 
 
@@ -47,6 +47,21 @@ TASK_ID = "r10_procurement_delivery_acceptance"
 TASK_ROOT = ROOT / "artifacts/r10/r10_7a_task_compilation_20260831/tasks" / TASK_ID
 RECOVERY_ROOT = ROOT / "artifacts/r10/r10_7b_judge_recovery_20260831"
 SOLVER_ROOT = ROOT / "artifacts/r10/r10_7b_behavioral_pilot_20260831_execute5/collected_solvers"
+
+
+def _jsonable(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return _jsonable(value.model_dump(mode="json"))
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    return value
+
+
+def _write(path: Path, value: Any) -> None:
+    """Persist nested Pydantic diagnostics without altering the shared writer."""
+    _write_raw(path, _jsonable(value))
 
 
 def _load_records(path: Path) -> list[R10ModelTaskResultV1]:
