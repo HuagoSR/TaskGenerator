@@ -31,7 +31,16 @@ from task_generator.evaluation.r10_behavioral import (
     sha256_json,
 )
 from task_generator.planning.scenario_task_compiler import TaskSpecificRubricV1, tree_sha256
-from run_r10_behavioral_pilot import IMAGE, IMAGE_SHA256, STACKS, _execute_judge, _safe_remote_root, _write
+from r10_local_codex_judge import local_codex_version, run_local_codex_judge
+from run_r10_behavioral_pilot import (
+    IMAGE,
+    IMAGE_SHA256,
+    STACKS,
+    _execute_judge,
+    _safe_remote_root,
+    _stage_grade,
+    _write,
+)
 
 
 TASK_ID = "r10_procurement_delivery_acceptance"
@@ -76,13 +85,19 @@ def _aggregate(*, output_root: Path) -> dict[str, Any]:
     return result
 
 
-def _scope(run_id: str, *, image: str = IMAGE, image_sha256: str = IMAGE_SHA256) -> dict[str, Any]:
+def _scope(
+    run_id: str,
+    *,
+    image: str = IMAGE,
+    image_sha256: str = IMAGE_SHA256,
+    local_codex_command: str = "codex",
+) -> dict[str, Any]:
     deliveries = {
         solver: SOLVER_ROOT / solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
         for solver in STACKS
     }
     return {
-        "scope_version": "r10.teacher_anchor_regrade_scope.1",
+        "scope_version": "r10.teacher_anchor_regrade_scope.2",
         "campaign_id": run_id,
         "image": image,
         "image_sha256": image_sha256,
@@ -91,9 +106,71 @@ def _scope(run_id: str, *, image: str = IMAGE, image_sha256: str = IMAGE_SHA256)
         "teacher_tree_sha256": tree_sha256(TASK_ROOT / "teacher"),
         "solver_delivery_sha256": {solver: sha256_file(path) for solver, path in deliveries.items()},
         "judge_ids": list(STACKS),
+        "gpt_judge_environment": {
+            "transport": "local_codex",
+            "command": local_codex_command,
+            "version": local_codex_version(local_codex_command),
+            "model": "gpt-5.6-sol",
+            "sandbox": "workspace-write",
+        },
+        "deepseek_judge_environment": {
+            "transport": "huago_opencode",
+            "image": image,
+            "image_sha256": image_sha256,
+            "model": "deepseek-v4-pro",
+        },
         "judge_format_attempt_limit": 2,
         "excluded_actions": ["solver", "candidate_mutation", "task_generation", "release", "training", "promotion"],
     }
+
+
+def _execute_local_gpt_judge(
+    *,
+    output_root: Path,
+    task_root: Path,
+    task_id: str,
+    delivery: Path,
+    codex_command: str,
+) -> dict[str, Any]:
+    """Execute a local GPT judge; only format failures may receive one retry."""
+    feedback: str | None = None
+    raw_paths: list[str] = []
+    first_failure: str | None = None
+    for attempt in (1, 2):
+        workspace = output_root / "judges" / "gpt-5.6-sol@chatgpt_codex" / task_id / f"attempt_{attempt:02d}" / "workspace"
+        rubric = _stage_grade(task_root=task_root, delivery=delivery, target=workspace, task_id=task_id, feedback=feedback)
+        result = run_local_codex_judge(
+            workspace=workspace,
+            prompt=(workspace / "TASK.md").read_text(encoding="utf-8"),
+            command=codex_command,
+        )
+        raw = workspace / "grade.raw.json"
+        raw_paths.append(str(raw))
+        if result["returncode"] != 0:
+            return {
+                "status": "infrastructure_failed",
+                "first_failure": "provider_or_local_runtime_failure",
+                "raw_paths": raw_paths,
+                "diagnostics": result,
+            }
+        try:
+            draft = R10JudgeDraftV1.model_validate_json(raw.read_text(encoding="utf-8"))
+            if draft.task_id != task_id:
+                raise ValueError("judge_task_id_mismatch")
+            review = finalize_judge_review(judge_id="gpt-5.6-sol@chatgpt_codex", draft=draft, rubric=rubric)
+            _write(workspace.parent / "review.json", review)
+            return {
+                "status": "completed",
+                "review": review,
+                "review_path": str(workspace.parent / "review.json"),
+                "raw_paths": raw_paths,
+                "first_failure": first_failure,
+                "diagnostics": result,
+            }
+        except Exception as exc:
+            first_failure = first_failure or f"judge_json_or_schema_invalid:{type(exc).__name__}"
+            feedback = first_failure
+    return {"status": "format_failed", "first_failure": first_failure, "raw_paths": raw_paths}
 
 
 def _stage_public_judge_probe(root: Path, *, complex_input: bool = False) -> tuple[Path, Path]:
@@ -154,8 +231,9 @@ def _stage_public_judge_probe(root: Path, *, complex_input: bool = False) -> tup
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="huago-cone")
-    parser.add_argument("--run-id", default="r10_8a_procurement_acceptance_anchor_regrade_20260831")
-    parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_8a_procurement_acceptance_anchor_regrade_20260831")
+    parser.add_argument("--run-id", default="r10_8a_procurement_acceptance_anchor_regrade_local_20260901")
+    parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_8a_procurement_acceptance_anchor_regrade_local_20260901")
+    parser.add_argument("--local-codex-command", default="codex")
     parser.add_argument("--public-probe", action="store_true")
     parser.add_argument("--public-complex-probe", action="store_true")
     parser.add_argument("--single-solver", choices=STACKS)
@@ -178,15 +256,20 @@ def main() -> None:
     if args.public_probe or args.public_complex_probe:
         args.output_root.mkdir(parents=True)
         task, delivery = _stage_public_judge_probe(args.output_root, complex_input=args.public_complex_probe)
-        remote_root = _safe_remote_root(args.host, args.run_id)
-        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=task, task_id="public-probe", delivery=delivery, judge="gpt-5.6-sol@chatgpt_codex", image=args.image)
+        result = _execute_local_gpt_judge(
+            output_root=args.output_root,
+            task_root=task,
+            task_id="public-probe",
+            delivery=delivery,
+            codex_command=args.local_codex_command,
+        )
         _write(args.output_root / "result.json", {"decision": "pass" if result["status"] == "completed" else "incomplete", "judge_result": result})
         print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
         return
 
     if args.mark_incomplete:
         scope_path = args.output_root / "scope.json"
-        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != _scope(args.run_id, image=args.image, image_sha256=args.image_sha256):
+        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != _scope(args.run_id, image=args.image, image_sha256=args.image_sha256, local_codex_command=args.local_codex_command):
             raise RuntimeError("r10_teacher_anchor_regrade_scope_mismatch")
         _write(args.output_root / "result.json", {
             "decision": "evaluation_inconclusive",
@@ -219,7 +302,7 @@ def main() -> None:
         _write(args.output_root / "result.json", {"decision": "teacher_anchor_conflict", "reason": "corrected_anchor_did_not_pass"})
         return
 
-    scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256)
+    scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256, local_codex_command=args.local_codex_command)
     scope_path = args.output_root / "scope.json"
     if single:
         if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != scope:
@@ -230,10 +313,22 @@ def main() -> None:
     if args.scope_only:
         print(json.dumps({"decision": "scope_created", "scope_sha256": sha256_json(scope)}, ensure_ascii=False))
         return
-    remote_root = _safe_remote_root(args.host, args.run_id)
+    remote_root: str | None = None
+    if not single or args.single_judge == "deepseek-v4-pro@official_opencode":
+        remote_root = _safe_remote_root(args.host, args.run_id)
     if single:
         delivery = SOLVER_ROOT / args.single_solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
-        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge, image=args.image)
+        result = (
+            _execute_local_gpt_judge(
+                output_root=args.output_root,
+                task_root=TASK_ROOT,
+                task_id=TASK_ID,
+                delivery=delivery,
+                codex_command=args.local_codex_command,
+            )
+            if args.single_judge.startswith("gpt")
+            else _execute_judge(host=args.host, remote_root=remote_root or "", output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge, image=args.image)
+        )
         _write(args.output_root / "judge_runs" / args.single_solver / f"{args.single_judge}.json", result)
         print(json.dumps({"decision": result["status"]}, ensure_ascii=False))
         return
@@ -244,9 +339,19 @@ def main() -> None:
             raise FileNotFoundError(f"r10_teacher_anchor_delivery_missing:{solver}")
         reviews = []
         for judge in STACKS:
-            result = _execute_judge(
-                host=args.host, remote_root=remote_root, output_root=args.output_root,
-                task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=judge, image=args.image,
+            result = (
+                _execute_local_gpt_judge(
+                    output_root=args.output_root,
+                    task_root=TASK_ROOT,
+                    task_id=TASK_ID,
+                    delivery=delivery,
+                    codex_command=args.local_codex_command,
+                )
+                if judge.startswith("gpt")
+                else _execute_judge(
+                    host=args.host, remote_root=remote_root or "", output_root=args.output_root,
+                    task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=judge, image=args.image,
+                )
             )
             _write(args.output_root / "judge_runs" / solver / f"{judge}.json", result)
             if result["status"] != "completed":

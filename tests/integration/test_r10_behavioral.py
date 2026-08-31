@@ -32,6 +32,7 @@ TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 from run_r10_behavioral_pilot import _remote_command, _remote_script, _scope_sha256, _stage_solver, _write_agent_script
+from r10_local_codex_judge import _redact, local_codex_command
 
 
 def workbook_bytes(value: str) -> bytes:
@@ -119,6 +120,24 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("/workspace/.r10_agent.sh", command)
         self.assertNotIn("docker run -i", command)
         self.assertNotIn("sh -s", command)
+
+    def test_local_judge_command_is_workspace_limited_and_has_no_remote_transport(self):
+        workspace = Path("C:/public/r10-workspace")
+        command = local_codex_command(command="codex", model="gpt-5.6-sol", workspace=workspace)
+        self.assertIn("--approve-for-me", command)
+        self.assertEqual(command[command.index("--sandbox") + 1], "workspace-write")
+        self.assertIn("--ignore-user-config", command)
+        self.assertIn("--ephemeral", command)
+        rendered = " ".join(command)
+        self.assertNotIn("docker", rendered.casefold())
+        self.assertNotIn("ssh", rendered.casefold())
+        self.assertNotIn("auth.json", rendered.casefold())
+
+    def test_local_judge_diagnostics_redact_credential_shaped_text(self):
+        output = _redact("Authorization: Bearer sk-abcdefghijklmnopqrstuvwxyz\napi_key=secret-value")
+        self.assertNotIn("abcdefghijklmnopqrstuvwxyz", output)
+        self.assertNotIn("secret-value", output)
+        self.assertIn("[REDACTED]", output)
 
     def test_mounted_linux_script_is_written_with_lf_only(self):
         with tempfile.TemporaryDirectory() as root:
