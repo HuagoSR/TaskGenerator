@@ -21,14 +21,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from task_generator.evaluation.r10_behavioral import (
+    R10JudgeDraftV1,
     R10ModelTaskResultV1,
     TeacherAnchorCheckV1,
     aggregate_behavioral_result,
     audit_teacher_anchors,
+    finalize_judge_review,
     sha256_file,
     sha256_json,
 )
-from task_generator.planning.scenario_task_compiler import tree_sha256
+from task_generator.planning.scenario_task_compiler import TaskSpecificRubricV1, tree_sha256
 from run_r10_behavioral_pilot import STACKS, _execute_judge, _safe_remote_root, _write
 
 
@@ -42,10 +44,53 @@ def _load_records(path: Path) -> list[R10ModelTaskResultV1]:
     return [R10ModelTaskResultV1.model_validate(item) for item in json.loads(path.read_text(encoding="utf-8"))]
 
 
-def _scope() -> dict[str, Any]:
+def _collect_review(*, output_root: Path, solver: str, judge: str):
+    """Parse a downloaded remote response without submitting another request."""
+    workspace = output_root / "judges" / judge / TASK_ID / "attempt_01" / "workspace"
+    raw = workspace / "grade.raw.json"
+    if not raw.is_file():
+        raise FileNotFoundError("r10_teacher_anchor_collected_grade_missing")
+    draft = R10JudgeDraftV1.model_validate_json(raw.read_text(encoding="utf-8"))
+    rubric = TaskSpecificRubricV1.model_validate_json((TASK_ROOT / "teacher" / "task_specific_rubric.json").read_text(encoding="utf-8"))
+    review = finalize_judge_review(judge_id=judge, draft=draft, rubric=rubric)
+    _write(workspace.parent / "review.json", review)
+    _write(output_root / "judge_runs" / solver / f"{judge}.json", {"status": "completed", "review": review})
+    return review
+
+
+def _aggregate(*, output_root: Path) -> dict[str, Any]:
+    replacement = {
+        solver: [_collect_review(output_root=output_root, solver=solver, judge=judge) for judge in STACKS]
+        for solver in STACKS
+    }
+    records = _load_records(RECOVERY_ROOT / "records.json")
+    corrected = [
+        item.model_copy(update={"reviews": replacement[item.solver_id]})
+        if item.task_id == TASK_ID else item
+        for item in records
+    ]
+    _write(output_root / "corrected_records.json", corrected)
+    aggregate = aggregate_behavioral_result(corrected)
+    result = {"decision": aggregate.decision, "aggregate": aggregate}
+    _write(output_root / "result.json", result)
+    return result
+
+
+def _scope(run_id: str) -> dict[str, Any]:
     deliveries = {
         solver: SOLVER_ROOT / solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
         for solver in STACKS
+    }
+    return {
+        "scope_version": "r10.teacher_anchor_regrade_scope.1",
+        "campaign_id": run_id,
+        "task_id": TASK_ID,
+        "candidate_tree_sha256": tree_sha256(TASK_ROOT / "reference_files"),
+        "teacher_tree_sha256": tree_sha256(TASK_ROOT / "teacher"),
+        "solver_delivery_sha256": {solver: sha256_file(path) for solver, path in deliveries.items()},
+        "judge_ids": list(STACKS),
+        "judge_format_attempt_limit": 2,
+        "excluded_actions": ["solver", "candidate_mutation", "task_generation", "release", "training", "promotion"],
     }
 
 
@@ -79,17 +124,6 @@ def _stage_public_judge_probe(root: Path) -> tuple[Path, Path]:
     sheet.append(["Yes", "3/40 = 7.5%", "Escalate for review"])
     book.save(delivery)
     return task, delivery
-    return {
-        "scope_version": "r10.teacher_anchor_regrade_scope.1",
-        "campaign_id": "r10_8a_procurement_acceptance_anchor_regrade_20260831",
-        "task_id": TASK_ID,
-        "candidate_tree_sha256": tree_sha256(TASK_ROOT / "reference_files"),
-        "teacher_tree_sha256": tree_sha256(TASK_ROOT / "teacher"),
-        "solver_delivery_sha256": {solver: sha256_file(path) for solver, path in deliveries.items()},
-        "judge_ids": list(STACKS),
-        "judge_format_attempt_limit": 2,
-        "excluded_actions": ["solver", "candidate_mutation", "task_generation", "release", "training", "promotion"],
-    }
 
 
 def main() -> None:
@@ -98,8 +132,18 @@ def main() -> None:
     parser.add_argument("--run-id", default="r10_8a_procurement_acceptance_anchor_regrade_20260831")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_8a_procurement_acceptance_anchor_regrade_20260831")
     parser.add_argument("--public-probe", action="store_true")
+    parser.add_argument("--single-solver", choices=STACKS)
+    parser.add_argument("--single-judge", choices=STACKS)
+    parser.add_argument("--collect", action="store_true", help="Parse one already-downloaded response; never calls a provider.")
+    parser.add_argument("--aggregate", action="store_true", help="Aggregate four collected reviews; never calls a provider.")
+    parser.add_argument("--scope-only", action="store_true", help="Create the immutable receipt without calling a provider.")
     args = parser.parse_args()
-    if args.output_root.exists():
+    single = bool(args.single_solver or args.single_judge)
+    if single != bool(args.single_solver and args.single_judge):
+        parser.error("single_solver_and_single_judge_must_be_supplied_together")
+    if sum(bool(value) for value in (args.public_probe, args.aggregate, args.scope_only, single and not args.collect, args.collect)) > 1:
+        parser.error("probe_single_collect_and_aggregate_are_mutually_exclusive")
+    if args.output_root.exists() and not (single or args.collect or args.aggregate):
         raise FileExistsError("r10_teacher_anchor_regrade_output_already_exists")
 
     if args.public_probe:
@@ -111,18 +155,44 @@ def main() -> None:
         print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
         return
 
+    if args.collect:
+        if not single:
+            parser.error("collect_requires_single_solver_and_single_judge")
+        review = _collect_review(output_root=args.output_root, solver=args.single_solver, judge=args.single_judge)
+        print(json.dumps({"decision": "collected", "weighted_score": review.weighted_score}, ensure_ascii=False))
+        return
+
+    if args.aggregate:
+        result = _aggregate(output_root=args.output_root)
+        print(json.dumps({"decision": result["decision"]}, ensure_ascii=False))
+        return
+
     checks = [TeacherAnchorCheckV1.model_validate(item) for item in json.loads((TASK_ROOT / "teacher/teacher_anchor_checks.json").read_text(encoding="utf-8"))]
     audit = audit_teacher_anchors(checks)
-    args.output_root.mkdir(parents=True)
+    args.output_root.mkdir(parents=True, exist_ok=single)
     _write(args.output_root / "teacher_anchor_audit.json", audit)
     if audit.decision != "pass":
         _write(args.output_root / "result.json", {"decision": "teacher_anchor_conflict", "reason": "corrected_anchor_did_not_pass"})
         return
 
-    scope = _scope()
-    _write(args.output_root / "scope.json", scope)
-    _write(args.output_root / "receipt.json", {"scope_sha256": sha256_json(scope), "consumed_at": datetime.now(UTC).isoformat()})
+    scope = _scope(args.run_id)
+    scope_path = args.output_root / "scope.json"
+    if single:
+        if not scope_path.is_file() or json.loads(scope_path.read_text(encoding="utf-8")) != scope:
+            raise RuntimeError("r10_teacher_anchor_regrade_scope_mismatch")
+    else:
+        _write(scope_path, scope)
+        _write(args.output_root / "receipt.json", {"scope_sha256": sha256_json(scope), "consumed_at": datetime.now(UTC).isoformat()})
+    if args.scope_only:
+        print(json.dumps({"decision": "scope_created", "scope_sha256": sha256_json(scope)}, ensure_ascii=False))
+        return
     remote_root = _safe_remote_root(args.host, args.run_id)
+    if single:
+        delivery = SOLVER_ROOT / args.single_solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
+        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=TASK_ROOT, task_id=TASK_ID, delivery=delivery, judge=args.single_judge)
+        _write(args.output_root / "judge_runs" / args.single_solver / f"{args.single_judge}.json", result)
+        print(json.dumps({"decision": result["status"]}, ensure_ascii=False))
+        return
     replacement_reviews: dict[str, list[Any]] = {}
     for solver in STACKS:
         delivery = SOLVER_ROOT / solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
