@@ -96,6 +96,7 @@ def run_local_codex_judge(
     The caller owns grade staging and semantic/schema validation.  This helper
     never reads, writes, or copies Codex authentication material.
     """
+    workspace = workspace.resolve()
     workspace.mkdir(parents=True, exist_ok=True)
     jsonl_path = workspace / "agent.jsonl"
     stderr_path = workspace / "stderr.txt"
