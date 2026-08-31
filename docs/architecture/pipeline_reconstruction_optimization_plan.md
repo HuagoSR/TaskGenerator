@@ -58,7 +58,7 @@
 
 控制缺陷组合评估（DOCX 评估备忘录）和商业交付验收处置（XLSX 跟进工作簿）已补齐。两项 factory-side Skill 由自动 Skill Compiler 基于 PCAOB AS 2201 与 FAR Part 46 公开材料生成，并经 DeepSeek 独立来源/内容审查；不人工补写专业结论，不重复 R10.5 A/B 实验。两份有 Skill evidence bundle、两道 task/truth package、中文检查包与静态 admission 均通过；原两题候选树与 SHA 未变化，四题均获用户形态验收。
 
-### R10.7B — Four-task pilot behavioral admission — `implemented / not_executed`
+### R10.7B — Four-task pilot behavioral admission — `completed / behaviorally_admitted`
 
 独立的 R10 行为 runner 已绑定四个冻结 package tree、任务编译输出、交付合同、镜像与源码提交。它先以 GPT-5.6 Sol/Codex 与官方 DeepSeek V4 Pro/OpenCode 各运行公开 XLSX/DOCX 探针；两个探针均通过后才上传 route-blind candidate package。每栈每题仅一次、30 分钟硬超时、零项目级重试。有效 XLSX 用 `openpyxl` 验证；有效 DOCX 同时要求 OOXML 结构与远端 LibreOffice 打开验证。
 

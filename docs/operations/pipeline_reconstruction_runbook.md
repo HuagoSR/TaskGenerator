@@ -49,7 +49,7 @@ R10.6 两题 task/truth compilation 已完成：第三个 scope/receipt 绑定�
 
 R10.7A 已完成：控制缺陷组合评估与商业交付验收处置已形成两份有 Skill evidence bundle、两道 task/truth package 和中文用户检查包。四题均通过静态 admission 并获用户形态验收；候选 package 保持冻结。
 
-R10.7B 的运行入口已实现但尚未执行。它必须先对 GPT-5.6 Sol/Codex 与官方 DeepSeek V4 Pro/OpenCode 分别完成公开 XLSX/DOCX probe；任一失败即记录 `behaviorally_inconclusive`，不得向该栈上传私有任务。两条栈均通过后，才可各自对四道 route-blind package 执行一次；仅有效交付进入双 LLM judge 的任务特定评分。每个新 run 仍须落盘独立 scope/receipt，停止于行为结果，不启动十题生产、训练、release 或 registry mutation。
+R10.7B 已完成并得到 `behaviorally_admitted`：两条 solver 均通过公开 XLSX/DOCX probe、各完成四份有效交付；16 次 route-blind LLM proxy 评分完整。一次 GPT judge 的 schema/传输失败仅进行了一次格式补跑，未重跑 solver 或低分答案。结果停在行为结论：不得自动启动 R10.8、十题生产、训练、release 或 registry mutation。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
