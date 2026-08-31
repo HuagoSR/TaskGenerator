@@ -47,7 +47,9 @@ R10.0–R10.4 已完成。R10.5 的公开 agent/filesystem probe 已通过：原
 
 R10.6 两题 task/truth compilation 已完成：第三个 scope/receipt 绑定两份冻结有 Skill bundle、父 Bible、规则、Skill、Codex/Sol 和镜像；两题均静态通过。Teacher Truth 事实必须由所列 candidate evidence 的 evidence map 投影支持；路径规范化不改变证据含义，初始 blocked 报告保留。用户已完成两题表面审题。
 
-R10.7A 已实现但尚未执行：两个新增 Skill 先以 draft 目录元数据出现，必须经自动 Skill Compiler 和 DeepSeek 内容审查后才可升级为 curated。随后仅生成控制缺陷组合评估与商业交付验收处置的两份有 Skill evidence bundle、两道 task/truth package 和中文用户检查包。该切片停止于四题用户查看；不得自动扩展到 solver、grader、生产发布、训练或 registry mutation。
+R10.7A 已完成：控制缺陷组合评估与商业交付验收处置已形成两份有 Skill evidence bundle、两道 task/truth package 和中文用户检查包。四题均通过静态 admission 并获用户形态验收；候选 package 保持冻结。
+
+R10.7B 的运行入口已实现但尚未执行。它必须先对 GPT-5.6 Sol/Codex 与官方 DeepSeek V4 Pro/OpenCode 分别完成公开 XLSX/DOCX probe；任一失败即记录 `behaviorally_inconclusive`，不得向该栈上传私有任务。两条栈均通过后，才可各自对四道 route-blind package 执行一次；仅有效交付进入双 LLM judge 的任务特定评分。每个新 run 仍须落盘独立 scope/receipt，停止于行为结果，不启动十题生产、训练、release 或 registry mutation。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

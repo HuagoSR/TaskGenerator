@@ -50,19 +50,19 @@
 
 活跃准入不使用 instruction 配额、来源类型配额或文件级 source ID要求，只保留来源追溯、包安全、隔离、可打开性、evidence-map 闭合和答案泄漏。该结果允许进入两题 task/truth compilation 规划，但仍不是专家有效性、大规模生产或 solver 评测准入。
 
-### R10.6 — Two-task task and truth compilation — `implemented / compiled_for_user_review`
+### R10.6 — Two-task task and truth compilation — `implemented / user-accepted`
 
-从两份冻结的有 Skill evidence bundle 编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。审计题交付 XLSX 工作底稿，采购题交付 DOCX 价格分析备忘录；采购题不要求供应商选择。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。两题已在第三个独立 scope 下通过静态 admission；前两次 cohort 的事实投影与路径规范化诊断保留。下一步先由用户检查形态，不运行 solver 或 grader。
+从两份冻结的有 Skill evidence bundle 编译候选题干、交付合同、teacher truth、`TaskDecisionMatrixV1` 和 task-specific rubric。审计题交付 XLSX 工作底稿，采购题交付 DOCX 价格分析备忘录；采购题不要求供应商选择。决策矩阵必须说明每个判断点的可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。通用七维 rubric 只补充成果质量，不覆盖专业决策。两题已在第三个独立 scope 下通过静态 admission；前两次 cohort 的事实投影与路径规范化诊断保留。用户已完成形态验收。
 
-### R10.7A — Complete the remaining two user-review tasks — `implementation_ready / not_executed`
+### R10.7A — Complete the remaining two user-review tasks — `implemented / user-accepted`
 
-现有两题已完成静态 admission 并由用户进行表面审题。下一切片仅补齐另外两题：控制缺陷组合评估交付 DOCX 评估备忘录，商业交付验收处置交付 XLSX 跟进工作簿。新增的两项 factory-side Skill 先以 draft 元数据登记，再由 Skill Compiler 基于官方 PCAOB AS 2201 与 FAR Part 46 材料自动编译并经 DeepSeek 独立来源/内容审查；不人工补写专业结论，不重复 R10.5 A/B 实验。
+控制缺陷组合评估（DOCX 评估备忘录）和商业交付验收处置（XLSX 跟进工作簿）已补齐。两项 factory-side Skill 由自动 Skill Compiler 基于 PCAOB AS 2201 与 FAR Part 46 公开材料生成，并经 DeepSeek 独立来源/内容审查；不人工补写专业结论，不重复 R10.5 A/B 实验。两份有 Skill evidence bundle、两道 task/truth package、中文检查包与静态 admission 均通过；原两题候选树与 SHA 未变化，四题均获用户形态验收。
 
-两份有 Skill evidence bundle 与两道 task/truth package 均须完整静态通过，并生成中文用户检查包。已有两题候选树与 SHA 不得变化。该切片不运行 solver、grader、release 或十题扩展。
+### R10.7B — Four-task pilot behavioral admission — `implemented / not_executed`
 
-### R10.7B — Four-task pilot behavioral admission — `not_implemented`
+独立的 R10 行为 runner 已绑定四个冻结 package tree、任务编译输出、交付合同、镜像与源码提交。它先以 GPT-5.6 Sol/Codex 与官方 DeepSeek V4 Pro/OpenCode 各运行公开 XLSX/DOCX 探针；两个探针均通过后才上传 route-blind candidate package。每栈每题仅一次、30 分钟硬超时、零项目级重试。有效 XLSX 用 `openpyxl` 验证；有效 DOCX 同时要求 OOXML 结构与远端 LibreOffice 打开验证。
 
-对四题运行离线一致性、candidate/teacher isolation、可解性、答案泄漏、文件渲染和交付合同测试。通过后，以同一冻结任务包运行多模型 solver 与独立 grader，测量交付有效率、关键判断准确性、major defect、评分分歧和模型分离度。
+每份有效交付由两位 route-blind LLM judge 根据冻结的 teacher truth、决策矩阵与 task-specific rubric 逐项评价；程序重算加权分数，不接受模型自报总分。该层是 LLM proxy，不是专家证据。运行尚未开始。
 
 每题都必须同时满足：来源完整、世界因果一致、无答案泄漏、信息足以支持结论、存在正常背景与真实不确定性、有效交付可评分。低分或失败不得触发单题重写；应归因并修复 compiler、seed admission 或 projection 规则。
 
