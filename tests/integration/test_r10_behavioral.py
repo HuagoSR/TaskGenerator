@@ -12,6 +12,8 @@ from openpyxl import Workbook
 
 from task_generator.core.deliverable_contract import DeliverableContractCompiler
 from task_generator.evaluation.r10_behavioral import (
+    R10BehavioralScopeV1,
+    R10PilotTaskBindingV1,
     R10JudgeDraftV1,
     R10ModelTaskResultV1,
     aggregate_behavioral_result,
@@ -26,7 +28,7 @@ from task_generator.planning.scenario_task_compiler import (
 TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
-from run_r10_behavioral_pilot import _remote_script, _stage_solver
+from run_r10_behavioral_pilot import _remote_script, _scope_sha256, _stage_solver
 
 
 def workbook_bytes(value: str) -> bytes:
@@ -52,6 +54,14 @@ def rubric() -> TaskSpecificRubricV1:
 
 
 class R10BehavioralTests(unittest.TestCase):
+    def test_scope_hash_uses_canonical_json_not_an_inherited_mixin(self):
+        bindings = [
+            R10PilotTaskBindingV1(task_id=f"task-{index}", domain="audit_compliance" if index < 2 else "procurement_operations", package_root=f"/task/{index}", package_tree_sha256=f"{index:064x}", candidate_tree_sha256=f"{index + 4:064x}", task_compilation_sha256=f"{index + 8:064x}", deliverable_contract_sha256=f"{index + 12:064x}", expected_delivery="deliverable_files/result.xlsx")
+            for index in range(4)
+        ]
+        scope = R10BehavioralScopeV1(campaign_id="campaign", source_commit="a" * 40, image="image", image_sha256="b" * 64, bindings=bindings)
+        self.assertEqual(_scope_sha256(scope), _scope_sha256(scope))
+
     def test_solver_stage_excludes_teacher_material(self):
         with tempfile.TemporaryDirectory() as root:
             root = Path(root)

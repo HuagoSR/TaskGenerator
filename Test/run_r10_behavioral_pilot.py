@@ -76,6 +76,11 @@ def _scope(run_id: str) -> R10BehavioralScopeV1:
     return R10BehavioralScopeV1(campaign_id=run_id, source_commit=commit, image=IMAGE, image_sha256=IMAGE_SHA256, bindings=_task_bindings())
 
 
+def _scope_sha256(scope: R10BehavioralScopeV1) -> str:
+    """Use canonical JSON without assuming R10 contracts inherit a hash mixin."""
+    return sha256_json(scope.model_dump(mode="json"))
+
+
 def _safe_remote_root(host: str, run_id: str) -> str:
     home = _ssh(host, 'printf %s "$HOME"', timeout=120).stdout.strip()
     if not home or any(token in run_id for token in ("/", "\\", "..")):
@@ -292,10 +297,11 @@ def main() -> None:
         raise FileExistsError("r10_behavioral_output_already_exists")
     scope = _scope(args.run_id)
     args.output_root.mkdir(parents=True)
+    scope_sha256 = _scope_sha256(scope)
     _write(args.output_root / "scope.json", scope)
-    _write(args.output_root / "receipt.json", {"scope_sha256": scope.canonical_sha256(), "consumed_at": _now()})
+    _write(args.output_root / "receipt.json", {"scope_sha256": scope_sha256, "consumed_at": _now()})
     if args.scope_only:
-        print(json.dumps({"decision": "scope_ready", "scope_sha256": scope.canonical_sha256()}, ensure_ascii=False))
+        print(json.dumps({"decision": "scope_ready", "scope_sha256": scope_sha256}, ensure_ascii=False))
         return
     remote_root = _safe_remote_root(args.host, args.run_id)
     probes = {stack: _record_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, stack=stack) for stack in STACKS}
