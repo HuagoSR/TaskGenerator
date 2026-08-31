@@ -10,6 +10,7 @@ from task_generator.core.scenario_first import ProfessionalRuleSetV1, ScenarioBi
 from task_generator.planning.scenario_task_compiler import (
     ScenarioTaskAdmissionValidator,
     ScenarioTaskCompilationPlanV1,
+    ScenarioTaskCompilationPlanV2,
     ScenarioTaskSpecV1,
     TaskCompilationOutputV1,
     TaskSpecificRubricV1,
@@ -107,6 +108,16 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ScenarioTaskCompilationPlanV1(tasks=[spec, spec.model_copy(update={"task_id": "second"})])
 
+    def test_v2_plan_accepts_a_bounded_single_domain_batch_but_rejects_duplicate_ids(self):
+        with tempfile.TemporaryDirectory() as root:
+            candidate = Path(root) / "candidate"
+            candidate.mkdir()
+            (candidate / "report.txt").write_text("x", encoding="utf-8")
+            spec = self._spec(candidate)
+            self.assertEqual(len(ScenarioTaskCompilationPlanV2(tasks=[spec]).tasks), 1)
+            with self.assertRaises(ValueError):
+                ScenarioTaskCompilationPlanV2(tasks=[spec, spec])
+
     def test_teacher_matrix_and_rubric_must_align(self):
         payload = _output().model_dump(mode="json")
         payload["task_specific_rubric"]["criteria"][0]["decision_id"] = "unknown"
@@ -141,15 +152,15 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
             report = ScenarioTaskAdmissionValidator().validate(spec=spec, package_root=package, bible=_bible(), rules=_rules(), output=output)
         self.assertEqual(report.decision, "pass")
 
-    def test_compiler_prompt_selects_the_new_professional_judgment(self):
+    def test_compiler_prompt_uses_domain_and_loaded_skill_context(self):
         with tempfile.TemporaryDirectory() as root:
             candidate = Path(root) / "candidate"
             candidate.mkdir()
             (candidate / "report.txt").write_text("x", encoding="utf-8")
             spec = self._spec(candidate).model_copy(update={"skill_id": "r10.audit-control-deficiency-evaluation"})
-            self.assertIn("deficiencies individually and in combination", compiler_prompt(spec=spec))
+            self.assertIn("Construct an audit work task", compiler_prompt(spec=spec))
             procurement = spec.model_copy(update={"domain": "procurement_operations", "skill_id": "r10.procurement-delivery-acceptance"})
-            self.assertIn("commercial-delivery acceptance", compiler_prompt(spec=procurement))
+            self.assertIn("Construct a procurement work task", compiler_prompt(spec=procurement))
 
 
 if __name__ == "__main__":

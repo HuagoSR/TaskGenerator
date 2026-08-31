@@ -108,6 +108,20 @@ class ScenarioTaskCompilationPlanV1(ScenarioFirstModel):
         return self
 
 
+class ScenarioTaskCompilationPlanV2(ScenarioFirstModel):
+    """A bounded production cohort; V1 remains the immutable two-task pilot."""
+
+    plan_version: Literal["r10.scenario_task_compilation_plan.2"] = "r10.scenario_task_compilation_plan.2"
+    tasks: list[ScenarioTaskSpecV1] = Field(min_length=1, max_length=10)
+
+    @model_validator(mode="after")
+    def require_unique_task_ids(self) -> "ScenarioTaskCompilationPlanV2":
+        ids = [item.task_id for item in self.tasks]
+        if len(ids) != len(set(ids)):
+            raise ValueError("r10_task_compilation_task_ids_not_unique")
+        return self
+
+
 class ScenarioTaskCompilationScopeV1(ScenarioFirstModel):
     scope_version: Literal["r10.scenario_task_compilation_scope.1"] = "r10.scenario_task_compilation_scope.1"
     campaign_id: str = Field(min_length=1)
@@ -150,7 +164,7 @@ def tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
-def compile_scope(*, campaign_id: str, source_commit: str, plan: ScenarioTaskCompilationPlanV1, image: str, image_sha256: str) -> ScenarioTaskCompilationScopeV1:
+def compile_scope(*, campaign_id: str, source_commit: str, plan: ScenarioTaskCompilationPlanV1 | ScenarioTaskCompilationPlanV2, image: str, image_sha256: str) -> ScenarioTaskCompilationScopeV1:
     return ScenarioTaskCompilationScopeV1(campaign_id=campaign_id, source_commit=source_commit, plan_sha256=plan.canonical_sha256(), image=image, image_sha256=image_sha256)
 
 
@@ -238,15 +252,11 @@ class ScenarioTaskAdmissionValidator:
 
 def compiler_prompt(*, spec: ScenarioTaskSpecV1) -> str:
     deliverable = spec.deliverable_contract.deliverables[0]
-    instructions = {
-        "r10.audit-evidence-reliability": "Construct an audit-evidence reliability task. The candidate must assess conflicting company-produced evidence, document reliability/completeness limits, and propose consequential follow-up procedures.",
-        "r10.procurement-price-reasonableness": "Construct a pre-award price-reasonableness task. The candidate must choose and explain a price-analysis approach, assess comparability and documentation gaps, and state whether the current record supports a defensible conclusion. Do not ask for supplier selection.",
-        "r10.audit-control-deficiency-evaluation": "Construct an integrated-audit control-deficiency evaluation task. The candidate must assess deficiencies individually and in combination, explain a supportable severity rationale, preserve uncertainty, and recommend appropriate escalation or follow-up.",
-        "r10.procurement-delivery-acceptance": "Construct a commercial-delivery acceptance task. The candidate must reconcile contract requirements, delivery and quality evidence, state whether acceptance can be supported or must be held, and document authorized follow-up. Do not ask the candidate to select a supplier.",
-    }
-    domain_instruction = instructions.get(spec.skill_id)
-    if domain_instruction is None:
-        raise ValueError("scenario_task_compiler_unknown_professional_skill")
+    domain_instruction = (
+        "Construct an audit work task. The candidate must reach supportable conclusions from visible evidence, preserve evidence limits, and propose consequential follow-up procedures."
+        if spec.domain == "audit_compliance"
+        else "Construct a procurement work task. The candidate must reach supportable conclusions from visible evidence, preserve evidence limits and authorization boundaries, and document consequential follow-up procedures. Do not ask the candidate to select a supplier."
+    )
     return f"""You are a factory-side R10 task compiler. Read only teacher/ inputs. Do not edit reference_files/ or _frozen_candidate/.
 
 {domain_instruction}
