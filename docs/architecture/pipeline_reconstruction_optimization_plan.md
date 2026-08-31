@@ -68,7 +68,7 @@
 
 ### R10.8A — Teacher-anchor correction and judge-only regrade — `blocked / evaluation_inconclusive`
 
-采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 用于审计可计算的比例、合计、日期顺序与阈值关系。公开 GPT Judge probe 通过，但两个独立私有重评 receipt 都出现 Codex 会话仅启动、无工具/完成事件的同类故障；不得把单次诊断成功或旧评分拼入正式重评。先修复并独立验证会话级基础设施，才能建立新的完整 judge-only campaign。
+采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 用于审计可计算的比例、合计、日期顺序与阈值关系。候选 huago release 将 Codex 固定升级至 0.149.1，离线 parity、版本/file-tool smoke 和最小公开 Judge probe 通过；但多文件公开复杂度 probe 仍出现仅启动、无工具/完成事件的故障。因此候选未激活、没有再次上传私有 delivery；不得把单次诊断成功或旧评分拼入正式重评。须先取得独立的会话级基础设施修复，才能建立新的完整 judge-only campaign。
 
 ### R10.8B — Ten-task scale decision — `not_implemented / gated`
 
