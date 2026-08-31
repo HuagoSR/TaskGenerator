@@ -52,8 +52,6 @@ def local_codex_command(*, command: str, model: str, workspace: Path) -> list[st
         "--ephemeral",
         "--ignore-user-config",
         "--ignore-rules",
-        "--sandbox",
-        "workspace-write",
         "--skip-git-repo-check",
         "--output-schema",
         str(workspace / "grade_schema.json"),

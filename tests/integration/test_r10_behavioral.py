@@ -125,7 +125,7 @@ class R10BehavioralTests(unittest.TestCase):
         workspace = Path("C:/public/r10-workspace")
         command = local_codex_command(command="codex", model="gpt-5.6-sol", workspace=workspace)
         self.assertIn("--approve-for-me", command)
-        self.assertEqual(command[command.index("--sandbox") + 1], "workspace-write")
+        self.assertNotIn("--sandbox", command)  # --approve-for-me selects workspace-write in Codex 0.149.1.
         self.assertIn("--ignore-user-config", command)
         self.assertIn("--ephemeral", command)
         rendered = " ".join(command)
