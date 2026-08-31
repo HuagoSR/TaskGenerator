@@ -49,7 +49,7 @@ R10.6 两题 task/truth compilation 已完成：第三个 scope/receipt 绑定�
 
 R10.7A 已完成：控制缺陷组合评估与商业交付验收处置已形成两份有 Skill evidence bundle、两道 task/truth package 和中文用户检查包。四题均通过静态 admission 并获用户形态验收；候选 package 保持冻结。
 
-R10.7B 已完成并得到 `behaviorally_admitted`：两条 solver 均通过公开 XLSX/DOCX probe、各完成四份有效交付；16 次 route-blind LLM proxy 评分完整。一次 GPT judge 的 schema/传输失败仅进行了一次格式补跑，未重跑 solver 或低分答案。结果停在行为结论：不得自动启动 R10.8、十题生产、训练、release 或 registry mutation。
+R10.7B 原始结果为 `behaviorally_admitted`：两条 solver 均通过公开 XLSX/DOCX probe、各完成四份有效交付；16 次 route-blind LLM proxy 评分完整。随后 R10.8A 发现采购验收题的 teacher-side 容差算术错误（3/40 为 7.5%，不是 5% 以内）。候选文件和题干不变，原结果冻结为历史记录。修正后的 judge-only receipt 在首个 GPT Judge 十分钟无输出后停止为 `evaluation_inconclusive`；不得复用该 receipt、不得重跑 Solver 或用其他模型替代其评分。下一步仅限先完成公开 GPT Judge 会话链 probe，再另建 receipt 重评两份既有交付。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
