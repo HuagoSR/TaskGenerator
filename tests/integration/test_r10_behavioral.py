@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 
@@ -16,7 +17,9 @@ from task_generator.evaluation.r10_behavioral import (
     R10PilotTaskBindingV1,
     R10JudgeDraftV1,
     R10ModelTaskResultV1,
+    TeacherAnchorCheckV1,
     aggregate_behavioral_result,
+    audit_teacher_anchors,
     finalize_judge_review,
     inspect_delivery,
 )
@@ -54,6 +57,23 @@ def rubric() -> TaskSpecificRubricV1:
 
 
 class R10BehavioralTests(unittest.TestCase):
+
+    def test_teacher_anchor_audit_blocks_false_percentage_relation(self):
+        audit = audit_teacher_anchors([TeacherAnchorCheckV1(
+            check_id="variation", decision_id="delivery", kind="percentage_threshold",
+            relation="within", source_paths=["candidate/contract.txt"],
+            numerator=Decimal("3"), denominator=Decimal("40"), threshold=Decimal("5"),
+        )])
+        self.assertEqual(audit.decision, "blocked")
+        self.assertEqual(audit.findings[0].observed, "3/40=7.500%")
+
+    def test_teacher_anchor_audit_accepts_corrected_percentage_relation(self):
+        audit = audit_teacher_anchors([TeacherAnchorCheckV1(
+            check_id="variation", decision_id="delivery", kind="percentage_threshold",
+            relation="exceeds", source_paths=["candidate/contract.txt"],
+            numerator=Decimal("3"), denominator=Decimal("40"), threshold=Decimal("5"),
+        )])
+        self.assertEqual(audit.decision, "pass")
 
     def test_judge_schema_requires_all_declared_assessment_fields(self) -> None:
         schema = R10JudgeDraftV1.model_json_schema()
@@ -177,6 +197,22 @@ class R10BehavioralTests(unittest.TestCase):
         result = aggregate_behavioral_result(records)
         self.assertEqual(result.decision, "task_design_revision_candidate")
         self.assertEqual(result.recurring_insufficient_evidence_decisions, ["d1"])
+
+    def test_repeated_cross_stack_major_error_requires_anchor_review(self):
+        records = []
+        for solver in ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode"):
+            for index in range(4):
+                reviews = []
+                for judge in ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode"):
+                    reviews.append({"task_id": f"task-{index}", "judge_id": judge, "assessments": [
+                        {"decision_id": "d1", "rating": "not_met", "major_error": index == 0, "evidence_paths": ["a"], "rationale": "same issue"},
+                        {"decision_id": "d2", "rating": "met", "major_error": False, "evidence_paths": ["b"], "rationale": "ok"},
+                        {"decision_id": "d3", "rating": "met", "major_error": False, "evidence_paths": ["c"], "rationale": "ok"},
+                    ], "weighted_score": 0.7, "major_defect": index == 0})
+                records.append(R10ModelTaskResultV1(task_id=f"task-{index}", solver_id=solver, delivery_valid=True, reviews=reviews))
+        result = aggregate_behavioral_result(records)
+        self.assertEqual(result.decision, "task_design_revision_candidate")
+        self.assertEqual(result.recurring_major_error_decisions, ["d1"])
 
 
 if __name__ == "__main__":

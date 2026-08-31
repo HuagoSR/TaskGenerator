@@ -13,6 +13,8 @@ import json
 import subprocess
 import tempfile
 import zipfile
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -36,6 +38,8 @@ RunStatus = Literal[
     "not_started", "running", "completed", "task_failed", "infrastructure_failed", "interrupted"
 ]
 DecisionRating = Literal["met", "partial", "not_met"]
+TeacherAnchorKind = Literal["percentage_threshold", "sum", "date_order", "quantity_delta"]
+TeacherAnchorRelation = Literal["within", "exceeds", "equals", "before", "after"]
 
 
 def sha256_file(path: Path) -> str:
@@ -199,7 +203,92 @@ class R10BehavioralResultV1(BaseModel):
     solver_valid_delivery_counts: dict[SolverStackId, int]
     task_discrimination: list[R10TaskDiscriminationV1] = Field(min_length=4, max_length=4)
     recurring_insufficient_evidence_decisions: list[str] = Field(default_factory=list)
+    recurring_major_error_decisions: list[str] = Field(default_factory=list)
     professional_validity: Literal["provisional"] = "provisional"
+
+
+class TeacherAnchorCheckV1(BaseModel):
+    """A small, deterministic check for teacher-side facts that can be calculated.
+
+    It deliberately covers only arithmetic and chronological anchors.  It is not
+    an attempt to encode professional judgment; the decision matrix continues to
+    own that judgment.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    check_id: str = Field(min_length=1)
+    decision_id: str = Field(min_length=1)
+    kind: TeacherAnchorKind
+    relation: TeacherAnchorRelation
+    source_paths: list[str] = Field(min_length=1)
+    numerator: Decimal | None = None
+    denominator: Decimal | None = None
+    threshold: Decimal | None = None
+    left: Decimal | None = None
+    right: Decimal | None = None
+    earlier: date | None = None
+    later: date | None = None
+
+    @model_validator(mode="after")
+    def require_operands_for_kind(self) -> "TeacherAnchorCheckV1":
+        if self.kind == "percentage_threshold":
+            if self.numerator is None or self.denominator is None or self.threshold is None or self.denominator <= 0:
+                raise ValueError("teacher_anchor_percentage_operands_missing")
+            if self.relation not in {"within", "exceeds"}:
+                raise ValueError("teacher_anchor_percentage_relation_invalid")
+        elif self.kind in {"sum", "quantity_delta"}:
+            if self.left is None or self.right is None:
+                raise ValueError("teacher_anchor_numeric_operands_missing")
+            if self.relation != "equals":
+                raise ValueError("teacher_anchor_numeric_relation_invalid")
+        elif self.kind == "date_order":
+            if self.earlier is None or self.later is None or self.relation not in {"before", "after"}:
+                raise ValueError("teacher_anchor_date_operands_missing")
+        return self
+
+
+class TeacherAnchorFindingV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    check_id: str
+    decision_id: str
+    passed: bool
+    observed: str
+    expected_relation: TeacherAnchorRelation
+    source_paths: list[str]
+
+
+class TeacherAnchorAuditV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    audit_version: Literal["r10.teacher_anchor_audit.1"] = "r10.teacher_anchor_audit.1"
+    decision: Literal["pass", "blocked"]
+    findings: list[TeacherAnchorFindingV1]
+
+
+def audit_teacher_anchors(checks: list[TeacherAnchorCheckV1]) -> TeacherAnchorAuditV1:
+    """Evaluate declared numerical/date anchors without interpreting their policy meaning."""
+    findings: list[TeacherAnchorFindingV1] = []
+    for check in checks:
+        if check.kind == "percentage_threshold":
+            actual = check.numerator / check.denominator * Decimal("100")  # type: ignore[operator]
+            passed = actual <= check.threshold if check.relation == "within" else actual > check.threshold  # type: ignore[operator]
+            observed = f"{check.numerator}/{check.denominator}={actual}%"
+        elif check.kind in {"sum", "quantity_delta"}:
+            passed = check.left == check.right
+            observed = f"{check.left}={check.right}"
+        else:
+            actual_before = check.earlier < check.later  # type: ignore[operator]
+            passed = actual_before if check.relation == "before" else not actual_before
+            observed = f"{check.earlier.isoformat()} {'<' if actual_before else '>='} {check.later.isoformat()}"  # type: ignore[union-attr]
+        findings.append(TeacherAnchorFindingV1(
+            check_id=check.check_id, decision_id=check.decision_id, passed=passed,
+            observed=observed, expected_relation=check.relation, source_paths=check.source_paths,
+        ))
+    return TeacherAnchorAuditV1(
+        decision="pass" if all(item.passed for item in findings) else "blocked", findings=findings,
+    )
 
 
 def binding_from_task(task_root: Path, *, domain: Literal["audit_compliance", "procurement_operations"]) -> R10PilotTaskBindingV1:
@@ -341,6 +430,7 @@ def aggregate_behavioral_result(records: list[R10ModelTaskResultV1]) -> R10Behav
     discrimination: list[R10TaskDiscriminationV1] = []
     common = 0
     insufficient_by_decision: dict[str, int] = {}
+    major_error_by_decision: dict[str, int] = {}
     for task_id in task_ids:
         left, right = (by_solver[solver][task_id] for solver in expected_solvers)
         dual = len(left.reviews) == len(right.reviews) == 2 and left.delivery_valid and right.delivery_valid
@@ -354,6 +444,8 @@ def aggregate_behavioral_result(records: list[R10ModelTaskResultV1]) -> R10Behav
             for assessment in review.assessments:
                 if assessment.evidence_insufficient:
                     insufficient_by_decision[assessment.decision_id] = insufficient_by_decision.get(assessment.decision_id, 0) + 1
+                if assessment.major_error:
+                    major_error_by_decision[assessment.decision_id] = major_error_by_decision.get(assessment.decision_id, 0) + 1
         gap = abs(left_score - right_score) if dual and left_score is not None and right_score is not None else None
         differs = left.delivery_valid != right.delivery_valid or left_major != right_major
         discrimination.append(R10TaskDiscriminationV1(
@@ -362,9 +454,10 @@ def aggregate_behavioral_result(records: list[R10ModelTaskResultV1]) -> R10Behav
             explainable_difference=bool((gap is not None and gap >= 0.05) or differs),
         ))
     recurring = sorted(key for key, count in insufficient_by_decision.items() if count >= 4)
+    recurring_major = sorted(key for key, count in major_error_by_decision.items() if count >= 4)
     if any(value < 3 for value in valid_counts.values()) or common < 3:
         decision = "behaviorally_inconclusive"
-    elif recurring:
+    elif recurring or recurring_major:
         decision = "task_design_revision_candidate"
     else:
         decision = "behaviorally_admitted"
@@ -373,4 +466,5 @@ def aggregate_behavioral_result(records: list[R10ModelTaskResultV1]) -> R10Behav
         decision=decision, low_model_separation=low_separation, common_dual_graded_count=common,
         solver_valid_delivery_counts=valid_counts, task_discrimination=discrimination,
         recurring_insufficient_evidence_decisions=recurring,
+        recurring_major_error_decisions=recurring_major,
     )
