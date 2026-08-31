@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from openpyxl import Workbook
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -45,6 +47,38 @@ def _scope() -> dict[str, Any]:
         solver: SOLVER_ROOT / solver / TASK_ID / "deliverable_files" / "acceptance_disposition_followup.xlsx"
         for solver in STACKS
     }
+
+
+def _stage_public_judge_probe(root: Path) -> tuple[Path, Path]:
+    """Create a wholly public XLSX task that exercises the exact Judge path."""
+    task = root / "public_task"
+    teacher = task / "teacher"
+    reference = task / "reference_files"
+    teacher.mkdir(parents=True)
+    reference.mkdir()
+    (task / "TASK.md").write_text("Review the public sample workbook and prepare a concise reconciliation.", encoding="utf-8")
+    (task / "deliverable_contract.json").write_text(json.dumps({"contract_version": "deliverable_contract.1", "case_id": "public-probe", "deliverables": [{"relative_path": "deliverable_files/review.xlsx", "file_name": "review.xlsx", "format": "xlsx", "creation_mode": "create"}]}), encoding="utf-8")
+    (teacher / "decision_matrix.json").write_text(json.dumps({"contract_version": "r10.task_decision_matrix.1", "scenario_id": "public-probe", "decision_points": [
+        {"decision_id": "d1", "question": "Was the source reviewed?", "evidence_refs": [{"artifact_id": "source.txt", "record_id": "whole_document", "field_names": ["content"]}], "rule_ids": ["rule"], "skill_ids": ["skill"], "acceptable_conclusions": ["Reviewed."], "major_errors": ["Ignored source."], "allowed_uncertainty_conclusions": [], "required_follow_up_actions": ["Document review."]},
+        {"decision_id": "d2", "question": "Is the calculation documented?", "evidence_refs": [{"artifact_id": "source.txt", "record_id": "whole_document", "field_names": ["content"]}], "rule_ids": ["rule"], "skill_ids": ["skill"], "acceptable_conclusions": ["Calculation documented."], "major_errors": ["Invented calculation."], "allowed_uncertainty_conclusions": [], "required_follow_up_actions": ["Retain calculation."]},
+        {"decision_id": "d3", "question": "Is a follow-up stated?", "evidence_refs": [{"artifact_id": "source.txt", "record_id": "whole_document", "field_names": ["content"]}], "rule_ids": ["rule"], "skill_ids": ["skill"], "acceptable_conclusions": ["Follow-up stated."], "major_errors": ["No follow-up."], "allowed_uncertainty_conclusions": [], "required_follow_up_actions": ["Escalate discrepancy."]},
+    ]}), encoding="utf-8")
+    (teacher / "teacher_truth.json").write_text(json.dumps({"truth": []}), encoding="utf-8")
+    rubric = {"rubric_version": "r10.task_specific_rubric.1", "criteria": [
+        {"criterion_id": "c1", "decision_id": "d1", "weight": 0.34, "description": "source", "major_error_blocks_credit": True},
+        {"criterion_id": "c2", "decision_id": "d2", "weight": 0.33, "description": "calculation", "major_error_blocks_credit": True},
+        {"criterion_id": "c3", "decision_id": "d3", "weight": 0.33, "description": "follow-up", "major_error_blocks_credit": True},
+    ]}
+    (teacher / "task_specific_rubric.json").write_text(json.dumps(rubric), encoding="utf-8")
+    (reference / "source.txt").write_text("Public source: 40 units were received; three require review.", encoding="utf-8")
+    delivery = root / "public_delivery.xlsx"
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "Review"
+    sheet.append(["Source reviewed", "Calculation", "Follow-up"])
+    sheet.append(["Yes", "3/40 = 7.5%", "Escalate for review"])
+    book.save(delivery)
+    return task, delivery
     return {
         "scope_version": "r10.teacher_anchor_regrade_scope.1",
         "campaign_id": "r10_8a_procurement_acceptance_anchor_regrade_20260831",
@@ -63,9 +97,19 @@ def main() -> None:
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--run-id", default="r10_8a_procurement_acceptance_anchor_regrade_20260831")
     parser.add_argument("--output-root", type=Path, default=ROOT / "artifacts/r10/r10_8a_procurement_acceptance_anchor_regrade_20260831")
+    parser.add_argument("--public-probe", action="store_true")
     args = parser.parse_args()
     if args.output_root.exists():
         raise FileExistsError("r10_teacher_anchor_regrade_output_already_exists")
+
+    if args.public_probe:
+        args.output_root.mkdir(parents=True)
+        task, delivery = _stage_public_judge_probe(args.output_root)
+        remote_root = _safe_remote_root(args.host, args.run_id)
+        result = _execute_judge(host=args.host, remote_root=remote_root, output_root=args.output_root, task_root=task, task_id="public-probe", delivery=delivery, judge="gpt-5.6-sol@chatgpt_codex")
+        _write(args.output_root / "result.json", {"decision": "pass" if result["status"] == "completed" else "incomplete", "judge_result": result})
+        print(json.dumps({"decision": "pass" if result["status"] == "completed" else "incomplete", "output_root": str(args.output_root)}, ensure_ascii=False))
+        return
 
     checks = [TeacherAnchorCheckV1.model_validate(item) for item in json.loads((TASK_ROOT / "teacher/teacher_anchor_checks.json").read_text(encoding="utf-8"))]
     audit = audit_teacher_anchors(checks)
