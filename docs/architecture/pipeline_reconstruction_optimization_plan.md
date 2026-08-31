@@ -66,9 +66,9 @@
 
 每题都必须同时满足：来源完整、世界因果一致、无答案泄漏、信息足以支持结论、存在正常背景与真实不确定性、有效交付可评分。低分或失败不得触发单题重写；应归因并修复 compiler、seed admission 或 projection 规则。
 
-### R10.8A — Teacher-anchor correction and judge-only regrade — `blocked / evaluation_inconclusive`
+### R10.8A — Teacher-anchor correction and judge-only regrade — `completed / behaviorally_admitted`
 
-采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 用于审计可计算的比例、合计、日期顺序与阈值关系。候选 huago release 将 Codex 固定升级至 0.149.1，离线 parity、版本/file-tool smoke 和最小公开 Judge probe 通过；但多文件公开复杂度 probe 仍出现仅启动、无工具/完成事件的故障。因此候选未激活、没有再次上传私有 delivery；不得把单次诊断成功或旧评分拼入正式重评。须先取得独立的会话级基础设施修复，才能建立新的完整 judge-only campaign。
+采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 对修正关系通过。huago Codex candidate 的多文件公开 probe 保持失败且从未激活；新的 judge-only campaign 绑定本机 Codex CLI 0.149.1（GPT Judge）、官方 DeepSeek/OpenCode（DeepSeek Judge）、两份冻结 Solver delivery 与修正后的 teacher tree。公开复杂度 probe 先通过，再完成四项评分并重聚合为 `behaviorally_admitted`。四题均双评委完整、两栈均 4/4 有效交付、无重复证据缺口；但只有一题保留可解释模型差异，结果为 `low_model_separation`。
 
 ### R10.8B — Ten-task scale decision — `not_implemented / gated`
 
