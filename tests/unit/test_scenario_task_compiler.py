@@ -15,6 +15,7 @@ from task_generator.planning.scenario_task_compiler import (
     TaskCompilationOutputV1,
     TaskSpecificRubricV1,
     TeacherTruthPointV1,
+    productive_workload_rubric_errors,
     tree_sha256,
     compiler_prompt,
 )
@@ -161,6 +162,23 @@ class ScenarioTaskCompilerTests(unittest.TestCase):
             self.assertIn("Construct an audit work task", compiler_prompt(spec=spec))
             procurement = spec.model_copy(update={"domain": "procurement_operations", "skill_id": "r10.procurement-delivery-acceptance"})
             self.assertIn("Construct a procurement work task", compiler_prompt(spec=procurement))
+
+    def test_productive_workload_prompt_and_rubric_gate_are_opt_in(self):
+        with tempfile.TemporaryDirectory() as root:
+            candidate = Path(root) / "candidate"
+            candidate.mkdir()
+            (candidate / "report.txt").write_text("x", encoding="utf-8")
+            spec = self._spec(candidate)
+            self.assertIn("real business outcome", compiler_prompt(spec=spec, productive_workload=True))
+        self.assertTrue(
+            {"rubric_boundary_missing:c1", "rubric_boundary_missing:c2", "rubric_boundary_missing:c3"}
+            <= set(productive_workload_rubric_errors(_output()))
+        )
+        payload = _output().model_dump(mode="json")
+        for index, criterion in enumerate(payload["task_specific_rubric"]["criteria"], start=1):
+            criterion["description"] = "Met: supportable analysis. Partial: incomplete analysis. Not met: unsupported analysis."
+            payload["decision_matrix"]["decision_points"][index - 1]["major_errors"] = [f"Concrete wrong action {index}."]
+        self.assertEqual(productive_workload_rubric_errors(TaskCompilationOutputV1.model_validate(payload)), [])
 
 
 if __name__ == "__main__":

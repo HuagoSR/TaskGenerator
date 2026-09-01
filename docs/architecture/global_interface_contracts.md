@@ -21,6 +21,7 @@
 | R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
+| R10 GDPval-calibrated compiler revision | `implemented / awaiting authorization` | 只读 GDPval 形态报告与两项 opt-in compiler guidance 已实现；仅派生两道新任务，旧四题保持冻结。 |
 
 ## Stable Implemented Contracts
 
@@ -101,6 +102,7 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `R10BehavioralScopeV1` / `R10SolverOutcomeV1` / `R10JudgeDraftV1` / `R10JudgeReviewV1` / `R10BehavioralResultV1` — `implemented / R10.7B`：仅绑定四道冻结 R10 任务、两条原生 solver 栈、两名 route-blind LLM judge、混合 DOCX/XLSX 交付检查与任务级决策评分。它不复用 R9 的 24 题格式，也不构成专家、训练或 release 证据。
 - `TeacherAnchorCheckV1` / `TeacherAnchorAuditV1` — `implemented / R10.8A`：对 teacher-only 可计算锚点进行比例、合计、日期、数量差和阈值关系审计；它可阻断错误监督材料，但不替代专业审查或 Judge 运行可靠性。
 - `R10PilotDiscriminationReportV1` — `implemented / R10.8B-1`：只读取修正后的四题 records、行为聚合和任务绑定，按 Solver 复合分、交付/major-defect 差异及 Judge 分歧分类为饱和、接近平局、干净区分、评委歧义或不完整。它只输出 compiler 层的共性诊断，不读取密钥、不调用 provider、不改变候选或 teacher 内容。
+- `r10.gdpval_compiler_calibration.1` — `implemented / R10.8B-2`：ignored artifact 中的只读 aggregate 对照报告，只保留 GDPval 形态统计和 R10 候选树的计数/格式特征；明确排除 GDPval 的任务内容、参考文件、hidden rubric 与 gold deliverable。`productive_workload` 仅是 evidence/task compiler 的 opt-in 运行提示与额外 rubric-boundary gate，不改变冻结 V1 历史包的读取或 admission。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。

@@ -196,6 +196,7 @@ class ScenarioEvidenceExperiment:
         bible: ScenarioBibleV1,
         rules: ProfessionalRuleSetV1,
         skill: LoadedProfessionalSkillV1 | None,
+        productive_workload: bool = False,
     ) -> None:
         if workspace.exists():
             raise FileExistsError("scenario_evidence_workspace_exists")
@@ -222,7 +223,14 @@ class ScenarioEvidenceExperiment:
                 target = package / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content, encoding="utf-8")
-        (workspace / "TASK.md").write_text(self._task_prompt(session.condition), encoding="utf-8")
+        self._write(
+            workspace / "teacher" / "generation_profile.json",
+            {"profile": "productive_workload" if productive_workload else "standard"},
+        )
+        (workspace / "TASK.md").write_text(
+            self._task_prompt(session.condition, productive_workload=productive_workload),
+            encoding="utf-8",
+        )
 
     def admit(
         self,
@@ -311,16 +319,21 @@ class ScenarioEvidenceExperiment:
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     @staticmethod
-    def _task_prompt(condition: Condition) -> str:
+    def _task_prompt(condition: Condition, *, productive_workload: bool = False) -> str:
         if condition == "with_skill":
             skill_instruction = "Read teacher/professional_skill/SKILL.md and its source map before planning. Use the Skill to improve professional realism and judgment space; source attribution in the evidence map is optional."
             map_example = '{"artifacts":[{"path":"candidate/price_comparison.csv","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"],"skill_source_ids":["curated-source-id"]}]}'
         else:
             skill_instruction = "Do not load or infer any professional Skill package."
             map_example = '{"artifacts":[{"path":"candidate/business_record.csv","fact_ids":["parent-fact-id"],"professional_judgments":["short judgment point"]}]}'
+        workload_instruction = """
+Build evidence as the by-product of a believable operating process, not as a short case summary organized around the answer. Preserve ordinary activity alongside the problem. When the scenario supports it, use records from more than one business source or role, retain repeated operational detail, and make the professional conclusion depend on reconciling or transforming visible information across those materials. Include plausible ambiguity or a support gap when the professional should escalate rather than guess. Do not manufacture complexity by adding irrelevant files, artificial calculations, or a labeled exception list.
+""" if productive_workload else ""
         return f"""You are a factory-side evidence author. Read teacher/scenario_bible.json, teacher/professional_rules.json, and teacher/condition.json. {skill_instruction}
 
 Create a plausible candidate-visible evidence bundle only in candidate/. Choose the natural business file types yourself, but include at least one table-like file (XLSX or CSV) and one narrative file (TXT, DOCX, or PDF). Candidate files must express underlying facts, not answer labels. Never put any of these in candidate/: the Scenario Bible, correct treatments, professional rules, Skill text, source citations, Questionable, Exception, Requires Follow-Up, or a direct final disposition.
+
+{workload_instruction}
 
 Create `teacher/scenario_extension.json` with exactly one key, `facts`. Each new fact must be an object with a unique ID like `extension_fact_1` and a short `statement`; use `{{"facts":[]}}` when no new facts are needed. These are teacher-only additions compatible with the parent Bible. Create teacher/evidence_map.json with exactly one top-level key, `artifacts`; every candidate file needs one entry. Each entry requires only `path`, `fact_ids`, and `professional_judgments`. A fact ID may be either a parent Bible ID or a registered extension ID. `skill_source_ids` is allowed only when a loaded Skill directly supports that artifact. For this condition, the minimal valid shape is: {map_example}
 

@@ -164,6 +164,25 @@ def tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
+def productive_workload_rubric_errors(output: TaskCompilationOutputV1) -> list[str]:
+    """Small extra gate for the R10 compiler-revision experiment only.
+
+    The stable V1 contract intentionally remains readable for the frozen pilot.
+    This helper is opt-in so its clearer scoring-boundary requirement cannot
+    invalidate historical packages.
+    """
+
+    errors: list[str] = []
+    for criterion in output.task_specific_rubric.criteria:
+        description = criterion.description.casefold()
+        if not all(token in description for token in ("met:", "partial:", "not met:")):
+            errors.append(f"rubric_boundary_missing:{criterion.criterion_id}")
+    major_errors = [error.casefold().strip() for point in output.decision_matrix.decision_points for error in point.major_errors]
+    if len(major_errors) != len(set(major_errors)):
+        errors.append("decision_matrix_major_error_duplicate")
+    return errors
+
+
 def compile_scope(*, campaign_id: str, source_commit: str, plan: ScenarioTaskCompilationPlanV1 | ScenarioTaskCompilationPlanV2, image: str, image_sha256: str) -> ScenarioTaskCompilationScopeV1:
     return ScenarioTaskCompilationScopeV1(campaign_id=campaign_id, source_commit=source_commit, plan_sha256=plan.canonical_sha256(), image=image, image_sha256=image_sha256)
 
@@ -250,16 +269,23 @@ class ScenarioTaskAdmissionValidator:
         return value.replace("\\", "/").removeprefix("candidate/")
 
 
-def compiler_prompt(*, spec: ScenarioTaskSpecV1) -> str:
+def compiler_prompt(*, spec: ScenarioTaskSpecV1, productive_workload: bool = False) -> str:
     deliverable = spec.deliverable_contract.deliverables[0]
     domain_instruction = (
         "Construct an audit work task. The candidate must reach supportable conclusions from visible evidence, preserve evidence limits, and propose consequential follow-up procedures."
         if spec.domain == "audit_compliance"
         else "Construct a procurement work task. The candidate must reach supportable conclusions from visible evidence, preserve evidence limits and authorization boundaries, and document consequential follow-up procedures. Do not ask the candidate to select a supplier."
     )
+    workload_instruction = """
+The candidate-facing assignment must name a real business outcome and its audience, then direct the candidate to inspect the available work records. Do not enumerate each hidden discrepancy, prescribe the preferred conclusion, or turn the prompt into a checklist of teacher decisions. Ask for a usable work product that shows evidence traceability, necessary reconciliation or analysis, appropriately bounded conclusions, and consequential follow-up.
+
+The decision points are teacher-only. Make them independently observable from candidate-visible evidence. Their major errors must be concrete wrong actions or unsupported claims, not vague quality concerns. In every rubric description, state `Met:`, `Partial:`, and `Not met:` boundaries. Presentation quality may support usability but must never compensate for a missed core professional judgment.
+""" if productive_workload else ""
     return f"""You are a factory-side R10 task compiler. Read only teacher/ inputs. Do not edit reference_files/ or _frozen_candidate/.
 
 {domain_instruction}
+
+{workload_instruction}
 
 Write exactly one JSON object to teacher/task_compilation.json with this shape:
 {{
@@ -267,7 +293,7 @@ Write exactly one JSON object to teacher/task_compilation.json with this shape:
   "base_prompt": "candidate-facing role, trigger, business audience, evidence files to inspect, substantive analysis work, and requested professional output; do not mention teacher material, rules, Skills, answer keys, or the final correct conclusion",
   "teacher_truth": [{{"decision_id":"...","conclusion":"...","evidence_paths":["file"],"fact_ids":["..."],"rule_ids":["..."],"required_follow_up_actions":["..."]}}],
   "decision_matrix": {{"contract_version":"r10.task_decision_matrix.1","scenario_id":"{spec.scenario_id}","decision_points":[{{"decision_id":"...","question":"...","evidence_refs":[{{"artifact_id":"candidate file basename","record_id":"whole_document","field_names":["content"]}}],"rule_ids":["..."],"skill_ids":["{spec.skill_id}"],"acceptable_conclusions":["..."],"major_errors":["..."],"allowed_uncertainty_conclusions":["..."],"required_follow_up_actions":["..."]}}]}},
-  "task_specific_rubric": {{"rubric_version":"r10.task_specific_rubric.1","criteria":[{{"criterion_id":"...","decision_id":"...","weight":0.25,"description":"...","major_error_blocks_credit":true}}]}}
+  "task_specific_rubric": {{"rubric_version":"r10.task_specific_rubric.1","criteria":[{{"criterion_id":"...","decision_id":"...","weight":0.25,"description":"Met: ... Partial: ... Not met: ...","major_error_blocks_credit":true}}]}}
 }}
 
 Use three to five decision points and one rubric criterion per decision point; weights must sum exactly to 1.0. Cite only visible reference file basenames in evidence refs. In each teacher-truth item, cite only Bible or extension fact IDs that the supplied evidence_map projects into that item's listed visible evidence paths; do not cite teacher-only policy, consequence, treatment, or unseen background facts as factual support. Acknowledging insufficient evidence and requesting follow-up is valid when justified. The candidate's final deliverable must be a {deliverable.format.upper()} named `{deliverable.file_name}`; do not write it yourself.

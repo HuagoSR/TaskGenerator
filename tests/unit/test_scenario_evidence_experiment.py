@@ -106,6 +106,20 @@ class ScenarioEvidenceExperimentTests(unittest.TestCase):
             self.assertTrue((with_workspace / "teacher" / "professional_skill" / "SKILL.md").is_file())
             self.assertEqual((without_workspace / "teacher" / "scenario_bible.json").read_bytes(), (with_workspace / "teacher" / "scenario_bible.json").read_bytes())
 
+    def test_productive_workload_profile_is_explicit_and_teacher_only(self):
+        experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
+        with tempfile.TemporaryDirectory() as root:
+            workspace = Path(root) / "workspace"
+            experiment.stage_session(
+                workspace=workspace, session=self._session("without_skill"), bible=bible,
+                rules=rules, skill=None, productive_workload=True,
+            )
+            profile = json.loads((workspace / "teacher" / "generation_profile.json").read_text(encoding="utf-8"))
+            prompt = (workspace / "TASK.md").read_text(encoding="utf-8")
+        self.assertEqual(profile, {"profile": "productive_workload"})
+        self.assertIn("by-product of a believable operating process", prompt)
+        self.assertIn("Do not manufacture complexity", prompt)
+
     def test_admission_accepts_valid_bundle_and_blocks_leakage(self):
         experiment, bible, rules = ScenarioEvidenceExperiment(), _bible(), _rules()
         with tempfile.TemporaryDirectory() as root:
