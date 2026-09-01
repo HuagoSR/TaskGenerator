@@ -55,7 +55,7 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前停止点：R10.8B-2 的两道新版任务已完成用户检查。新的行为 campaign 在本机 GPT 公开 probe 处冻结：Codex 已生成双格式文件，但本机缺少可调用的 LibreOffice，DOCX 的实际打开检查无法完成。DeepSeek probe 与私有 task/teacher 上传均未开始；不得绕过该 probe 或混入旧 Solver、旧 receipt 或旧 Judge 结果。十题扩展必须在该实验的两题行为结果均为干净、可解释差异后另行计划。
+当前执行点：R10.8B-2 的两道新版任务已完成用户检查。huago-cone 的固定 release 已完成离线只读 parity、Codex/OpenCode/LibreOffice/openpyxl smoke、GPT/DeepSeek 双格式 solver probe 和双栈复杂 Judge probe，并完成 rollback/forward 后激活。当前仅修复 DeepSeek/OpenCode 公共 DOCX probe 把临时依赖写入共享 workspace、造成 SCP 回传卡住的问题；修复后的新 public scope 通过前，不得上传两道私有 task/teacher 输入，也不得混入旧 Solver、旧 receipt 或旧 Judge 结果。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

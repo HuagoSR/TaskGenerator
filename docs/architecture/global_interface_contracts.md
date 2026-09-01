@@ -21,7 +21,7 @@
 | R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
-| R10 GDPval-calibrated compiler revision | `implemented / compiled_for_user_review` | 只读 GDPval 形态报告与两项 opt-in compiler guidance 已实现；两道派生任务均已静态准入，旧四题保持冻结。 |
+| R10 GDPval-calibrated compiler revision | `implemented / public transport repair` | 只读 GDPval 形态报告与两项 opt-in compiler guidance 已实现；两道派生任务均已静态准入，旧四题保持冻结。服务器固定环境与公开复杂 Judge 均已通过；DeepSeek/OpenCode 的临时依赖回传污染工作区，正在进行公共运输层修复，尚未形成 compiler 效果结论。 |
 
 ## Stable Implemented Contracts
 

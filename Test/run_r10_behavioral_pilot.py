@@ -108,7 +108,13 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
         # CODEX_HOME is a dedicated, server-owned directory containing only
         # auth.json.  It is deliberately outside the candidate workspace and
         # mounted read-write solely to permit Codex token refresh.
-        "set -eu", "export HOME=/tmp", "export CODEX_HOME=/run/codex-home", agent_command,
+        # An agent may need a lightweight document library for a DOCX task.
+        # Keep any such runtime installation in the container tmpfs, never in
+        # the mounted workspace that is copied back to the controller.
+        "set -eu", "export HOME=/tmp", "export CODEX_HOME=/run/codex-home",
+        "export PIP_TARGET=/tmp/r10-pylibs", "export PYTHONPATH=/tmp/r10-pylibs",
+        "export PIP_CACHE_DIR=/tmp/r10-pip-cache", "export PYTHONUSERBASE=/tmp/r10-pyuser",
+        agent_command,
     ]
     if not grade:
         inner.extend([
@@ -131,7 +137,10 @@ def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" ' + mounts +
         ' -w /workspace --entrypoint /bin/sh ' + image + ' /workspace/.r10_agent.sh > docker_stdout.txt 2> docker_stderr.txt; '
-        'status=$?; rm -f .r10_agent.sh; exit $status'
+        # Only candidate deliverables, explicit verification output and agent
+        # diagnostics are controller evidence.  Never SCP a package cache or
+        # an agent-created virtual environment back across the control plane.
+        'status=$?; rm -rf .pylibs .venv .cache __pycache__; rm -f .r10_agent.sh; exit $status'
     )
 
 

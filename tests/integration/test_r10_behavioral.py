@@ -168,6 +168,8 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertNotIn("--ask-for-approval", gpt)
         self.assertNotIn("--sandbox danger-full-access", gpt)
         self.assertIn("CODEX_HOME=/run/codex-home", gpt)
+        self.assertIn("PIP_TARGET=/tmp/r10-pylibs", deepseek)
+        self.assertIn("PYTHONPATH=/tmp/r10-pylibs", deepseek)
 
     def test_remote_transport_uses_mounted_script_without_stdin_or_tty(self):
         command = _remote_command("/remote/workspace", stack="gpt-5.6-sol@chatgpt_codex")
@@ -176,6 +178,7 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertNotIn("sh -s", command)
         self.assertIn(REMOTE_CODEX_AUTH_DIR, command)
         self.assertIn(":/run/codex-home:rw", command)
+        self.assertIn("rm -rf .pylibs .venv .cache __pycache__", command)
 
     def test_remote_gpt_requires_a_completed_turn_event(self):
         with tempfile.TemporaryDirectory() as root:

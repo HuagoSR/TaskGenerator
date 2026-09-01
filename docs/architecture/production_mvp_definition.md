@@ -29,7 +29,7 @@ R7 的 5/10 冻结结果没有达到 `production_ready_for_evaluation`，不得�
 
 ## R10 Admission Boundary
 
-R10.0–R10.2 的离线合同、公开 seed 和 teacher-only Bible 已实现；R10 的候选任务、行为验收仍是 `not_implemented`。R10 不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
+R10.0–R10.2 的离线合同、公开 seed 和 teacher-only Bible 已实现；R10 已有四道静态接纳的 Pilot 任务及两道静态接纳的 compiler-revision 派生任务。服务器复杂 Judge 公开准入已通过；当前只修复 DeepSeek/OpenCode 临时依赖回传污染工作区的问题，修复后的新公共 scope 通过前，该派生批次的行为验收仍是 `incomplete`。R10 不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
 
 1. 公开可追溯 Work Seed 与 Professional Rule Set；
 2. teacher-only Scenario Bible；
