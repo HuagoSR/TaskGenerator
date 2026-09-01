@@ -74,11 +74,11 @@
 
 只读诊断器 `R10PilotDiscriminationReportV1` 已绑定 R10.8A 修正后的 records、行为聚合与四个任务指纹，分别检查 Solver 复合分、有效交付/major-defect 差异和 Judge 分歧。结果为两题 `saturated`、一题 `near_tie`、一题 `judge_ambiguous`，没有 `cleanly_discriminative` 任务，故为 `compiler_revision_candidate`。下一步只能设计一次共性的 task-compiler 改良实验，关注评分饱和、过于显式的判断点、证据张力不足和 Judge 边界；不得手改现有四题、重抽答案或扩大到十题。
 
-### R10.8B-2 — GDPval-calibrated compiler revision — `implemented / awaiting private campaign authorization`
+### R10.8B-2 — GDPval-calibrated compiler revision — `implemented / compiled_for_user_review`
 
 本地 GDPval 镜像只读形态对照已完成：它只输出抽象的文件类型、证据密度和工作流特征，禁止将 GDPval 题干、参考文件、hidden rubric 或 gold deliverable 送入生成模型。四个冻结 R10 任务的候选材料为 2–5 个紧凑 TXT/CSV，存在评分饱和、判断点过于显式与证据张力不足的共性信号。改良仅作用于两个既有 Agent 环节：evidence author 生成自然工作过程中的记录、正常背景和跨材料证据关系；task compiler 面向业务成果写题，不逐项泄漏判断，并在本实验中要求明确 `Met / Partial / Not met` 边界及具体 major error。
 
-下一步只派生收入证据可靠性与价格合理性两道新版任务。四个旧任务和旧结果保持冻结。两道新任务均静态通过并完成用户检查后，才可由新的 scope/receipt 启动双 solver、双 judge 行为评测；只有两题均从 `near_tie / saturated` 改善为 `cleanly_discriminative`，才讨论十题 production plan。不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
+已从收入证据可靠性与价格合理性两个冻结 Bible 派生两道新版任务。两份 evidence bundle 和任务包均已静态通过，四个旧任务和旧结果保持冻结。用户检查完成后，才可由新的 scope/receipt 启动双 solver、双 judge 行为评测；只有两题均从 `near_tie / saturated` 改善为 `cleanly_discriminative`，才讨论十题 production plan。不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 
 ## Acceptance Metrics
 
