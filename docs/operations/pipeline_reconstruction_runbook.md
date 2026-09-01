@@ -55,7 +55,7 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前执行点：R10.8B-2 的两道新版任务已完成用户检查。ChatGPT/Codex 的公开复杂 Judge probe 在 30 分钟内只有启动事件，失败记录保持冻结；没有私有 task 或 teacher 输入上传。独立 `gpt-5.6-sol@tuzi_codex` 的临时 Codex provider、双公开 gate 与私有 scope 隔离已实现，key 仅注入容器进程。其 huago candidate 在三次 parity 中连续暴露最小镜像与测试隔离缺口；按本轮最多两次纠错 release 的上限，当前冻结为 `evaluation_inconclusive`，不得执行 Tuzi public probe、私有 scope/receipt 或 release 激活。旧 Solver、旧 receipt 或旧 Judge 结果不得混入。
+当前执行点：R10.8B-2 的两道新版任务已完成用户检查。ChatGPT/Codex 的公开复杂 Judge probe 在 30 分钟内只有启动事件，失败记录保持冻结。独立 `gpt-5.6-sol@tuzi_codex` 的临时 Codex provider、双公开 gate、公开证据指纹绑定与私有 scope 隔离已实现，key 仅注入容器进程。候选 release `milestone-r9-huago-cone-5fb8f33aedcd` 已通过 parity（219/219）和 smoke，但未激活；官方 DeepSeek/OpenCode 的公开双格式 probe 通过，Tuzi Codex 对 `/responses` 返回 `401 Invalid token`。本轮因此冻结为 `evaluation_inconclusive`，不得创建 Tuzi 私有 scope/receipt、上传 task/teacher 内容或激活候选 release。旧 Solver、旧 receipt 或旧 Judge 结果不得混入。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

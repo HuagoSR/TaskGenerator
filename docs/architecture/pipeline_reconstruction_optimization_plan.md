@@ -80,7 +80,7 @@
 
 已从收入证据可靠性与价格合理性两个冻结 Bible 派生两道新版任务。两份 evidence bundle 和任务包均已静态通过，四个旧任务和旧结果保持冻结。用户检查完成后，才可由新的 scope/receipt 启动双 solver、双 judge 行为评测；只有两题均从 `near_tie / saturated` 改善为 `cleanly_discriminative`，才讨论十题 production plan。不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 
-R10.8 的 huago-cone 候选环境此前完成离线 parity、固定工具 smoke，并修复了 DeepSeek/OpenCode 在公共 DOCX probe 中将临时依赖写入共享 workspace 的回传缺陷。ChatGPT/Codex 的复杂 public Judge probe 仍在 30 分钟内仅产生启动事件；该历史失败保持冻结。独立 `gpt-5.6-sol@tuzi_codex` 已实现临时 `CODEX_HOME` provider 配置、`wire_api=responses` 与公共/私有两阶段隔离，Tuzi key 仅进单次容器进程。新的 candidate parity 随后连续三次暴露最小镜像可复现性缺口；前两项（Git-free source metadata 与异常回退）已修复，第三项是测试错误读取 ignored 私有 artifact。它没有触发 provider 调用，但第三次重建将超过本轮允许的两次纠错 release，故 R10.8 冻结为 `evaluation_inconclusive`，不执行 Tuzi public probe 或私有比较。任何续跑须先单独规划并重置纠错预算。
+R10.8 的 huago-cone 候选环境已完成离线 parity、固定工具 smoke，并修复了 DeepSeek/OpenCode 在公共 DOCX probe 中将临时依赖写入共享 workspace 的回传缺陷。ChatGPT/Codex 的复杂 public Judge probe 仍在 30 分钟内仅产生启动事件；该历史失败保持冻结。独立 `gpt-5.6-sol@tuzi_codex` 已实现临时 `CODEX_HOME` provider 配置、`wire_api=responses`、公开证据指纹与公共/私有两阶段隔离，Tuzi key 仅进单次容器进程。最终候选 release `milestone-r9-huago-cone-5fb8f33aedcd` 通过 Git-free parity（219/219）与 smoke；公开双格式 probe 中官方 DeepSeek/OpenCode 通过，Tuzi Codex 已到达 `/responses` 但返回 `401 Invalid token`。因此 R10.8 冻结为 `evaluation_inconclusive`，没有创建私有 scope/receipt、上传私有任务或执行行为比较。任何续跑必须先恢复 Tuzi 认证并以新的公开 gate 重新确认，不能复用本次失败证据。
 
 ## Acceptance Metrics
 
