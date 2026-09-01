@@ -13,7 +13,7 @@ R9/R7 的服务器、任务包和评测证据均已冻结。R7 从零复验停�
 - 依据旧 receipt、旧 provider scope 或旧 campaign 继续调用；
 - 因模型分数或个别任务表现重抽、手改或重评已冻结任务。
 
-R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI、四份 teacher-only Scenario Bible、两个 curated factory-side Skill、薄目录、按需加载器与来源绑定的 curation report 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。R10.3 readiness gate 同时证明：不得用更复杂的结构化 Bible V2 或手工补字段来绕过叙事 Bible 的确定性投影限制。当前尚无候选文件或任务包。
+R10.0–R10.4 已完成：离线 schema/static admission、四个接纳的公开 Work Seed、两套专业规则、seed-admission CLI、四份 teacher-only Scenario Bible、两个 curated factory-side Skill、薄目录、按需加载器与来源绑定的 curation report 均已冻结。此前 provider/SDK response-validation 与截断 run 仅是基础设施和编译合同诊断；不得将其解释为模型能力证据。R10.3 readiness gate 同时证明：不得用更复杂的结构化 Bible V2 或手工补字段来绕过叙事 Bible 的确定性投影限制。后续已从这些冻结输入派生四道静态准入的 pilot 任务；不得将它们与早期 incomplete cohort 混用。
 
 ## Stable Operational Rules
 
@@ -53,7 +53,9 @@ R10.7B 原始结果为 `behaviorally_admitted`：两条 solver 均通过公开 X
 
 R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit 通过；本机 Codex CLI 0.149.1 的多文件公开 Judge probe 通过后，GPT Judge 在本地运行，DeepSeek Judge保留官方 DeepSeek/OpenCode。两份冻结 Solver delivery 分别由两位 Judge评分，四项均完成；重聚合为 `behaviorally_admitted`，两条 solver 均 4/4 有效交付、四题双评委完整、无 teacher-anchor conflict。模型区分度仍为 `low_model_separation`。huago Codex candidate 继续不激活，且不再是本阶段阻塞条件。
 
-当前停止点：R10.8A 已关闭。任何十题扩展必须由新的 R10.8B 计划和新的 campaign scope 启动；不得混入旧 Solver、旧 receipt 或旧 Judge 结果。
+R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
+
+当前停止点：R10.8B-1 已关闭。下一步只能制定一次共性 task-compiler 改良实验，验证更自然的证据张力和更可裁决的评分边界。十题扩展必须在该实验通过后由新的计划和 campaign scope 启动；不得混入旧 Solver、旧 receipt 或旧 Judge 结果。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

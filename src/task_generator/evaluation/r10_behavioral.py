@@ -207,6 +207,54 @@ class R10BehavioralResultV1(BaseModel):
     professional_validity: Literal["provisional"] = "provisional"
 
 
+PilotDiscriminationClassification = Literal[
+    "saturated", "near_tie", "cleanly_discriminative", "judge_ambiguous", "incomplete"
+]
+CompilerDiagnosticSignal = Literal[
+    "score_saturation", "decision_points_too_explicit", "evidence_tension_insufficient",
+    "judge_boundary_ambiguous",
+]
+
+
+class R10PilotTaskDiscriminationDiagnosisV1(BaseModel):
+    """Read-only explanation of one frozen pilot task's observed separation.
+
+    The diagnosis reports evidence quality, rather than claiming that either
+    Solver is intrinsically stronger.  A Judge disagreement prevents a
+    non-tied score gap from being promoted into a clean capability comparison;
+    a true near-tie remains a near-tie rather than fabricated separation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    task_id: str = Field(min_length=1)
+    solver_composite_scores: dict[SolverStackId, float | None]
+    composite_score_gap: float | None = Field(default=None, ge=0, le=1)
+    delivery_or_major_defect_differs: bool
+    judge_score_gaps: dict[SolverStackId, float | None]
+    judge_major_defect_disagreement: dict[SolverStackId, bool]
+    classification: PilotDiscriminationClassification
+    compiler_signals: list[CompilerDiagnosticSignal] = Field(default_factory=list)
+    first_failure: str | None = None
+
+
+class R10PilotDiscriminationReportV1(BaseModel):
+    """Versioned, read-only diagnosis for the R10 four-task behavioral pilot."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    report_version: Literal["r10.pilot_discrimination_report.1"] = "r10.pilot_discrimination_report.1"
+    records_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    behavioral_result_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    bindings_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    input_complete: bool
+    task_diagnoses: list[R10PilotTaskDiscriminationDiagnosisV1] = Field(min_length=4, max_length=4)
+    cleanly_discriminative_count: int = Field(ge=0, le=4)
+    cohort_decision: Literal["scale_discussion_ready", "compiler_revision_candidate"]
+    compiler_signals: list[CompilerDiagnosticSignal] = Field(default_factory=list)
+    professional_validity: Literal["provisional"] = "provisional"
+
+
 class TeacherAnchorCheckV1(BaseModel):
     """A small, deterministic check for teacher-side facts that can be calculated.
 
@@ -467,4 +515,138 @@ def aggregate_behavioral_result(records: list[R10ModelTaskResultV1]) -> R10Behav
         solver_valid_delivery_counts=valid_counts, task_discrimination=discrimination,
         recurring_insufficient_evidence_decisions=recurring,
         recurring_major_error_decisions=recurring_major,
+    )
+
+
+def diagnose_pilot_discrimination(
+    records: list[R10ModelTaskResultV1],
+    *,
+    behavioral_result: R10BehavioralResultV1,
+    bindings: list[R10PilotTaskBindingV1],
+) -> R10PilotDiscriminationReportV1:
+    """Diagnose model separation from one frozen R10 pilot result.
+
+    This function is deliberately read-only.  It only checks that the supplied
+    aggregate and four bindings still describe the supplied records, then
+    classifies the observed evidence.  It does not inspect or mutate task
+    packages, candidate files, teacher material, or provider state.
+    """
+    expected_solvers: tuple[SolverStackId, SolverStackId] = (
+        "gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode"
+    )
+    if len(bindings) != 4 or len({item.task_id for item in bindings}) != 4:
+        raise ValueError("r10_pilot_discrimination_bindings_invalid")
+    binding_ids = {item.task_id for item in bindings}
+    record_ids = {item.task_id for item in records}
+    if record_ids != binding_ids:
+        raise ValueError("r10_pilot_discrimination_record_binding_drift")
+    try:
+        recomputed = aggregate_behavioral_result(records)
+    except ValueError as error:
+        # A partial record set is still a useful diagnosis, but it can never
+        # justify scale discussion.  Preserve the per-task `incomplete` state.
+        aggregate_failure = str(error)
+    else:
+        aggregate_failure = None
+        if recomputed.model_dump(mode="json") != behavioral_result.model_dump(mode="json"):
+            raise ValueError("r10_pilot_discrimination_behavioral_result_drift")
+
+    by_task: dict[str, dict[SolverStackId, R10ModelTaskResultV1]] = {
+        task_id: {} for task_id in sorted(binding_ids)
+    }
+    for record in records:
+        values = by_task[record.task_id]
+        if record.solver_id in values:
+            raise ValueError("r10_pilot_discrimination_duplicate_solver_record")
+        values[record.solver_id] = record
+
+    diagnoses: list[R10PilotTaskDiscriminationDiagnosisV1] = []
+    for task_id in sorted(binding_ids):
+        per_solver = by_task[task_id]
+        composites: dict[SolverStackId, float | None] = {}
+        score_gaps: dict[SolverStackId, float | None] = {}
+        major_disagreement: dict[SolverStackId, bool] = {}
+        incomplete_reason: str | None = aggregate_failure
+        majors: dict[SolverStackId, bool | None] = {}
+        for solver in expected_solvers:
+            record = per_solver.get(solver)
+            if record is None:
+                composites[solver] = None
+                score_gaps[solver] = None
+                major_disagreement[solver] = False
+                majors[solver] = None
+                incomplete_reason = incomplete_reason or "solver_record_missing"
+                continue
+            if not record.delivery_valid:
+                incomplete_reason = incomplete_reason or "delivery_not_valid"
+            if len(record.reviews) != 2:
+                composites[solver] = None
+                score_gaps[solver] = None
+                major_disagreement[solver] = False
+                majors[solver] = None
+                incomplete_reason = incomplete_reason or "judge_reviews_incomplete"
+                continue
+            judge_ids = {review.judge_id for review in record.reviews}
+            if judge_ids != set(expected_solvers):
+                composites[solver] = None
+                score_gaps[solver] = None
+                major_disagreement[solver] = False
+                majors[solver] = None
+                incomplete_reason = incomplete_reason or "judge_identity_incomplete"
+                continue
+            scores = [review.weighted_score for review in record.reviews]
+            composites[solver] = sum(scores) / len(scores)
+            score_gaps[solver] = abs(scores[0] - scores[1])
+            major_disagreement[solver] = len({review.major_defect for review in record.reviews}) != 1
+            majors[solver] = any(review.major_defect for review in record.reviews)
+
+        left, right = expected_solvers
+        left_score, right_score = composites[left], composites[right]
+        score_gap = abs(left_score - right_score) if left_score is not None and right_score is not None else None
+        delivery_or_major_differs = bool(
+            left in per_solver and right in per_solver
+            and (
+                per_solver[left].delivery_valid != per_solver[right].delivery_valid
+                or majors[left] != majors[right]
+            )
+        )
+        judge_ambiguous = any(
+            (gap is not None and gap >= 0.125) or major_disagreement[solver]
+            for solver, gap in score_gaps.items()
+        )
+        signals: list[CompilerDiagnosticSignal] = []
+        if incomplete_reason is not None:
+            classification: PilotDiscriminationClassification = "incomplete"
+        elif left_score is not None and right_score is not None and left_score >= 0.95 and right_score >= 0.95 and not any(majors.values()):
+            classification = "saturated"
+            signals = ["score_saturation", "decision_points_too_explicit"]
+        elif score_gap is not None and score_gap < 0.05 and not delivery_or_major_differs:
+            classification = "near_tie"
+            signals = ["evidence_tension_insufficient"]
+        elif judge_ambiguous:
+            classification = "judge_ambiguous"
+            signals = ["judge_boundary_ambiguous"]
+        else:
+            classification = "cleanly_discriminative"
+        diagnoses.append(R10PilotTaskDiscriminationDiagnosisV1(
+            task_id=task_id, solver_composite_scores=composites,
+            composite_score_gap=score_gap,
+            delivery_or_major_defect_differs=delivery_or_major_differs,
+            judge_score_gaps=score_gaps,
+            judge_major_defect_disagreement=major_disagreement,
+            classification=classification, compiler_signals=signals,
+            first_failure=incomplete_reason,
+        ))
+
+    clean_count = sum(item.classification == "cleanly_discriminative" for item in diagnoses)
+    all_signals = sorted({signal for item in diagnoses for signal in item.compiler_signals})
+    return R10PilotDiscriminationReportV1(
+        records_sha256=sha256_json([item.model_dump(mode="json") for item in records]),
+        behavioral_result_sha256=sha256_json(behavioral_result.model_dump(mode="json")),
+        bindings_sha256=sha256_json([item.model_dump(mode="json") for item in bindings]),
+        input_complete=all(item.classification != "incomplete" for item in diagnoses),
+        task_diagnoses=diagnoses,
+        cleanly_discriminative_count=clean_count,
+        cohort_decision="scale_discussion_ready" if clean_count >= 2 else "compiler_revision_candidate",
+        compiler_signals=all_signals,
     )

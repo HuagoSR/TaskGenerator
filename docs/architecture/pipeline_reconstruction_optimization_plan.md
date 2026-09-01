@@ -70,9 +70,13 @@
 
 采购验收题的候选内容不变，teacher-only 锚点已更正为 3/40 = 7.5%，超过 5%。`TeacherAnchorAuditV1` 对修正关系通过。huago Codex candidate 的多文件公开 probe 保持失败且从未激活；新的 judge-only campaign 绑定本机 Codex CLI 0.149.1（GPT Judge）、官方 DeepSeek/OpenCode（DeepSeek Judge）、两份冻结 Solver delivery 与修正后的 teacher tree。公开复杂度 probe 先通过，再完成四项评分并重聚合为 `behaviorally_admitted`。四题均双评委完整、两栈均 4/4 有效交付、无重复证据缺口；但只有一题保留可解释模型差异，结果为 `low_model_separation`。
 
-### R10.8B — Ten-task scale decision — `not_implemented / gated`
+### R10.8B-1 — Four-task discrimination diagnosis — `implemented / compiler_revision_candidate`
 
-仅当四题均通过静态准入，且至少两个模型在共同任务上表现出可解释的差异，才编写十题 production plan。若失败，冻结 pilot，保留证据并优先修复共性合同；不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
+只读诊断器 `R10PilotDiscriminationReportV1` 已绑定 R10.8A 修正后的 records、行为聚合与四个任务指纹，分别检查 Solver 复合分、有效交付/major-defect 差异和 Judge 分歧。结果为两题 `saturated`、一题 `near_tie`、一题 `judge_ambiguous`，没有 `cleanly_discriminative` 任务，故为 `compiler_revision_candidate`。下一步只能设计一次共性的 task-compiler 改良实验，关注评分饱和、过于显式的判断点、证据张力不足和 Judge 边界；不得手改现有四题、重抽答案或扩大到十题。
+
+### R10.8B-2 — Ten-task scale decision — `not_implemented / gated`
+
+只有共性 compiler 改良实验通过、并重新获得至少两题干净的可解释差异后，才编写十题 production plan。不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 
 ## Acceptance Metrics
 
@@ -90,5 +94,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10.0–R10.5 已完成；所有历史失败 cohort 保持冻结且不与最终 cohort 混合。R10 尚未生成任务、激活 release、改变历史 registry 或开始训练。
+- R10 已生成并静态/行为验收四道 Scenario-First pilot 任务；它们保持冻结，不得为提高区分度手改。所有历史失败 cohort 保持冻结且不与最终 cohort 混合；R10 尚未激活 release、改变历史 registry 或开始训练。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。

@@ -16,10 +16,12 @@ from task_generator.evaluation.r10_behavioral import (
     R10BehavioralScopeV1,
     R10PilotTaskBindingV1,
     R10JudgeDraftV1,
+    R10JudgeReviewV1,
     R10ModelTaskResultV1,
     TeacherAnchorCheckV1,
     aggregate_behavioral_result,
     audit_teacher_anchors,
+    diagnose_pilot_discrimination,
     finalize_judge_review,
     inspect_delivery,
 )
@@ -55,6 +57,54 @@ def rubric() -> TaskSpecificRubricV1:
         TaskSpecificRubricCriterionV1(criterion_id="c2", decision_id="d2", weight=0.5, description="two"),
         TaskSpecificRubricCriterionV1(criterion_id="c3", decision_id="d3", weight=0.0 + 0.000001, description="three"),
     ])
+
+
+_SOLVERS = ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode")
+
+
+def pilot_bindings() -> list[R10PilotTaskBindingV1]:
+    return [
+        R10PilotTaskBindingV1(
+            task_id=f"task-{index}", domain="audit_compliance" if index < 2 else "procurement_operations",
+            package_root=f"/task/{index}", package_tree_sha256=f"{index:064x}",
+            candidate_tree_sha256=f"{index + 4:064x}", task_compilation_sha256=f"{index + 8:064x}",
+            deliverable_contract_sha256=f"{index + 12:064x}", expected_delivery="deliverable_files/result.xlsx",
+        )
+        for index in range(4)
+    ]
+
+
+def pilot_review(task_id: str, judge_id: str, score: float, major: bool = False) -> R10JudgeReviewV1:
+    return R10JudgeReviewV1.model_validate({
+        "task_id": task_id, "judge_id": judge_id, "weighted_score": score, "major_defect": major,
+        "assessments": [
+            {"decision_id": f"d{index}", "rating": "met", "major_error": major and index == 0,
+             "evidence_paths": [f"candidate/file-{index}.txt"], "rationale": "fixture assessment"}
+            for index in range(3)
+        ],
+    })
+
+
+def pilot_records(
+    scores: dict[str, dict[str, tuple[float, float] | None]],
+    *,
+    major: dict[str, dict[str, tuple[bool, bool]]] | None = None,
+) -> list[R10ModelTaskResultV1]:
+    records: list[R10ModelTaskResultV1] = []
+    for task_id, by_solver in scores.items():
+        for solver in _SOLVERS:
+            pair = by_solver[solver]
+            reviews = []
+            if pair is not None:
+                major_pair = (major or {}).get(task_id, {}).get(solver, (False, False))
+                reviews = [
+                    pilot_review(task_id, judge, score, is_major)
+                    for judge, score, is_major in zip(_SOLVERS, pair, major_pair)
+                ]
+            records.append(R10ModelTaskResultV1(
+                task_id=task_id, solver_id=solver, delivery_valid=True, reviews=reviews,
+            ))
+    return records
 
 
 class R10BehavioralTests(unittest.TestCase):
@@ -235,6 +285,105 @@ class R10BehavioralTests(unittest.TestCase):
         result = aggregate_behavioral_result(records)
         self.assertEqual(result.decision, "task_design_revision_candidate")
         self.assertEqual(result.recurring_major_error_decisions, ["d1"])
+
+    def test_pilot_discrimination_classifies_saturation_near_tie_clean_and_ambiguous(self):
+        records = pilot_records({
+            "task-0": {solver: (1.0, 1.0) for solver in _SOLVERS},
+            "task-1": {
+                _SOLVERS[0]: (0.94, 0.94), _SOLVERS[1]: (0.93, 0.93),
+            },
+            "task-2": {
+                _SOLVERS[0]: (0.92, 0.92), _SOLVERS[1]: (0.80, 0.80),
+            },
+            "task-3": {
+                _SOLVERS[0]: (1.0, 1.0), _SOLVERS[1]: (0.50, 0.875),
+            },
+        }, major={"task-3": {_SOLVERS[1]: (True, False)}})
+        aggregate = aggregate_behavioral_result(records)
+        report = diagnose_pilot_discrimination(
+            records, behavioral_result=aggregate, bindings=pilot_bindings(),
+        )
+        classifications = {item.task_id: item.classification for item in report.task_diagnoses}
+        self.assertEqual(classifications, {
+            "task-0": "saturated", "task-1": "near_tie",
+            "task-2": "cleanly_discriminative", "task-3": "judge_ambiguous",
+        })
+        self.assertEqual(report.cohort_decision, "compiler_revision_candidate")
+        self.assertIn("score_saturation", report.compiler_signals)
+        self.assertIn("judge_boundary_ambiguous", report.compiler_signals)
+
+    def test_pilot_discrimination_needs_two_clean_tasks_for_scale_discussion(self):
+        records = pilot_records({
+            "task-0": {_SOLVERS[0]: (0.90, 0.90), _SOLVERS[1]: (0.80, 0.80)},
+            "task-1": {_SOLVERS[0]: (0.91, 0.91), _SOLVERS[1]: (0.80, 0.80)},
+            "task-2": {solver: (1.0, 1.0) for solver in _SOLVERS},
+            "task-3": {solver: (1.0, 1.0) for solver in _SOLVERS},
+        })
+        report = diagnose_pilot_discrimination(
+            records, behavioral_result=aggregate_behavioral_result(records), bindings=pilot_bindings(),
+        )
+        self.assertEqual(report.cleanly_discriminative_count, 2)
+        self.assertEqual(report.cohort_decision, "scale_discussion_ready")
+
+    def test_pilot_discrimination_marks_missing_judge_score_incomplete(self):
+        records = pilot_records({
+            "task-0": {_SOLVERS[0]: (0.90, 0.90), _SOLVERS[1]: (0.80, 0.80)},
+            "task-1": {solver: (1.0, 1.0) for solver in _SOLVERS},
+            "task-2": {solver: (1.0, 1.0) for solver in _SOLVERS},
+            "task-3": {solver: (1.0, 1.0) for solver in _SOLVERS},
+        })
+        missing = next(item for item in records if item.task_id == "task-0" and item.solver_id == _SOLVERS[0])
+        records[records.index(missing)] = missing.model_copy(update={"reviews": missing.reviews[:1]})
+        report = diagnose_pilot_discrimination(
+            records, behavioral_result=aggregate_behavioral_result(records), bindings=pilot_bindings(),
+        )
+        diagnosis = next(item for item in report.task_diagnoses if item.task_id == "task-0")
+        self.assertEqual(diagnosis.classification, "incomplete")
+        self.assertFalse(report.input_complete)
+
+    def test_pilot_discrimination_rejects_aggregate_or_binding_fingerprint_drift(self):
+        records = pilot_records({
+            f"task-{index}": {solver: (1.0, 1.0) for solver in _SOLVERS}
+            for index in range(4)
+        })
+        aggregate = aggregate_behavioral_result(records)
+        with self.assertRaisesRegex(ValueError, "behavioral_result_drift"):
+            diagnose_pilot_discrimination(
+                records,
+                behavioral_result=aggregate.model_copy(update={"low_model_separation": False}),
+                bindings=pilot_bindings(),
+            )
+        drifted = pilot_bindings()
+        drifted[0] = drifted[0].model_copy(update={"task_id": "unexpected-task"})
+        with self.assertRaisesRegex(ValueError, "record_binding_drift"):
+            diagnose_pilot_discrimination(records, behavioral_result=aggregate, bindings=drifted)
+
+    def test_diagnose_pilot_cli_is_read_only_and_writes_a_report(self):
+        from unittest.mock import patch
+        from task_generator.cli.scenario_first import main
+
+        records = pilot_records({
+            f"task-{index}": {solver: (1.0, 1.0) for solver in _SOLVERS}
+            for index in range(4)
+        })
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root)
+            records_path = root_path / "records.json"
+            result_path = root_path / "result.json"
+            bindings_path = root_path / "scope.json"
+            output = root_path / "report.json"
+            records_path.write_text(json.dumps([item.model_dump(mode="json") for item in records]), encoding="utf-8")
+            result_path.write_text(json.dumps({"aggregate": aggregate_behavioral_result(records).model_dump(mode="json")}), encoding="utf-8")
+            bindings_path.write_text(json.dumps({"bindings": [item.model_dump(mode="json") for item in pilot_bindings()]}), encoding="utf-8")
+            input_bytes = (records_path.read_bytes(), result_path.read_bytes(), bindings_path.read_bytes())
+            with patch("sys.argv", [
+                "taskgen-scenario-first", "--action", "diagnose-pilot",
+                "--records", str(records_path), "--behavioral-result", str(result_path),
+                "--bindings", str(bindings_path), "--output", str(output),
+            ]):
+                main()
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["cohort_decision"], "compiler_revision_candidate")
+            self.assertEqual(input_bytes, (records_path.read_bytes(), result_path.read_bytes(), bindings_path.read_bytes()))
 
 
 if __name__ == "__main__":
