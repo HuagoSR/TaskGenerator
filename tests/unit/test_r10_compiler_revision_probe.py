@@ -4,6 +4,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from openpyxl import Workbook
 
@@ -33,6 +34,24 @@ class R10CompilerRevisionProbeTests(unittest.TestCase):
             book = Workbook()
             book.save(path)
             self.assertFalse(RUNNER._xlsx_has_visible_content(path))
+
+    def test_codex_execution_normalizes_a_relative_workspace(self):
+        class Process:
+            returncode = 0
+
+            def communicate(self, _prompt, timeout):
+                return "", ""
+
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp) / "relative" / "workspace"
+            captured: list[Path] = []
+            with (
+                patch.object(RUNNER, "_codex_command", side_effect=lambda *, workspace: captured.append(workspace) or ["codex"]),
+                patch.object(RUNNER, "local_codex_version", return_value="codex-cli 0.149.1"),
+                patch.object(RUNNER.subprocess, "Popen", return_value=Process()),
+            ):
+                RUNNER._run_codex(workspace=workspace, prompt="public probe")
+        self.assertEqual(captured, [workspace.resolve()])
 
 
 if __name__ == "__main__":

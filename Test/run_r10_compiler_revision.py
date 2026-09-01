@@ -136,6 +136,10 @@ def _codex_command(*, workspace: Path) -> list[str]:
 
 
 def _run_codex(*, workspace: Path, prompt: str, timeout_seconds: int = 1800) -> dict[str, Any]:
+    # ``codex -C`` resolves relative paths against the child process cwd.  Use
+    # one absolute workspace for both, rather than passing the same relative
+    # path twice and accidentally nesting it.
+    workspace = workspace.resolve()
     workspace.mkdir(parents=True, exist_ok=True)
     started = datetime.now(UTC)
     process = subprocess.Popen(
