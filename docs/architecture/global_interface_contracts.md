@@ -21,7 +21,7 @@
 | R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
-| R10 GDPval-calibrated compiler revision | `implemented / Tuzi-Codex public gate` | 只读 GDPval 形态报告与两项 opt-in compiler guidance 已实现；两道派生任务均已静态准入，旧四题保持冻结。ChatGPT/Codex 复杂 public probe 的无完成事件保持历史诊断；新增独立 Tuzi Codex Responses transport，必须先通过双格式与复杂 public gate，失败时私有新版任务保持零上传。 |
+| R10 GDPval-calibrated compiler revision | `implemented / evaluation_inconclusive` | 只读 GDPval 形态报告与两项 opt-in compiler guidance 已实现；两道派生任务均已静态准入，旧四题保持冻结。独立 Tuzi Codex Responses transport、临时 provider 配置与公共/私有隔离已实现，但 huago candidate parity 在两次允许的纠错 release 后仍发现测试读取 ignored 私有 artifact 的隔离缺口；未执行 Tuzi public probe 或任何私有上传。 |
 
 ## Stable Implemented Contracts
 
