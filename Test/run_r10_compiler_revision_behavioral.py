@@ -82,6 +82,31 @@ def _record_complex_judge_probe(*, output_root: Path, host: str, remote_root: st
     return passed
 
 
+def _record_public_gates(*, output_root: Path, host: str, remote_root: str, image: str) -> tuple[bool, dict[str, bool]]:
+    """Run the public-only admission gates before any private binding is read."""
+    probes = {
+        stack: _record_probe(
+            output_root=output_root, host=host, remote_root=remote_root,
+            stack=stack, image=image,
+        )
+        for stack in STACKS
+    }
+    if not all(probes.values()):
+        _write(output_root / "result.json", {
+            "decision": "incomplete", "reason": "public_probe_failed", "probes": probes,
+        })
+        return False, probes
+    if not _record_complex_judge_probe(
+        output_root=output_root, host=host, remote_root=remote_root, image=image,
+    ):
+        _write(output_root / "result.json", {
+            "decision": "incomplete", "reason": "public_complex_judge_probe_failed", "probes": probes,
+        })
+        return False, probes
+    _write(output_root / "result.json", {"decision": "public_gates_passed", "probes": probes})
+    return True, probes
+
+
 def _score_pair(*, output_root: Path, host: str, remote_root: str, solver: str, task_id: str, task_root: Path, delivery: Path, image: str) -> dict[str, Any]:
     return {
         judge: _jsonable(_execute_judge(
@@ -141,8 +166,24 @@ def main() -> None:
     parser.add_argument("--image", required=True)
     parser.add_argument("--image-sha256", required=True)
     parser.add_argument("--scope-only", action="store_true")
+    parser.add_argument("--public-only", action="store_true")
     parser.add_argument("--authorized-scope-sha256")
     args = parser.parse_args()
+    if args.scope_only and args.public_only:
+        raise ValueError("r10_compiler_revision_behavioral_modes_conflict")
+    if args.public_only:
+        if args.authorized_scope_sha256:
+            raise PermissionError("r10_compiler_revision_public_probe_does_not_accept_scope")
+        if args.output_root.exists():
+            raise FileExistsError("r10_compiler_revision_public_probe_output_exists")
+        args.output_root.mkdir(parents=True)
+        passed, _ = _record_public_gates(
+            output_root=args.output_root, host=args.host,
+            remote_root=_safe_remote_root(args.host, args.run_id), image=args.image,
+        )
+        if not passed:
+            raise SystemExit(1)
+        return
     scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256); digest = sha256_json(scope)
     if args.scope_only:
         if args.output_root.exists(): raise FileExistsError("r10_compiler_revision_behavioral_output_exists")
@@ -151,13 +192,11 @@ def main() -> None:
     if not args.output_root.is_dir() or set(path.name for path in args.output_root.iterdir()) != {"scope.json"}: raise FileExistsError("r10_compiler_revision_behavioral_output_invalid")
     _write(args.output_root / "receipt.json", {"scope_sha256": digest, "consumed_at": _now()})
     remote_root = _safe_remote_root(args.host, args.run_id)
-    probes = {
-        stack: _record_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, stack=stack, image=args.image)
-        for stack in STACKS
-    }
-    if not all(probes.values()): _write(args.output_root / "result.json", {"decision": "incomplete", "reason": "public_probe_failed", "probes": probes}); return
-    if not _record_complex_judge_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, image=args.image):
-        _write(args.output_root / "result.json", {"decision": "incomplete", "reason": "public_complex_judge_probe_failed", "probes": probes}); return
+    passed, _ = _record_public_gates(
+        output_root=args.output_root, host=args.host, remote_root=remote_root, image=args.image,
+    )
+    if not passed:
+        return
     records: dict[str, dict[str, Any]] = {task_id: {} for task_id in TASKS}
     for task_id, (task_root, domain, _) in TASKS.items():
         for stack in STACKS:

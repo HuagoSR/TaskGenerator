@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,6 +48,14 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
         first = next(iter(records))
         records[first][RUNNER.STACKS[0]]["reviews"][RUNNER.STACKS[1]]["review"] = {"weighted_score": 0.70, "major_defect": False}
         self.assertEqual(RUNNER._aggregate(records)["decision"], "evaluator_revision_required")
+
+    def test_public_gates_do_not_require_private_task_bindings(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(RUNNER, "_record_probe", return_value=True), patch.object(RUNNER, "_record_complex_judge_probe", return_value=True):
+            passed, probes = RUNNER._record_public_gates(
+                output_root=Path(directory), host="public-host", remote_root="/tmp/public", image="public-image",
+            )
+        self.assertTrue(passed)
+        self.assertEqual(set(probes), set(RUNNER.STACKS))
 
 
 if __name__ == "__main__":
