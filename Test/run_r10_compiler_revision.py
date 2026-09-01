@@ -215,6 +215,23 @@ def _review_pack(*, task_root: Path, target: Path, output: TaskCompilationOutput
     (target / "teacher_truth_summary.md").write_text("\n".join(text), encoding="utf-8")
 
 
+def _xlsx_has_visible_content(path: Path) -> bool:
+    """Accept a workbook only when at least one visible cell has content.
+
+    ``max_row`` and ``max_column`` are unreliable for some valid workbooks in
+    openpyxl read-only mode, so probe admission reads the cells instead.
+    """
+    book = load_workbook(path, read_only=True, data_only=False)
+    try:
+        for sheet in book.worksheets:
+            for row in sheet.iter_rows(values_only=True):
+                if any(value is not None and str(value).strip() for value in row):
+                    return True
+    finally:
+        book.close()
+    return False
+
+
 def _probe(root: Path) -> bool:
     workspace = root / "public_probe"
     prompt = "Create a non-empty candidate/public_probe.xlsx and candidate/public_probe.docx. Do not read or write teacher/ files."
@@ -222,9 +239,7 @@ def _probe(root: Path) -> bool:
     _write(workspace / "diagnostics.json", outcome)
     xlsx, docx = workspace / "candidate/public_probe.xlsx", workspace / "candidate/public_probe.docx"
     try:
-        book = load_workbook(xlsx, read_only=True, data_only=False)
-        xlsx_ok = bool(book.sheetnames and any(sheet.max_row and sheet.max_column for sheet in book.worksheets))
-        book.close()
+        xlsx_ok = _xlsx_has_visible_content(xlsx)
         with zipfile.ZipFile(docx) as archive:
             docx_ok = "[Content_Types].xml" in archive.namelist() and "word/document.xml" in archive.namelist()
     except Exception:
@@ -304,17 +319,25 @@ def main() -> None:
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--authorized-scope-sha256")
     args = parser.parse_args()
-    if args.output_root.exists():
-        raise FileExistsError("r10_compiler_revision_output_already_exists")
     bibles, rules, skills = _load()
     scope = _scope(bibles=bibles, rules=rules, skills=skills, cli_version=local_codex_version())
     if args.scope_only:
+        if args.output_root.exists():
+            raise FileExistsError("r10_compiler_revision_output_already_exists")
         args.output_root.mkdir(parents=True)
         _write(args.output_root / "campaign_scope.json", scope)
         print(json.dumps({"decision": "awaiting_private_upload_authorization", "scope_sha256": sha256_json(scope), "output_root": str(args.output_root)}, ensure_ascii=False))
         return
     if not args.authorized_scope_sha256:
         parser.error("--authorized-scope-sha256 is required unless --scope-only")
+    if args.output_root.exists():
+        allowed = {"campaign_scope.json"}
+        entries = {path.name for path in args.output_root.iterdir()}
+        if entries != allowed:
+            raise FileExistsError("r10_compiler_revision_output_already_exists")
+        persisted_scope = json.loads((args.output_root / "campaign_scope.json").read_text(encoding="utf-8"))
+        if sha256_json(persisted_scope) != sha256_json(scope):
+            raise PermissionError("r10_compiler_revision_persisted_scope_drift")
     print(json.dumps(run(output_root=args.output_root, authorized_scope_sha256=args.authorized_scope_sha256), ensure_ascii=False))
 
 
