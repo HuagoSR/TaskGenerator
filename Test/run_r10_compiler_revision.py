@@ -252,7 +252,7 @@ def run(*, output_root: Path, authorized_scope_sha256: str) -> dict[str, Any]:
     scope = _scope(bibles=bibles, rules=rules, skills=skills, cli_version=local_codex_version())
     if authorized_scope_sha256 != sha256_json(scope):
         raise PermissionError("r10_compiler_revision_scope_authorization_mismatch")
-    output_root.mkdir(parents=True)
+    output_root.mkdir(parents=True, exist_ok=True)
     _write(output_root / "campaign_scope.json", scope)
     _write(output_root / "scope_receipt.json", {"scope_sha256": sha256_json(scope), "status": "consumed", "consumed_at": _now()})
     if not _probe(output_root):
