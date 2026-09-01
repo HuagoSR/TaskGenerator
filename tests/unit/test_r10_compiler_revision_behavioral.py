@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,10 +23,26 @@ def completed(score: float, *, major: bool = False) -> dict:
 class R10CompilerRevisionBehavioralTests(unittest.TestCase):
     def test_revision_campaign_uses_a_distinct_tuzi_codex_stack(self):
         self.assertEqual(RUNNER.STACKS, ("gpt-5.6-sol@tuzi_codex", "deepseek-v4-pro@official_opencode"))
-        scope = RUNNER._scope("tuzi-revision", image="image", image_sha256="a" * 64)
+        binding = MagicMock()
+        binding.model_dump.return_value = {
+            "task_id": "fixture-task", "domain": "audit_compliance",
+            "package_root": "/fixture/task", "package_tree_sha256": "1" * 64,
+            "candidate_tree_sha256": "2" * 64, "task_compilation_sha256": "3" * 64,
+            "deliverable_contract_sha256": "4" * 64,
+            "expected_delivery": "deliverable_files/result.xlsx",
+        }
+        evidence = {
+            "evidence_version": "r10.public_gate_evidence.1", "source_commit": "a" * 40,
+            "image": "image", "image_sha256": "a" * 64, "stacks": list(RUNNER.STACKS),
+            "decision": "public_gates_passed", "result_sha256": "b" * 64,
+            "public_tree_sha256": "c" * 64,
+        }
+        with patch.object(RUNNER, "binding_from_task", return_value=binding), patch.object(RUNNER, "_source_commit", return_value="a" * 40):
+            scope = RUNNER._scope("tuzi-revision", image="image", image_sha256="a" * 64, public_gate_evidence=evidence)
         self.assertEqual(scope["gpt_environment"]["transport"], "tuzi_codex")
         self.assertEqual(scope["gpt_environment"]["provider"], "tuzi")
         self.assertTrue(scope["complex_judge_probe_required"])
+        self.assertEqual(scope["public_gate_evidence"], evidence)
 
     def test_two_clean_differences_support_revision(self):
         records = {
@@ -49,13 +66,32 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
         records[first][RUNNER.STACKS[0]]["reviews"][RUNNER.STACKS[1]]["review"] = {"weighted_score": 0.70, "major_defect": False}
         self.assertEqual(RUNNER._aggregate(records)["decision"], "evaluator_revision_required")
 
-    def test_public_gates_do_not_require_private_task_bindings(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(RUNNER, "_record_probe", return_value=True), patch.object(RUNNER, "_record_complex_judge_probe", return_value=True):
-            passed, probes = RUNNER._record_public_gates(
-                output_root=Path(directory), host="public-host", remote_root="/tmp/public", image="public-image",
-            )
-        self.assertTrue(passed)
-        self.assertEqual(set(probes), set(RUNNER.STACKS))
+    def test_public_only_mode_does_not_read_private_bindings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "public"
+            arguments = [
+                "runner", "--public-only", "--run-id", "public-fixture", "--output-root", str(output),
+                "--image", "public-image", "--image-sha256", "a" * 64,
+            ]
+            def record_public_gates(*, output_root, **_kwargs):
+                RUNNER._write(output_root / "result.json", {"decision": "public_gates_passed", "probes": {stack: True for stack in RUNNER.STACKS}})
+                return True, {stack: True for stack in RUNNER.STACKS}
+            with patch.object(sys, "argv", arguments), patch.object(RUNNER, "_scope", side_effect=AssertionError("private_scope_read")), patch.object(RUNNER, "_record_public_gates", side_effect=record_public_gates), patch.object(RUNNER, "_source_commit", return_value="b" * 40):
+                RUNNER.main()
+            evidence = __import__("json").loads((output / "public_gate_evidence.json").read_text(encoding="utf-8"))
+        self.assertEqual(evidence["decision"], "public_gates_passed")
+        self.assertEqual(evidence["stacks"], list(RUNNER.STACKS))
+
+    def test_public_gate_evidence_rejects_image_or_tree_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            RUNNER._write(root / "result.json", {"decision": "public_gates_passed", "probes": {stack: True for stack in RUNNER.STACKS}})
+            with patch.object(RUNNER, "_source_commit", return_value="c" * 40):
+                evidence = RUNNER._write_public_gate_evidence(output_root=root, image="image", image_sha256="d" * 64)
+                self.assertEqual(RUNNER._load_public_gate_evidence(root=root, image="image", image_sha256="d" * 64), evidence)
+                (root / "result.json").write_text('{"decision":"incomplete"}\n', encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "evidence_drift|result_drift"):
+                    RUNNER._load_public_gate_evidence(root=root, image="image", image_sha256="d" * 64)
 
     def test_scope_uses_immutable_build_metadata_when_git_is_unavailable(self):
         with patch.object(RUNNER.subprocess, "run", side_effect=FileNotFoundError), patch.dict(RUNNER.os.environ, {"TASKGEN_SOURCE_COMMIT": "b" * 40}, clear=False):

@@ -7,6 +7,7 @@ LibreOffice or Codex state cannot affect the result.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -56,7 +57,7 @@ def _source_commit() -> str:
     raise RuntimeError("r10_compiler_revision_source_commit_unavailable")
 
 
-def _scope(run_id: str, *, image: str, image_sha256: str) -> dict[str, Any]:
+def _scope(run_id: str, *, image: str, image_sha256: str, public_gate_evidence: dict[str, Any]) -> dict[str, Any]:
     commit = _source_commit()
     bindings = []
     for task_id, (root, domain, old_classification) in TASKS.items():
@@ -68,6 +69,7 @@ def _scope(run_id: str, *, image: str, image_sha256: str) -> dict[str, Any]:
         "gpt_environment": {"transport": "tuzi_codex", "provider": "tuzi", "image": image, "image_sha256": image_sha256, "model": "gpt-5.6-sol", "timeout_seconds": 1800},
         "deepseek_environment": {"transport": "huago_opencode", "image": image, "image_sha256": image_sha256, "model": "deepseek-v4-pro", "timeout_seconds": 1800},
         "public_probe_required": True, "complex_judge_probe_required": True,
+        "public_gate_evidence": public_gate_evidence,
         "solver_attempt_limit": 1, "judge_format_attempt_limit": 2,
         "excluded_actions": ["task_generation", "candidate_mutation", "release", "training", "promotion"],
         "professional_validity": "provisional",
@@ -122,6 +124,52 @@ def _record_public_gates(*, output_root: Path, host: str, remote_root: str, imag
         return False, probes
     _write(output_root / "result.json", {"decision": "public_gates_passed", "probes": probes})
     return True, probes
+
+
+def _public_tree_sha256(root: Path) -> str:
+    """Hash public probe output without the self-referential evidence record."""
+    digest = hashlib.sha256()
+    for path in sorted(item for item in root.rglob("*") if item.is_file() and item.name != "public_gate_evidence.json"):
+        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _write_public_gate_evidence(*, output_root: Path, image: str, image_sha256: str) -> dict[str, Any]:
+    result = json.loads((output_root / "result.json").read_text(encoding="utf-8"))
+    evidence = {
+        "evidence_version": "r10.public_gate_evidence.1",
+        "source_commit": _source_commit(),
+        "image": image,
+        "image_sha256": image_sha256,
+        "stacks": list(STACKS),
+        "decision": result["decision"],
+        "result_sha256": sha256_json(result),
+        "public_tree_sha256": _public_tree_sha256(output_root),
+    }
+    _write(output_root / "public_gate_evidence.json", evidence)
+    return evidence
+
+
+def _load_public_gate_evidence(*, root: Path, image: str, image_sha256: str) -> dict[str, Any]:
+    evidence_path = root / "public_gate_evidence.json"
+    if not evidence_path.is_file():
+        raise FileNotFoundError("r10_compiler_revision_public_gate_evidence_missing")
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    if evidence.get("evidence_version") != "r10.public_gate_evidence.1":
+        raise ValueError("r10_compiler_revision_public_gate_evidence_version_invalid")
+    if evidence.get("decision") != "public_gates_passed":
+        raise ValueError("r10_compiler_revision_public_gate_not_passed")
+    if evidence.get("source_commit") != _source_commit() or evidence.get("image") != image or evidence.get("image_sha256") != image_sha256:
+        raise ValueError("r10_compiler_revision_public_gate_fingerprint_drift")
+    if evidence.get("stacks") != list(STACKS) or evidence.get("public_tree_sha256") != _public_tree_sha256(root):
+        raise ValueError("r10_compiler_revision_public_gate_evidence_drift")
+    result = json.loads((root / "result.json").read_text(encoding="utf-8"))
+    if evidence.get("result_sha256") != sha256_json(result):
+        raise ValueError("r10_compiler_revision_public_gate_result_drift")
+    return evidence
 
 
 def _score_pair(*, output_root: Path, host: str, remote_root: str, solver: str, task_id: str, task_root: Path, delivery: Path, image: str) -> dict[str, Any]:
@@ -184,12 +232,13 @@ def main() -> None:
     parser.add_argument("--image-sha256", required=True)
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--public-only", action="store_true")
+    parser.add_argument("--public-gate-root", type=Path)
     parser.add_argument("--authorized-scope-sha256")
     args = parser.parse_args()
     if args.scope_only and args.public_only:
         raise ValueError("r10_compiler_revision_behavioral_modes_conflict")
     if args.public_only:
-        if args.authorized_scope_sha256:
+        if args.authorized_scope_sha256 or args.public_gate_root:
             raise PermissionError("r10_compiler_revision_public_probe_does_not_accept_scope")
         if args.output_root.exists():
             raise FileExistsError("r10_compiler_revision_public_probe_output_exists")
@@ -200,8 +249,19 @@ def main() -> None:
         )
         if not passed:
             raise SystemExit(1)
+        _write_public_gate_evidence(
+            output_root=args.output_root, image=args.image, image_sha256=args.image_sha256,
+        )
         return
-    scope = _scope(args.run_id, image=args.image, image_sha256=args.image_sha256); digest = sha256_json(scope)
+    if args.public_gate_root is None:
+        raise ValueError("r10_compiler_revision_public_gate_evidence_required")
+    public_gate_evidence = _load_public_gate_evidence(
+        root=args.public_gate_root, image=args.image, image_sha256=args.image_sha256,
+    )
+    scope = _scope(
+        args.run_id, image=args.image, image_sha256=args.image_sha256,
+        public_gate_evidence=public_gate_evidence,
+    ); digest = sha256_json(scope)
     if args.scope_only:
         if args.output_root.exists(): raise FileExistsError("r10_compiler_revision_behavioral_output_exists")
         args.output_root.mkdir(parents=True); _write(args.output_root / "scope.json", scope); print(digest); return
@@ -209,11 +269,6 @@ def main() -> None:
     if not args.output_root.is_dir() or set(path.name for path in args.output_root.iterdir()) != {"scope.json"}: raise FileExistsError("r10_compiler_revision_behavioral_output_invalid")
     _write(args.output_root / "receipt.json", {"scope_sha256": digest, "consumed_at": _now()})
     remote_root = _safe_remote_root(args.host, args.run_id)
-    passed, _ = _record_public_gates(
-        output_root=args.output_root, host=args.host, remote_root=remote_root, image=args.image,
-    )
-    if not passed:
-        return
     records: dict[str, dict[str, Any]] = {task_id: {} for task_id in TASKS}
     for task_id, (task_root, domain, _) in TASKS.items():
         for stack in STACKS:
