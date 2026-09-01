@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -212,22 +213,28 @@ def deploy_and_build(*, release_root: Path, host: str) -> dict:
     )
     factory = manifest["factory_image"]
     evaluation = manifest["eval_image"]
-    remote_command = " && ".join(
+    build_script = " && ".join(
         [
-            f"cd '{remote_release}'",
-            "tar -xzf context.tar.gz",
+            "set -eu",
             (
                 "docker build --platform linux/amd64 "
                 f"--build-arg RELEASE_ID='{release_id}' "
                 f"--build-arg SOURCE_COMMIT='{manifest['source_commit']}' "
-                f"-t '{factory}' -f context/Dockerfile context"
+                f"-t '{factory}' -f context/Dockerfile context > factory-build.log 2>&1"
             ),
             (
                 "docker build --platform linux/amd64 "
                 f"--build-arg FACTORY_IMAGE='{factory}' "
                 f"--build-arg CODEX_VERSION={CODEX_VERSION} --build-arg OPENCODE_VERSION={OPENCODE_VERSION} "
-                f"-t '{evaluation}' -f context/Dockerfile.agent-eval context"
+                f"-t '{evaluation}' -f context/Dockerfile.agent-eval context > eval-build.log 2>&1"
             ),
+        ]
+    )
+    remote_command = " && ".join(
+        [
+            f"cd '{remote_release}'",
+            "tar -xzf context.tar.gz",
+            f"flock -n .build.lock sh -c {shlex.quote(build_script)}",
             "rm -rf context context.tar.gz",
             f"ln -sfn '{remote_release}' '{home}/taskgenerator-deploy/candidate'",
         ]

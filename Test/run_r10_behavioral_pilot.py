@@ -205,7 +205,10 @@ def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str,
     )
     completed = _codex_turn_completed(workspace / "agent.jsonl") if stack.startswith("gpt") else True
     passed = code == 0 and completed and xlsx.valid and docx.valid
-    _write(workspace.parent / "probe_result.json", {"stack_id": stack, "decision": "pass" if passed else "incompatible_stack", "xlsx": xlsx, "docx": docx})
+    _write(workspace.parent / "probe_result.json", {
+        "stack_id": stack, "decision": "pass" if passed else "incompatible_stack",
+        "xlsx": xlsx.model_dump(mode="json"), "docx": docx.model_dump(mode="json"),
+    })
     return passed
 
 

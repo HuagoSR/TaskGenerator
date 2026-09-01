@@ -35,7 +35,7 @@ if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 from run_r10_behavioral_pilot import (
     REMOTE_CODEX_AUTH_DIR, _codex_turn_completed, _remote_command,
-    _remote_script, _scope_sha256, _stage_solver, _write_agent_script,
+    _record_probe, _remote_script, _scope_sha256, _stage_solver, _write_agent_script,
 )
 from r10_local_codex_judge import _redact, local_codex_command
 
@@ -184,6 +184,29 @@ class R10BehavioralTests(unittest.TestCase):
             self.assertFalse(_codex_turn_completed(path))
             path.write_text('{"type":"turn.started"}\n{"type":"turn.completed"}\n', encoding="utf-8")
             self.assertTrue(_codex_turn_completed(path))
+
+    def test_public_probe_persists_delivery_models_as_json(self):
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as root:
+            root_path = Path(root)
+
+            def complete_probe(**kwargs):
+                workspace = kwargs["local"]
+                output = workspace / "deliverable_files"
+                (output / "probe.xlsx").write_bytes(workbook_bytes("probe"))
+                write_docx(output / "probe.docx", "probe")
+                (workspace / "docx_office_opened.txt").write_text("deliverable_files/probe.docx\n", encoding="utf-8")
+                (workspace / "agent.jsonl").write_text('{"type":"turn.completed"}\n', encoding="utf-8")
+                return 0, "", ""
+
+            with patch("run_r10_behavioral_pilot._run_remote", side_effect=complete_probe):
+                self.assertTrue(_record_probe(
+                    output_root=root_path, host="host", remote_root="/remote",
+                    stack="gpt-5.6-sol@chatgpt_codex",
+                ))
+            payload = json.loads((root_path / "public_probes" / "gpt-5.6-sol@chatgpt_codex" / "probe_result.json").read_text(encoding="utf-8"))
+            self.assertTrue(payload["xlsx"]["valid"])
 
     def test_local_judge_command_is_workspace_limited_and_has_no_remote_transport(self):
         workspace = Path("C:/public/r10-workspace")
