@@ -63,7 +63,7 @@ services:
       TASKGEN_ENV_PATH: /run/secrets/provider_env
       TASKGEN_DEEPSEEK_KEY_PATH: /run/secrets/deepseek_api_key
       TASKGEN_EXECUTION_CONCURRENCY: "1"
-      CODEX_HOME: /home/taskgenerator/.codex
+      CODEX_HOME: /run/codex-home
     volumes:
       - ${TASKGEN_RUNS_DIR:?must_set}:/data/runs
       - ${TASKGEN_INPUT_DIR:?must_set}:/data/input:ro
@@ -71,6 +71,7 @@ services:
       - ${TASKGEN_DEEPSEEK_KEY_FILE:?must_set}:/run/secrets/deepseek_api_key:ro
       - ${TASKGEN_EVAL_TUZI_ENV_FILE:?must_set}:/run/secrets/eval_tuzi_env:ro
       - ${TASKGEN_E2B_KEY_FILE:?must_set}:/run/secrets/e2b_api_key:ro
-      # Codex may read its login state, but agent commands must never be able to
-      # refresh or alter the host-side credential.
-      - ${TASKGEN_CODEX_AUTH_FILE:?must_set}:/home/taskgenerator/.codex/auth.json:ro
+      # A dedicated directory contains only auth.json.  It is the sole
+      # read-write credential mount so Codex may refresh its token without
+      # receiving personal configuration, plugins, rules or history.
+      - ${TASKGEN_CODEX_AUTH_DIRECTORY:?must_set}:/run/codex-home

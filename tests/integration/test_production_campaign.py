@@ -193,7 +193,8 @@ class HuagoConeReleaseDefinitionTests(unittest.TestCase):
         self.assertIn("cpus: 2.0", text)
         self.assertIn("/home/taskgenerator/.local:size=134217728", text)
         self.assertIn("/home/taskgenerator/.config:size=67108864", text)
-        self.assertIn("/home/taskgenerator/.codex/auth.json:ro", text)
+        self.assertIn("TASKGEN_CODEX_AUTH_DIRECTORY", text)
+        self.assertIn(":/run/codex-home", text)
 
     def test_release_runner_never_copies_auth_or_secret_into_context(self):
         text = (Path(__file__).parents[2] / "src" / "task_generator" / "cli" / "release.py").read_text(encoding="utf-8")
@@ -201,6 +202,7 @@ class HuagoConeReleaseDefinitionTests(unittest.TestCase):
         self.assertIn('"deepseek-key.txt"', text)
         self.assertIn("never copy the source env file", text)
         self.assertIn("codex_auth_touched\": False", text)
+        self.assertIn("CODEX_AUTH_DIRECTORY_NAME", text)
         self.assertIn("_prune_forbidden_context(taskgenerator)", text)
         self.assertIn("PYTHONPATH=/opt/taskgenerator/src", text)
 

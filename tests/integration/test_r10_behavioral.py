@@ -33,7 +33,10 @@ from task_generator.planning.scenario_task_compiler import (
 TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
-from run_r10_behavioral_pilot import _remote_command, _remote_script, _scope_sha256, _stage_solver, _write_agent_script
+from run_r10_behavioral_pilot import (
+    REMOTE_CODEX_AUTH_DIR, _codex_turn_completed, _remote_command,
+    _remote_script, _scope_sha256, _stage_solver, _write_agent_script,
+)
 from r10_local_codex_judge import _redact, local_codex_command
 
 
@@ -164,12 +167,23 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("--dangerously-bypass-approvals-and-sandbox", gpt)
         self.assertNotIn("--ask-for-approval", gpt)
         self.assertNotIn("--sandbox danger-full-access", gpt)
+        self.assertIn("CODEX_HOME=/run/codex-home", gpt)
 
     def test_remote_transport_uses_mounted_script_without_stdin_or_tty(self):
         command = _remote_command("/remote/workspace", stack="gpt-5.6-sol@chatgpt_codex")
         self.assertIn("/workspace/.r10_agent.sh", command)
         self.assertNotIn("docker run -i", command)
         self.assertNotIn("sh -s", command)
+        self.assertIn(REMOTE_CODEX_AUTH_DIR, command)
+        self.assertIn(":/run/codex-home:rw", command)
+
+    def test_remote_gpt_requires_a_completed_turn_event(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "agent.jsonl"
+            path.write_text('{"type":"turn.started"}\n', encoding="utf-8")
+            self.assertFalse(_codex_turn_completed(path))
+            path.write_text('{"type":"turn.started"}\n{"type":"turn.completed"}\n', encoding="utf-8")
+            self.assertTrue(_codex_turn_completed(path))
 
     def test_local_judge_command_is_workspace_limited_and_has_no_remote_transport(self):
         workspace = Path("C:/public/r10-workspace")

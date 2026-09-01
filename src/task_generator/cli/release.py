@@ -21,6 +21,7 @@ DEFAULT_RW_TASK = ROOT.parent / "rw-task"
 MIN_AVAILABLE_DISK_BYTES = 95 * 1024 * 1024 * 1024
 CODEX_VERSION = "0.149.1"
 OPENCODE_VERSION = "1.17.13"
+CODEX_AUTH_DIRECTORY_NAME = "codex-auth"
 ALLOWED_RW_TASK = ("pyproject.toml", "README.md", "bench_standalone")
 FORBIDDEN_PARTS = {
     ".env",
@@ -189,7 +190,11 @@ def deploy_and_build(*, release_root: Path, host: str) -> dict:
                 f"mkdir -p '{remote_release}'",
                 f"mkdir -p '{home}/taskgenerator-data/runs' '{home}/taskgenerator-data/inputs' '{home}/taskgenerator-data/eval-workspaces'",
                 f"mkdir -p '{home}/taskgenerator-secrets'",
-                f"chmod 700 '{home}/taskgenerator-secrets' '{home}/.codex'",
+                f"chmod 700 '{home}/taskgenerator-secrets'",
+                f"install -d -m 700 '{home}/taskgenerator-secrets/{CODEX_AUTH_DIRECTORY_NAME}'",
+                f"test -r '{home}/.codex/auth.json'",
+                f"cp '{home}/.codex/auth.json' '{home}/taskgenerator-secrets/{CODEX_AUTH_DIRECTORY_NAME}/auth.json'",
+                f"chmod 600 '{home}/taskgenerator-secrets/{CODEX_AUTH_DIRECTORY_NAME}/auth.json'",
                 f"test $(df --output=avail -B1 '{home}' | tail -1) -ge {MIN_AVAILABLE_DISK_BYTES}",
             ]
         ),
@@ -289,7 +294,9 @@ def write_release_env(*, release_root: Path, host: str) -> Path:
         "TASKGEN_PROVIDER_ENV_FILE": f"{home}/taskgenerator-secrets/provider.env",
         "TASKGEN_EVAL_TUZI_ENV_FILE": f"{home}/taskgenerator-secrets/eval_tuzi.env",
         "TASKGEN_E2B_KEY_FILE": f"{home}/taskgenerator-secrets/unused_e2b_key",
-        "TASKGEN_CODEX_AUTH_FILE": f"{home}/.codex/auth.json",
+        # The eval runtime receives this directory (rather than the user's
+        # complete Codex home) as its only authentication mount.
+        "TASKGEN_CODEX_AUTH_DIRECTORY": f"{home}/taskgenerator-secrets/{CODEX_AUTH_DIRECTORY_NAME}",
     }
     path = release_root / "release.env"
     path.write_text("".join(f"{key}={value}\n" for key, value in values.items()), encoding="utf-8")
@@ -351,14 +358,14 @@ def smoke(*, release_root: Path, host: str) -> dict:
         "docker compose --env-file release.env -f compose.yaml run --rm --no-deps "
         "--entrypoint sh offline -lc 'python -c \"import bs4, openai, openpyxl; print(bs4.__version__); print(openai.__version__); print(openpyxl.__version__)\"' && "
         "docker compose --env-file release.env -f compose.yaml run --rm --no-deps "
-        "--entrypoint sh eval -lc 'codex --version && opencode --version'"
+        "--entrypoint sh eval -lc 'codex --version && opencode --version && libreoffice --version'"
     )
     result = ssh(host, command, check=False, timeout=600)
     report = {
         "report_version": "v3.huago_cone_candidate_smoke.1",
         "release_id": release_id,
         "returncode": result.returncode,
-        "passed": result.returncode == 0 and "2.44.0" in result.stdout and f"codex-cli {CODEX_VERSION}" in result.stdout and OPENCODE_VERSION in result.stdout,
+        "passed": result.returncode == 0 and "2.44.0" in result.stdout and f"codex-cli {CODEX_VERSION}" in result.stdout and OPENCODE_VERSION in result.stdout and "25.2.3.2" in result.stdout,
         "stdout": result.stdout,
         "stderr_tail": result.stderr[-4000:],
     }

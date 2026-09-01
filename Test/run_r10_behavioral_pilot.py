@@ -35,6 +35,7 @@ from task_generator.evaluation.r10_behavioral import (
     sha256_file,
     sha256_json,
 )
+from task_generator.evaluation.codex_solver import parse_codex_jsonl
 from task_generator.planning.scenario_task_compiler import (
     TaskCompilationOutputV1,
     TaskSpecificRubricV1,
@@ -44,6 +45,8 @@ from run_r10_skill_compiler import IMAGE, _run, _ssh
 
 IMAGE_SHA256 = "02b79e7f6c1b9966918fc986c7624f50c2f45c6e32a5502bc30f65ccd328a722"
 STACKS = ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode")
+REMOTE_HOME = "/home/huagosr"
+REMOTE_CODEX_AUTH_DIR = f"{REMOTE_HOME}/taskgenerator-secrets/codex-auth"
 TASK_ROOTS = {
     "r10_audit_revenue_evidence_reliability": (ROOT / "artifacts/r10/r10_6_task_compilation_20260831_execute3/tasks/r10_audit_revenue_evidence_reliability", "audit_compliance"),
     "r10_procurement_price_reasonableness": (ROOT / "artifacts/r10/r10_6_task_compilation_20260831_execute3/tasks/r10_procurement_price_reasonableness", "procurement_operations"),
@@ -82,10 +85,9 @@ def _scope_sha256(scope: R10BehavioralScopeV1) -> str:
 
 
 def _safe_remote_root(host: str, run_id: str) -> str:
-    home = _ssh(host, 'printf %s "$HOME"', timeout=120).stdout.strip()
-    if not home or any(token in run_id for token in ("/", "\\", "..")):
+    if any(token in run_id for token in ("/", "\\", "..")):
         raise ValueError("r10_behavioral_remote_root_invalid")
-    return f"{home}/taskgenerator-data/r10-behavioral/{run_id}"
+    return f"{REMOTE_HOME}/taskgenerator-data/r10-behavioral/{run_id}"
 
 
 def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
@@ -102,12 +104,11 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
         "opencode run --format json --model deepseek/deepseek-v4-pro --auto --dir /workspace "
         "\"$(cat TASK.md)\" > agent.jsonl 2> stderr.txt"
     )
-    mounts = '-v "$auth_file:/run/codex-auth/auth.json:ro"'
-    if not stack.startswith("gpt"):
-        mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
     inner = [
-        "set -eu", "mkdir -p .codex", "ln -sf /run/codex-auth/auth.json .codex/auth.json",
-        "trap 'rm -rf /workspace/.codex' EXIT", "export HOME=/tmp", "export CODEX_HOME=/workspace/.codex", agent_command,
+        # CODEX_HOME is a dedicated, server-owned directory containing only
+        # auth.json.  It is deliberately outside the candidate workspace and
+        # mounted read-write solely to permit Codex token refresh.
+        "set -eu", "export HOME=/tmp", "export CODEX_HOME=/run/codex-home", agent_command,
     ]
     if not grade:
         inner.extend([
@@ -118,15 +119,13 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
 
 
 def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
-    mounts = '-v "$auth_file:/run/codex-auth/auth.json:ro"'
+    mounts = '-v "$auth_dir:/run/codex-home:rw"'
     if not stack.startswith("gpt"):
         mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
-    preflight = 'test -r "$auth_file"'
-    if not stack.startswith("gpt"):
-        preflight += '; test -r "$deepseek_file"'
     return (
-        'set -u; workspace=' + repr(remote) + '; auth_file="$HOME/.codex/auth.json"; '
-        'deepseek_file="$HOME/taskgenerator-secrets/deepseek_api_key"; ' + preflight + '; cd "$workspace"; '
+        'set -u; workspace=' + repr(remote) + '; auth_dir=' + repr(REMOTE_CODEX_AUTH_DIR) + '; '
+        'deepseek_file=' + repr(f"{REMOTE_HOME}/taskgenerator-secrets/deepseek_api_key") + '; '
+        'test -r "$auth_dir/auth.json"; ' + ("test -r \"$deepseek_file\"; " if not stack.startswith("gpt") else "") + 'cd "$workspace"; '
         'timeout --preserve-status 1800 docker run --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
         '--user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
@@ -186,6 +185,14 @@ def _is_infrastructure(returncode: int, stderr: str) -> bool:
     return returncode == 124 or any(marker in lowered for marker in INFRA_MARKERS)
 
 
+def _codex_turn_completed(path: Path) -> bool:
+    """Require a terminal Codex event, not merely an exiting container."""
+    if not path.is_file():
+        return False
+    diagnostics = parse_codex_jsonl(path.read_text(encoding="utf-8", errors="replace"))
+    return diagnostics.invalid_line_count == 0 and "turn.completed" in diagnostics.event_types
+
+
 def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str, image: str = IMAGE) -> bool:
     workspace = output_root / "public_probes" / stack / "workspace"
     _public_probe_workspace(workspace)
@@ -196,7 +203,8 @@ def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str,
         workspace, expected="deliverable_files/probe.docx", input_hashes=set(),
         verify_docx_with_office=False, office_openable_override=_remote_docx_opened(workspace, "deliverable_files/probe.docx"),
     )
-    passed = code == 0 and xlsx.valid and docx.valid
+    completed = _codex_turn_completed(workspace / "agent.jsonl") if stack.startswith("gpt") else True
+    passed = code == 0 and completed and xlsx.valid and docx.valid
     _write(workspace.parent / "probe_result.json", {"stack_id": stack, "decision": "pass" if passed else "incompatible_stack", "xlsx": xlsx, "docx": docx})
     return passed
 
@@ -223,10 +231,11 @@ def _execute_solver(*, host: str, remote_root: str, output_root: Path, binding, 
         workspace, expected=binding.expected_delivery, input_hashes=_input_hashes(workspace),
         verify_docx_with_office=False, office_openable_override=_remote_docx_opened(workspace, binding.expected_delivery),
     )
-    if code == 0 and delivery.valid:
+    completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if stack.startswith("gpt") else True
+    if code == 0 and completed_turn and delivery.valid:
         status, failure = "completed", None
-    elif _is_infrastructure(code, stderr_path.read_text(encoding="utf-8", errors="replace")):
-        status, failure = "infrastructure_failed", "provider_or_runtime_failure"
+    elif _is_infrastructure(code, stderr_path.read_text(encoding="utf-8", errors="replace")) or (stack.startswith("gpt") and not completed_turn):
+        status, failure = "infrastructure_failed", "provider_or_runtime_failure" if completed_turn else "codex_turn_not_completed"
     else:
         status, failure = "task_failed", delivery.first_failure or f"agent_exit:{code}"
     outcome = R10SolverOutcomeV1(task_id=binding.task_id, solver_id=stack, status=status, returncode=code, timed_out=code == 124, duration_seconds=duration, stdout_sha256=sha256_file(stdout_path), stderr_sha256=sha256_file(stderr_path), delivery=delivery, first_failure=failure)
@@ -287,7 +296,8 @@ def _execute_judge(*, host: str, remote_root: str, output_root: Path, task_root:
             if candidate:
                 raw.write_text(candidate, encoding="utf-8")
         raw_paths.append(str(raw))
-        if code != 0 and _is_infrastructure(code, stderr):
+        completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if judge.startswith("gpt") else True
+        if (code != 0 and _is_infrastructure(code, stderr)) or (judge.startswith("gpt") and not completed_turn):
             return {"status": "infrastructure_failed", "first_failure": "provider_or_runtime_failure", "raw_paths": raw_paths}
         try:
             draft = R10JudgeDraftV1.model_validate_json(raw.read_text(encoding="utf-8"))
