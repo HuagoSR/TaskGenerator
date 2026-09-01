@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -39,8 +40,21 @@ def _write(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _source_commit() -> str:
+    """Use Git on a developer checkout and immutable build metadata in images."""
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True,
+    )
+    if result.returncode == 0 and len(result.stdout.strip()) == 40:
+        return result.stdout.strip()
+    commit = os.environ.get("TASKGEN_SOURCE_COMMIT", "")
+    if len(commit) == 40 and all(character in "0123456789abcdef" for character in commit):
+        return commit
+    raise RuntimeError("r10_compiler_revision_source_commit_unavailable")
+
+
 def _scope(run_id: str, *, image: str, image_sha256: str) -> dict[str, Any]:
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True).stdout.strip()
+    commit = _source_commit()
     bindings = []
     for task_id, (root, domain, old_classification) in TASKS.items():
         binding = binding_from_task(root, domain=domain)
