@@ -44,9 +44,16 @@ from run_r10_skill_compiler import IMAGE, _run, _ssh
 
 
 IMAGE_SHA256 = "02b79e7f6c1b9966918fc986c7624f50c2f45c6e32a5502bc30f65ccd328a722"
-STACKS = ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode")
+CHATGPT_CODEX_STACK = "gpt-5.6-sol@chatgpt_codex"
+TUZI_CODEX_STACK = "gpt-5.6-sol@tuzi_codex"
+DEEPSEEK_OPENCODE_STACK = "deepseek-v4-pro@official_opencode"
+# The four-task historical pilot remains pinned to this pair.  New campaigns
+# must opt into Tuzi explicitly rather than rewriting its stack identity.
+STACKS = (CHATGPT_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
+SUPPORTED_STACKS = (CHATGPT_CODEX_STACK, TUZI_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
 REMOTE_HOME = "/home/huagosr"
 REMOTE_CODEX_AUTH_DIR = f"{REMOTE_HOME}/taskgenerator-secrets/codex-auth"
+REMOTE_TUZI_ENV_FILE = f"{REMOTE_HOME}/taskgenerator-secrets/eval_tuzi.env"
 TASK_ROOTS = {
     "r10_audit_revenue_evidence_reliability": (ROOT / "artifacts/r10/r10_6_task_compilation_20260831_execute3/tasks/r10_audit_revenue_evidence_reliability", "audit_compliance"),
     "r10_procurement_price_reasonableness": (ROOT / "artifacts/r10/r10_6_task_compilation_20260831_execute3/tasks/r10_procurement_price_reasonableness", "procurement_operations"),
@@ -90,16 +97,27 @@ def _safe_remote_root(host: str, run_id: str) -> str:
     return f"{REMOTE_HOME}/taskgenerator-data/r10-behavioral/{run_id}"
 
 
+def _is_tuzi_codex(stack: str) -> bool:
+    return stack == TUZI_CODEX_STACK
+
+
+def _is_codex_stack(stack: str) -> bool:
+    return stack in (CHATGPT_CODEX_STACK, TUZI_CODEX_STACK)
+
+
 def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
-    if stack not in STACKS:
+    if stack not in SUPPORTED_STACKS:
         raise ValueError("r10_behavioral_unknown_stack")
-    agent_command = (
+    codex_command = (
         "codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol -c project_doc_max_bytes=0 -c agents.enabled=false "
         "--disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral "
-        "--ignore-user-config --ignore-rules --skip-git-repo-check "
+        + ("--ignore-rules --skip-git-repo-check " if _is_tuzi_codex(stack) else "--ignore-user-config --ignore-rules --skip-git-repo-check ")
         + ("--output-schema /workspace/grade_schema.json --output-last-message /workspace/grade.raw.json " if grade else "")
         + "-C /workspace - < TASK.md > agent.jsonl 2> stderr.txt"
-        if stack.startswith("gpt")
+    )
+    agent_command = (
+        codex_command
+        if _is_codex_stack(stack)
         else "export DEEPSEEK_API_KEY=\"$(cat /run/secrets/deepseek_api_key)\"; "
         "opencode run --format json --model deepseek/deepseek-v4-pro --auto --dir /workspace "
         "\"$(cat TASK.md)\" > agent.jsonl 2> stderr.txt"
@@ -114,8 +132,20 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
         "set -eu", "export HOME=/tmp", "export CODEX_HOME=/run/codex-home",
         "export PIP_TARGET=/tmp/r10-pylibs", "export PYTHONPATH=/tmp/r10-pylibs",
         "export PIP_CACHE_DIR=/tmp/r10-pip-cache", "export PYTHONUSERBASE=/tmp/r10-pyuser",
-        agent_command,
     ]
+    if _is_tuzi_codex(stack):
+        inner.extend([
+            "set -a; . /run/secrets/eval_tuzi_env; set +a",
+            "mkdir -p /tmp/r10-codex-home",
+            "printf '%s\\n' 'model = \"gpt-5.6-sol\"' 'model_provider = \"tuzi\"' > /tmp/r10-codex-home/config.toml",
+            "printf '%s\\n' '[model_providers.tuzi]' 'name = \"Tuzi OpenAI-compatible\"' >> /tmp/r10-codex-home/config.toml",
+            "printf 'base_url = \"%s\"\\n' \"$TUZI_BASE_URL\" >> /tmp/r10-codex-home/config.toml",
+            "printf '%s\\n' 'env_key = \"TUZI_API_KEY\"' 'wire_api = \"responses\"' 'request_max_retries = 0' 'stream_max_retries = 0' >> /tmp/r10-codex-home/config.toml",
+            "export CODEX_HOME=/tmp/r10-codex-home",
+        ])
+    inner.append(agent_command)
+    if _is_tuzi_codex(stack):
+        inner.append("rm -rf /tmp/r10-codex-home")
     if not grade:
         inner.extend([
             "rm -rf /workspace/.docx_office_check; mkdir -p /workspace/.docx_office_check",
@@ -125,13 +155,18 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
 
 
 def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
-    mounts = '-v "$auth_dir:/run/codex-home:rw"'
-    if not stack.startswith("gpt"):
+    mounts = '-v "$auth_dir:/run/codex-home:rw"' if stack == CHATGPT_CODEX_STACK else ""
+    if _is_tuzi_codex(stack):
+        mounts += ' -v "$tuzi_env_file:/run/secrets/eval_tuzi_env:ro"'
+    if not _is_codex_stack(stack):
         mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
     return (
         'set -u; workspace=' + repr(remote) + '; auth_dir=' + repr(REMOTE_CODEX_AUTH_DIR) + '; '
         'deepseek_file=' + repr(f"{REMOTE_HOME}/taskgenerator-secrets/deepseek_api_key") + '; '
-        'test -r "$auth_dir/auth.json"; ' + ("test -r \"$deepseek_file\"; " if not stack.startswith("gpt") else "") + 'cd "$workspace"; '
+        'tuzi_env_file=' + repr(REMOTE_TUZI_ENV_FILE) + '; '
+        + ('test -r "$auth_dir/auth.json"; ' if stack == CHATGPT_CODEX_STACK else '')
+        + ('test -r "$tuzi_env_file"; ' if _is_tuzi_codex(stack) else '')
+        + ("test -r \"$deepseek_file\"; " if not _is_codex_stack(stack) else "") + 'cd "$workspace"; '
         'timeout --preserve-status 1800 docker run --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
         '--user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
@@ -212,7 +247,7 @@ def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str,
         workspace, expected="deliverable_files/probe.docx", input_hashes=set(),
         verify_docx_with_office=False, office_openable_override=_remote_docx_opened(workspace, "deliverable_files/probe.docx"),
     )
-    completed = _codex_turn_completed(workspace / "agent.jsonl") if stack.startswith("gpt") else True
+    completed = _codex_turn_completed(workspace / "agent.jsonl") if _is_codex_stack(stack) else True
     passed = code == 0 and completed and xlsx.valid and docx.valid
     _write(workspace.parent / "probe_result.json", {
         "stack_id": stack, "decision": "pass" if passed else "incompatible_stack",
@@ -243,10 +278,10 @@ def _execute_solver(*, host: str, remote_root: str, output_root: Path, binding, 
         workspace, expected=binding.expected_delivery, input_hashes=_input_hashes(workspace),
         verify_docx_with_office=False, office_openable_override=_remote_docx_opened(workspace, binding.expected_delivery),
     )
-    completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if stack.startswith("gpt") else True
+    completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if _is_codex_stack(stack) else True
     if code == 0 and completed_turn and delivery.valid:
         status, failure = "completed", None
-    elif _is_infrastructure(code, stderr_path.read_text(encoding="utf-8", errors="replace")) or (stack.startswith("gpt") and not completed_turn):
+    elif _is_infrastructure(code, stderr_path.read_text(encoding="utf-8", errors="replace")) or (_is_codex_stack(stack) and not completed_turn):
         status, failure = "infrastructure_failed", "provider_or_runtime_failure" if completed_turn else "codex_turn_not_completed"
     else:
         status, failure = "task_failed", delivery.first_failure or f"agent_exit:{code}"
@@ -308,8 +343,8 @@ def _execute_judge(*, host: str, remote_root: str, output_root: Path, task_root:
             if candidate:
                 raw.write_text(candidate, encoding="utf-8")
         raw_paths.append(str(raw))
-        completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if judge.startswith("gpt") else True
-        if (code != 0 and _is_infrastructure(code, stderr)) or (judge.startswith("gpt") and not completed_turn):
+        completed_turn = _codex_turn_completed(workspace / "agent.jsonl") if _is_codex_stack(judge) else True
+        if (code != 0 and _is_infrastructure(code, stderr)) or (_is_codex_stack(judge) and not completed_turn):
             return {"status": "infrastructure_failed", "first_failure": "provider_or_runtime_failure", "raw_paths": raw_paths}
         try:
             draft = R10JudgeDraftV1.model_validate_json(raw.read_text(encoding="utf-8"))

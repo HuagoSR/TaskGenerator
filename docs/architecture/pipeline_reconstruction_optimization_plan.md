@@ -80,7 +80,7 @@
 
 已从收入证据可靠性与价格合理性两个冻结 Bible 派生两道新版任务。两份 evidence bundle 和任务包均已静态通过，四个旧任务和旧结果保持冻结。用户检查完成后，才可由新的 scope/receipt 启动双 solver、双 judge 行为评测；只有两题均从 `near_tie / saturated` 改善为 `cleanly_discriminative`，才讨论十题 production plan。不扩建 agent 框架、不更换默认 solver、不启动训练或 promotion。
 
-R10.8 的 huago-cone 候选环境完成离线 parity、固定工具 smoke，并修复了 DeepSeek/OpenCode 在公共 DOCX probe 中将临时依赖写入共享 workspace 的回传缺陷；新的 GPT/DeepSeek 双格式 public probe 均通过。随后与正式评分输入同规模的公开复杂 Judge probe 中，DeepSeek/OpenCode 正常完成，而 GPT/Codex 在完整 30 分钟窗口内只写入启动事件、未产生错误、工具或完成事件。该公开基础设施失败使本阶段为 `evaluation_inconclusive`：候选 release 未激活、两道新版私有任务零上传，因而没有 compiler 改良效果结论，也不得生产六道新题或启动十题闭环。
+R10.8 的 huago-cone 候选环境完成离线 parity、固定工具 smoke，并修复了 DeepSeek/OpenCode 在公共 DOCX probe 中将临时依赖写入共享 workspace 的回传缺陷。ChatGPT/Codex 的复杂 public Judge probe 仍在 30 分钟内仅产生启动事件；该历史失败保持冻结。下一条受限恢复路径是独立的 `gpt-5.6-sol@tuzi_codex`：Codex 使用临时 `CODEX_HOME` provider 配置和 `wire_api=responses`，Tuzi key 仅进单次容器进程。先通过双格式与复杂 Judge public probe；任一失败时零私有上传并维持 `evaluation_inconclusive`。成功后才可与 DeepSeek/OpenCode 从头验证两道新版任务。
 
 ## Acceptance Metrics
 

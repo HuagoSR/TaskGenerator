@@ -31,6 +31,7 @@ from task_generator.planning.scenario_task_compiler import (
 
 SolverStackId = Literal[
     "gpt-5.6-sol@chatgpt_codex",
+    "gpt-5.6-sol@tuzi_codex",
     "deepseek-v4-pro@official_opencode",
 ]
 JudgeId = SolverStackId

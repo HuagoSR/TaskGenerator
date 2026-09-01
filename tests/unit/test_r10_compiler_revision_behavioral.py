@@ -18,6 +18,13 @@ def completed(score: float, *, major: bool = False) -> dict:
 
 
 class R10CompilerRevisionBehavioralTests(unittest.TestCase):
+    def test_revision_campaign_uses_a_distinct_tuzi_codex_stack(self):
+        self.assertEqual(RUNNER.STACKS, ("gpt-5.6-sol@tuzi_codex", "deepseek-v4-pro@official_opencode"))
+        scope = RUNNER._scope("tuzi-revision", image="image", image_sha256="a" * 64)
+        self.assertEqual(scope["gpt_environment"]["transport"], "tuzi_codex")
+        self.assertEqual(scope["gpt_environment"]["provider"], "tuzi")
+        self.assertTrue(scope["complex_judge_probe_required"])
+
     def test_two_clean_differences_support_revision(self):
         records = {
             task_id: {

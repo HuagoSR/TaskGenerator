@@ -34,7 +34,7 @@ TEST_ROOT = Path(__file__).resolve().parents[2] / "Test"
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 from run_r10_behavioral_pilot import (
-    REMOTE_CODEX_AUTH_DIR, _codex_turn_completed, _remote_command,
+    REMOTE_CODEX_AUTH_DIR, REMOTE_TUZI_ENV_FILE, TUZI_CODEX_STACK, _codex_turn_completed, _remote_command,
     _record_probe, _remote_script, _scope_sha256, _stage_solver, _write_agent_script,
 )
 from r10_local_codex_judge import _redact, local_codex_command
@@ -170,6 +170,31 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("CODEX_HOME=/run/codex-home", gpt)
         self.assertIn("PIP_TARGET=/tmp/r10-pylibs", deepseek)
         self.assertIn("PYTHONPATH=/tmp/r10-pylibs", deepseek)
+
+    def test_tuzi_codex_uses_ephemeral_responses_provider_without_chatgpt_auth(self):
+        script = _remote_script("/tmp/work", stack=TUZI_CODEX_STACK, grade=True)
+        command = _remote_command("/remote/workspace", stack=TUZI_CODEX_STACK)
+        self.assertIn("model_provider = \"tuzi\"", script)
+        self.assertIn("wire_api = \"responses\"", script)
+        self.assertIn("request_max_retries = 0", script)
+        self.assertIn("stream_max_retries = 0", script)
+        self.assertIn("TUZI_API_KEY", script)
+        self.assertNotIn("--ignore-user-config", script)
+        self.assertNotIn("auth_dir:/run/codex-home", command)
+        self.assertIn(REMOTE_TUZI_ENV_FILE, command)
+        self.assertIn("eval_tuzi_env:ro", command)
+
+    def test_tuzi_stack_is_a_valid_r10_solver_and_judge_identity(self):
+        bindings = [
+            R10PilotTaskBindingV1(task_id=f"task-{index}", domain="audit_compliance" if index < 2 else "procurement_operations", package_root=f"/task/{index}", package_tree_sha256=f"{index:064x}", candidate_tree_sha256=f"{index + 4:064x}", task_compilation_sha256=f"{index + 8:064x}", deliverable_contract_sha256=f"{index + 12:064x}", expected_delivery="deliverable_files/result.xlsx")
+            for index in range(4)
+        ]
+        scope = R10BehavioralScopeV1(
+            campaign_id="tuzi-campaign", source_commit="a" * 40, image="image", image_sha256="b" * 64,
+            solver_stacks=(TUZI_CODEX_STACK, "deepseek-v4-pro@official_opencode"),
+            judges=(TUZI_CODEX_STACK, "deepseek-v4-pro@official_opencode"), bindings=bindings,
+        )
+        self.assertEqual(scope.solver_stacks[0], TUZI_CODEX_STACK)
 
     def test_remote_transport_uses_mounted_script_without_stdin_or_tty(self):
         command = _remote_command("/remote/workspace", stack="gpt-5.6-sol@chatgpt_codex")

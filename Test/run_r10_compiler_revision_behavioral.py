@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "Test"))
 
 from run_r10_behavioral_pilot import (
-    STACKS, _execute_judge, _execute_solver, _record_probe, _safe_remote_root,
+    DEEPSEEK_OPENCODE_STACK, TUZI_CODEX_STACK, _execute_judge, _execute_solver, _record_probe, _safe_remote_root,
 )
 from task_generator.evaluation.r10_behavioral import binding_from_task, sha256_json
 
@@ -27,6 +27,7 @@ TASKS = {
     "r10r_audit_revenue_evidence_reliability": (ROOT / "artifacts/r10/r10_8b2_compiler_revision_retry3_20260901/tasks/r10r_audit_revenue_evidence_reliability", "audit_compliance", "near_tie"),
     "r10r_procurement_price_reasonableness": (ROOT / "artifacts/r10/r10_8b2_compiler_revision_retry3_20260901/tasks/r10r_procurement_price_reasonableness", "procurement_operations", "saturated"),
 }
+STACKS = (TUZI_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
 
 
 def _now() -> str:
@@ -47,9 +48,10 @@ def _scope(run_id: str, *, image: str, image_sha256: str) -> dict[str, Any]:
     return {
         "scope_version": "r10.compiler_revision_behavioral_scope.1", "campaign_id": run_id,
         "source_commit": commit, "bindings": bindings,
-        "gpt_environment": {"transport": "huago_codex", "image": image, "image_sha256": image_sha256, "model": "gpt-5.6-sol", "timeout_seconds": 1800},
+        "gpt_environment": {"transport": "tuzi_codex", "provider": "tuzi", "image": image, "image_sha256": image_sha256, "model": "gpt-5.6-sol", "timeout_seconds": 1800},
         "deepseek_environment": {"transport": "huago_opencode", "image": image, "image_sha256": image_sha256, "model": "deepseek-v4-pro", "timeout_seconds": 1800},
-        "public_probe_required": True, "solver_attempt_limit": 1, "judge_format_attempt_limit": 2,
+        "public_probe_required": True, "complex_judge_probe_required": True,
+        "solver_attempt_limit": 1, "judge_format_attempt_limit": 2,
         "excluded_actions": ["task_generation", "candidate_mutation", "release", "training", "promotion"],
         "professional_validity": "provisional",
     }
@@ -59,6 +61,25 @@ def _remote_solver(*, output_root: Path, host: str, remote_root: str, task_id: s
     binding = binding_from_task(task_root, domain=domain)
     outcome = _execute_solver(host=host, remote_root=remote_root, output_root=output_root, binding=binding, stack=stack, image=image)
     return outcome.model_dump(mode="json")
+
+
+def _record_complex_judge_probe(*, output_root: Path, host: str, remote_root: str, image: str) -> bool:
+    """Exercise the exact structured judge path using only public material."""
+    from run_r10_teacher_anchor_regrade import _stage_public_judge_probe
+
+    probe_root = output_root / "public_complex_judge_probe"
+    task_root, delivery = _stage_public_judge_probe(probe_root, complex_input=True)
+    results = {
+        judge: _jsonable(_execute_judge(
+            host=host, remote_root=remote_root, output_root=probe_root,
+            task_root=task_root, task_id="public-probe", delivery=delivery,
+            judge=judge, image=image,
+        ))
+        for judge in STACKS
+    }
+    passed = all(item["status"] == "completed" for item in results.values())
+    _write(probe_root / "result.json", {"decision": "pass" if passed else "incomplete", "results": results})
+    return passed
 
 
 def _score_pair(*, output_root: Path, host: str, remote_root: str, solver: str, task_id: str, task_root: Path, delivery: Path, image: str) -> dict[str, Any]:
@@ -135,6 +156,8 @@ def main() -> None:
         for stack in STACKS
     }
     if not all(probes.values()): _write(args.output_root / "result.json", {"decision": "incomplete", "reason": "public_probe_failed", "probes": probes}); return
+    if not _record_complex_judge_probe(output_root=args.output_root, host=args.host, remote_root=remote_root, image=args.image):
+        _write(args.output_root / "result.json", {"decision": "incomplete", "reason": "public_complex_judge_probe_failed", "probes": probes}); return
     records: dict[str, dict[str, Any]] = {task_id: {} for task_id in TASKS}
     for task_id, (task_root, domain, _) in TASKS.items():
         for stack in STACKS:

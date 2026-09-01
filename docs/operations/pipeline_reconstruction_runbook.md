@@ -55,7 +55,7 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前停止点：R10.8B-2 的两道新版任务已完成用户检查。huago-cone 候选 release 已完成离线只读 parity、Codex/OpenCode/LibreOffice/openpyxl smoke，且修复后的 GPT/DeepSeek 双格式公开 probe 均通过。随后新版公开复杂 Judge probe 的 DeepSeek 栈通过，但 GPT/Codex 在 30 分钟硬超时内只有启动事件；没有私有 task 或 teacher 输入上传。候选 release 未激活，R10.8 记为 `evaluation_inconclusive`；不得混入旧 Solver、旧 receipt 或旧 Judge 结果，也不得继续十题扩展。
+当前执行点：R10.8B-2 的两道新版任务已完成用户检查。ChatGPT/Codex 的公开复杂 Judge probe 在 30 分钟内只有启动事件，失败记录保持冻结；没有私有 task 或 teacher 输入上传。下一轮仅验证独立 `gpt-5.6-sol@tuzi_codex`：临时 Codex home 中配置 Tuzi Responses provider，key 仅注入容器进程。双格式或复杂 public probe 任一失败即停止且零私有上传；两者都通过后才生成新的两题 scope/receipt。旧 Solver、旧 receipt 或旧 Judge 结果不得混入。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
