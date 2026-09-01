@@ -42,10 +42,13 @@ def _write(path: Path, value: Any) -> None:
 
 def _source_commit() -> str:
     """Use Git on a developer checkout and immutable build metadata in images."""
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True,
-    )
-    if result.returncode == 0 and len(result.stdout.strip()) == 40:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True,
+        )
+    except FileNotFoundError:
+        result = None
+    if result is not None and result.returncode == 0 and len(result.stdout.strip()) == 40:
         return result.stdout.strip()
     commit = os.environ.get("TASKGEN_SOURCE_COMMIT", "")
     if len(commit) == 40 and all(character in "0123456789abcdef" for character in commit):

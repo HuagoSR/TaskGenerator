@@ -58,8 +58,7 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
         self.assertEqual(set(probes), set(RUNNER.STACKS))
 
     def test_scope_uses_immutable_build_metadata_when_git_is_unavailable(self):
-        completed_process = __import__("subprocess").CompletedProcess(["git"], 1, "", "missing")
-        with patch.object(RUNNER.subprocess, "run", return_value=completed_process), patch.dict(RUNNER.os.environ, {"TASKGEN_SOURCE_COMMIT": "b" * 40}, clear=False):
+        with patch.object(RUNNER.subprocess, "run", side_effect=FileNotFoundError), patch.dict(RUNNER.os.environ, {"TASKGEN_SOURCE_COMMIT": "b" * 40}, clear=False):
             self.assertEqual(RUNNER._source_commit(), "b" * 40)
 
 
