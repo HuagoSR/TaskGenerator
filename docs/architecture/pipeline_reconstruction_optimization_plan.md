@@ -82,6 +82,8 @@
 
 全新的私有 campaign 没有复用任何旧答案或 receipt。收入题两模型复合分均为 0.875，仍是 `near_tie`；价格题的 Tuzi Codex 会话因 provider 路由达到 in-flight request budget 而断流，未产生有效 DOCX，DeepSeek 结果不能单独构成双模型比较。因此阶段结论为 `incomplete`，而非 compiler 改良成功或失败。已开始的会话不得重跑，本轮不继续六题生产和十题评测。
 
+其后按独立计划停止 Tuzi，新增官方 `gpt-5.6-sol@chatgpt_codex` transport，并保持历史 scope、答案和评分隔离。实现通过 36/36 定向测试和 225/225 全量回归；服务器仅清理未使用 BuildKit 缓存后恢复到约 109 GiB 可用空间。新的 public-only campaign 中两栈双格式工具探针均通过，DeepSeek复杂 Judge 也完成；官方 Codex复杂 Judge 在 30 分钟内只有启动事件，未产生工具、完成事件或评分文件。公开门据此冻结为 `incomplete`，零私有任务上传；不创建私有 receipt，不恢复六题/十题扩展。
+
 ## Acceptance Metrics
 
 | 维度 | Pilot 要求 |
