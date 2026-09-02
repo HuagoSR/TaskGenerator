@@ -7,7 +7,7 @@
 
 将 TaskGenerator 从“Skill + Motif 驱动的任务包生成器”重构为“公开工作种子驱动、由 Agent-native 专业 Skill 辅助的职业情景编译器”。目标不是增加文件数量，而是稳定生成具有业务因果、自然信息不完整性、职业交付物和模型区分度的多文件任务。
 
-R10.8 已以 `evaluator_revision_required` 结束。当前 R10.9 范围固定为四道 matched task：审计与采购各一个新基础工作世界，并分别派生普通版和职业对抗强化版。所有 Work Seed 与专业难度只使用公开、可追溯材料；用户已授权本 campaign 的服务器和第三方模型上传，执行仍须落盘独立 scope/receipt。
+R10.8 与 R10.9 均以 `evaluator_revision_required` 结束。当前 R10.10 冻结全部历史任务和交付，先验证 evaluator 的 rubric 粒度、重大错误边界、位置效应与模型/Agent 栈差异，再决定是否恢复 World-First 难度实验。
 
 ## Design Principles
 
@@ -100,6 +100,16 @@ R10.9 不再先写答案再组织证据。它复用“公司自产信息可靠�
 
 实际执行中，四个工作世界、Task Mining、Truth 重建/审计和三档 Judge 校准全部通过，两种 Solver 形成 8/8 有效交付。正式 paired review 的四题却全部为 `judge_ambiguous`：部分题的优胜方向相反，且 GPT Judge 多次判定 DeepSeek 交付存在重大错误，而 DeepSeek Judge 不认同。聚合器已修正为优先把此类边界不稳归为 `evaluator_revision_required`，不得误写为 `not_supported`。下一阶段若继续研究，应先验证灰区判断的 evaluator 稳定性；不得通过重评、改题或扩十题掩盖该结果。
 
+### R10.10 — Evaluator V2 and GDPval calibration — `active / not_implemented`
+
+R10.10 先创建不覆盖历史 rubric 的 campaign-scoped evaluator profile，把客观事实、专业判断和成果质量分层，并将重大错误写成有必要条件、证据与业务后果的独立规则。冻结 R10.9 的两道 baseline 任务作为开发集、两道 adversarial 任务作为留出集；开发集最多迭代三个 evaluator 版本，留出集只运行一次。
+
+R10 配对使用匿名 A/B 与 B/A 换序。主要 Judge 为 GPT-5.6 Terra `medium` 与 DeepSeek V4 Pro `max`；仍冲突时才使用 GPT-5.6 Luna `medium`。任何模型自报总分均由程序按冻结权重重算，position instability 与 major-error disagreement 分别报告。
+
+随后使用 12 道公开 GDPval Gold 任务做方向性排名校准。Solver 主矩阵固定为 GPT-5.6 Sol `none`、DeepSeek V4 Pro `max`、DeepSeek V4 Flash `high`；Luna `medium` 只在预设证据不足条件下整批启用。Gemini 不进入必需链，Tuzi 只能形成独立 transport campaign。该校准不复制 GDPval 内容进生成链，也不宣称复刻 Artificial Analysis 的绝对 Elo。
+
+只有换序稳定、重大错误边界无重复冲突、GDPval 至少三个 Solver 各完成 10/12，且模型排序方向与冻结的 GDPval-AA 公开排序大体一致时，才输出 `evaluator_validated`。否则分别记录 `evaluator_improved_but_partial`、`r10_rubric_revision_required`、`evaluator_not_validated` 或 `evaluation_incomplete`。
+
 ## Acceptance Metrics
 
 | 维度 | Pilot 要求 |
@@ -116,5 +126,5 @@ R10.9 不再先写答案再组织证据。它复用“公司自产信息可靠�
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10 已生成并静态/行为验收四道 Scenario-First pilot 任务，并完成两道 compiler-revision 行为实验；它们保持冻结，不得为提高区分度手改。R10.9 仅使用公开 Seed/Rules 重新造世界。所有历史失败 cohort 保持冻结且不与新实验混合；R10 尚未激活 release、改变历史 registry 或开始训练。
+- R10 已生成多批静态通过任务并完成 R10.9 World-First 行为实验；它们保持冻结，不得为提高区分度手改。R10.10 只读取历史任务和交付进行 evaluator 校准。所有历史失败 cohort 保持冻结且不与新实验混合；R10 尚未激活 release、改变历史 registry 或开始训练。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。

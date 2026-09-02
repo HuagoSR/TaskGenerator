@@ -23,6 +23,7 @@
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
 | R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
 | R10.9 World-First pilot | `completed / evaluator_revision_required` | 四个 matched 世界与任务、Truth audit、三档校准和 8/8 Solver 交付完整；四题 paired review 均因偏好或 major-error 边界不一致而为 `judge_ambiguous`。 |
+| R10.10 Evaluator V2 | `proposed / active` | 冻结 R10.9 任务与交付，分离客观事实、专业判断、成果质量和重大错误，通过换序配对、开发/留出隔离与公开 GDPval Gold 子集验证评分稳定性。 |
 
 ## Stable Implemented Contracts
 
@@ -107,6 +108,16 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `WorldFirstPilotManifestV1` — `implemented / R10.9`：仅记录四个 matched case 的阶段状态、输入输出 SHA、Agent/环境身份、首次失败与结论；不是新的业务对象本体。
 - `ProfessionDifficultyPlanV1` — `implemented / R10.9`：记录职业原因、业务事件、候选证据影响、针对的捷径、来源、公平性与可解性。每个强化世界最多选择两项。
 - `PairedJudgeReviewV1` — `implemented / R10.9`：同一 Judge 在一次盲审中逐判断点评价两份匿名 Solver 交付，并给出偏好/平局及重大错误；程序仍按冻结权重重算分数。
+
+## R10.10 Evaluator Contracts — proposed / not implemented
+
+- `EvaluatorProfileV2`：campaign-scoped 评分视图。它引用冻结任务、Teacher Truth、Decision Matrix 与原 rubric，不覆盖历史产物；criterion 只分为 `objective_fact | professional_judgment | deliverable_quality`。
+- `AtomicCriterionV2`：记录 criterion ID、冻结权重、`met / partial / not_met` 边界、证据引用和 `deterministic | llm_judge` 检查方式。可计算事实必须优先由程序验证。
+- `MajorErrorRuleV2`：记录 error ID、必要触发事实、所需证据、影响判断点和业务后果。只有确定性触发或稳定 Judge 多数对同一 ID 达成一致时，才形成 confirmed major defect。
+- `CounterbalancedPairReviewV2`：记录匿名 bundle、展示顺序、逐项评价、重大错误和 pair preference。A/B 与 B/A 必须映射回同一语义结果，位置不稳定单独报告。
+- `EvaluatorCalibrationResultV1`：分别报告 R10 开发/留出结果、GDPval 排名方向、Judge 一致率、position instability、legacy baseline 和证据上限。
+
+开发集最多允许三个 evaluator profile 版本；留出集只执行一次。任何 profile 变更都不得修改任务、Teacher Truth、原始 rubric、Solver 交付或专业事实。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。

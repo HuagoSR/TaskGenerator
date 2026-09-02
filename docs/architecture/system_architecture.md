@@ -20,7 +20,7 @@
 
 R9/R7 证明了工程闭环可运行，但不能证明自动任务具备职业真实性。R7 从零复验的 5/10 provider freeze 是历史诊断，不得继续或拼接。
 
-## R10.9 World-First / Task-Mining 目标架构
+## R10.9 World-First / Task-Mining 已实现架构
 
 ```text
 公开 Work Seed、Rules 与专业来源
@@ -66,6 +66,26 @@ Task Miner 只读取候选材料和公开角色/触发背景，不读取 world l
 
 静态门禁只检查来源追溯、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。文件与记录规模、正常背景比例和多 motif 覆盖作为质量指导，由用户审阅和行为实验检验，而不再驱动新的复杂本体。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
 
+## R10.10 Evaluator V2 目标架构
+
+```text
+冻结任务、Teacher Truth、rubric 与 Solver 交付
+        ↓
+客观事实 / 专业判断 / 成果质量分层
+        ↓
+独立、证据绑定的 major-error triggers
+        ↓
+匿名 A/B 与 B/A 配对审阅
+        ↓
+原子得分 + panel preference + 不确定性
+        ↓
+R10 留出验证与公开 GDPval Gold 排名校准
+```
+
+Evaluator V2 不重写 R10.9 的任务监督。它创建 campaign-scoped profile，把可计算事实交给程序，将职业灰区交给 Judge，并把重大错误从普通扣分中分离。配对结论必须在交换展示顺序后保持语义一致；Judge 分歧作为不确定性证据保存，而不是强制平均成一个看似精确的分数。
+
+GDPval 校准只验证评分协议和相对排序，不把公开题目、rubric 或 Gold 交付物送入生成链。Solver 的模型、provider、Agent 和推理强度都作为栈身份记录，避免将实用栈结果误称为纯模型能力。
+
 ## Skill 与 Motif 的新职责
 
 | 对象 | R10 职责 | 不再承担的职责 |
@@ -81,4 +101,4 @@ Task Miner 只读取候选材料和公开角色/触发背景，不读取 world l
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.8 合同与证据继续只读保留。R10.9 的 World-First manifest、职业难度计划、paired Judge review 和薄型 campaign runner 已完整执行：4/4 静态任务、4/4 三档 Judge 校准及 8/8 Solver 交付通过，但四题正式 paired review 全部出现 Judge 偏好或 major-error 边界歧义。结论为 `evaluator_revision_required`；当前不得扩大到十题或将候选难度指导提升进正式 Skill。
+- 已实现的 R10.0–R10.9 合同与证据继续只读保留。R10.9 的 4/4 静态任务、4/4 三档 Judge 校准及 8/8 Solver 交付通过，但正式 paired review 全部出现 Judge 偏好或 major-error 边界歧义。R10.10 只允许建立新的 evaluator profile 和校准 campaign；不得借此手改历史任务、交付或评分，也不得提前扩大到十题。

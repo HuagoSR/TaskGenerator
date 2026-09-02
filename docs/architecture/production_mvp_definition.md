@@ -40,6 +40,8 @@ R10.0–R10.8 已产生四道用户验收任务、两道 compiler-revision 任�
 
 R10.9 已证明 World-First 链可以产出四个静态通过且被两种 Solver 完成的任务，但正式 paired review 的 Judge 边界不稳定，未满足扩展条件。十题 production cohort 继续关闭；R10.9 不改变 R9 服务器发布器，也不授权训练、public release 或 promotion。
 
+R10.10 是 evaluator 校准而非生产扩展。它只能读取冻结 R10.9 任务与交付，并可使用公开 GDPval Gold 子集建立评分证据。`evaluator_validated` 之前，任何新 World-First 任务、十题 cohort、Skill promotion 或生产 release 都不具备准入资格。
+
 ## Non-Goals
 
 - 不把静态 quality score、LLM proxy 或单个模型结果解释为专家有效性。

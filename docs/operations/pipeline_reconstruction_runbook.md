@@ -68,6 +68,12 @@ R10.9 已冻结并保留：
 
 任何后续工作都不得重跑或手改 R10.9 的 world、task、Solver 交付或 paired review。当前不得扩十题、提升候选难度 Skill、训练或发布；如继续研究，应建立单独的 evaluator 稳定性实验，而不是反复调整同一题直到两位 Judge 一致。
 
+R10.10 已获独立私有上传授权，允许把冻结 R10.9 任务、监督材料和 8 份 Solver 交付上传给指定 Judge。执行顺序固定为：文档提交 → Evaluator V2 实现 → R10 开发集最多三版迭代 → 一次留出验证 → 公开 GDPval Gold 子集校准。不得在查看留出结果后继续调参。
+
+模型执行边界：GPT-5.6 Sol Solver仅使用 `none`；GPT Judge最多 `medium`，优先 Terra；DeepSeek V4 Pro使用 `max`，V4 Flash使用 `high`；Luna `medium` 只能按预设条件整批启用。Gemini 不是必需依赖。Tuzi若被使用，必须先通过公开探针并形成独立 transport campaign，结果不得与官方栈混合。
+
+R10.10 可以在开发集上最多修订三版 evaluator，但每版只能修复一个已结构化归因的共性问题：重大错误边界、展示位置效应或客观/专业得分漂移。不得修改任务、Teacher Truth、原 rubric、Solver交付或专业事实。基础设施/结构错误可同输入补跑一次；低分和结论不理想不能重抽。
+
 ## Closeout
 
 每次 R10 切片结束时，更新《项目概要》中的当前状态，将细节报告写入 `artifacts/`，并在 workstream 关闭后归档其计划。不得把运行记录不断追加到本 runbook。
