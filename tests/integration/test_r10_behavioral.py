@@ -37,6 +37,7 @@ from run_r10_behavioral_pilot import (
     REMOTE_CODEX_AUTH_DIR, REMOTE_TUZI_ENV_FILE, TUZI_CODEX_STACK, _codex_turn_completed, _remote_command,
     _record_probe, _remote_script, _scp_command, _scope_sha256, _stage_solver, _write_agent_script,
 )
+from run_r10_skill_compiler import _ssh
 from r10_local_codex_judge import _redact, local_codex_command
 
 
@@ -214,6 +215,18 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("ConnectTimeout=30", command)
         self.assertIn("ServerAliveInterval=15", command)
         self.assertIn("ServerAliveCountMax=2", command)
+
+    def test_remote_ssh_transport_uses_keepalive_for_quiet_agent_runs(self):
+        from unittest.mock import patch
+
+        with patch("run_r10_skill_compiler._run") as run:
+            _ssh("huago-cone", "true", timeout=9)
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], "ssh")
+        self.assertIn("BatchMode=yes", command)
+        self.assertIn("ConnectTimeout=30", command)
+        self.assertIn("ServerAliveInterval=15", command)
+        self.assertIn("ServerAliveCountMax=4", command)
 
     def test_remote_gpt_requires_a_completed_turn_event(self):
         with tempfile.TemporaryDirectory() as root:

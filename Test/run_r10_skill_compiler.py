@@ -34,7 +34,14 @@ def _run(command: list[str], *, input_text: str | None = None, timeout: int = 19
 
 
 def _ssh(host: str, command: str, *, input_text: str | None = None, timeout: int = 1900, check: bool = True):
-    return _run(["ssh", "-o", "BatchMode=yes", host, command], input_text=input_text, timeout=timeout, check=check)
+    # Remote containers can run quietly for several minutes.  Keep the control
+    # channel alive so an intermediary idle timeout cannot orphan the agent
+    # while the controller incorrectly records a transport failure.
+    return _run([
+        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=30",
+        "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4",
+        host, command,
+    ], input_text=input_text, timeout=timeout, check=check)
 
 
 def _remote_script(workspace: str) -> str:
