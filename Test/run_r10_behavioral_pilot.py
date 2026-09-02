@@ -243,6 +243,37 @@ def _scp(source: str, destination: str, *, timeout: int = 120):
     return _run(_scp_command(source, destination), timeout=timeout, check=False)
 
 
+def _remote_return_command(remote: str) -> str:
+    """Build the allowlisted return tree after an orphaned SSH control channel."""
+    return (
+        'workspace=' + repr(remote) + '; cd "$workspace"; '
+        'rm -rf .r10_return; mkdir -p .r10_return; '
+        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json; do '
+        '[ -f "$item" ] && cp -L "$item" .r10_return/ || true; done; '
+        'for item in deliverable_files .docx_office_check; do '
+        '[ -d "$item" ] || continue; mkdir -p ".r10_return/$item"; cp -aL "$item/." ".r10_return/$item/"; done'
+    )
+
+
+def _recover_terminal_return(host: str, remote: str) -> bool:
+    """Recover completed evidence when SSH detached before Docker cleanup.
+
+    The model process is never restarted.  Recovery is allowed only after a
+    terminal Codex/OpenCode event is already present in the remote JSONL.
+    """
+    terminal = _ssh(
+        host,
+        'test -f ' + repr(f"{remote}/agent.jsonl") + ' && tail -n 20 '
+        + repr(f"{remote}/agent.jsonl")
+        + " | grep -Eq '\"turn.completed\"|\"reason\":\"stop\"'",
+        timeout=60, check=False,
+    )
+    if terminal.returncode != 0:
+        return False
+    finalized = _ssh(host, _remote_return_command(remote), timeout=120, check=False)
+    return finalized.returncode == 0
+
+
 def _run_remote(
     *, host: str, remote: str, local: Path, stack: str, grade: bool = False,
     image: str = IMAGE, codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR,
@@ -274,6 +305,8 @@ def _run_remote(
         with tempfile.TemporaryDirectory(prefix=".r10-return-", dir=local.parent) as temporary:
             staging = Path(temporary)
             download = _scp(f"{host}:{remote}/.r10_return", str(staging))
+            if download.returncode and _recover_terminal_return(host, remote):
+                download = _scp(f"{host}:{remote}/.r10_return", str(staging))
             if download.returncode:
                 return download.returncode, result.stdout[-4000:], f"r10_remote_download_failed:{download.stderr[-3500:]}"
             returned = staging / ".r10_return"

@@ -250,7 +250,7 @@ class R10BehavioralTests(unittest.TestCase):
             ssh_results = [
                 CompletedProcess([], 0, "", ""),
                 CompletedProcess([], 0, "remote complete", ""),
-                CompletedProcess([], 0, "", ""),
+                CompletedProcess([], 1, "", "terminal event absent"),
             ]
             with patch("run_r10_behavioral_pilot._scp", side_effect=scp), patch(
                 "run_r10_behavioral_pilot._ssh", side_effect=ssh_results
@@ -287,7 +287,7 @@ class R10BehavioralTests(unittest.TestCase):
             ssh_results = [
                 CompletedProcess([], 0, "", ""),
                 CompletedProcess([], 0, "remote complete", ""),
-                CompletedProcess([], 0, "", ""),
+                CompletedProcess([], 1, "", "terminal event absent"),
             ]
             with patch("run_r10_behavioral_pilot._scp", side_effect=scp), patch(
                 "run_r10_behavioral_pilot._ssh", side_effect=ssh_results
