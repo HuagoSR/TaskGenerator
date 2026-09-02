@@ -608,7 +608,10 @@ def _calibrate(
         suffix = Path(_delivery_name(package)).suffix
         for name in ("reference_quality", "plausible_incomplete", "shortcut_critical_error"):
             path = generated / f"{name}{suffix}"
-            report = inspect_delivery(generated.parent, expected=f"controls/{name}{suffix}", input_hashes=set(), verify_docx_with_office=False)
+            report = inspect_delivery(
+                generated.parents[1], expected=f"deliverable_files/controls/{name}{suffix}",
+                input_hashes=set(), verify_docx_with_office=False,
+            )
             if not path.is_file() or not report.valid:
                 raise ValueError(f"world_first_calibration_delivery_invalid:{case_id}:{name}:{report.first_failure}")
         controls[case_id] = generated
