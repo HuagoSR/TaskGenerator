@@ -210,7 +210,8 @@ def _record_minimal_account_probe(
     workspace.mkdir(parents=True)
     schema = {
         "type": "object", "additionalProperties": False,
-        "properties": {"status": {"const": "ok"}}, "required": ["status"],
+        "properties": {"status": {"type": "string", "const": "ok"}},
+        "required": ["status"],
     }
     _write(workspace / "grade_schema.json", schema)
     (workspace / "TASK.md").write_text(

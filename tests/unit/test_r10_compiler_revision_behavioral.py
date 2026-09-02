@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -132,6 +133,13 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
                     output_root=root, host="host", remote_root="/remote",
                     image="image", codex_auth_dir="/auth",
                 ))
+
+            schema = json.loads(
+                (root / "minimal_account_probe" / "workspace" / "grade_schema.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(schema["properties"]["status"]["type"], "string")
 
     def test_public_gate_evidence_rejects_image_or_tree_drift(self):
         with tempfile.TemporaryDirectory() as directory:
