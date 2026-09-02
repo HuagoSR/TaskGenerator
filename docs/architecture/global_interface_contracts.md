@@ -22,7 +22,7 @@
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
 | R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
-| R10.9 World-First pilot | `proposed / not_implemented` | 两领域 matched baseline/adversarial 工作世界、Task Mining、独立 Truth 重建、三档 Judge 校准和 paired behavioral review。 |
+| R10.9 World-First pilot | `implemented / not_executed` | 两领域 matched baseline/adversarial 工作世界、Task Mining、独立 Truth 重建、三档 Judge 校准和 paired behavioral review。 |
 
 ## Stable Implemented Contracts
 
@@ -104,9 +104,9 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `TeacherAnchorCheckV1` / `TeacherAnchorAuditV1` — `implemented / R10.8A`：对 teacher-only 可计算锚点进行比例、合计、日期、数量差和阈值关系审计；它可阻断错误监督材料，但不替代专业审查或 Judge 运行可靠性。
 - `R10PilotDiscriminationReportV1` — `implemented / R10.8B-1`：只读取修正后的四题 records、行为聚合和任务绑定，按 Solver 复合分、交付/major-defect 差异及 Judge 分歧分类为饱和、接近平局、干净区分、评委歧义或不完整。它只输出 compiler 层的共性诊断，不读取密钥、不调用 provider、不改变候选或 teacher 内容。
 - `r10.gdpval_compiler_calibration.1` — `implemented / R10.8B-2`：ignored artifact 中的只读 aggregate 对照报告，只保留 GDPval 形态统计和 R10 候选树的计数/格式特征；明确排除 GDPval 的任务内容、参考文件、hidden rubric 与 gold deliverable。`productive_workload` 仅是 evidence/task compiler 的 opt-in 运行提示与额外 rubric-boundary gate，不改变冻结 V1 历史包的读取或 admission。
-- `WorldFirstPilotManifestV1` — `proposed / R10.9`：仅记录四个 matched case 的阶段状态、输入输出 SHA、Agent/环境身份、首次失败与结论；不是新的业务对象本体。
-- `ProfessionDifficultyPlanV1` — `proposed / R10.9`：记录职业原因、业务事件、候选证据影响、针对的捷径、来源、公平性与可解性。每个强化世界最多选择两项。
-- `PairedJudgeReviewV1` — `proposed / R10.9`：同一 Judge 在一次盲审中逐判断点评价两份匿名 Solver 交付，并给出偏好/平局及重大错误；程序仍按冻结权重重算得分。
+- `WorldFirstPilotManifestV1` — `implemented / R10.9`：仅记录四个 matched case 的阶段状态、输入输出 SHA、Agent/环境身份、首次失败与结论；不是新的业务对象本体。
+- `ProfessionDifficultyPlanV1` — `implemented / R10.9`：记录职业原因、业务事件、候选证据影响、针对的捷径、来源、公平性与可解性。每个强化世界最多选择两项。
+- `PairedJudgeReviewV1` — `implemented / R10.9`：同一 Judge 在一次盲审中逐判断点评价两份匿名 Solver 交付，并给出偏好/平局及重大错误；程序仍按冻结权重重算分数。
 - `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
 - 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
 - Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。

@@ -19,11 +19,23 @@ from task_generator.planning.work_seed_admission import (
     WorkSeedCandidateV1,
 )
 from task_generator.planning.scenario_bible_compiler import OfficialDeepSeekScenarioBibleCompiler
+from task_generator.production.r10_world_first import (
+    WorldFirstPilotManifestV1,
+    resumable_case_ids,
+    write_manifest,
+)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run offline R10 Scenario-First admission checks.")
-    parser.add_argument("--action", choices=["admit-seeds", "compile-bibles", "diagnose-pilot"], required=True)
+    parser.add_argument(
+        "--action",
+        choices=[
+            "admit-seeds", "compile-bibles", "diagnose-pilot",
+            "run-world-pilot", "status-world-pilot", "resume-world-pilot",
+        ],
+        required=True,
+    )
     parser.add_argument("--source-catalog", type=Path)
     parser.add_argument("--candidates", type=Path)
     parser.add_argument("--rule-sets", type=Path)
@@ -33,7 +45,35 @@ def main() -> None:
     parser.add_argument("--records", type=Path)
     parser.add_argument("--behavioral-result", type=Path)
     parser.add_argument("--bindings", type=Path)
+    parser.add_argument("--world-manifest", type=Path)
     args = parser.parse_args()
+
+    if args.action in {"run-world-pilot", "status-world-pilot", "resume-world-pilot"}:
+        if args.world_manifest is None:
+            parser.error("--world-manifest is required for World-First actions")
+        manifest = WorldFirstPilotManifestV1.model_validate_json(
+            args.world_manifest.read_text(encoding="utf-8")
+        )
+        if args.action == "run-world-pilot":
+            if args.output.exists():
+                parser.error("world_first_output_already_exists")
+            if any(item.stage != "not_started" for item in manifest.cases):
+                parser.error("world_first_run_requires_pristine_manifest")
+            write_manifest(args.output, manifest)
+            payload = manifest.model_dump(mode="json")
+        else:
+            payload = {
+                "campaign_id": manifest.campaign_id,
+                "decision": manifest.decision,
+                "case_stages": {item.case_id: item.stage for item in manifest.cases},
+                "resumable_case_ids": resumable_case_ids(manifest),
+            }
+            if args.action == "resume-world-pilot" and manifest.decision != "pending":
+                parser.error("world_first_terminal_manifest_cannot_resume")
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
 
     if args.action == "diagnose-pilot":
         if args.records is None or args.behavioral_result is None or args.bindings is None:

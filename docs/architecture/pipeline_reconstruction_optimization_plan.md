@@ -84,7 +84,7 @@ R10.8 已以 `evaluator_revision_required` 结束。当前 R10.9 范围固定为
 
 切换至新的服务器 ChatGPT 认证目录后，最小账号请求和精简公开 Judge 均通过。新的私有 campaign 从头执行两道 revision 任务：两模型 4/4 有效交付，8/8 双评委评分完整。收入题两模型均为 1.0，仍属 `near_tie`；价格题为 1.0 对 0.4375，但两位 Judge 对 DeepSeek 交付的专业判断覆盖和严重错误边界不一致，属于 `judge_ambiguous`。因此阶段结论为 `evaluator_revision_required`。依照事先规则，不为追求差异重抽，不继续六题生产或十题评测；下一研究问题是评分边界是否能稳定表达，而不是继续扩大题量。
 
-### R10.9 — World-First / Task-Mining adversarial pilot — `active / documentation baseline`
+### R10.9 — World-First / Task-Mining adversarial pilot — `active / implementation ready`
 
 R10.9 不再先写答案再组织证据。它复用“公司自产信息可靠性”和“价格合理性”的公开 Seed、Rules、现有 Professional Skill 与官方来源，但从零生成新组织、时间线和业务记录，不复用旧 Bible、candidate、任务或答案。
 
