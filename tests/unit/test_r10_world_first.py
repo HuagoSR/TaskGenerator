@@ -21,6 +21,7 @@ from task_generator.production.r10_world_first import (
     advance_world_first_case,
     judge_calibration_errors,
     paired_task_discrimination,
+    world_first_pilot_decision,
     recompute_paired_review,
     resumable_case_ids,
     validate_world_candidate_tree,
@@ -143,6 +144,29 @@ class WorldFirstContractsTest(unittest.TestCase):
         second = paired_review(preference="bundle_2", judge="deepseek-v4-pro@official_opencode")
         result = paired_task_discrimination([first, second], bundle_1_solver="gpt", bundle_2_solver="deepseek")
         self.assertEqual(result["classification"], "judge_ambiguous")
+
+    def test_pilot_decision_prioritizes_evaluator_ambiguity(self) -> None:
+        results = {
+            "audit_base": {"classification": "judge_ambiguous"},
+            "audit_hard": {"classification": "cleanly_discriminative"},
+            "proc_base": {"classification": "near_tie", "absolute_gap": 0.01},
+            "proc_hard": {
+                "classification": "cleanly_discriminative",
+                "absolute_gap": 0.10,
+                "bundle_1_composite": 0.8,
+                "bundle_2_composite": 0.7,
+                "major_defect_pair": [False, False],
+            },
+        }
+        decision = world_first_pilot_decision(
+            results,
+            domain_pairs={
+                "audit_compliance": ("audit_base", "audit_hard"),
+                "procurement_operations": ("proc_base", "proc_hard"),
+            },
+            targeted_shortcuts={"audit_compliance": [], "procurement_operations": []},
+        )
+        self.assertEqual(decision, "evaluator_revision_required")
 
 
 if __name__ == "__main__":

@@ -368,3 +368,51 @@ def paired_task_discrimination(
         "winner": winner,
         "major_defect_pair": [major_1, major_2],
     }
+
+
+def world_first_pilot_decision(
+    task_results: dict[str, dict[str, object]],
+    *,
+    domain_pairs: dict[str, tuple[str, str]],
+    targeted_shortcuts: dict[str, list[str]],
+) -> str:
+    """Apply the frozen pilot decision order to already-scored task results.
+
+    Judge ambiguity is an evaluator failure, not evidence that occupational
+    difficulty did or did not work.  Evaluate it before domain-level support
+    so a missing score gap cannot silently become ``not_supported``.
+    """
+
+    expected = {case_id for pair in domain_pairs.values() for case_id in pair}
+    if set(task_results) != expected or any(
+        item.get("classification") == "incomplete" for item in task_results.values()
+    ):
+        return "incomplete"
+    if any(item.get("classification") == "judge_ambiguous" for item in task_results.values()):
+        return "evaluator_revision_required"
+
+    domain_support: dict[str, bool] = {}
+    for domain, (baseline_id, adversarial_id) in domain_pairs.items():
+        baseline = task_results[baseline_id]
+        adversarial = task_results[adversarial_id]
+        baseline_gap = float(baseline.get("absolute_gap", 0))
+        adversarial_gap = float(adversarial.get("absolute_gap", 0))
+        adversarial_scores = [
+            float(adversarial.get("bundle_1_composite", 0)),
+            float(adversarial.get("bundle_2_composite", 0)),
+        ]
+        direct_major = adversarial.get("major_defect_pair") in ([True, False], [False, True])
+        serialized = json.dumps(adversarial, ensure_ascii=False).casefold()
+        related_major = direct_major and any(
+            shortcut.casefold() in serialized for shortcut in targeted_shortcuts.get(domain, [])
+        )
+        domain_support[domain] = (
+            adversarial.get("classification") == "cleanly_discriminative"
+            and max(adversarial_scores) >= 0.70
+            and (adversarial_gap >= baseline_gap + 0.05 or related_major)
+        )
+    if all(domain_support.values()):
+        return "world_first_adversarial_supported"
+    if any(domain_support.values()):
+        return "world_first_adversarial_mixed"
+    return "world_first_adversarial_not_supported"

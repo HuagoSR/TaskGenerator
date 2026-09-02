@@ -40,6 +40,7 @@ from task_generator.production.r10_world_first import (
     paired_task_discrimination,
     recompute_paired_review,
     validate_world_candidate_tree,
+    world_first_pilot_decision,
     write_manifest,
 )
 from run_r10_behavioral_pilot import (
@@ -694,29 +695,21 @@ def _run_behavior(
         results[case_id] = result
     _write(run_root / "paired_results.json", results)
 
-    domain_support: dict[str, bool] = {}
-    for domain in SEED_IDS:
-        baseline = results[CASE_IDS[(domain, "baseline")]]
-        hard = results[CASE_IDS[(domain, "adversarial")]]
-        baseline_gap = float(baseline.get("absolute_gap", 0))
-        hard_gap = float(hard.get("absolute_gap", 0))
-        hard_scores = [float(hard.get("bundle_1_composite", 0)), float(hard.get("bundle_2_composite", 0))]
-        direct_major = hard.get("major_defect_pair") in ([True, False], [False, True])
-        related_major = direct_major and any(
-            mutation.targeted_shortcut.casefold() in json.dumps(hard, ensure_ascii=False).casefold()
-            for mutation in plans[domain].mutations if mutation.mutation_id in plans[domain].selected_mutation_ids
-        )
-        domain_support[domain] = (
-            hard.get("classification") == "cleanly_discriminative"
-            and max(hard_scores) >= 0.70
-            and (hard_gap >= baseline_gap + 0.05 or related_major)
-        )
-    if all(domain_support.values()):
-        decision = "world_first_adversarial_supported"
-    elif any(domain_support.values()):
-        decision = "world_first_adversarial_mixed"
-    else:
-        decision = "world_first_adversarial_not_supported"
+    decision = world_first_pilot_decision(
+        results,
+        domain_pairs={
+            domain: (CASE_IDS[(domain, "baseline")], CASE_IDS[(domain, "adversarial")])
+            for domain in SEED_IDS
+        },
+        targeted_shortcuts={
+            domain: [
+                mutation.targeted_shortcut
+                for mutation in plans[domain].mutations
+                if mutation.mutation_id in plans[domain].selected_mutation_ids
+            ]
+            for domain in SEED_IDS
+        },
+    )
     return results, decision
 
 
