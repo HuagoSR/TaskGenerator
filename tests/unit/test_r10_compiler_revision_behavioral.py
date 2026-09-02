@@ -21,8 +21,8 @@ def completed(score: float, *, major: bool = False) -> dict:
 
 
 class R10CompilerRevisionBehavioralTests(unittest.TestCase):
-    def test_revision_campaign_uses_a_distinct_tuzi_codex_stack(self):
-        self.assertEqual(RUNNER.STACKS, ("gpt-5.6-sol@tuzi_codex", "deepseek-v4-pro@official_opencode"))
+    def test_revision_campaign_defaults_to_official_chatgpt_codex(self):
+        self.assertEqual(RUNNER.STACKS, ("gpt-5.6-sol@chatgpt_codex", "deepseek-v4-pro@official_opencode"))
         binding = MagicMock()
         binding.model_dump.return_value = {
             "task_id": "fixture-task", "domain": "audit_compliance",
@@ -38,11 +38,24 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
             "public_tree_sha256": "c" * 64,
         }
         with patch.object(RUNNER, "binding_from_task", return_value=binding), patch.object(RUNNER, "_source_commit", return_value="a" * 40):
-            scope = RUNNER._scope("tuzi-revision", image="image", image_sha256="a" * 64, public_gate_evidence=evidence)
-        self.assertEqual(scope["gpt_environment"]["transport"], "tuzi_codex")
-        self.assertEqual(scope["gpt_environment"]["provider"], "tuzi")
+            scope = RUNNER._scope("official-revision", image="image", image_sha256="a" * 64, public_gate_evidence=evidence)
+        self.assertEqual(scope["gpt_environment"]["transport"], "chatgpt_codex")
+        self.assertEqual(scope["gpt_environment"]["provider"], "openai_chatgpt")
+        self.assertEqual(scope["gpt_environment"]["authentication"], "chatgpt_oauth")
+        self.assertNotIn("tuzi", __import__("json").dumps(scope).casefold())
+        self.assertEqual(scope["solver_stacks"], list(RUNNER.STACKS))
+        self.assertEqual(scope["judges"], list(RUNNER.STACKS))
         self.assertTrue(scope["complex_judge_probe_required"])
         self.assertEqual(scope["public_gate_evidence"], evidence)
+
+    def test_tuzi_transport_is_explicit_and_never_mixed_with_official_scope(self):
+        self.assertEqual(
+            RUNNER._stacks("tuzi_codex"),
+            ("gpt-5.6-sol@tuzi_codex", "deepseek-v4-pro@official_opencode"),
+        )
+        self.assertNotEqual(RUNNER._stacks("tuzi_codex"), RUNNER.STACKS)
+        with self.assertRaisesRegex(ValueError, "gpt_transport_invalid"):
+            RUNNER._stacks("fallback")
 
     def test_two_clean_differences_support_revision(self):
         records = {

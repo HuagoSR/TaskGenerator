@@ -21,7 +21,8 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "Test"))
 
 from run_r10_behavioral_pilot import (
-    DEEPSEEK_OPENCODE_STACK, TUZI_CODEX_STACK, _execute_judge, _execute_solver, _record_probe, _safe_remote_root,
+    CHATGPT_CODEX_STACK, DEEPSEEK_OPENCODE_STACK, TUZI_CODEX_STACK,
+    _execute_judge, _execute_solver, _record_probe, _safe_remote_root,
 )
 from task_generator.evaluation.r10_behavioral import binding_from_task, sha256_json
 
@@ -29,7 +30,19 @@ TASKS = {
     "r10r_audit_revenue_evidence_reliability": (ROOT / "artifacts/r10/r10_8b2_compiler_revision_retry3_20260901/tasks/r10r_audit_revenue_evidence_reliability", "audit_compliance", "near_tie"),
     "r10r_procurement_price_reasonableness": (ROOT / "artifacts/r10/r10_8b2_compiler_revision_retry3_20260901/tasks/r10r_procurement_price_reasonableness", "procurement_operations", "saturated"),
 }
-STACKS = (TUZI_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
+GPT_TRANSPORTS = {
+    "chatgpt_codex": CHATGPT_CODEX_STACK,
+    "tuzi_codex": TUZI_CODEX_STACK,
+}
+DEFAULT_GPT_TRANSPORT = "chatgpt_codex"
+STACKS = (CHATGPT_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
+
+
+def _stacks(gpt_transport: str) -> tuple[str, str]:
+    try:
+        return GPT_TRANSPORTS[gpt_transport], DEEPSEEK_OPENCODE_STACK
+    except KeyError as exc:
+        raise ValueError("r10_compiler_revision_gpt_transport_invalid") from exc
 
 
 def _now() -> str:
@@ -57,8 +70,12 @@ def _source_commit() -> str:
     raise RuntimeError("r10_compiler_revision_source_commit_unavailable")
 
 
-def _scope(run_id: str, *, image: str, image_sha256: str, public_gate_evidence: dict[str, Any]) -> dict[str, Any]:
+def _scope(
+    run_id: str, *, image: str, image_sha256: str,
+    public_gate_evidence: dict[str, Any], gpt_transport: str = DEFAULT_GPT_TRANSPORT,
+) -> dict[str, Any]:
     commit = _source_commit()
+    stacks = _stacks(gpt_transport)
     bindings = []
     for task_id, (root, domain, old_classification) in TASKS.items():
         binding = binding_from_task(root, domain=domain)
@@ -66,7 +83,14 @@ def _scope(run_id: str, *, image: str, image_sha256: str, public_gate_evidence: 
     return {
         "scope_version": "r10.compiler_revision_behavioral_scope.1", "campaign_id": run_id,
         "source_commit": commit, "bindings": bindings,
-        "gpt_environment": {"transport": "tuzi_codex", "provider": "tuzi", "image": image, "image_sha256": image_sha256, "model": "gpt-5.6-sol", "timeout_seconds": 1800},
+        "solver_stacks": list(stacks), "judges": list(stacks),
+        "gpt_environment": {
+            "transport": gpt_transport,
+            "provider": "openai_chatgpt" if gpt_transport == "chatgpt_codex" else "tuzi",
+            "authentication": "chatgpt_oauth" if gpt_transport == "chatgpt_codex" else "provider_key",
+            "image": image, "image_sha256": image_sha256,
+            "model": "gpt-5.6-sol", "codex_version": "0.149.1", "timeout_seconds": 1800,
+        },
         "deepseek_environment": {"transport": "huago_opencode", "image": image, "image_sha256": image_sha256, "model": "deepseek-v4-pro", "timeout_seconds": 1800},
         "public_probe_required": True, "complex_judge_probe_required": True,
         "public_gate_evidence": public_gate_evidence,
@@ -82,7 +106,10 @@ def _remote_solver(*, output_root: Path, host: str, remote_root: str, task_id: s
     return outcome.model_dump(mode="json")
 
 
-def _record_complex_judge_probe(*, output_root: Path, host: str, remote_root: str, image: str) -> bool:
+def _record_complex_judge_probe(
+    *, output_root: Path, host: str, remote_root: str, image: str,
+    stacks: tuple[str, str] = STACKS,
+) -> bool:
     """Exercise the exact structured judge path using only public material."""
     from run_r10_teacher_anchor_regrade import _stage_public_judge_probe
 
@@ -94,21 +121,24 @@ def _record_complex_judge_probe(*, output_root: Path, host: str, remote_root: st
             task_root=task_root, task_id="public-probe", delivery=delivery,
             judge=judge, image=image,
         ))
-        for judge in STACKS
+        for judge in stacks
     }
     passed = all(item["status"] == "completed" for item in results.values())
     _write(probe_root / "result.json", {"decision": "pass" if passed else "incomplete", "results": results})
     return passed
 
 
-def _record_public_gates(*, output_root: Path, host: str, remote_root: str, image: str) -> tuple[bool, dict[str, bool]]:
+def _record_public_gates(
+    *, output_root: Path, host: str, remote_root: str, image: str,
+    stacks: tuple[str, str] = STACKS,
+) -> tuple[bool, dict[str, bool]]:
     """Run the public-only admission gates before any private binding is read."""
     probes = {
         stack: _record_probe(
             output_root=output_root, host=host, remote_root=remote_root,
             stack=stack, image=image,
         )
-        for stack in STACKS
+        for stack in stacks
     }
     if not all(probes.values()):
         _write(output_root / "result.json", {
@@ -116,7 +146,7 @@ def _record_public_gates(*, output_root: Path, host: str, remote_root: str, imag
         })
         return False, probes
     if not _record_complex_judge_probe(
-        output_root=output_root, host=host, remote_root=remote_root, image=image,
+        output_root=output_root, host=host, remote_root=remote_root, image=image, stacks=stacks,
     ):
         _write(output_root / "result.json", {
             "decision": "incomplete", "reason": "public_complex_judge_probe_failed", "probes": probes,
@@ -137,14 +167,17 @@ def _public_tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
-def _write_public_gate_evidence(*, output_root: Path, image: str, image_sha256: str) -> dict[str, Any]:
+def _write_public_gate_evidence(
+    *, output_root: Path, image: str, image_sha256: str,
+    stacks: tuple[str, str] = STACKS,
+) -> dict[str, Any]:
     result = json.loads((output_root / "result.json").read_text(encoding="utf-8"))
     evidence = {
         "evidence_version": "r10.public_gate_evidence.1",
         "source_commit": _source_commit(),
         "image": image,
         "image_sha256": image_sha256,
-        "stacks": list(STACKS),
+        "stacks": list(stacks),
         "decision": result["decision"],
         "result_sha256": sha256_json(result),
         "public_tree_sha256": _public_tree_sha256(output_root),
@@ -153,7 +186,10 @@ def _write_public_gate_evidence(*, output_root: Path, image: str, image_sha256: 
     return evidence
 
 
-def _load_public_gate_evidence(*, root: Path, image: str, image_sha256: str) -> dict[str, Any]:
+def _load_public_gate_evidence(
+    *, root: Path, image: str, image_sha256: str,
+    stacks: tuple[str, str] = STACKS,
+) -> dict[str, Any]:
     evidence_path = root / "public_gate_evidence.json"
     if not evidence_path.is_file():
         raise FileNotFoundError("r10_compiler_revision_public_gate_evidence_missing")
@@ -164,7 +200,7 @@ def _load_public_gate_evidence(*, root: Path, image: str, image_sha256: str) -> 
         raise ValueError("r10_compiler_revision_public_gate_not_passed")
     if evidence.get("source_commit") != _source_commit() or evidence.get("image") != image or evidence.get("image_sha256") != image_sha256:
         raise ValueError("r10_compiler_revision_public_gate_fingerprint_drift")
-    if evidence.get("stacks") != list(STACKS) or evidence.get("public_tree_sha256") != _public_tree_sha256(root):
+    if evidence.get("stacks") != list(stacks) or evidence.get("public_tree_sha256") != _public_tree_sha256(root):
         raise ValueError("r10_compiler_revision_public_gate_evidence_drift")
     result = json.loads((root / "result.json").read_text(encoding="utf-8"))
     if evidence.get("result_sha256") != sha256_json(result):
@@ -172,14 +208,18 @@ def _load_public_gate_evidence(*, root: Path, image: str, image_sha256: str) -> 
     return evidence
 
 
-def _score_pair(*, output_root: Path, host: str, remote_root: str, solver: str, task_id: str, task_root: Path, delivery: Path, image: str) -> dict[str, Any]:
+def _score_pair(
+    *, output_root: Path, host: str, remote_root: str, solver: str,
+    task_id: str, task_root: Path, delivery: Path, image: str,
+    stacks: tuple[str, str] = STACKS,
+) -> dict[str, Any]:
     return {
         judge: _jsonable(_execute_judge(
             host=host, remote_root=remote_root,
             output_root=output_root / "judge_assignments" / solver / task_id,
             task_root=task_root, task_id=task_id, delivery=delivery, judge=judge, image=image,
         ))
-        for judge in STACKS
+        for judge in stacks
     }
 
 
@@ -193,25 +233,27 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
-def _aggregate(records: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _aggregate(
+    records: dict[str, dict[str, Any]], *, stacks: tuple[str, str] = STACKS,
+) -> dict[str, Any]:
     diagnoses = []
     for task_id, (_, _, old) in TASKS.items():
         by_solver = records[task_id]
         scores, majors, ambiguous = {}, {}, False
         complete = True
-        for solver in STACKS:
+        for solver in stacks:
             item = by_solver.get(solver, {})
             reviews = item.get("reviews", {})
-            if not item.get("delivery", {}).get("valid") or not all(reviews.get(judge, {}).get("status") == "completed" for judge in STACKS):
+            if not item.get("delivery", {}).get("valid") or not all(reviews.get(judge, {}).get("status") == "completed" for judge in stacks):
                 complete = False
                 continue
-            values = [reviews[judge]["review"]["weighted_score"] for judge in STACKS]
-            flags = [reviews[judge]["review"]["major_defect"] for judge in STACKS]
+            values = [reviews[judge]["review"]["weighted_score"] for judge in stacks]
+            flags = [reviews[judge]["review"]["major_defect"] for judge in stacks]
             scores[solver] = sum(values) / 2
             majors[solver] = any(flags)
             ambiguous = ambiguous or abs(values[0] - values[1]) >= 0.125 or flags[0] != flags[1]
-        gap = abs(scores[STACKS[0]] - scores[STACKS[1]]) if len(scores) == 2 else None
-        differs = len(majors) == 2 and majors[STACKS[0]] != majors[STACKS[1]]
+        gap = abs(scores[stacks[0]] - scores[stacks[1]]) if len(scores) == 2 else None
+        differs = len(majors) == 2 and majors[stacks[0]] != majors[stacks[1]]
         clean = bool(complete and not ambiguous and ((gap is not None and gap >= 0.05) or differs))
         diagnoses.append({"task_id": task_id, "old_classification": old, "scores": scores, "score_gap": gap, "major_defect_differs": differs, "judge_ambiguous": ambiguous, "classification": "cleanly_discriminative" if clean else "incomplete" if not complete else "judge_ambiguous" if ambiguous else "near_tie"})
     clean = sum(item["classification"] == "cleanly_discriminative" for item in diagnoses)
@@ -230,6 +272,7 @@ def main() -> None:
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--image", required=True)
     parser.add_argument("--image-sha256", required=True)
+    parser.add_argument("--gpt-transport", choices=tuple(GPT_TRANSPORTS), default=DEFAULT_GPT_TRANSPORT)
     parser.add_argument("--scope-only", action="store_true")
     parser.add_argument("--public-only", action="store_true")
     parser.add_argument("--public-gate-root", type=Path)
@@ -237,6 +280,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.scope_only and args.public_only:
         raise ValueError("r10_compiler_revision_behavioral_modes_conflict")
+    stacks = _stacks(args.gpt_transport)
     if args.public_only:
         if args.authorized_scope_sha256 or args.public_gate_root:
             raise PermissionError("r10_compiler_revision_public_probe_does_not_accept_scope")
@@ -245,22 +289,22 @@ def main() -> None:
         args.output_root.mkdir(parents=True)
         passed, _ = _record_public_gates(
             output_root=args.output_root, host=args.host,
-            remote_root=_safe_remote_root(args.host, args.run_id), image=args.image,
+            remote_root=_safe_remote_root(args.host, args.run_id), image=args.image, stacks=stacks,
         )
         if not passed:
             raise SystemExit(1)
         _write_public_gate_evidence(
-            output_root=args.output_root, image=args.image, image_sha256=args.image_sha256,
+            output_root=args.output_root, image=args.image, image_sha256=args.image_sha256, stacks=stacks,
         )
         return
     if args.public_gate_root is None:
         raise ValueError("r10_compiler_revision_public_gate_evidence_required")
     public_gate_evidence = _load_public_gate_evidence(
-        root=args.public_gate_root, image=args.image, image_sha256=args.image_sha256,
+        root=args.public_gate_root, image=args.image, image_sha256=args.image_sha256, stacks=stacks,
     )
     scope = _scope(
         args.run_id, image=args.image, image_sha256=args.image_sha256,
-        public_gate_evidence=public_gate_evidence,
+        public_gate_evidence=public_gate_evidence, gpt_transport=args.gpt_transport,
     ); digest = sha256_json(scope)
     if args.scope_only:
         if args.output_root.exists(): raise FileExistsError("r10_compiler_revision_behavioral_output_exists")
@@ -271,19 +315,25 @@ def main() -> None:
     remote_root = _safe_remote_root(args.host, args.run_id)
     records: dict[str, dict[str, Any]] = {task_id: {} for task_id in TASKS}
     for task_id, (task_root, domain, _) in TASKS.items():
-        for stack in STACKS:
+        for stack in stacks:
             records[task_id][stack] = _remote_solver(
                 output_root=args.output_root, host=args.host, remote_root=remote_root,
                 task_id=task_id, task_root=task_root, domain=domain, stack=stack, image=args.image,
             )
     for task_id, (task_root, _, _) in TASKS.items():
-        for solver in STACKS:
+        for solver in stacks:
             item = records[task_id][solver]
             if item["delivery"]["valid"]:
                 delivery = args.output_root / "solvers" / solver / task_id / "workspace" / item["delivery"]["relative_path"]
-                item["reviews"] = _score_pair(output_root=args.output_root, host=args.host, remote_root=remote_root, solver=solver, task_id=task_id, task_root=task_root, delivery=delivery, image=args.image)
+                item["reviews"] = _score_pair(
+                    output_root=args.output_root, host=args.host, remote_root=remote_root,
+                    solver=solver, task_id=task_id, task_root=task_root,
+                    delivery=delivery, image=args.image, stacks=stacks,
+                )
             else: item["reviews"] = {}
-    _write(args.output_root / "records.json", _jsonable(records)); _write(args.output_root / "result.json", _aggregate(_jsonable(records)))
+    _write(args.output_root / "records.json", _jsonable(records)); _write(
+        args.output_root / "result.json", _aggregate(_jsonable(records), stacks=stacks),
+    )
 
 
 if __name__ == "__main__": main()
