@@ -55,7 +55,7 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前执行点：Tuzi 私有 campaign 保持为历史 `incomplete`。官方 ChatGPT Codex transport 已单独实现并通过 225/225 全量回归；服务器执行已授权的未使用 BuildKit 缓存清理后约有 109 GiB 可用空间。新的 official public-only campaign 中，官方 Codex 与 DeepSeek/OpenCode 均通过 XLSX/DOCX 工具探针，DeepSeek复杂 Judge 完成；官方 Codex复杂 Judge 在完整 30 分钟内只有 `thread.started`、`turn.started`，未产生工具事件、`turn.completed` 或评分文件。公开门为 `incomplete`，且零私有任务上传。不得创建该轮私有 receipt、重跑该公开会话、混合 Tuzi/ChatGPT 证据、扩展六题/十题或激活新 release。
+当前执行点：R10.8B-2 已用新的服务器 ChatGPT 认证目录完成独立公开门和两题私有 campaign。两模型均完成两题有效交付，8 项双评委评分完整；服务器后台接管的评分在聚合前通过交付 SHA、任务身份和完成事件校验。收入题仍为 `near_tie`，价格题虽有明显分差但为 `judge_ambiguous`，最终结论为 `evaluator_revision_required`。该结论终止本轮六题/十题扩展；不得重抽答案、混合历史 Tuzi/旧账号证据、修改冻结题目或激活新 release。若继续研究，必须另行设计评分边界稳定性实验，而不是直接扩大 cohort。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 

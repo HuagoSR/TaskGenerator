@@ -74,15 +74,15 @@
 
 只读诊断器 `R10PilotDiscriminationReportV1` 已绑定 R10.8A 修正后的 records、行为聚合与四个任务指纹，分别检查 Solver 复合分、有效交付/major-defect 差异和 Judge 分歧。结果为两题 `saturated`、一题 `near_tie`、一题 `judge_ambiguous`，没有 `cleanly_discriminative` 任务，故为 `compiler_revision_candidate`。该结论随后由 R10.8B-2 的一次共性 task-compiler 改良实验承接；历史四题未被手改，旧答案未被重抽。
 
-### R10.8B-2 — GDPval-calibrated compiler revision — `completed / incomplete`
+### R10.8B-2 — GDPval-calibrated compiler revision — `completed / evaluator_revision_required`
 
 本地 GDPval 镜像只读形态对照已完成：它只输出抽象的文件类型、证据密度和工作流特征，禁止将 GDPval 题干、参考文件、hidden rubric 或 gold deliverable 送入生成模型。四个冻结 R10 任务的候选材料为 2–5 个紧凑 TXT/CSV，存在评分饱和、判断点过于显式与证据张力不足的共性信号。改良仅作用于两个既有 Agent 环节：evidence author 生成自然工作过程中的记录、正常背景和跨材料证据关系；task compiler 面向业务成果写题，不逐项泄漏判断，并在本实验中要求明确 `Met / Partial / Not met` 边界及具体 major error。
 
 已从收入证据可靠性与价格合理性两个冻结 Bible 派生两道新版任务。两份 evidence bundle 和任务包均静态通过，四个旧任务和旧结果保持冻结。控制器白名单回传、原子化本地导入和 SSH 保活已通过 224/224 全量回归；新的 public-only campaign 中 Tuzi Codex 与 DeepSeek/OpenCode 的双格式和复杂 Judge 门全部通过。
 
-全新的私有 campaign 没有复用任何旧答案或 receipt。收入题两模型复合分均为 0.875，仍是 `near_tie`；价格题的 Tuzi Codex 会话因 provider 路由达到 in-flight request budget 而断流，未产生有效 DOCX，DeepSeek 结果不能单独构成双模型比较。因此阶段结论为 `incomplete`，而非 compiler 改良成功或失败。已开始的会话不得重跑，本轮不继续六题生产和十题评测。
+首次 Tuzi 私有 campaign 因 provider 路由断流冻结为历史 `incomplete`。后续官方 ChatGPT Codex transport 与其 scope、答案和评分严格隔离；旧服务器账号的复杂公开 Judge 失败同样只保留为基础设施诊断。
 
-其后按独立计划停止 Tuzi，新增官方 `gpt-5.6-sol@chatgpt_codex` transport，并保持历史 scope、答案和评分隔离。实现通过 36/36 定向测试和 225/225 全量回归；服务器仅清理未使用 BuildKit 缓存后恢复到约 109 GiB 可用空间。新的 public-only campaign 中两栈双格式工具探针均通过，DeepSeek复杂 Judge 也完成；官方 Codex复杂 Judge 在 30 分钟内只有启动事件，未产生工具、完成事件或评分文件。公开门据此冻结为 `incomplete`，零私有任务上传；不创建私有 receipt，不恢复六题/十题扩展。
+切换至新的服务器 ChatGPT 认证目录后，最小账号请求和精简公开 Judge 均通过。新的私有 campaign 从头执行两道 revision 任务：两模型 4/4 有效交付，8/8 双评委评分完整。收入题两模型均为 1.0，仍属 `near_tie`；价格题为 1.0 对 0.4375，但两位 Judge 对 DeepSeek 交付的专业判断覆盖和严重错误边界不一致，属于 `judge_ambiguous`。因此阶段结论为 `evaluator_revision_required`。依照事先规则，不为追求差异重抽，不继续六题生产或十题评测；下一研究问题是评分边界是否能稳定表达，而不是继续扩大题量。
 
 ## Acceptance Metrics
 

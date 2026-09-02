@@ -21,7 +21,7 @@
 | R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
-| R10 GDPval-calibrated compiler revision | `implemented / incomplete` | 两道派生任务静态准入。Tuzi 私有 cohort 因 provider 路由断流不完整；后续官方 ChatGPT Codex transport 已独立实现并通过双格式工具探针，但复杂公开 Judge 会话 30 分钟内无工具或完成事件。两轮证据严格隔离，均不能形成完整比较。 |
+| R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
 
 ## Stable Implemented Contracts
 
