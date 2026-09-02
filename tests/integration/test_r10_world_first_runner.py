@@ -55,12 +55,13 @@ class WorldFirstRunnerTests(unittest.TestCase):
             (teacher / "world_ledger.md").write_text("World chronology and facts. " * 20, encoding="utf-8")
             (root / "world_manifest.json").write_text(json.dumps({
                 "case_id": "case", "artifacts": [
-                    {"path": "records.xlsx", "producer": "system", "system": "erp", "purpose": "record"},
-                    {"path": "note.txt", "producer": "analyst", "system": "email", "purpose": "context"},
+                    {"path": "candidate/records.xlsx", "producer": "system", "system": "erp", "purpose": "record"},
+                    {"path": "candidate/note.txt", "producer": "analyst", "system": "email", "purpose": "context"},
+                    {"path": "teacher/world_ledger.md", "producer": "authority", "system": "factory", "purpose": "truth"},
                 ],
                 "cross_file_relationships": [
-                    {"paths": ["records.xlsx", "note.txt"], "relationship": "timing"},
-                    {"paths": ["note.txt", "records.xlsx"], "relationship": "scope"},
+                    {"paths": ["candidate/records.xlsx", "candidate/note.txt"], "relationship": "timing"},
+                    {"paths": ["candidate/note.txt", "candidate/records.xlsx"], "relationship": "scope"},
                 ],
             }), encoding="utf-8")
             RUNNER._validate_world(root, case_id="case")

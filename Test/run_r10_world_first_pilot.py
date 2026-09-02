@@ -215,7 +215,12 @@ def _session(
 ) -> Path:
     session_root = run_root / "sessions" / assignment_id
     if session_root.exists():
-        raise FileExistsError(f"world_first_session_already_started:{assignment_id}")
+        state_path = session_root / "state.json"
+        state = _json(state_path) if state_path.is_file() else {}
+        output = session_root / "workspace/deliverable_files"
+        if state.get("status") == "completed" and output.is_dir():
+            return output
+        raise FileExistsError(f"world_first_session_started_but_not_reusable:{assignment_id}")
     workspace = session_root / "workspace"
     workspace.mkdir(parents=True)
     (workspace / "deliverable_files").mkdir()
@@ -339,14 +344,29 @@ def _validate_world(root: Path, *, case_id: str) -> None:
         value = _json(manifest_path)
         if value.get("case_id") != case_id:
             errors.append("world_manifest_case_mismatch")
+        def candidate_relative(value: object) -> str | None:
+            path = str(value or "").replace("\\", "/").removeprefix("./")
+            if path.startswith("candidate/"):
+                path = path[len("candidate/"):]
+            if path.startswith("teacher/") or path == "teacher":
+                return None
+            return path
+
         actual = {path.relative_to(candidate).as_posix() for path in candidate.rglob("*") if path.is_file()}
-        declared = {item.get("path") for item in value.get("artifacts", [])}
+        declared = {
+            normalized for item in value.get("artifacts", [])
+            if (normalized := candidate_relative(item.get("path"))) is not None
+        }
         if actual != declared:
             errors.append("world_manifest_candidate_coverage_invalid")
         relationships = value.get("cross_file_relationships", [])
         if len(relationships) < 2 or any(len(set(item.get("paths", []))) < 2 for item in relationships):
             errors.append("world_cross_file_relationships_insufficient")
-        if any(not set(item.get("paths", [])) <= actual for item in relationships):
+        normalized_relationships = [
+            {normalized for path in item.get("paths", []) if (normalized := candidate_relative(path)) is not None}
+            for item in relationships
+        ]
+        if any(len(paths) < 2 or not paths <= actual for paths in normalized_relationships):
             errors.append("world_relationship_path_unknown")
     if errors:
         raise ValueError(";".join(sorted(set(errors))))
@@ -715,6 +735,60 @@ def run(run_root: Path, run_id: str) -> None:
         raise
 
 
+def resume(run_root: Path, run_id: str) -> None:
+    """Continue only missing sessions after a controller-only repair.
+
+    Completed provider sessions are reused byte-for-byte.  A started or failed
+    provider session remains terminal and is never silently rerun.
+    """
+
+    if not run_root.is_dir():
+        raise FileNotFoundError("world_first_resume_root_missing")
+    scope = _json(run_root / "scope.json")
+    if scope.get("campaign_id") != run_id or scope.get("image_sha256") != IMAGE_SHA256:
+        raise ValueError("world_first_resume_scope_drift")
+    completed = {}
+    for state_path in sorted((run_root / "sessions").glob("*/state.json")):
+        state = _json(state_path)
+        if state.get("status") != "completed":
+            raise ValueError(f"world_first_resume_nonterminal_session:{state_path.parent.name}")
+        output = state_path.parent / "workspace/deliverable_files"
+        completed[state_path.parent.name] = tree_sha256(output)
+    if (run_root / "result.json").is_file() and not (run_root / "initial_incomplete_result.json").exists():
+        shutil.copy2(run_root / "result.json", run_root / "initial_incomplete_result.json")
+    _write(run_root / "repair_receipt.json", {
+        "receipt_version": "r10.world_first_repair_receipt.1",
+        "parent_scope_sha256": _canonical(scope), "repair_source_commit": _git_head(),
+        "completed_session_output_sha256": completed,
+        "repair_boundary": "candidate path-prefix normalization only; no semantic session rerun",
+        "consumed_at": _now(),
+    })
+    manifest = WorldFirstPilotManifestV1.model_validate_json((run_root / "manifest.json").read_text(encoding="utf-8"))
+    write_manifest(run_root / "manifest.json", manifest.model_copy(update={"decision": "pending", "first_failure": None}))
+    inputs = _load_inputs()
+    try:
+        plans = _run_debate(run_root, run_id, inputs)
+        manifest = _persist_stage(run_root, manifest.model_copy(update={"decision": "pending", "first_failure": None}), stage="skill_deliberated", plans=plans)
+        worlds = _run_worlds(run_root, run_id, inputs, plans)
+        manifest = _persist_stage(run_root, manifest, stage="world_frozen", plans=plans, worlds=worlds)
+        tasks = _mine_tasks(run_root, run_id, inputs, worlds)
+        manifest = _persist_stage(run_root, manifest, stage="task_mined", plans=plans, worlds=worlds)
+        packages = _compile_tasks(run_root, run_id, inputs, worlds, tasks)
+        manifest = _persist_stage(run_root, manifest, stage="truth_reconstructed", plans=plans, worlds=worlds, packages=packages)
+        _truth_audit(run_root, run_id, worlds, packages)
+        manifest = _persist_stage(run_root, manifest, stage="statically_admitted", plans=plans, worlds=worlds, packages=packages)
+        _calibrate(run_root, run_id, packages)
+        manifest = _persist_stage(run_root, manifest, stage="judge_calibrated", plans=plans, worlds=worlds, packages=packages, calibration=True)
+        results, decision = _run_behavior(run_root, run_id, packages, plans)
+        _persist_stage(run_root, manifest, stage="judged", plans=plans, worlds=worlds, packages=packages, calibration=True, decision=decision)
+        _write(run_root / "result.json", {"decision": decision, "professional_validity": "provisional", "task_results": results, "finished_at": _now()})
+    except Exception as exc:
+        current = WorldFirstPilotManifestV1.model_validate_json((run_root / "manifest.json").read_text(encoding="utf-8"))
+        write_manifest(run_root / "manifest.json", current.model_copy(update={"decision": "incomplete", "first_failure": f"{type(exc).__name__}:{exc}"}))
+        _write(run_root / "result.json", {"decision": "incomplete", "professional_validity": "provisional", "first_failure": f"{type(exc).__name__}:{exc}", "finished_at": _now()})
+        raise
+
+
 def status(run_root: Path) -> dict[str, Any]:
     if not run_root.is_dir():
         return {"status": "not_started"}
@@ -741,6 +815,8 @@ def main() -> None:
         current = status(output)
         if current["status"] == "not_started":
             run(output, args.run_id)
+        elif current["status"] in {"running_or_interrupted", "completed"} and current.get("result", {}).get("decision") == "incomplete":
+            resume(output, args.run_id)
         else:
             raise RuntimeError("world_first_resume_refuses_started_or_terminal_sessions")
     else:
