@@ -35,7 +35,7 @@ if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 from run_r10_behavioral_pilot import (
     REMOTE_CODEX_AUTH_DIR, REMOTE_TUZI_ENV_FILE, TUZI_CODEX_STACK, _codex_turn_completed, _remote_command,
-    _record_probe, _remote_script, _scp_command, _scope_sha256, _stage_solver, _write_agent_script,
+    _record_probe, _remote_script, _run_remote, _scp_command, _scope_sha256, _stage_solver, _write_agent_script,
 )
 from run_r10_skill_compiler import _ssh
 from r10_local_codex_judge import _redact, local_codex_command
@@ -206,7 +206,82 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertNotIn("sh -s", command)
         self.assertIn(REMOTE_CODEX_AUTH_DIR, command)
         self.assertIn(":/run/codex-home:rw", command)
-        self.assertIn("rm -rf .pylibs .venv .cache __pycache__", command)
+        self.assertIn("rm -rf pylibs .pylibs .venv .cache node_modules __pycache__", command)
+        self.assertIn("rm -rf .r10_return", command)
+        self.assertIn("deliverable_files .docx_office_check", command)
+        self.assertIn("rm -rf pylibs .pylibs", command)
+        self.assertNotIn("cp -aL . ", command)
+
+    def test_remote_return_imports_only_allowlisted_evidence(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as root:
+            local = Path(root) / "workspace"
+            local.mkdir()
+            (local / "input.txt").write_text("candidate input", encoding="utf-8")
+
+            def scp(source: str, destination: str, **_kwargs):
+                if source.startswith("huago-cone:"):
+                    returned = Path(destination) / ".r10_return"
+                    (returned / "deliverable_files").mkdir(parents=True)
+                    (returned / "deliverable_files" / "result.xlsx").write_bytes(workbook_bytes("result"))
+                    (returned / "agent.jsonl").write_text('{"type":"turn.completed"}\n', encoding="utf-8")
+                return CompletedProcess([], 0, "", "")
+
+            ssh_results = [
+                CompletedProcess([], 0, "", ""),
+                CompletedProcess([], 0, "remote complete", ""),
+                CompletedProcess([], 0, "", ""),
+            ]
+            with patch("run_r10_behavioral_pilot._scp", side_effect=scp), patch(
+                "run_r10_behavioral_pilot._ssh", side_effect=ssh_results
+            ):
+                code, stdout, stderr = _run_remote(
+                    host="huago-cone", remote="/remote/workspace", local=local,
+                    stack="deepseek-v4-pro@official_opencode",
+                )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(stdout, "remote complete")
+            self.assertEqual(stderr, "")
+            self.assertTrue((local / "deliverable_files" / "result.xlsx").is_file())
+            self.assertTrue((local / "agent.jsonl").is_file())
+            self.assertFalse((local / "pylibs").exists())
+            self.assertFalse((local / ".r10_agent.sh").exists())
+
+    def test_failed_return_download_never_merges_partial_evidence(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as root:
+            local = Path(root) / "workspace"
+            local.mkdir()
+
+            def scp(source: str, destination: str, **_kwargs):
+                if source.startswith("huago-cone:"):
+                    returned = Path(destination) / ".r10_return"
+                    returned.mkdir(parents=True)
+                    (returned / "agent.jsonl").write_text("partial", encoding="utf-8")
+                    return CompletedProcess([], 124, "", "timeout")
+                return CompletedProcess([], 0, "", "")
+
+            ssh_results = [
+                CompletedProcess([], 0, "", ""),
+                CompletedProcess([], 0, "remote complete", ""),
+                CompletedProcess([], 0, "", ""),
+            ]
+            with patch("run_r10_behavioral_pilot._scp", side_effect=scp), patch(
+                "run_r10_behavioral_pilot._ssh", side_effect=ssh_results
+            ):
+                code, _stdout, stderr = _run_remote(
+                    host="huago-cone", remote="/remote/workspace", local=local,
+                    stack="deepseek-v4-pro@official_opencode",
+                )
+
+            self.assertEqual(code, 124)
+            self.assertIn("r10_remote_download_failed", stderr)
+            self.assertFalse((local / "agent.jsonl").exists())
 
     def test_remote_scp_transport_is_noninteractive_and_bounded(self):
         command = _scp_command("source", "huago-cone:/remote")

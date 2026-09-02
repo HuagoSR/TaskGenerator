@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -179,7 +180,16 @@ def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
         # Only candidate deliverables, explicit verification output and agent
         # diagnostics are controller evidence.  Never SCP a package cache or
         # an agent-created virtual environment back across the control plane.
-        'status=$?; rm -rf .pylibs .venv .cache __pycache__; rm -f .r10_agent.sh; exit $status'
+        'status=$?; '
+        # Return only controller evidence. Agents may install thousands of
+        # runtime files in the workspace; those are neither task evidence nor
+        # safe inputs to a recursive controller download.
+        'rm -rf .r10_return; mkdir -p .r10_return; '
+        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json; do '
+        '[ -f "$item" ] && cp -L "$item" .r10_return/ || true; done; '
+        'for item in deliverable_files .docx_office_check; do '
+        '[ -d "$item" ] || continue; mkdir -p ".r10_return/$item"; cp -aL "$item/." ".r10_return/$item/"; done; '
+        'rm -rf pylibs .pylibs .venv .cache node_modules __pycache__; rm -f .r10_agent.sh; exit $status'
     )
 
 
@@ -214,9 +224,18 @@ def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool 
         if upload.returncode:
             return upload.returncode, upload.stdout[-4000:], f"r10_remote_upload_failed:{upload.stderr[-3500:]}"
         result = _ssh(host, _remote_command(remote, stack=stack, image=image), timeout=1900, check=False)
-        download = _scp(f"{host}:{remote}/.", str(local))
-        if download.returncode:
-            return download.returncode, result.stdout[-4000:], f"r10_remote_download_failed:{download.stderr[-3500:]}"
+        with tempfile.TemporaryDirectory(prefix=".r10-return-", dir=local.parent) as temporary:
+            staging = Path(temporary)
+            download = _scp(f"{host}:{remote}/.r10_return", str(staging))
+            if download.returncode:
+                return download.returncode, result.stdout[-4000:], f"r10_remote_download_failed:{download.stderr[-3500:]}"
+            returned = staging / ".r10_return"
+            if not returned.is_dir():
+                return 125, result.stdout[-4000:], "r10_remote_return_tree_missing"
+            for item in returned.rglob("*"):
+                if item.is_symlink():
+                    return 125, result.stdout[-4000:], "r10_remote_return_symlink_blocked"
+            shutil.copytree(returned, local, dirs_exist_ok=True)
         return result.returncode, result.stdout[-4000:], result.stderr[-4000:]
     except subprocess.TimeoutExpired as exc:
         output = (exc.stderr or b"").decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
