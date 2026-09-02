@@ -72,6 +72,16 @@ class WorldFirstRunnerTests(unittest.TestCase):
             (root / "scope.json").write_text("{}", encoding="utf-8")
             self.assertEqual(RUNNER.status(root)["status"], "running_or_interrupted")
 
+    def test_task_miner_workspace_paths_compile_to_candidate_relative_paths(self) -> None:
+        self.assertEqual(
+            RUNNER._candidate_relative_path("inputs/candidate/report.xlsx"),
+            "report.xlsx",
+        )
+        self.assertEqual(
+            RUNNER._candidate_relative_path("candidate/subdir/note.txt"),
+            "subdir/note.txt",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

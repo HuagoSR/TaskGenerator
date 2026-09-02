@@ -256,6 +256,14 @@ def _json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _candidate_relative_path(value: object) -> str:
+    path = str(value or "").replace("\\", "/").removeprefix("./")
+    for prefix in ("inputs/candidate/", "candidate/", "reference_files/"):
+        if path.startswith(prefix):
+            return path[len(prefix):]
+    return path
+
+
 def _stage_public_inputs(workspace: Path, domain_input: dict[str, Any]) -> None:
     target = workspace / "inputs"
     target.mkdir()
@@ -427,8 +435,11 @@ def _mine_tasks(
         if value.get("deliverable_format") != FORMATS[domain]:
             raise ValueError(f"world_first_task_format_invalid:{case_id}")
         actual = {path.relative_to(worlds[case_id] / "candidate").as_posix() for path in (worlds[case_id] / "candidate").rglob("*") if path.is_file()}
-        if not set(value.get("evidence_paths", [])) <= actual:
+        normalized_evidence = [_candidate_relative_path(path) for path in value.get("evidence_paths", [])]
+        if not set(normalized_evidence) <= actual:
             raise ValueError(f"world_first_task_evidence_path_unknown:{case_id}")
+        value["evidence_paths"] = normalized_evidence
+        value["base_prompt"] = str(value["base_prompt"]).replace("inputs/candidate/", "reference_files/")
         tasks[case_id] = value
         _write(run_root / "mined_tasks" / f"{case_id}.json", value)
     return tasks
@@ -756,9 +767,10 @@ def resume(run_root: Path, run_id: str) -> None:
         completed[state_path.parent.name] = tree_sha256(output)
     if (run_root / "result.json").is_file() and not (run_root / "initial_incomplete_result.json").exists():
         shutil.copy2(run_root / "result.json", run_root / "initial_incomplete_result.json")
-    _write(run_root / "repair_receipt.json", {
+    repair_commit = _git_head()
+    _write(run_root / "repair_receipts" / f"{repair_commit}.json", {
         "receipt_version": "r10.world_first_repair_receipt.1",
-        "parent_scope_sha256": _canonical(scope), "repair_source_commit": _git_head(),
+        "parent_scope_sha256": _canonical(scope), "repair_source_commit": repair_commit,
         "completed_session_output_sha256": completed,
         "repair_boundary": "candidate path-prefix normalization only; no semantic session rerun",
         "consumed_at": _now(),
