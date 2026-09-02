@@ -137,7 +137,8 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
         inner.extend([
             "set -a; . /run/secrets/eval_tuzi_env; set +a",
             # Provider env files are host-managed and may use CRLF line endings.
-            # TOML rejects the residual carriage return if it reaches base_url.
+            # A residual carriage return invalidates both TOML URLs and tokens.
+            "TUZI_API_KEY=$(printf '%s' \"$TUZI_API_KEY\" | tr -d '\\r\\n')",
             "TUZI_BASE_URL=$(printf '%s' \"$TUZI_BASE_URL\" | tr -d '\\r\\n')",
             "mkdir -p /tmp/r10-codex-home",
             "printf '%s\\n' 'model = \"gpt-5.6-sol\"' 'model_provider = \"tuzi\"' > /tmp/r10-codex-home/config.toml",

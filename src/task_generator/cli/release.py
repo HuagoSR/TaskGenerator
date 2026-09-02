@@ -343,13 +343,15 @@ def install_secrets(*, host: str, provider_env: Path, deepseek_key: Path) -> dic
             "OPENAI_MODEL=gpt-5.6-sol",
             f"SERPER_API_KEY={values['SERPER_API_KEY']}",
         ]
-        provider.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        tuzi.write_text(
-            f"TUZI_API_KEY={values['OPENAI_API_KEY']}\nTUZI_BASE_URL={values['OPENAI_BASE_URL']}\n",
-            encoding="utf-8",
+        # Use bytes so a Windows release host cannot translate LF into CRLF.
+        # These files are sourced by a Linux shell, where a trailing CR becomes
+        # part of the provider token.
+        provider.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+        tuzi.write_bytes(
+            f"TUZI_API_KEY={values['OPENAI_API_KEY']}\nTUZI_BASE_URL={values['OPENAI_BASE_URL']}\n".encode("utf-8"),
         )
-        deepseek.write_text(deepseek_value + "\n", encoding="utf-8")
-        unused.write_text("unused\n", encoding="utf-8")
+        deepseek.write_bytes((deepseek_value + "\n").encode("utf-8"))
+        unused.write_bytes(b"unused\n")
         for path in (provider, tuzi, deepseek, unused):
             run(["scp", str(path), f"{host}:{remote}/.{path.name}.tmp"])
             ssh(host, f"chmod 600 '{remote}/.{path.name}.tmp' && mv '{remote}/.{path.name}.tmp' '{remote}/{path.name}'")

@@ -179,6 +179,7 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("request_max_retries = 0", script)
         self.assertIn("stream_max_retries = 0", script)
         self.assertIn("TUZI_API_KEY", script)
+        self.assertIn("TUZI_API_KEY=$(printf '%s' \"$TUZI_API_KEY\" | tr -d '\\r\\n')", script)
         self.assertIn("tr -d '\\r\\n'", script)
         self.assertNotIn("--ignore-user-config", script)
         self.assertNotIn("auth_dir:/run/codex-home", command)
