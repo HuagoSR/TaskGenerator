@@ -82,6 +82,13 @@ class WorldFirstRunnerTests(unittest.TestCase):
             "subdir/note.txt",
         )
 
+    def test_artifact_writer_serializes_lists_of_contract_models(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "models.json"
+            seed = RUNNER._load_inputs()["audit_compliance"]["seed"]
+            RUNNER._write(path, [seed])
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))[0]["seed_id"], seed.seed_id)
+
 
 if __name__ == "__main__":
     unittest.main()

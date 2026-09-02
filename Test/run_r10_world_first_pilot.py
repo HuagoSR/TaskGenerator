@@ -83,7 +83,16 @@ def _now() -> str:
 
 
 def _write(path: Path, value: Any) -> None:
-    payload = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+    def serializable(item: Any) -> Any:
+        if hasattr(item, "model_dump"):
+            return item.model_dump(mode="json")
+        if isinstance(item, dict):
+            return {key: serializable(child) for key, child in item.items()}
+        if isinstance(item, (list, tuple)):
+            return [serializable(child) for child in item]
+        return item
+
+    payload = serializable(value)
     atomic_json(path, payload)
 
 
@@ -506,6 +515,12 @@ def _compile_tasks(
         expected = contract.deliverables[0].relative_path
         prompt = compilation.base_prompt.rstrip() + f"\n\nSubmit exactly one final deliverable at `{expected}`.\n"
         package = run_root / "tasks" / f"{case_id}_task"
+        if (package / "task_manifest.json").is_file():
+            binding_from_task(package, domain=domain)
+            packages[case_id] = package
+            continue
+        if package.exists():
+            shutil.rmtree(package)
         package.mkdir(parents=True)
         (package / "TASK.md").write_text(prompt, encoding="utf-8")
         _write(package / "deliverable_contract.json", contract)
