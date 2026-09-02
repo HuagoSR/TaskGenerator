@@ -7,7 +7,7 @@
 
 将 TaskGenerator 从“Skill + Motif 驱动的任务包生成器”重构为“公开工作种子驱动、由 Agent-native 专业 Skill 辅助的职业情景编译器”。目标不是增加文件数量，而是稳定生成具有业务因果、自然信息不完整性、职业交付物和模型区分度的多文件任务。
 
-首轮范围固定为四题：审计两题、采购两题。所有 Work Seed 仅使用公开、可追溯材料。R10 在完成离线实现和新授权前不得执行外部调用。
+R10.8 已以 `evaluator_revision_required` 结束。当前 R10.9 范围固定为四道 matched task：审计与采购各一个新基础工作世界，并分别派生普通版和职业对抗强化版。所有 Work Seed 与专业难度只使用公开、可追溯材料；用户已授权本 campaign 的服务器和第三方模型上传，执行仍须落盘独立 scope/receipt。
 
 ## Design Principles
 
@@ -84,6 +84,20 @@
 
 切换至新的服务器 ChatGPT 认证目录后，最小账号请求和精简公开 Judge 均通过。新的私有 campaign 从头执行两道 revision 任务：两模型 4/4 有效交付，8/8 双评委评分完整。收入题两模型均为 1.0，仍属 `near_tie`；价格题为 1.0 对 0.4375，但两位 Judge 对 DeepSeek 交付的专业判断覆盖和严重错误边界不一致，属于 `judge_ambiguous`。因此阶段结论为 `evaluator_revision_required`。依照事先规则，不为追求差异重抽，不继续六题生产或十题评测；下一研究问题是评分边界是否能稳定表达，而不是继续扩大题量。
 
+### R10.9 — World-First / Task-Mining adversarial pilot — `active / documentation baseline`
+
+R10.9 不再先写答案再组织证据。它复用“公司自产信息可靠性”和“价格合理性”的公开 Seed、Rules、现有 Professional Skill 与官方来源，但从零生成新组织、时间线和业务记录，不复用旧 Bible、candidate、任务或答案。
+
+固定执行顺序为：
+
+1. GPT-5.6 Sol 起草职业 Skill 与自然难度候选；DeepSeek挑战；Sol 进行真实性/可解性辩护；DeepSeek 每领域选择最多两个来源可解释的变化。
+2. Sol 各生成一个无题干、无 rubric 的基础工作世界，再从同一世界派生 matched 强化版。
+3. DeepSeek Task Miner 只从冻结候选材料发现自然任务；Sol Truth Reconstructor 只从题干、候选材料、Rules 与 Skill 重建监督；DeepSeek独立核对隐藏 world ledger。
+4. 每题先生成优质、合理但不完整、重大捷径错误三档完整交付，由 GPT/DeepSeek 两位 Judge 盲化排序和评分；校准失败不得运行 Solver。
+5. 校准通过后，GPT-5.6 Sol/Codex 与 DeepSeek V4 Pro/OpenCode 对四题各执行一次；两位 Judge 使用 paired blind review，程序按冻结 Decision Matrix 重算分数。
+
+两个领域的强化版都必须形成可归因于职业难度、而非工具摩擦或证据缺口的干净差异，R10.9 才为 `world_first_adversarial_supported`。单领域成立为 `mixed`；两者均不成立为 `not_supported`；评委校准或边界不稳为 `evaluator_revision_required`。无论结果如何，本阶段不自动扩展十题。
+
 ## Acceptance Metrics
 
 | 维度 | Pilot 要求 |
@@ -100,5 +114,5 @@
 
 - 不修改或重解释历史 R9/R7、R6 或 archive 证据。
 - 不复用 GDPval 内容、hidden rubric 或历史私有任务作为生成输入。
-- R10 已生成并静态/行为验收四道 Scenario-First pilot 任务；它们保持冻结，不得为提高区分度手改。所有历史失败 cohort 保持冻结且不与最终 cohort 混合；R10 尚未激活 release、改变历史 registry 或开始训练。
+- R10 已生成并静态/行为验收四道 Scenario-First pilot 任务，并完成两道 compiler-revision 行为实验；它们保持冻结，不得为提高区分度手改。R10.9 仅使用公开 Seed/Rules 重新造世界。所有历史失败 cohort 保持冻结且不与新实验混合；R10 尚未激活 release、改变历史 registry 或开始训练。
 - 每个后续阶段均单独提交、汇报并等待验收。涉及 provider、私有任务、solver 或 grader 的阶段必须先形成独立执行计划与授权。

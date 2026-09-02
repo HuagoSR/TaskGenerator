@@ -20,22 +20,22 @@
 
 R9/R7 证明了工程闭环可运行，但不能证明自动任务具备职业真实性。R7 从零复验的 5/10 provider freeze 是历史诊断，不得继续或拼接。
 
-## R10 Scenario-First 目标架构
+## R10.9 World-First / Task-Mining 目标架构
 
 ```text
-公开真实工作种子
+公开 Work Seed、Rules 与专业来源
         ↓
-专业规则与按需加载的专业 Skill
+Professional Skill 与自然难度辩论
         ↓
-teacher-only Scenario Bible
+无题干、无 rubric 的完整工作世界
         ↓
-Agent 生成的派生证据包
+冻结 candidate-visible 多来源业务文件
         ↓
-candidate-visible 多来源文件
+独立 Task Miner 发现自然工作任务
         ↓
-自然任务、交付合同与 Task Decision Matrix
+独立 Agent 重建 Teacher Truth / Decision Matrix
         ↓
-teacher truth / task-specific rubric
+三档完整交付校准 Judge
         ↓
 静态准入与多模型行为验收
 ```
@@ -44,9 +44,9 @@ teacher truth / task-specific rubric
 
 `WorkSeedV1` 是职业工作原型，不是完整题目。它记录角色、触发事件、业务目标、典型输入、自然问题、交付物和受众，并绑定公开可追溯的来源。专业规则说明适用条件、证据要求、例外与可接受处理。
 
-### Scenario Bible
+### 历史 Scenario Bible 与新工作世界
 
-`ScenarioBibleV1` 是单题原始业务事实的 teacher-only 父权威。它包含组织、角色、时间线、交易或业务对象、政策适用、真实异常、未决问题、决策后果和正确处理。它先于候选文件存在，禁止由候选文件反推或与候选输入混存。后续派生证据包只能显式补充不冲突的任务事实，并始终保留父 Bible 链接。
+`ScenarioBibleV1` 继续作为 R10.2–R10.8 的冻结事实权威。R10.9 不修改或复用这些 Bible，也不建设结构化 Bible V2。新实验由 Agent 先产生 campaign-scoped `world_ledger.md` 和自然业务材料；此时不存在题干、交付合同、rubric 或预设答案。工作世界冻结后，Task Miner 才从 candidate-visible 材料中发现任务。
 
 ### 专业 Skill 与派生证据包
 
@@ -54,9 +54,13 @@ teacher truth / task-specific rubric
 
 原始 `ScenarioBibleV1` 保持冻结。出题 Agent 依据 Bible 与选中的 2–4 个专业 Skill 产生一个带父 Bible ID 的派生证据包，其中记录新增且不冲突的情景事实、candidate 文件和 teacher-only 证据映射。文件必须保留形成目的、时间和口径；冲突只能由日期、金额、审批、版本或缺失等事实体现，不能使用结论性标签。
 
-### Task Compilation
+### Task Mining 与 Truth Reconstruction
 
-任务从业务事件自然产生，交付物服务于明确受众和决策。`TaskDecisionMatrixV1` 将每个关键判断点映射为可见证据、可接受结论、严重错误和后续行动。七维 rubric 保留为通用质量框架，但不得替代该题的决策矩阵。
+Task Miner 只读取候选材料和公开角色/触发背景，不读取 world ledger、难度计划或预期答案。它必须发现真实从业者会自然收到的任务、业务受众和领域原生交付物。另一 Agent 再从冻结题干、候选材料、Rules 与 Skill 中重建 Teacher Truth。`TaskDecisionMatrixV1` 继续把判断点映射到可见证据、可接受结论、严重错误和后续行动。
+
+### 职业对抗难度与 Judge 校准
+
+难度只能由职业流程中的正常业务量、跨系统口径、证据可靠性、权限边界或支持有条件结论的信息缺口产生。基础世界与强化世界保持角色、目标和交付类型可比，强化版最多应用两个来源可解释的变化。正式 Solver 之前，每题以优质、合理但不完整、重大捷径错误三档完整交付校准两位 Judge；校准失败不得用 Solver 结果掩盖。
 
 ### Admission 与反馈
 
@@ -77,4 +81,4 @@ teacher truth / task-specific rubric
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.2 合同继续只读保留；Professional Skill curation、自动 Skill Compiler 与薄型 A/B evidence experiment 均已实现。最新完整 cohort 的四份 bundle 通过静态 admission，两个领域的条件盲审均支持有 Skill 的文件级改进；R10.6/R10.7A 已静态接纳四道并经用户形态验收，R10.8B-2 又派生两道静态接纳的改良任务。服务器复杂 Judge 运行环境已通过公开准入；尚无新增私有行为证据，因为 DeepSeek/OpenCode 的公共回传运输层正在修复。
+- 已实现的 R10.0–R10.8 合同与证据继续只读保留。R10.8B-2 的新私有行为结果完整，但结论为 `evaluator_revision_required`：一题接近平局，一题存在 Judge 边界歧义。R10.9 的 World-First manifest、职业难度计划和 paired Judge review 尚未实现；不得提前扩大到十题。

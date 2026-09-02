@@ -29,16 +29,16 @@ R7 的 5/10 冻结结果没有达到 `production_ready_for_evaluation`，不得�
 
 ## R10 Admission Boundary
 
-R10.0–R10.2 的离线合同、公开 seed 和 teacher-only Bible 已实现；R10 已有四道静态接纳的 Pilot 任务及两道静态接纳的 compiler-revision 派生任务。服务器复杂 Judge 公开准入已通过；当前只修复 DeepSeek/OpenCode 临时依赖回传污染工作区的问题，修复后的新公共 scope 通过前，该派生批次的行为验收仍是 `incomplete`。R10 不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
+R10.0–R10.8 已产生四道用户验收任务、两道 compiler-revision 任务及完整行为证据。R10.8 最终结论是 `evaluator_revision_required`，不是基础设施 incomplete，也不是扩题准入。R10.9 改用 World-First / Task-Mining 小实验；R10 不能使用 R9 的普通 `candidate_ready` 语义跳过情景真实性验证。未来 Scenario-First task 至少需要：
 
 1. 公开可追溯 Work Seed 与 Professional Rule Set；
-2. teacher-only Scenario Bible；
-3. factory-side 专业 Skill selection 与带父 Bible 追溯的派生证据包；
-4. Task Decision Matrix 与 task-specific rubric；
-5. 来源追溯、可解性、答案泄漏、文件可用性和交付合同检查；
-6. 四题 pilot 的多模型行为验收。
+2. 在任务出现前冻结的 teacher-only 工作世界及 candidate 业务材料；
+3. 来源约束的 Professional Skill 与自然难度计划；
+4. 与 world ledger 隔离的 Task Mining 和 Teacher Truth 重建；
+5. Task Decision Matrix、task-specific rubric 与三档 Judge 校准；
+6. 来源追溯、可解性、答案泄漏、文件可用性、交付合同和 matched 行为验收。
 
-只有 R10.6 pilot 的全部准入条件通过后，才可定义十题 production cohort。R10 不改变 R9 服务器发布器，也不授权任何 provider、solver、grader、训练、public release 或 promotion 操作。
+只有 R10.9 在审计、采购两个领域均证明 World-First 对抗强化产生干净、可解释差异后，才可另行定义十题 production cohort。R10.9 不改变 R9 服务器发布器，也不授权训练、public release 或 promotion。
 
 ## Non-Goals
 

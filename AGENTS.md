@@ -21,19 +21,21 @@ Use `docs/archive/` only for historical evidence; it never overrides the overvie
 
 R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
 
-R10 Scenario-First is the active research boundary. R10.0 offline contracts, R10.1 public seed admission and R10.2 teacher-only Bible compilation are implemented: four admitted public Work Seeds, two professional rule sets, six V1 contracts, report-only validators and four admitted Scenario Bibles. R10.3 readiness exposed that a deterministic projection of narrative Bibles is the wrong abstraction. Keep those Bibles frozen; do not build a structured Bible V2 or fabricate files from prose. The R10.3 Skill foundation and curation are implemented: two curated professional Skill packages, a thin catalog, progressive loader and source-bound DeepSeek draft batch exist, while the historical Registry remains unchanged. R10.5's automatic Skill Compiler and common-base A/B experiment yielded `skill_effect_supported`; R10.6/R10.7A compiled four user-reviewed, statically admitted tasks. R10.8A corrected a teacher-only arithmetic anchor and restored the four-task pilot to `behaviorally_admitted`, while R10.8B-1 found low model separation. R10.8B-2 produced two statically admitted revision tasks and, after isolated Tuzi/old-account infrastructure diagnostics, completed a fresh official ChatGPT Codex/DeepSeek two-solver, two-judge campaign under a new server account. The income task remained a `near_tie`; the price task had a large model score gap but unstable Judge boundaries, so the final conclusion is `evaluator_revision_required`. R10.8 ends at that research gate and does not authorize six/ten-task expansion, registry mutation, release activation, training or promotion.
+R10 Scenario-First is the active research boundary. R10.0–R10.7 established public Work Seeds, professional rules, narrative Scenario Bibles, agent-native professional Skills, derived evidence bundles, four statically admitted tasks and a four-task behavioral pilot. R10.8 corrected one teacher anchor, diagnosed low separation, and tested two GDPval-calibrated compiler revisions. Its final official ChatGPT Codex/DeepSeek campaign left the income task as `near_tie` and the price task as `judge_ambiguous`, so R10.8 closed as `evaluator_revision_required` without six/ten-task expansion. R10.9 is now the active experiment: reuse two public Seeds/Rules but create new work worlds before any task exists, derive one baseline and one profession-constrained adversarial variant per domain, mine tasks from frozen candidate artifacts, reconstruct truth independently, calibrate Judges with three full deliverable tiers, and only then run two solvers. Do not reuse old Bibles, candidate files, tasks, answers or receipts in R10.9.
 
 ## Architecture Boundaries
 
 ```text
-Public Work Seed → Professional Rules → Scenario Bible
-→ Professional Skill Selection → Derived Evidence Bundle
-→ Candidate Task → Teacher Truth / Rubric
-→ Static Admission → Behavioral Admission
+Public Work Seed + Professional Rules
+→ Professional Skill / natural-difficulty deliberation
+→ frozen work world and candidate business artifacts
+→ independent Task Mining
+→ independent Teacher Truth / Rubric reconstruction
+→ Judge calibration → Behavioral Admission
 ```
 
 - A `WorkSeed` explains why a real worker receives a task; it is not a prompt or complete case.
-- `ScenarioBible` is the teacher-only parent authority for business facts. A frozen derived evidence bundle may add explicit, non-conflicting task facts while retaining its parent Bible link.
+- Historical `ScenarioBible` remains a teacher-only parent authority. R10.9 does not reuse those Bibles or introduce Bible V2; its new teacher-only world ledger is campaign-scoped and exists before task mining.
 - Candidate files are projections of the same world state. Facts, not labels such as `Questionable` or `Exception`, must reveal conflicts and gaps.
 - Professional Skill is an agent-native, source-grounded knowledge package for factory-side professional judgment, coverage and failure attribution. Generic tool skills are reused rather than duplicated. Motif is a relationship label and analysis dimension; neither determines task form alone.
 - GDPval is `eval_calibration_only`; never use its tasks, hidden rubrics or content as generation or training inputs.

@@ -55,16 +55,18 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前执行点：R10.8B-2 已用新的服务器 ChatGPT 认证目录完成独立公开门和两题私有 campaign。两模型均完成两题有效交付，8 项双评委评分完整；服务器后台接管的评分在聚合前通过交付 SHA、任务身份和完成事件校验。收入题仍为 `near_tie`，价格题虽有明显分差但为 `judge_ambiguous`，最终结论为 `evaluator_revision_required`。该结论终止本轮六题/十题扩展；不得重抽答案、混合历史 Tuzi/旧账号证据、修改冻结题目或激活新 release。若继续研究，必须另行设计评分边界稳定性实验，而不是直接扩大 cohort。
+R10.8B-2 已用新的服务器 ChatGPT 认证目录完成独立公开门和两题私有 campaign。两模型均完成两题有效交付，8 项双评委评分完整；收入题仍为 `near_tie`，价格题虽有明显分差但为 `judge_ambiguous`，最终结论为 `evaluator_revision_required`。R10.8 已关闭，禁止继续六题/十题扩展、重抽答案、混合历史 Tuzi/旧账号证据、修改冻结题目或激活 release。
 
-后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
+当前执行点是 R10.9 World-First / Task-Mining pilot：复用两项公开 Seed/Rules，但从零生成审计和采购工作世界，各形成普通版与职业对抗强化版。Task Miner 不得读取 world ledger、难度身份或预期答案；Truth Reconstructor 不得读取隐藏 ledger；正式 Solver 前必须完成三档完整交付的双 Judge 校准。用户已对该 R10.9 campaign 的服务器和第三方模型上传给出持续授权；仍须创建独立 scope/receipt，但无需等待逐 SHA 确认。
 
-1. 专业 Skill 的来源、版本、触发边界与只供 factory-side 使用的范围。
-2. 父 Bible、Skill selection、派生证据包、candidate 文件和 teacher-only 映射的隔离方式。
-3. 无 Skill/有 Skill 的相同输入比较、最小硬检查和失败归因方式。
-4. task/truth、solver/grader 各自独立的执行边界。
+R10.9 执行前必须冻结：
 
-任何 R10 任务都不得复用 R7 私有任务、旧 proposal 或旧 provider receipt；每个阶段结束后必须先汇报并等待验收。
+1. Work Seed、Rules、专业 Skill、难度计划和官方来源 SHA。
+2. 基础/强化工作世界、candidate 文件与 teacher-only ledger 的隔离方式。
+3. Task Miner、Truth Reconstructor、Judge 校准与 Solver 的盲区。
+4. matched task、交付合同、Decision Matrix 和 paired review 的执行边界。
+
+任何 R10.9 任务都不得复用旧 Bible、R7/R8 私有任务、旧 proposal、旧答案或旧 provider receipt。前一门失败时停止后续调用；不因低分或希望提高区分度重抽。
 
 ## Closeout
 

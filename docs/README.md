@@ -32,4 +32,4 @@
 - `docs/archive/` 保留历史计划、报告与 handoff；Git 历史承担旧活跃文档的精确追溯。
 - 任务包、provider 输出、执行日志、截图和临时诊断只写入 `artifacts/`。
 
-R10 是当前活跃研究主线；R9/R7 是冻结的历史生产证据。当前 R10 文档采用“Scenario Bible → factory-side 专业 Skill → 派生证据包”的路线：已有 Bible 保持冻结，后续 Skill 与任务实现必须逐阶段验收。不得把 archive 或 artifacts 的内容解释为当前授权或当前生产状态。
+R10 是当前活跃研究主线；R9/R7 是冻结的历史生产证据。R10.8 已以 `evaluator_revision_required` 结束，R10.9 采用“Professional Skill/自然难度辩论 → 无任务工作世界 → Task Mining → 独立 Truth 重建 → Judge 校准”的路线。历史 Bible、任务与结果保持冻结；不得把 archive 或 artifacts 的内容解释为当前状态。
