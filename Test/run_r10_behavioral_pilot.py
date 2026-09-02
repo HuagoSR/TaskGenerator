@@ -63,7 +63,7 @@ TASK_ROOTS = {
 INFRA_MARKERS = (
     "authentication", "authorization", "not logged in", "unauthorized", "connection", "connecterror",
     "remoteprotocolerror", "stream disconnected", "getaddrinfo", "internal server error", "rate limit",
-    "service unavailable", "timeout", "tls", "dns",
+    "service unavailable", "timeout", "tls", "dns", "r10_remote_upload_failed", "r10_remote_download_failed",
 )
 
 
@@ -188,14 +188,41 @@ def _write_agent_script(path: Path, content: str) -> None:
     path.write_bytes(content.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
 
 
+def _scp_command(source: str, destination: str) -> list[str]:
+    """Use bounded, non-interactive SCP for every controller transfer.
+
+    A completed remote agent must not leave the controller waiting forever for
+    an SSH transport that has stopped making progress. These are transport
+    safeguards only; they do not retry or alter an agent session.
+    """
+    return [
+        "scp", "-r", "-o", "BatchMode=yes", "-o", "ConnectTimeout=30",
+        "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=2",
+        source, destination,
+    ]
+
+
+def _scp(source: str, destination: str, *, timeout: int = 120):
+    return _run(_scp_command(source, destination), timeout=timeout, check=False)
+
+
 def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False, image: str = IMAGE) -> tuple[int, str, str]:
     _write_agent_script(local / ".r10_agent.sh", _remote_script(remote, stack=stack, grade=grade))
-    _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
-    _run(["scp", "-r", str(local), f"{host}:{remote}"], timeout=240)
-    result = _ssh(host, _remote_command(remote, stack=stack, image=image), timeout=1900, check=False)
-    _run(["scp", "-r", f"{host}:{remote}/.", str(local)], timeout=240)
-    (local / ".r10_agent.sh").unlink(missing_ok=True)
-    return result.returncode, result.stdout[-4000:], result.stderr[-4000:]
+    try:
+        _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
+        upload = _scp(str(local), f"{host}:{remote}")
+        if upload.returncode:
+            return upload.returncode, upload.stdout[-4000:], f"r10_remote_upload_failed:{upload.stderr[-3500:]}"
+        result = _ssh(host, _remote_command(remote, stack=stack, image=image), timeout=1900, check=False)
+        download = _scp(f"{host}:{remote}/.", str(local))
+        if download.returncode:
+            return download.returncode, result.stdout[-4000:], f"r10_remote_download_failed:{download.stderr[-3500:]}"
+        return result.returncode, result.stdout[-4000:], result.stderr[-4000:]
+    except subprocess.TimeoutExpired as exc:
+        output = (exc.stderr or b"").decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
+        return 124, "", f"r10_remote_transfer_timeout:{output[-3500:]}"
+    finally:
+        (local / ".r10_agent.sh").unlink(missing_ok=True)
 
 
 def _input_hashes(root: Path) -> set[str]:

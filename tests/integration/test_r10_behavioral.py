@@ -35,7 +35,7 @@ if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 from run_r10_behavioral_pilot import (
     REMOTE_CODEX_AUTH_DIR, REMOTE_TUZI_ENV_FILE, TUZI_CODEX_STACK, _codex_turn_completed, _remote_command,
-    _record_probe, _remote_script, _scope_sha256, _stage_solver, _write_agent_script,
+    _record_probe, _remote_script, _scp_command, _scope_sha256, _stage_solver, _write_agent_script,
 )
 from r10_local_codex_judge import _redact, local_codex_command
 
@@ -206,6 +206,14 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn(REMOTE_CODEX_AUTH_DIR, command)
         self.assertIn(":/run/codex-home:rw", command)
         self.assertIn("rm -rf .pylibs .venv .cache __pycache__", command)
+
+    def test_remote_scp_transport_is_noninteractive_and_bounded(self):
+        command = _scp_command("source", "huago-cone:/remote")
+        self.assertEqual(command[:2], ["scp", "-r"])
+        self.assertIn("BatchMode=yes", command)
+        self.assertIn("ConnectTimeout=30", command)
+        self.assertIn("ServerAliveInterval=15", command)
+        self.assertIn("ServerAliveCountMax=2", command)
 
     def test_remote_gpt_requires_a_completed_turn_event(self):
         with tempfile.TemporaryDirectory() as root:
