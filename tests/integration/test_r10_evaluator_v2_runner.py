@@ -74,6 +74,16 @@ class R10EvaluatorV2RunnerTests(unittest.TestCase):
         self.assertIn("slot_1", str(schema))
         self.assertIn("slot_2", str(schema))
 
+    def test_opencode_fenced_json_is_recovered_without_retry(self) -> None:
+        payload = {
+            "review_version": "r10.counterbalanced_pair_review.2",
+            "task_id": "task", "judge_id": "deepseek-v4-pro@official_opencode",
+            "order_id": "a_b", "preference": "tie", "bundles": [],
+        }
+        event = {"type": "text", "part": {"type": "text", "text": "Done.\n```json\n" + __import__("json").dumps(payload) + "\n```"}}
+        recovered = runner._extract_fenced_json_from_opencode(__import__("json").dumps(event))
+        self.assertEqual(__import__("json").loads(recovered), payload)
+
 
 if __name__ == "__main__":
     unittest.main()

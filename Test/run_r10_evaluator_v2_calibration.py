@@ -191,12 +191,45 @@ def _parse_review(workspace: Path, *, stdout: str, judge_id: str) -> Counterbala
     raw = workspace / "grade.raw.json"
     if not raw.is_file() and judge_id.startswith("deepseek"):
         text = (workspace / "agent.jsonl").read_text(encoding="utf-8", errors="replace") if (workspace / "agent.jsonl").is_file() else stdout
-        extracted = _extract_opencode_json(text)
+        extracted = _extract_opencode_json(text) or _extract_fenced_json_from_opencode(text)
         if extracted:
             raw.write_text(extracted, encoding="utf-8")
     if not raw.is_file():
         raise ValueError("r10_10_judge_output_missing")
     return CounterbalancedPairReviewV2.model_validate_json(raw.read_text(encoding="utf-8"))
+
+
+def _extract_fenced_json_from_opencode(text: str) -> str | None:
+    """Recover a final JSON object wrapped in prose or a Markdown fence.
+
+    OpenCode's JSON event stream is valid even when the model's final text is
+    not a bare JSON object.  This is a controller parsing repair, not a second
+    semantic model attempt.
+    """
+
+    candidates: list[str] = []
+    for line in reversed(text.splitlines()):
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        part = event.get("part") if isinstance(event, dict) else None
+        value = part.get("text") if isinstance(part, dict) else None
+        if isinstance(value, str):
+            candidates.append(value)
+    decoder = json.JSONDecoder()
+    for candidate in candidates:
+        for index, character in enumerate(candidate):
+            if character != "{":
+                continue
+            try:
+                value, end = decoder.raw_decode(candidate[index:])
+            except json.JSONDecodeError:
+                continue
+            remainder = candidate[index + end:].strip().replace("```", "").strip()
+            if isinstance(value, dict) and not remainder:
+                return json.dumps(value, ensure_ascii=False)
+    return None
 
 
 def _run_assignment(
@@ -212,6 +245,21 @@ def _run_assignment(
             return CounterbalancedPairReviewV2.model_validate_json(
                 (assignment_root / "review.json").read_text(encoding="utf-8")
             )
+        if value.get("status") == "incomplete":
+            workspace = assignment_root / "workspace"
+            try:
+                recovered = _parse_review(workspace, stdout="", judge_id=judge_id)
+            except Exception as exc:
+                raise RuntimeError(f"r10_10_started_assignment_not_rerunnable:{assignment}") from exc
+            if recovered.task_id != task_id or recovered.judge_id != judge_id or recovered.order_id != order:
+                raise ValueError("r10_10_recovered_judge_identity_mismatch")
+            _write(assignment_root / "review.json", recovered.model_dump(mode="json"))
+            _write(state, {
+                "status": "completed", "recovered_without_provider_call": True,
+                "completed_at": _now(), "review_sha256": recovered.canonical_sha256(),
+                "original_first_failure": value.get("first_failure"),
+            })
+            return recovered
         raise RuntimeError(f"r10_10_started_assignment_not_rerunnable:{assignment}")
     workspace = assignment_root / "workspace"
     _stage(target=workspace, task_id=task_id, profile=profile, order=order, judge_id=judge_id)
