@@ -172,6 +172,24 @@ class R10BehavioralTests(unittest.TestCase):
         self.assertIn("PIP_TARGET=/tmp/r10-pylibs", deepseek)
         self.assertIn("PYTHONPATH=/tmp/r10-pylibs", deepseek)
 
+    def test_r10_10_model_and_reasoning_overrides_are_allowlisted(self):
+        terra = _remote_script(
+            "/tmp/work", stack="gpt-5.6-sol@chatgpt_codex", grade=True,
+            model_override="gpt-5.6-terra", codex_reasoning_effort="medium",
+        )
+        flash = _remote_script(
+            "/tmp/work", stack="deepseek-v4-pro@official_opencode", grade=True,
+            model_override="deepseek-v4-flash", opencode_variant="high",
+        )
+        self.assertIn("--model gpt-5.6-terra", terra)
+        self.assertIn("model_reasoning_effort=medium", terra)
+        self.assertIn("--model deepseek/deepseek-v4-flash --variant high", flash)
+        with self.assertRaises(ValueError):
+            _remote_script(
+                "/tmp/work", stack="gpt-5.6-sol@chatgpt_codex",
+                model_override="gpt-5.4-pro",
+            )
+
     def test_tuzi_codex_uses_ephemeral_responses_provider_without_chatgpt_auth(self):
         script = _remote_script("/tmp/work", stack=TUZI_CODEX_STACK, grade=True)
         command = _remote_command("/remote/workspace", stack=TUZI_CODEX_STACK)

@@ -109,6 +109,8 @@ def _is_codex_stack(stack: str) -> bool:
 def _remote_script(
     workspace: str, *, stack: str, grade: bool = False,
     codex_reasoning_effort: str | None = None,
+    model_override: str | None = None,
+    opencode_variant: str | None = None,
 ) -> str:
     if stack not in SUPPORTED_STACKS:
         raise ValueError("r10_behavioral_unknown_stack")
@@ -116,8 +118,19 @@ def _remote_script(
         f"-c model_reasoning_effort={codex_reasoning_effort} "
         if codex_reasoning_effort else ""
     )
+    if model_override is not None:
+        allowed = (
+            {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+            if _is_codex_stack(stack) else {"deepseek-v4-pro", "deepseek-v4-flash"}
+        )
+        if model_override not in allowed:
+            raise ValueError("r10_behavioral_model_override_not_allowed")
+    if opencode_variant is not None and opencode_variant not in {"low", "high", "max"}:
+        raise ValueError("r10_behavioral_opencode_variant_not_allowed")
+    codex_model = model_override or "gpt-5.6-sol"
+    deepseek_model = model_override or "deepseek-v4-pro"
     codex_command = (
-        "codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol "
+        f"codex exec --dangerously-bypass-approvals-and-sandbox --model {codex_model} "
         + reasoning_override
         + "-c project_doc_max_bytes=0 -c agents.enabled=false "
         "--disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral "
@@ -129,7 +142,9 @@ def _remote_script(
         codex_command
         if _is_codex_stack(stack)
         else "export DEEPSEEK_API_KEY=\"$(cat /run/secrets/deepseek_api_key)\"; "
-        "opencode run --format json --model deepseek/deepseek-v4-pro --auto --dir /workspace "
+        f"opencode run --format json --model deepseek/{deepseek_model} "
+        + (f"--variant {opencode_variant} " if opencode_variant else "")
+        + "--auto --dir /workspace "
         "\"$(cat TASK.md)\" > agent.jsonl 2> stderr.txt"
     )
     inner = [
@@ -232,12 +247,14 @@ def _run_remote(
     *, host: str, remote: str, local: Path, stack: str, grade: bool = False,
     image: str = IMAGE, codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR,
     timeout_seconds: int = 1800, codex_reasoning_effort: str | None = None,
+    model_override: str | None = None, opencode_variant: str | None = None,
 ) -> tuple[int, str, str]:
     _write_agent_script(
         local / ".r10_agent.sh",
         _remote_script(
             remote, stack=stack, grade=grade,
             codex_reasoning_effort=codex_reasoning_effort,
+            model_override=model_override, opencode_variant=opencode_variant,
         ),
     )
     try:
