@@ -82,18 +82,56 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
     def test_public_only_mode_does_not_read_private_bindings(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "public"
+            reused = Path(directory) / "reused"
+            reused.mkdir()
             arguments = [
                 "runner", "--public-only", "--run-id", "public-fixture", "--output-root", str(output),
                 "--image", "public-image", "--image-sha256", "a" * 64,
+                "--reused-public-root", str(reused),
             ]
-            def record_public_gates(*, output_root, **_kwargs):
-                RUNNER._write(output_root / "result.json", {"decision": "public_gates_passed", "probes": {stack: True for stack in RUNNER.STACKS}})
-                return True, {stack: True for stack in RUNNER.STACKS}
-            with patch.object(sys, "argv", arguments), patch.object(RUNNER, "_scope", side_effect=AssertionError("private_scope_read")), patch.object(RUNNER, "_record_public_gates", side_effect=record_public_gates), patch.object(RUNNER, "_source_commit", return_value="b" * 40):
+            def record_slim_gates(*, output_root, **_kwargs):
+                RUNNER._write(output_root / "result.json", {"decision": "public_gates_passed"})
+                return True
+            with patch.object(sys, "argv", arguments), patch.object(RUNNER, "_scope", side_effect=AssertionError("private_scope_read")), patch.object(RUNNER, "_record_slim_official_gates", side_effect=record_slim_gates), patch.object(RUNNER, "_source_commit", return_value="b" * 40):
                 RUNNER.main()
             evidence = __import__("json").loads((output / "public_gate_evidence.json").read_text(encoding="utf-8"))
         self.assertEqual(evidence["decision"], "public_gates_passed")
         self.assertEqual(evidence["stacks"], list(RUNNER.STACKS))
+
+    def test_auth_profile_is_anonymous_and_changes_with_directory(self):
+        binding = MagicMock()
+        binding.model_dump.return_value = {"task_id": "fixture"}
+        evidence = {"decision": "public_gates_passed"}
+        with patch.object(RUNNER, "binding_from_task", return_value=binding), patch.object(RUNNER, "_source_commit", return_value="a" * 40):
+            first = RUNNER._scope(
+                "run", image="image", image_sha256="b" * 64,
+                public_gate_evidence=evidence, codex_auth_dir="/secret/auth-a",
+            )
+            second = RUNNER._scope(
+                "run", image="image", image_sha256="b" * 64,
+                public_gate_evidence=evidence, codex_auth_dir="/secret/auth-b",
+            )
+        self.assertNotEqual(
+            first["gpt_environment"]["auth_profile_fingerprint"],
+            second["gpt_environment"]["auth_profile_fingerprint"],
+        )
+        self.assertNotIn("/secret/", __import__("json").dumps(first))
+
+    def test_minimal_account_probe_requires_valid_json_and_completed_turn(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def run_remote(*, local, **_kwargs):
+                (local / "agent.jsonl").write_text(
+                    '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}\n',
+                    encoding="utf-8",
+                )
+                (local / "grade.raw.json").write_text('{"status":"ok"}\n', encoding="utf-8")
+                return 0, "", ""
+            with patch.object(RUNNER, "_run_remote", side_effect=run_remote):
+                self.assertTrue(RUNNER._record_minimal_account_probe(
+                    output_root=root, host="host", remote_root="/remote",
+                    image="image", codex_auth_dir="/auth",
+                ))
 
     def test_public_gate_evidence_rejects_image_or_tree_drift(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -105,6 +143,23 @@ class R10CompilerRevisionBehavioralTests(unittest.TestCase):
                 (root / "result.json").write_text('{"decision":"incomplete"}\n', encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "evidence_drift|result_drift"):
                     RUNNER._load_public_gate_evidence(root=root, image="image", image_sha256="d" * 64)
+
+    def test_public_gate_evidence_rejects_auth_profile_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            RUNNER._write(root / "result.json", {
+                "decision": "public_gates_passed",
+                "auth_profile_fingerprint": RUNNER._auth_profile_fingerprint("/auth/current"),
+            })
+            with patch.object(RUNNER, "_source_commit", return_value="c" * 40):
+                RUNNER._write_public_gate_evidence(
+                    output_root=root, image="image", image_sha256="d" * 64,
+                )
+                with self.assertRaisesRegex(ValueError, "auth_profile_drift"):
+                    RUNNER._load_public_gate_evidence(
+                        root=root, image="image", image_sha256="d" * 64,
+                        codex_auth_dir="/auth/other",
+                    )
 
     def test_scope_uses_immutable_build_metadata_when_git_is_unavailable(self):
         with patch.object(RUNNER.subprocess, "run", side_effect=FileNotFoundError), patch.dict(RUNNER.os.environ, {"TASKGEN_SOURCE_COMMIT": "b" * 40}, clear=False):

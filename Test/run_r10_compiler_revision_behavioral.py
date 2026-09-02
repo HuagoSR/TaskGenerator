@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -22,7 +23,8 @@ sys.path.insert(0, str(ROOT / "Test"))
 
 from run_r10_behavioral_pilot import (
     CHATGPT_CODEX_STACK, DEEPSEEK_OPENCODE_STACK, TUZI_CODEX_STACK,
-    _execute_judge, _execute_solver, _record_probe, _safe_remote_root,
+    _codex_turn_completed, _execute_judge, _execute_solver, _record_probe,
+    _run_remote, _safe_remote_root,
 )
 from task_generator.evaluation.r10_behavioral import binding_from_task, sha256_json
 
@@ -36,6 +38,10 @@ GPT_TRANSPORTS = {
 }
 DEFAULT_GPT_TRANSPORT = "chatgpt_codex"
 STACKS = (CHATGPT_CODEX_STACK, DEEPSEEK_OPENCODE_STACK)
+REMOTE_CURRENT_ACCOUNT_AUTH_DIR = "/home/huagosr/taskgenerator-secrets/codex-auth-current"
+SLIM_JUDGE_REASONING_EFFORT = "medium"
+MINIMAL_ACCOUNT_PROBE_TIMEOUT_SECONDS = 120
+SLIM_JUDGE_PROBE_TIMEOUT_SECONDS = 600
 
 
 def _stacks(gpt_transport: str) -> tuple[str, str]:
@@ -47,6 +53,12 @@ def _stacks(gpt_transport: str) -> tuple[str, str]:
 
 def _now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _auth_profile_fingerprint(codex_auth_dir: str) -> str:
+    return hashlib.sha256(
+        f"r10-codex-auth-profile:{codex_auth_dir}".encode("utf-8")
+    ).hexdigest()
 
 
 def _write(path: Path, value: Any) -> None:
@@ -73,6 +85,7 @@ def _source_commit() -> str:
 def _scope(
     run_id: str, *, image: str, image_sha256: str,
     public_gate_evidence: dict[str, Any], gpt_transport: str = DEFAULT_GPT_TRANSPORT,
+    codex_auth_dir: str = REMOTE_CURRENT_ACCOUNT_AUTH_DIR,
 ) -> dict[str, Any]:
     commit = _source_commit()
     stacks = _stacks(gpt_transport)
@@ -88,8 +101,11 @@ def _scope(
             "transport": gpt_transport,
             "provider": "openai_chatgpt" if gpt_transport == "chatgpt_codex" else "tuzi",
             "authentication": "chatgpt_oauth" if gpt_transport == "chatgpt_codex" else "provider_key",
+            "auth_profile_fingerprint": _auth_profile_fingerprint(codex_auth_dir)
+            if gpt_transport == "chatgpt_codex" else None,
             "image": image, "image_sha256": image_sha256,
             "model": "gpt-5.6-sol", "codex_version": "0.149.1", "timeout_seconds": 1800,
+            "judge_reasoning_effort": SLIM_JUDGE_REASONING_EFFORT,
         },
         "deepseek_environment": {"transport": "huago_opencode", "image": image, "image_sha256": image_sha256, "model": "deepseek-v4-pro", "timeout_seconds": 1800},
         "public_probe_required": True, "complex_judge_probe_required": True,
@@ -100,9 +116,16 @@ def _scope(
     }
 
 
-def _remote_solver(*, output_root: Path, host: str, remote_root: str, task_id: str, task_root: Path, domain: str, stack: str, image: str) -> dict[str, Any]:
+def _remote_solver(
+    *, output_root: Path, host: str, remote_root: str, task_id: str,
+    task_root: Path, domain: str, stack: str, image: str,
+    codex_auth_dir: str = REMOTE_CURRENT_ACCOUNT_AUTH_DIR,
+) -> dict[str, Any]:
     binding = binding_from_task(task_root, domain=domain)
-    outcome = _execute_solver(host=host, remote_root=remote_root, output_root=output_root, binding=binding, stack=stack, image=image)
+    outcome = _execute_solver(
+        host=host, remote_root=remote_root, output_root=output_root,
+        binding=binding, stack=stack, image=image, codex_auth_dir=codex_auth_dir,
+    )
     return outcome.model_dump(mode="json")
 
 
@@ -156,6 +179,106 @@ def _record_public_gates(
     return True, probes
 
 
+def _validate_reused_public_evidence(root: Path) -> dict[str, Any]:
+    """Reuse immutable file-tool and DeepSeek judge evidence from the same image."""
+    required = {
+        "gpt_tool_probe": root / "public_probes" / CHATGPT_CODEX_STACK / "probe_result.json",
+        "deepseek_tool_probe": root / "public_probes" / DEEPSEEK_OPENCODE_STACK / "probe_result.json",
+        "deepseek_complex_judge": root / "public_complex_judge_probe" / "judges" / DEEPSEEK_OPENCODE_STACK / "public-probe" / "attempt_01" / "review.json",
+    }
+    for path in required.values():
+        if not path.is_file():
+            raise FileNotFoundError("r10_reused_public_evidence_missing")
+    for key in ("gpt_tool_probe", "deepseek_tool_probe"):
+        if json.loads(required[key].read_text(encoding="utf-8")).get("decision") != "pass":
+            raise ValueError("r10_reused_tool_probe_not_passed")
+    json.loads(required["deepseek_complex_judge"].read_text(encoding="utf-8"))
+    return {
+        "root_tree_sha256": _public_tree_sha256(root),
+        "files": {
+            key: hashlib.sha256(path.read_bytes()).hexdigest()
+            for key, path in required.items()
+        },
+    }
+
+
+def _record_minimal_account_probe(
+    *, output_root: Path, host: str, remote_root: str, image: str,
+    codex_auth_dir: str,
+) -> bool:
+    workspace = output_root / "minimal_account_probe" / "workspace"
+    workspace.mkdir(parents=True)
+    schema = {
+        "type": "object", "additionalProperties": False,
+        "properties": {"status": {"const": "ok"}}, "required": ["status"],
+    }
+    _write(workspace / "grade_schema.json", schema)
+    (workspace / "TASK.md").write_text(
+        'Return exactly {"status":"ok"}. Do not run commands or inspect files.\n',
+        encoding="utf-8",
+    )
+    code, stdout, stderr = _run_remote(
+        host=host, remote=f"{remote_root}/minimal-account-probe", local=workspace,
+        stack=CHATGPT_CODEX_STACK, grade=True, image=image,
+        codex_auth_dir=codex_auth_dir,
+        timeout_seconds=MINIMAL_ACCOUNT_PROBE_TIMEOUT_SECONDS,
+        codex_reasoning_effort="low",
+    )
+    raw = workspace / "grade.raw.json"
+    parsed = None
+    if raw.is_file():
+        try:
+            parsed = json.loads(raw.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            parsed = None
+    passed = code == 0 and _codex_turn_completed(workspace / "agent.jsonl") and parsed == {"status": "ok"}
+    _write(workspace.parent / "result.json", {
+        "decision": "pass" if passed else "incomplete", "returncode": code,
+        "turn_completed": _codex_turn_completed(workspace / "agent.jsonl"),
+        "output_valid": parsed == {"status": "ok"}, "stderr": stderr[-2000:],
+    })
+    return passed
+
+
+def _record_slim_official_gates(
+    *, output_root: Path, host: str, remote_root: str, image: str,
+    codex_auth_dir: str, reused_public_root: Path,
+) -> bool:
+    reused = _validate_reused_public_evidence(reused_public_root)
+    if not _record_minimal_account_probe(
+        output_root=output_root, host=host, remote_root=remote_root,
+        image=image, codex_auth_dir=codex_auth_dir,
+    ):
+        _write(output_root / "result.json", {
+            "decision": "incomplete", "reason": "minimal_account_probe_failed",
+            "reused_public_evidence": reused,
+        })
+        return False
+    probe_root = output_root / "slim_public_judge_probe"
+    source_probe = reused_public_root / "public_complex_judge_probe"
+    staged_root = probe_root / "public_task"
+    delivery = probe_root / "public_delivery.xlsx"
+    shutil.copytree(source_probe / "public_task", staged_root)
+    shutil.copy2(source_probe / "public_delivery.xlsx", delivery)
+    result = _jsonable(_execute_judge(
+        host=host, remote_root=remote_root, output_root=probe_root,
+        task_root=staged_root, task_id="public-probe", delivery=delivery,
+        judge=CHATGPT_CODEX_STACK, image=image, codex_auth_dir=codex_auth_dir,
+        timeout_seconds=SLIM_JUDGE_PROBE_TIMEOUT_SECONDS,
+        codex_reasoning_effort=SLIM_JUDGE_REASONING_EFFORT, attempt_limit=1,
+    ))
+    passed = result.get("status") == "completed"
+    _write(probe_root / "result.json", result)
+    _write(output_root / "result.json", {
+        "decision": "public_gates_passed" if passed else "incomplete",
+        "reason": None if passed else "slim_public_judge_probe_failed",
+        "auth_profile_fingerprint": _auth_profile_fingerprint(codex_auth_dir),
+        "reused_public_evidence": reused,
+        "minimal_account_probe": "pass", "slim_public_judge_probe": "pass" if passed else "incomplete",
+    })
+    return passed
+
+
 def _public_tree_sha256(root: Path) -> str:
     """Hash public probe output without the self-referential evidence record."""
     digest = hashlib.sha256()
@@ -189,6 +312,7 @@ def _write_public_gate_evidence(
 def _load_public_gate_evidence(
     *, root: Path, image: str, image_sha256: str,
     stacks: tuple[str, str] = STACKS,
+    codex_auth_dir: str | None = None,
 ) -> dict[str, Any]:
     evidence_path = root / "public_gate_evidence.json"
     if not evidence_path.is_file():
@@ -203,6 +327,8 @@ def _load_public_gate_evidence(
     if evidence.get("stacks") != list(stacks) or evidence.get("public_tree_sha256") != _public_tree_sha256(root):
         raise ValueError("r10_compiler_revision_public_gate_evidence_drift")
     result = json.loads((root / "result.json").read_text(encoding="utf-8"))
+    if codex_auth_dir is not None and result.get("auth_profile_fingerprint") != _auth_profile_fingerprint(codex_auth_dir):
+        raise ValueError("r10_compiler_revision_public_gate_auth_profile_drift")
     if evidence.get("result_sha256") != sha256_json(result):
         raise ValueError("r10_compiler_revision_public_gate_result_drift")
     return evidence
@@ -212,12 +338,15 @@ def _score_pair(
     *, output_root: Path, host: str, remote_root: str, solver: str,
     task_id: str, task_root: Path, delivery: Path, image: str,
     stacks: tuple[str, str] = STACKS,
+    codex_auth_dir: str = REMOTE_CURRENT_ACCOUNT_AUTH_DIR,
 ) -> dict[str, Any]:
     return {
         judge: _jsonable(_execute_judge(
             host=host, remote_root=remote_root,
             output_root=output_root / "judge_assignments" / solver / task_id,
             task_root=task_root, task_id=task_id, delivery=delivery, judge=judge, image=image,
+            codex_auth_dir=codex_auth_dir,
+            codex_reasoning_effort=SLIM_JUDGE_REASONING_EFFORT if judge == CHATGPT_CODEX_STACK else None,
         ))
         for judge in stacks
     }
@@ -277,6 +406,8 @@ def main() -> None:
     parser.add_argument("--public-only", action="store_true")
     parser.add_argument("--public-gate-root", type=Path)
     parser.add_argument("--authorized-scope-sha256")
+    parser.add_argument("--codex-auth-dir", default=REMOTE_CURRENT_ACCOUNT_AUTH_DIR)
+    parser.add_argument("--reused-public-root", type=Path)
     args = parser.parse_args()
     if args.scope_only and args.public_only:
         raise ValueError("r10_compiler_revision_behavioral_modes_conflict")
@@ -287,10 +418,20 @@ def main() -> None:
         if args.output_root.exists():
             raise FileExistsError("r10_compiler_revision_public_probe_output_exists")
         args.output_root.mkdir(parents=True)
-        passed, _ = _record_public_gates(
-            output_root=args.output_root, host=args.host,
-            remote_root=_safe_remote_root(args.host, args.run_id), image=args.image, stacks=stacks,
-        )
+        if args.gpt_transport == "chatgpt_codex":
+            if args.reused_public_root is None:
+                raise ValueError("r10_reused_public_evidence_required")
+            passed = _record_slim_official_gates(
+                output_root=args.output_root, host=args.host,
+                remote_root=_safe_remote_root(args.host, args.run_id), image=args.image,
+                codex_auth_dir=args.codex_auth_dir,
+                reused_public_root=args.reused_public_root,
+            )
+        else:
+            passed, _ = _record_public_gates(
+                output_root=args.output_root, host=args.host,
+                remote_root=_safe_remote_root(args.host, args.run_id), image=args.image, stacks=stacks,
+            )
         if not passed:
             raise SystemExit(1)
         _write_public_gate_evidence(
@@ -300,11 +441,14 @@ def main() -> None:
     if args.public_gate_root is None:
         raise ValueError("r10_compiler_revision_public_gate_evidence_required")
     public_gate_evidence = _load_public_gate_evidence(
-        root=args.public_gate_root, image=args.image, image_sha256=args.image_sha256, stacks=stacks,
+        root=args.public_gate_root, image=args.image, image_sha256=args.image_sha256,
+        stacks=stacks,
+        codex_auth_dir=args.codex_auth_dir if args.gpt_transport == "chatgpt_codex" else None,
     )
     scope = _scope(
         args.run_id, image=args.image, image_sha256=args.image_sha256,
         public_gate_evidence=public_gate_evidence, gpt_transport=args.gpt_transport,
+        codex_auth_dir=args.codex_auth_dir,
     ); digest = sha256_json(scope)
     if args.scope_only:
         if args.output_root.exists(): raise FileExistsError("r10_compiler_revision_behavioral_output_exists")
@@ -319,6 +463,7 @@ def main() -> None:
             records[task_id][stack] = _remote_solver(
                 output_root=args.output_root, host=args.host, remote_root=remote_root,
                 task_id=task_id, task_root=task_root, domain=domain, stack=stack, image=args.image,
+                codex_auth_dir=args.codex_auth_dir,
             )
     for task_id, (task_root, _, _) in TASKS.items():
         for solver in stacks:
@@ -329,6 +474,7 @@ def main() -> None:
                     output_root=args.output_root, host=args.host, remote_root=remote_root,
                     solver=solver, task_id=task_id, task_root=task_root,
                     delivery=delivery, image=args.image, stacks=stacks,
+                    codex_auth_dir=args.codex_auth_dir,
                 )
             else: item["reviews"] = {}
     _write(args.output_root / "records.json", _jsonable(records)); _write(

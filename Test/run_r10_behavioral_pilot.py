@@ -106,11 +106,20 @@ def _is_codex_stack(stack: str) -> bool:
     return stack in (CHATGPT_CODEX_STACK, TUZI_CODEX_STACK)
 
 
-def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
+def _remote_script(
+    workspace: str, *, stack: str, grade: bool = False,
+    codex_reasoning_effort: str | None = None,
+) -> str:
     if stack not in SUPPORTED_STACKS:
         raise ValueError("r10_behavioral_unknown_stack")
+    reasoning_override = (
+        f"-c model_reasoning_effort={codex_reasoning_effort} "
+        if codex_reasoning_effort else ""
+    )
     codex_command = (
-        "codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol -c project_doc_max_bytes=0 -c agents.enabled=false "
+        "codex exec --dangerously-bypass-approvals-and-sandbox --model gpt-5.6-sol "
+        + reasoning_override
+        + "-c project_doc_max_bytes=0 -c agents.enabled=false "
         "--disable plugins --disable apps --disable multi_agent --disable skill_search --json --ephemeral "
         + ("--ignore-rules --skip-git-repo-check " if _is_tuzi_codex(stack) else "--ignore-user-config --ignore-rules --skip-git-repo-check ")
         + ("--output-schema /workspace/grade_schema.json --output-last-message /workspace/grade.raw.json " if grade else "")
@@ -159,20 +168,23 @@ def _remote_script(workspace: str, *, stack: str, grade: bool = False) -> str:
     return "\n".join(inner) + "\n"
 
 
-def _remote_command(remote: str, *, stack: str, image: str = IMAGE) -> str:
+def _remote_command(
+    remote: str, *, stack: str, image: str = IMAGE,
+    codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR, timeout_seconds: int = 1800,
+) -> str:
     mounts = '-v "$auth_dir:/run/codex-home:rw"' if stack == CHATGPT_CODEX_STACK else ""
     if _is_tuzi_codex(stack):
         mounts += ' -v "$tuzi_env_file:/run/secrets/eval_tuzi_env:ro"'
     if not _is_codex_stack(stack):
         mounts += ' -v "$deepseek_file:/run/secrets/deepseek_api_key:ro"'
     return (
-        'set -u; workspace=' + repr(remote) + '; auth_dir=' + repr(REMOTE_CODEX_AUTH_DIR) + '; '
+        'set -u; workspace=' + repr(remote) + '; auth_dir=' + repr(codex_auth_dir) + '; '
         'deepseek_file=' + repr(f"{REMOTE_HOME}/taskgenerator-secrets/deepseek_api_key") + '; '
         'tuzi_env_file=' + repr(REMOTE_TUZI_ENV_FILE) + '; '
         + ('test -r "$auth_dir/auth.json"; ' if stack == CHATGPT_CODEX_STACK else '')
         + ('test -r "$tuzi_env_file"; ' if _is_tuzi_codex(stack) else '')
         + ("test -r \"$deepseek_file\"; " if not _is_codex_stack(stack) else "") + 'cd "$workspace"; '
-        'timeout --preserve-status 1800 docker run --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
+        f'timeout --preserve-status {timeout_seconds} docker run --rm --init --read-only --cap-drop ALL --security-opt no-new-privileges:true '
         '--user 1000:1000 --memory 3g --cpus 2 --pids-limit 256 --tmpfs /tmp:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.cache:rw,nosuid,nodev,size=512m --tmpfs /home/taskgenerator/.local:rw,nosuid,nodev,size=512m '
         '--tmpfs /home/taskgenerator/.config:rw,nosuid,nodev,size=256m -v "$workspace:/workspace:rw" ' + mounts +
@@ -216,14 +228,32 @@ def _scp(source: str, destination: str, *, timeout: int = 120):
     return _run(_scp_command(source, destination), timeout=timeout, check=False)
 
 
-def _run_remote(*, host: str, remote: str, local: Path, stack: str, grade: bool = False, image: str = IMAGE) -> tuple[int, str, str]:
-    _write_agent_script(local / ".r10_agent.sh", _remote_script(remote, stack=stack, grade=grade))
+def _run_remote(
+    *, host: str, remote: str, local: Path, stack: str, grade: bool = False,
+    image: str = IMAGE, codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR,
+    timeout_seconds: int = 1800, codex_reasoning_effort: str | None = None,
+) -> tuple[int, str, str]:
+    _write_agent_script(
+        local / ".r10_agent.sh",
+        _remote_script(
+            remote, stack=stack, grade=grade,
+            codex_reasoning_effort=codex_reasoning_effort,
+        ),
+    )
     try:
         _ssh(host, f"mkdir -p '{remote.rsplit('/', 1)[0]}' && rm -rf '{remote}'", timeout=120)
         upload = _scp(str(local), f"{host}:{remote}")
         if upload.returncode:
             return upload.returncode, upload.stdout[-4000:], f"r10_remote_upload_failed:{upload.stderr[-3500:]}"
-        result = _ssh(host, _remote_command(remote, stack=stack, image=image), timeout=1900, check=False)
+        result = _ssh(
+            host,
+            _remote_command(
+                remote, stack=stack, image=image,
+                codex_auth_dir=codex_auth_dir, timeout_seconds=timeout_seconds,
+            ),
+            timeout=timeout_seconds + 100,
+            check=False,
+        )
         with tempfile.TemporaryDirectory(prefix=".r10-return-", dir=local.parent) as temporary:
             staging = Path(temporary)
             download = _scp(f"{host}:{remote}/.r10_return", str(staging))
@@ -306,14 +336,20 @@ def _record_probe(*, output_root: Path, host: str, remote_root: str, stack: str,
     return passed
 
 
-def _execute_solver(*, host: str, remote_root: str, output_root: Path, binding, stack: str, image: str = IMAGE) -> R10SolverOutcomeV1:
+def _execute_solver(
+    *, host: str, remote_root: str, output_root: Path, binding, stack: str,
+    image: str = IMAGE, codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR,
+) -> R10SolverOutcomeV1:
     task_root = Path(binding.package_root)
     if binding_from_task(task_root, domain=binding.domain) != binding:
         raise RuntimeError("r10_behavioral_binding_drift")
     workspace = output_root / "solvers" / stack / binding.task_id / "workspace"
     _stage_solver(task_root, workspace)
     started = time.monotonic()
-    code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/solvers/{stack}/{binding.task_id}", local=workspace, stack=stack, image=image)
+    code, stdout, stderr = _run_remote(
+        host=host, remote=f"{remote_root}/solvers/{stack}/{binding.task_id}",
+        local=workspace, stack=stack, image=image, codex_auth_dir=codex_auth_dir,
+    )
     duration = round(time.monotonic() - started, 3)
     stdout_path, stderr_path = workspace.parent / "agent.jsonl", workspace.parent / "stderr.txt"
     if (workspace / "agent.jsonl").is_file():
@@ -379,14 +415,27 @@ def _extract_opencode_json(text: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _execute_judge(*, host: str, remote_root: str, output_root: Path, task_root: Path, task_id: str, delivery: Path, judge: str, image: str = IMAGE) -> dict[str, Any]:
+def _execute_judge(
+    *, host: str, remote_root: str, output_root: Path, task_root: Path,
+    task_id: str, delivery: Path, judge: str, image: str = IMAGE,
+    codex_auth_dir: str = REMOTE_CODEX_AUTH_DIR, timeout_seconds: int = 1800,
+    codex_reasoning_effort: str | None = None, attempt_limit: int = 2,
+) -> dict[str, Any]:
     feedback: str | None = None
     raw_paths: list[str] = []
     first_failure: str | None = None
-    for attempt in (1, 2):
+    if attempt_limit not in (1, 2):
+        raise ValueError("r10_judge_attempt_limit_invalid")
+    for attempt in range(1, attempt_limit + 1):
         workspace = output_root / "judges" / judge / task_id / f"attempt_{attempt:02d}" / "workspace"
         rubric = _stage_grade(task_root=task_root, delivery=delivery, target=workspace, task_id=task_id, feedback=feedback)
-        code, stdout, stderr = _run_remote(host=host, remote=f"{remote_root}/judges/{judge}/{task_id}/attempt_{attempt:02d}", local=workspace, stack=judge, grade=True, image=image)
+        code, stdout, stderr = _run_remote(
+            host=host,
+            remote=f"{remote_root}/judges/{judge}/{task_id}/attempt_{attempt:02d}",
+            local=workspace, stack=judge, grade=True, image=image,
+            codex_auth_dir=codex_auth_dir, timeout_seconds=timeout_seconds,
+            codex_reasoning_effort=codex_reasoning_effort,
+        )
         raw = workspace / "grade.raw.json"
         if not raw.is_file() and judge.startswith("deepseek"):
             candidate = _extract_opencode_json((workspace / "agent.jsonl").read_text(encoding="utf-8", errors="replace") if (workspace / "agent.jsonl").is_file() else stdout)
