@@ -32,4 +32,4 @@
 - `docs/archive/` 保留历史计划、报告与 handoff；Git 历史承担旧活跃文档的精确追溯。
 - 任务包、provider 输出、执行日志、截图和临时诊断只写入 `artifacts/`。
 
-R10 是当前活跃研究主线；R9/R7 是冻结的历史生产证据。R10.8 已以 `evaluator_revision_required` 结束，R10.9 采用“Professional Skill/自然难度辩论 → 无任务工作世界 → Task Mining → 独立 Truth 重建 → Judge 校准”的路线。历史 Bible、任务与结果保持冻结；不得把 archive 或 artifacts 的内容解释为当前状态。
+R10 是当前活跃研究主线；R9/R7 是冻结的历史生产证据。R10.9 已完整执行“专业难度辩论 → 无任务工作世界 → Task Mining → 独立 Truth 重建 → Judge 校准 → 双模型 paired review”，但四题正式评分均出现 Judge 边界歧义，结论为 `evaluator_revision_required`。当前停止在 evaluator 层，不扩展十题；历史 Bible、任务与结果保持冻结。

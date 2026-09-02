@@ -22,7 +22,7 @@
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
 | R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
-| R10.9 World-First pilot | `implemented / not_executed` | 两领域 matched baseline/adversarial 工作世界、Task Mining、独立 Truth 重建、三档 Judge 校准和 paired behavioral review。 |
+| R10.9 World-First pilot | `completed / evaluator_revision_required` | 四个 matched 世界与任务、Truth audit、三档校准和 8/8 Solver 交付完整；四题 paired review 均因偏好或 major-error 边界不一致而为 `judge_ambiguous`。 |
 
 ## Stable Implemented Contracts
 

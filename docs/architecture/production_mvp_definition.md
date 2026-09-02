@@ -38,7 +38,7 @@ R10.0–R10.8 已产生四道用户验收任务、两道 compiler-revision 任�
 5. Task Decision Matrix、task-specific rubric 与三档 Judge 校准；
 6. 来源追溯、可解性、答案泄漏、文件可用性、交付合同和 matched 行为验收。
 
-只有 R10.9 在审计、采购两个领域均证明 World-First 对抗强化产生干净、可解释差异后，才可另行定义十题 production cohort。R10.9 不改变 R9 服务器发布器，也不授权训练、public release 或 promotion。
+R10.9 已证明 World-First 链可以产出四个静态通过且被两种 Solver 完成的任务，但正式 paired review 的 Judge 边界不稳定，未满足扩展条件。十题 production cohort 继续关闭；R10.9 不改变 R9 服务器发布器，也不授权训练、public release 或 promotion。
 
 ## Non-Goals
 

@@ -81,4 +81,4 @@ Task Miner 只读取候选材料和公开角色/触发背景，不读取 world l
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.8 合同与证据继续只读保留。R10.8B-2 的新私有行为结果完整，但结论为 `evaluator_revision_required`：一题接近平局，一题存在 Judge 边界歧义。R10.9 的 World-First manifest、职业难度计划、paired Judge review 和薄型 campaign runner 已实现但尚未执行；不得提前扩大到十题。
+- 已实现的 R10.0–R10.8 合同与证据继续只读保留。R10.9 的 World-First manifest、职业难度计划、paired Judge review 和薄型 campaign runner 已完整执行：4/4 静态任务、4/4 三档 Judge 校准及 8/8 Solver 交付通过，但四题正式 paired review 全部出现 Judge 偏好或 major-error 边界歧义。结论为 `evaluator_revision_required`；当前不得扩大到十题或将候选难度指导提升进正式 Skill。

@@ -57,16 +57,16 @@ R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评�
 
 R10.8B-2 已用新的服务器 ChatGPT 认证目录完成独立公开门和两题私有 campaign。两模型均完成两题有效交付，8 项双评委评分完整；收入题仍为 `near_tie`，价格题虽有明显分差但为 `judge_ambiguous`，最终结论为 `evaluator_revision_required`。R10.8 已关闭，禁止继续六题/十题扩展、重抽答案、混合历史 Tuzi/旧账号证据、修改冻结题目或激活 release。
 
-当前执行点是 R10.9 World-First / Task-Mining pilot：复用两项公开 Seed/Rules，但从零生成审计和采购工作世界，各形成普通版与职业对抗强化版。Task Miner 不得读取 world ledger、难度身份或预期答案；Truth Reconstructor 不得读取隐藏 ledger；正式 Solver 前必须完成三档完整交付的双 Judge 校准。用户已对该 R10.9 campaign 的服务器和第三方模型上传给出持续授权；仍须创建独立 scope/receipt，但无需等待逐 SHA 确认。
+R10.9 World-First / Task-Mining pilot 已完成：4/4 世界和任务静态通过，Task Miner、Truth Reconstructor、独立 truth audit 与四题三档 Judge 校准完整；GPT/DeepSeek Solver 形成 8/8 有效交付。正式 paired review 四题均为 `judge_ambiguous`，原因是两位 Judge 的偏好方向或 major-error 边界不一致。最终结论为 `evaluator_revision_required`，不是 World-First 成功或失败的能力结论。
 
-R10.9 执行前必须冻结：
+R10.9 已冻结并保留：
 
 1. Work Seed、Rules、专业 Skill、难度计划和官方来源 SHA。
 2. 基础/强化工作世界、candidate 文件与 teacher-only ledger 的隔离方式。
 3. Task Miner、Truth Reconstructor、Judge 校准与 Solver 的盲区。
 4. matched task、交付合同、Decision Matrix 和 paired review 的执行边界。
 
-任何 R10.9 任务都不得复用旧 Bible、R7/R8 私有任务、旧 proposal、旧答案或旧 provider receipt。前一门失败时停止后续调用；不因低分或希望提高区分度重抽。
+任何后续工作都不得重跑或手改 R10.9 的 world、task、Solver 交付或 paired review。当前不得扩十题、提升候选难度 Skill、训练或发布；如继续研究，应建立单独的 evaluator 稳定性实验，而不是反复调整同一题直到两位 Judge 一致。
 
 ## Closeout
 
