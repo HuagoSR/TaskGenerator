@@ -21,7 +21,7 @@
 | R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
 | R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
-| R10 GDPval-calibrated compiler revision | `implemented / evaluation_inconclusive` | 两道派生任务静态准入、独立 Tuzi Codex transport 与公共/私有隔离均已实现。CRLF token 修复后两栈公开 gate 曾完整通过；首次私有 cohort 因 SSH 控制连接断开冻结，新 public gate 又在 DeepSeek 回传超时处失败。不存在可合并的行为比较证据。 |
+| R10 GDPval-calibrated compiler revision | `implemented / incomplete` | 两道派生任务静态准入、独立 Tuzi Codex transport 与公共/私有隔离均已实现。白名单回传修复后两栈公开 gate 完整通过；全新私有 cohort 的收入题仍为 near tie，价格题因 Tuzi provider 路由断流缺少一份有效交付，不能形成完整比较。 |
 
 ## Stable Implemented Contracts
 

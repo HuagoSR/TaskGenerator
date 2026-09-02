@@ -55,7 +55,7 @@ R10.8A 已完成新的 judge-only campaign：修正后的 Teacher Anchor Audit �
 
 R10.8B-1 的只读诊断已完成：采购价格合理性和采购验收题评分饱和，收入证据题接近平局，控制缺陷题存在 Judge 边界歧义；没有干净可比较的任务，结论为 `compiler_revision_candidate`。诊断报告只读取冻结 records、聚合与绑定，未调用 provider、未写入 candidate/teacher 目录，也未改变历史评分。
 
-当前执行点：R10.8B-2 的两道新版任务已完成用户检查。Tuzi token CRLF、SCP 边界和 SSH keepalive 已修复；完整公开 gate 曾通过两栈。其后的私有 cohort 因 SSH 控制连接中断冻结；全新 public gate 中 Tuzi 通过、DeepSeek 的公开回传超时。故 R10.8 为 `evaluation_inconclusive`，不得创建或复用私有 receipt、混合旧结果、扩展十题或激活候选 release。
+当前执行点：R10.8B-2 的白名单回传修复已通过 224/224 本地回归；新的 public-only campaign 完整通过 Tuzi Codex 与 DeepSeek/OpenCode 的 XLSX、DOCX 和复杂 Judge 门。随后独立私有 campaign 完成：收入题两模型均有效但仍为 near tie；价格题的 Tuzi Codex 因 provider 路由断流而没有 `turn.completed` 或有效交付，整体为 `incomplete`。该会话已经开始，禁止补跑；不得混合旧结果、扩展六题/十题或激活候选 release。
 
 后续派生证据包实验开始前，必须单独批准执行计划，至少冻结：
 
