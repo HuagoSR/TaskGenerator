@@ -32,4 +32,4 @@
 - `docs/archive/` 保留历史计划、报告与 handoff；Git 历史承担旧活跃文档的精确追溯。
 - 任务包、provider 输出、执行日志、截图和临时诊断只写入 `artifacts/`。
 
-R10 是当前活跃研究主线；R9/R7 是冻结的历史生产证据。R10.9 已完整执行 World-First / Task-Mining pilot，但四题正式评分均出现 Judge 边界歧义，结论为 `evaluator_revision_required`。R10.10 现专门验证 evaluator：先在冻结 R10.9 交付上检查 rubric 粒度、重大错误边界和位置效应，再用公开 GDPval Gold 子集做方向性排名校准。当前不生成新题、不扩十题；历史世界、任务、交付和评分保持冻结。
+R10 是当前研究主线，历史运行保持冻结。当前将精简评分经验回流到两题 rubric 编译：只生成并独立审查新 rubric，不运行 Solver、不扩大评分或题量。状态统一查阅项目概要；旧活跃文档通过 Git 历史追溯。

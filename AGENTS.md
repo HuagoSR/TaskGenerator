@@ -25,6 +25,8 @@ R10 Scenario-First remains the active research boundary. R10.0–R10.9 establish
 
 ## Architecture Boundaries
 
+Latest approved slice: independent GDPval grading is complete (12/12), exploratory only. Return lessons to task generation through two baseline-only rubric compilation/review experiments. Preserve historical tasks, supervision and grades; do not run solvers, new scoring or the old 60-job queue. TaskSpecificRubricV2 may map multiple observable items to a decision, with requirement provenance and verification coverage. Do not provide GDPval content, solver answers or scores to author/reviewer. Current status is owned by the overview.
+
 ```text
 Public Work Seed + Professional Rules
 → Professional Skill / natural-difficulty deliberation
