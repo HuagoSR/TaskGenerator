@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from openpyxl import Workbook
 
@@ -23,7 +24,8 @@ SPEC.loader.exec_module(RUNNER)
 class WorldFirstRunnerTests(unittest.TestCase):
     def test_scope_is_exact_four_case_native_stack_campaign(self) -> None:
         inputs = RUNNER._load_inputs()
-        scope = RUNNER._scope("r10_9_fixture", inputs)
+        with patch.object(RUNNER, "_git_head", return_value="a" * 40):
+            scope = RUNNER._scope("r10_9_fixture", inputs)
         self.assertEqual(len(scope["cases"]), 4)
         self.assertEqual({item["variant"] for item in scope["cases"]}, {"baseline", "adversarial"})
         self.assertNotIn("gdpval", json.dumps(scope["authorized_uploads"]).casefold())

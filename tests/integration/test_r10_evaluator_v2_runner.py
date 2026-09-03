@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,41 @@ from task_generator.evaluation.r10_evaluator_v2 import (
 
 
 class R10EvaluatorV2RunnerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # Private R10 artifacts and a live Git checkout are execution inputs,
+        # never dependencies of offline/read-only container tests.
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        source = Path(temporary.name)
+        for task_id in (*runner.R10_SPLITS["development"], *runner.R10_SPLITS["holdout"]):
+            task = source / "tasks" / task_id
+            (task / "teacher").mkdir(parents=True)
+            (task / "reference_files").mkdir()
+            (task / "TASK.md").write_text("Synthetic fixture: review the supplied record.", encoding="utf-8")
+            (task / "deliverable_contract.json").write_text("{}", encoding="utf-8")
+            (task / "reference_files/record.txt").write_text("Synthetic public record", encoding="utf-8")
+            decisions = [{"decision_id": f"d{i}", "question": "Which conclusion has support?",
+                "evidence_refs": [{"artifact_id": "record.txt", "record_id": "record", "field_names": ["amount"]}],
+                "rule_ids": ["rule"], "skill_ids": ["skill"],
+                "acceptable_conclusions": ["The conclusion is conditional on verification."],
+                "major_errors": ["Certifying an unsupported conclusion despite a visible conflict."],
+                "required_follow_up_actions": ["Obtain the missing source record."]}
+                for i in range(3)]
+            values = {"decision_matrix.json": {"scenario_id": "fixture", "decision_points": decisions},
+                "teacher_truth.json": [], "task_specific_rubric.json": {"criteria": [
+                    {"criterion_id": f"c{i}", "decision_id": f"d{i}", "weight": weight,
+                     "description": "Met: supported. Partial: qualified. Not met: unsupported."}
+                    for i, weight in enumerate((.4, .3, .3))]}}
+            for name, value in values.items():
+                (task / "teacher" / name).write_text(json.dumps(value), encoding="utf-8")
+            for solver in (runner.GPT_SOLVER, runner.DEEPSEEK_SOLVER):
+                delivery = source / "solvers" / solver / task_id / "workspace/deliverable_files"
+                delivery.mkdir(parents=True)
+                (delivery / "fixture.xlsx").write_bytes(f"synthetic-{solver}".encode())
+        for mock in (patch.object(runner, "SOURCE_RUN", source), patch.object(runner, "_git_head", return_value="a" * 40)):
+            mock.start()
+            self.addCleanup(mock.stop)
+
     def test_scope_binds_frozen_deliveries_and_never_requests_solver(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             profiles = runner.build_profiles(Path(temporary), "v2.0")
