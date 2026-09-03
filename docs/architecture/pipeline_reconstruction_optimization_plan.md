@@ -106,13 +106,22 @@ R10.10 先创建不覆盖历史 rubric 的 campaign-scoped evaluator profile，�
 
 R10 配对使用匿名 A/B 与 B/A 换序。主要 Judge 为 GPT-5.6 Terra `medium` 与 DeepSeek V4 Pro `max`；仍冲突时才使用 GPT-5.6 Luna `medium`。任何模型自报总分均由程序按冻结权重重算，position instability 与 major-error disagreement 分别报告。
 
-随后使用 12 道公开 GDPval Gold 任务做方向性排名校准。Solver 主矩阵固定为 GPT-5.6 Sol `none`、DeepSeek V4 Pro `max`、DeepSeek V4 Flash `high`；Luna `medium` 只在预设证据不足条件下整批启用。Gemini 不进入必需链，Tuzi 只能形成独立 transport campaign。该校准不复制 GDPval 内容进生成链，也不宣称复刻 Artificial Analysis 的绝对 Elo。
+公开 GDPval Gold 原计划使用 12 题做方向性排名校准，Solver 主矩阵固定为 GPT-5.6 Sol `none`、DeepSeek V4 Pro `max`、DeepSeek V4 Flash `high`。按用户最新节省调用要求，评分先收缩为已完成与已启动项的小样本诊断；不自动执行剩余全配对、Gold anchor 或 sentinel。先判断现有评分的适用性错误、得分漂移和可解释性，再决定是否需要补充少量跨职业样本。小样本不能替代原完整验证门槛，也不能根据已查看的留出结果调参。该校准不复制 GDPval 内容进生成链，也不宣称复刻 Artificial Analysis 的绝对 Elo。
 
 只有换序稳定、重大错误边界无重复冲突、GDPval 至少三个 Solver 各完成 10/12，且模型排序方向与冻结的 GDPval-AA 公开排序大体一致时，才输出 `evaluator_validated`。否则分别记录 `evaluator_improved_but_partial`、`r10_rubric_revision_required`、`evaluator_not_validated` 或 `evaluation_incomplete`。
 
 开发版本一经冻结并打开留出集，不再修改该 profile。GDPval 评分前可以修复与结果无关的身份泄漏、状态恢复或统计实现错误，但必须使用新的 judge-only scope、保持原始交付与 human rubric 不变。sentinel 必须分别测量位置效应与评委差异；不得把同一次“换顺序且换评委”的一致率报告为两个独立指标。旧绝对评分 baseline 与排行榜模型版本核验未完成时，不输出完整验证成功。
 
 ## Acceptance Metrics
+
+### 当前执行计划：三题单份评分
+
+- 固定开发题：审计 `7d7fc9a7-21a7-4b83-906f-416dea5ad04f`、采购 `1b1ade2d-f9f6-4a04-baa5-aa15012b53be`、合规 `36d567ba-e205-4313-9756-931c6e4691fe`；不改变开发/留出划分。
+- DeepSeek V4 Pro `max` 对三模型的九份既有交付单独主评；Terra `medium` 分别抽查审计 Sol、采购 Pro、合规 Flash，共十二次评分。
+- 逐项整数 awarded，满分来自原 rubric；程序标准化并按任务等权平均。取消独立 preference、隐藏否决及高分降分复审。条件未触发不扣分，材料不足标记不完整。
+- 先完成审计三份主评分，再继续其余九项；单项最多一次格式/传输补跑，全局最多两次，最多十四次实际尝试。不自动扩样本或重跑答案。
+- 副评仅报告分歧，不混入主均分。平均分差小于 0.05 为差异不明确。仅输出 preliminary_scoring_complete / preliminary_scoring_partial，不宣称排名验证或独立留出成功。
+- 文档先提交；完成定向、全量回归与 secret scan 后提交实现，再以独立 scope/receipt 执行并记录结果。
 
 | 维度 | Pilot 要求 |
 | --- | --- |
