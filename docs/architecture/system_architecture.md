@@ -66,7 +66,7 @@ Task Miner 只读取候选材料和公开角色/触发背景，不读取 world l
 
 静态门禁只检查来源追溯、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。文件与记录规模、正常背景比例和多 motif 覆盖作为质量指导，由用户审阅和行为实验检验，而不再驱动新的复杂本体。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
 
-## R10.10 Evaluator V2 已实现结构
+## R10.10 历史 Evaluator V2 结构（不再扩展评分队列）
 
 ```text
 冻结任务、Teacher Truth、rubric 与 Solver 交付
@@ -87,6 +87,12 @@ Evaluator V2 不重写 R10.9 的任务监督。它创建 campaign-scoped profile
 GDPval 校准只验证评分协议和相对排序，不把公开题目、rubric 或 Gold 交付物送入生成链。Solver 的模型、provider、Agent 和推理强度都作为栈身份记录，避免将实用栈结果误称为纯模型能力。
 
 评分 payload 只包含匿名槽位、任务资料和 rubric；模型、评委及配对身份由控制器在解析后补入。GDPval Judge 使用独立 scope 绑定冻结 Solver receipt、交付树与评分协议。位置一致性由同 Judge 换序计算，跨 Judge 一致性由同序比较计算，不将两个因素同时改变后的结果算作两个指标。
+
+## 当前生成侧 Rubric V2
+
+冻结的任务要求、候选证据和 Decision Matrix → Terra 编译多个可核验评分项 → DeepSeek 独立检查要求一致性、例外、等价表达和核验范围 → 中文用户检查材料。
+
+本路径不读取 Solver 交付、成绩、排名或 GDPval 内容。3–5 个专业判断不再等于只能有 3–5 条评分项，也不机械套用 evaluator 的结论/证据/后续行动固定比例。新 rubric 作为独立版本保留，V1 及历史评分不变。这里只检查生成方法，不执行评分。
 
 ## Skill 与 Motif 的新职责
 

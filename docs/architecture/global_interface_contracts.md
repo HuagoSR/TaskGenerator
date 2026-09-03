@@ -27,6 +27,14 @@
 
 ## Stable Implemented Contracts
 
+### TaskSpecificRubricV2 — implemented / generation validation
+
+独立于历史 V1 的生成侧 rubric，位于 `planning/rubric_compiler_v2.py`。一个 decision 可以对应多个独立条目；每项有整数满分、覆盖全部可得整数的边界、candidate-visible 要求依据、证据路径、适用例外、等价表达和核验范围。条目数由任务决定，没有固定拆分比例。
+
+`RubricCompilationV2` 允许明确返回 upstream_issue 而不补造 rubric；`RubricAuthorReviewV2` 是独立质量审查，不是 Solver 评分。旧 Teacher Truth、Decision Matrix、V1 rubric 和评价记录不迁移、不覆盖。
+
+程序检查 ID、引用、分值边界与覆盖；语义准入由 Agent 审查。未来单份评分只按这些条目求和，不附加 preference 或总分否决。新版本尚未通过实际评分验证。
+
 ### Source, skill and planning
 
 - `RawSource` / `NormalizedSource` / `SourceBlock`：公开来源及其可审计正规化边界。
