@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -163,6 +164,11 @@ def _parse_single(workspace: Path, binding: GDPvalTaskBindingV1, judge_id: str, 
             raw.write_text(extracted, encoding="utf-8")
     review = GDPvalSingleReviewV1.model_validate_json(raw.read_text(encoding="utf-8"))
     score_gdpval_single(binding, review)
+    review, normalizations = _normalize_single_references(workspace, review)
+    if normalizations:
+        _write(workspace / "evidence_reference_normalization.json", {
+            "raw_sha256": _sha(raw), "changes": normalizations,
+            "scores_and_rationales_unchanged": True})
     for item in review.assessments:
         for name in item.evidence_paths:
             path = Path(name)
@@ -171,6 +177,91 @@ def _parse_single(workspace: Path, binding: GDPvalTaskBindingV1, judge_id: str, 
                 not (workspace / path).is_file() or not (workspace / path).resolve().is_relative_to(workspace.resolve())):
                 raise ValueError("gdpval_single_invalid_evidence_path")
     return review
+
+
+def _normalize_single_references(workspace: Path, review: GDPvalSingleReviewV1) -> tuple[GDPvalSingleReviewV1, list]:
+    """Resolve filename + location citations without editing a grade or inventing evidence."""
+    files = {p.relative_to(workspace).as_posix() for folder in ("anonymous_submission", "reference_files")
+             for p in (workspace / folder).rglob("*") if p.is_file() and p.resolve().is_relative_to(workspace.resolve())}
+    if (workspace / "candidate_task.md").is_file():
+        files.add("candidate_task.md")
+    items, changes = [], []
+    for item in review.assessments:
+        normalized = []
+        for citation in item.evidence_paths:
+            paths, auxiliary = [], []
+            for segment in re.split(r";\s+(?=/(?:workspace|tmp)/)", citation):
+                value = segment.removeprefix("/workspace/")
+                matches = [name for name in files if value == name or value.startswith(name + " (")]
+                if len(matches) == 1:
+                    paths.append(matches[0])
+                elif segment.startswith("/tmp/opencode/") and " (rendered layout)" in segment:
+                    auxiliary.append(segment.split(" (", 1)[0])
+                else:
+                    raise ValueError("gdpval_single_invalid_evidence_path")
+            # A temporary rendering is commentary, not an accepted input file. It must accompany
+            # its uniquely named original; preserve the verbatim citation in the audit record.
+            if not paths or any(not any(Path(a).stem == Path(p).stem for p in paths) for a in auxiliary):
+                raise ValueError("gdpval_single_unbound_render_reference")
+            normalized.extend(paths)
+            if paths != [citation]:
+                changes.append({"rubric_item_id": item.rubric_item_id, "original": citation,
+                                "input_paths": paths, "auxiliary_render_not_file_verified": auxiliary})
+        items.append(item.model_copy(update={"evidence_paths": list(dict.fromkeys(normalized))}))
+    return review.model_copy(update={"assessments": items}), changes
+
+
+def _single_recovery_source(parent: Path, scope: dict[str, Any]) -> dict[str, Any]:
+    """Bind the one stopped canary response. Never restart its semantic session."""
+    prior = json.loads((parent / "scope.json").read_text(encoding="utf-8"))
+    receipt = json.loads((parent / "receipt.json").read_text(encoding="utf-8"))
+    if receipt["scope_sha256"] != canonical_sha256(prior):
+        raise ValueError("single_recovery_receipt_drift")
+    for key in ("scope_version", "protocol", "image_sha256", "judges", "assignments", "task_binding_sha256", "solver_output_sha256"):
+        if prior[key] != scope[key]:
+            raise ValueError("single_recovery_contract_drift")
+    first = scope["assignments"][0]
+    states = list((parent / "singles").glob("*/state.json"))
+    root = parent / "singles" / first["assignment_id"]
+    state = _state(root)
+    if len(states) != 1 or state is None or state["status"] != "incomplete" or state["attempt"] != 1:
+        raise ValueError("single_recovery_requires_one_stopped_canary")
+    workspace = root / "attempt_1/workspace"
+    if not _agent_completed(workspace, JUDGES[first["judge_id"]]["stack"]):
+        raise ValueError("single_recovery_response_not_terminal")
+    return {"parent_root": str(parent.resolve()), "parent_scope_sha256": canonical_sha256(prior),
+            "parent_receipt_sha256": _sha(parent / "receipt.json"), "assignment_id": first["assignment_id"],
+            "source_tree_sha256": tree_sha256(root), "prior_attempts": 1}
+
+
+def _import_single_canary(parent: Path, data_root: Path, run_root: Path, scope: dict[str, Any]) -> None:
+    recovery = _single_recovery_source(parent, scope)
+    if recovery != scope["recovery"]:
+        raise ValueError("single_recovery_source_drift")
+    spec = scope["assignments"][0]
+    target = run_root / "singles" / spec["assignment_id"]
+    if target.exists():
+        if (_state(target) or {}).get("recovered_from") != recovery:
+            raise ValueError("single_recovery_target_already_started")
+        return
+    source = parent / "singles" / spec["assignment_id"]
+    binding = next(b for b in _bindings(data_root) if b.task_id == spec["task_id"])
+    original = source / "attempt_1/workspace"
+    task = _task_root(data_root, binding.task_id)
+    if (tree_sha256(original / "anonymous_submission") != scope["solver_output_sha256"][f"{spec['solver_id']}/{binding.task_id}"]
+            or tree_sha256(original / "reference_files") != binding.reference_tree_sha256
+            or (original / "candidate_task.md").read_text(encoding="utf-8") != (task / "prompt.txt").read_text(encoding="utf-8")
+            or json.loads((original / "human_rubric.json").read_text(encoding="utf-8")) != [r.model_dump(mode="json") for r in binding.rubric_items]):
+        raise ValueError("single_recovery_input_drift")
+    # Copy into a new scope; parent receipt, failure, response and grading remain immutable.
+    shutil.copytree(source, target)
+    review = _parse_single(target / "attempt_1/workspace", binding, spec["judge_id"])
+    record = {**spec, "score": score_gdpval_single(binding, review), "review_sha256": canonical_sha256(review)}
+    _write(target / "review.json", review)
+    _write(target / "result.json", record)
+    _write(target / "state.json", {"status": "completed", "attempt": 1, "completed_at": _now(),
+        "first_failure": _state(source)["first_failure"], "recovered_from": recovery,
+        "recovery_mode": "offline_parse_only_no_provider_call", "result_sha256": canonical_sha256(record)})
 
 
 def _single_budget(run_root: Path, retry: bool) -> None:
@@ -883,6 +974,7 @@ def main() -> None:
     parser.add_argument("--solver-id")
     parser.add_argument("--task-id")
     parser.add_argument("--recovered-root", type=Path)
+    parser.add_argument("--resume-single-root", type=Path, help="Explicit offline recovery of one stopped, terminal canary into a new scope")
     args = parser.parse_args()
     if args.action == "status":
         print(json.dumps(status(args.run_root), ensure_ascii=False, indent=2)); return
@@ -893,6 +985,10 @@ def main() -> None:
         if args.solver_run_root is None or args.solver_run_root.resolve() == args.run_root.resolve():
             parser.error("single scoring requires a separate frozen solver root")
         scope = _single_scope(args.run_id, args.data_root, bindings, args.solver_run_root)
+        if args.resume_single_root is not None:
+            if args.resume_single_root.resolve() == args.run_root.resolve():
+                parser.error("single recovery requires a new run root")
+            scope["recovery"] = _single_recovery_source(args.resume_single_root, scope)
         if (args.run_root / "scope.json").exists():
             if json.loads((args.run_root / "scope.json").read_text(encoding="utf-8")) != scope:
                 raise RuntimeError("gdpval_single_scope_drift")
@@ -906,6 +1002,8 @@ def main() -> None:
             _write(args.run_root / "receipt.json", {"scope_sha256": canonical_sha256(scope), "consumed_at": _now()})
         if args.action == "single-scope":
             print(json.dumps({"scope_sha256": canonical_sha256(scope)}, indent=2)); return
+        if args.resume_single_root is not None:
+            _import_single_canary(args.resume_single_root, args.data_root, args.run_root, scope)
         result = run_single_scoring(args.host, args.data_root, args.run_root, args.run_id, scope)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if result["status"] != "preliminary_scoring_complete":

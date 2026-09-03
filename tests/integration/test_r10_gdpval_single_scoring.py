@@ -111,6 +111,64 @@ class SingleScoringTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 runner._single_budget(root, retry=False)
 
+    def test_reference_normalization_preserves_scores_and_rationale(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / "anonymous_submission").mkdir()
+            (root / "anonymous_submission/report.txt").write_text("Conclusion")
+            value = raw(1)
+            value["assessments"][0]["evidence_paths"] = ["/workspace/anonymous_submission/report.txt (page 1)",
+                "/tmp/opencode/pdf/report.pdf (rendered layout); /workspace/anonymous_submission/report.txt (title)"]
+            review = GDPvalSingleReviewV1.model_validate(value)
+            result, changes = runner._normalize_single_references(root, review)
+            self.assertEqual(result.assessments[0].awarded, 1)
+            self.assertEqual(result.assessments[0].rationale, review.assessments[0].rationale)
+            self.assertEqual(result.assessments[0].evidence_paths, ["anonymous_submission/report.txt"])
+            self.assertEqual(len(changes), 2)
+            for bad in ["/workspace/../anonymous_submission/report.txt", "/workspace/anonymous_submission/report.txt.evil",
+                        "/tmp/opencode/pdf/report.pdf (rendered layout)",
+                        "/tmp/opencode/pdf/other.pdf (rendered layout); /workspace/anonymous_submission/report.txt"]:
+                value["assessments"][0]["evidence_paths"] = [bad]
+                with self.assertRaises(ValueError):
+                    runner._normalize_single_references(root, GDPvalSingleReviewV1.model_validate(value))
+
+    def test_explicit_canary_recovery_is_offline_and_counts_original_attempt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); parent, new, data = root / "parent", root / "new", root / "data"
+            spec = runner._single_assignments()[0]
+            source = parent / "singles" / spec["assignment_id"]
+            workspace = source / "attempt_1/workspace"
+            (workspace / "anonymous_submission").mkdir(parents=True)
+            (workspace / "anonymous_submission/report.txt").write_text("Conclusion")
+            (workspace / "reference_files").mkdir()
+            (workspace / "candidate_task.md").write_text("Public prompt")
+            (workspace / "grade.raw.json").write_text(json.dumps(raw(1)))
+            (workspace / "agent.jsonl").write_text('{"type":"step_finish","part":{"reason":"stop"}}\n')
+            b = binding().model_copy(update={"task_id": spec["task_id"], "reference_tree_sha256": runner.tree_sha256(workspace / "reference_files")})
+            runner._write(workspace / "human_rubric.json", [r.model_dump(mode="json") for r in b.rubric_items])
+            task = data / "tasks" / b.task_id; task.mkdir(parents=True)
+            (task / "prompt.txt").write_text("Public prompt")
+            runner._write(source / "state.json", {"status":"incomplete", "attempt":1, "first_failure":"parser"})
+            scope = {"scope_version":"r10.gdpval_single_scope.1", "protocol":"fixture", "image_sha256":"a"*64,
+                "judges":runner.JUDGES, "assignments":runner._single_assignments(),
+                "task_binding_sha256":{b.task_id:b.canonical_sha256()},
+                "solver_output_sha256":{f"{spec['solver_id']}/{b.task_id}":runner.tree_sha256(workspace / "anonymous_submission")}}
+            runner._write(parent / "scope.json", scope)
+            runner._write(parent / "receipt.json", {"scope_sha256":runner.canonical_sha256(scope)})
+            original = runner.tree_sha256(parent)
+            scope["recovery"] = runner._single_recovery_source(parent, scope)
+            with patch.object(runner, "_bindings", return_value=[b]), patch.object(runner, "_run_remote") as provider:
+                runner._import_single_canary(parent, data, new, scope)
+                runner._import_single_canary(parent, data, new, scope)
+                provider.assert_not_called()
+            state = runner._state(new / "singles" / spec["assignment_id"])
+            self.assertEqual((state["status"], state["attempt"]), ("completed",1))
+            self.assertEqual(runner.tree_sha256(parent), original)
+            with self.assertRaises(ValueError):
+                runner._single_recovery_source(parent, {**scope,"image_sha256":"b"*64})
+            (workspace / "agent.jsonl").write_text('{"type":"step_start"}\n')
+            with self.assertRaises(ValueError):
+                runner._single_recovery_source(parent, scope)
+
     def exercise(self, responses):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         root = Path(tmp.name); spec = {"assignment_id": "single_fixture", "task_id": "public-task",

@@ -82,6 +82,7 @@ R10.10 可以在开发集上最多修订三版 evaluator，但每版只能修复
 - 最新批准的后续子集为三道开发题、九份单独主评与三份固定抽查。使用新的单份评分入口和 scope；不得调用旧全量 judge/aggregate。每项一次实质评分，最多一次格式/传输补跑且全局最多两次；不能重试仍活跃的远端 Agent。排名只使用九份 DeepSeek 主评分，Terra 抽查不加权混入。无新环境漂移时不重复 provider 探针。
 - 单份入口为 `Test/run_r10_gdpval_validation.py single-scope` 与 `single-judge`，必须指定独立 `--run-root`、`--run-id`、`--solver-run-root`。在 run root 放置 `STOP_REQUESTED` 可在当前项完成后阻断下一次派发。completed 项仅校验复用，running/incomplete 项不会静默重跑；不完整结果写入 `single_result.json`。
 - JSONL 只按 LF 分隔；PDF 等工具文本中的合法 Unicode 行分隔符不代表事件结束。原始响应保留，损坏 JSON 仍阻断。evidence_paths 只接受真实输入相对文件路径；页码、sheet/cell 定位写在 rationale，不能混入文件名或引用未回传的临时渲染文件。解析故障后的离线修复不自动重新消费旧 receipt。
+- 用户明确要求恢复后，可给新 `single-scope/single-judge` 增加 `--resume-single-root <旧精简run>`：仅支持旧 run 中唯一已结束但解析失败的首项，校验原 receipt、模型/镜像/任务/交付及原响应树；新 scope 导入解析结果，保留旧状态不变且沿用一次已消费尝试。running、非正常终态、漂移或已有多项执行均拒绝此恢复路径。证据引用可确定性去掉 `/workspace/` 前缀、拆出位置注释；临时渲染仅保留为未验证的辅助说明，必须同时绑定同名原输入文件，不能单独充当文件证据。原文字及规范化映射留在 artifacts，分数和理由不改动。
 - `Test/run_r10_gdpval_validation.py solve` 只承接原 Solver campaign；已开始项不得再次调用 Agent。
 - 本机控制器中断但远端已经正常结束时，先下载白名单回传目录；`recover-solver` 校验原输入、正常终态、交付可打开性后仅导入结果，保存原 running 状态，不伪造退出码或耗时。
 - 全部 Solver 状态落盘后，使用独立 run root 执行 `judge --solver-run-root <冻结Solver运行目录>`。新 scope 绑定原 receipt、输出 SHA 和修复后的评分协议；旧自动续跑脚本不得直接在 Solver run root 启动评分。
