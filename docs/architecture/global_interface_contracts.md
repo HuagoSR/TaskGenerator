@@ -35,6 +35,8 @@
 
 程序检查 ID、引用、分值边界与覆盖；语义准入由 Agent 审查。未来单份评分只按这些条目求和，不附加 preference 或总分否决。新版本尚未通过实际评分验证。
 
+专业条目绑定既有 decision；题干明确要求的交付结构可绑定保留组 `deliverable_structure`，但依据和证据必须仅来自题干及 DeliverableContract，不得以此创建新的专业判断或隐藏义务。
+
 ### Source, skill and planning
 
 - `RawSource` / `NormalizedSource` / `SourceBlock`：公开来源及其可审计正规化边界。

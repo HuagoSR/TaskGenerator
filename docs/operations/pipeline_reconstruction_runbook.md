@@ -24,4 +24,6 @@
 
 ## 停止点
 
+入口为 `Test/run_r10_rubric_compilation.py run/status --run-root <ignored路径> --run-id <新ID>`。首项已正常结束但因控制器准入缺陷未接纳时，可显式使用 `--import-completed-author <原run>`：只允许唯一的首个 author，校验 receipt、任务/输入/模型/镜像、正常终态与原输出；新 scope 绑定导入证明并继承一次调用计数。旧 run 不改写，running 或其余已开始项不允许重跑。
+
 两份 rubric 和独立审查完成后提供中文检查材料、提交状态。存在题干/监督/来源冲突时明确标记，不伪造通过。只作生成侧初步验证，不是专家证据或 evaluator_validated。

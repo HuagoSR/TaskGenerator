@@ -272,7 +272,38 @@ def environment(host):
             "auth_location_fingerprint": hashlib.sha256(AUTH.encode()).hexdigest()}
 
 
-def run_campaign(host, run, run_id, source=SOURCE):
+def completed_author_import(parent: Path, source: Path):
+    """One bounded offline import after a controller admission defect, no redraw."""
+    old_scope = read(parent / "scope.json")
+    if (read(parent / "receipt.json")["scope_sha256"] != digest(old_scope)
+            or old_scope["tasks"] != bindings(source) or old_scope["models"] != CONFIGS
+            or old_scope["environment"]["image_sha256"] != IMAGE_SHA
+            or read(parent / "attempts.json") != {"attempts": 1, "retries": 0}):
+        raise ValueError("rubric_import_binding_drift")
+    first = parent / TASKS[0] / "author"
+    states = list(parent.rglob("state.json"))
+    if len(states) != 1 or states[0] != first / "state.json":
+        raise ValueError("rubric_import_only_first_author_allowed")
+    diagnostics = read(first / "attempt_1/diagnostics.json")
+    if diagnostics["exit_code"] != 0 or not diagnostics["terminal"]:
+        raise ValueError("rubric_import_not_terminal")
+    workspace = first / "attempt_1/workspace"
+    if not completed(workspace, "author"):
+        raise ValueError("rubric_import_event_missing")
+    for name, expected in old_scope["tasks"][TASKS[0]]["inputs"].items():
+        if sha(workspace / name) != expected:
+            raise ValueError("rubric_import_input_drift")
+    output = parse_output(workspace, "author")
+    if output.status != "compiled" or output.task_id != TASKS[0]:
+        raise ValueError("rubric_import_not_compiled")
+    validate_rubric(output.rubric, TaskDecisionMatrixV1.model_validate(read(workspace / "decision_matrix.json")), workspace)
+    proof = {"parent_scope_sha256": digest(old_scope), "raw_output_sha256": sha(workspace / "grade.raw.json"),
+             "completed_output_sha256": digest(output), "model_calls_inherited": 1,
+             "parent_run": str(parent.resolve()), "content_unchanged": True}
+    return output, proof
+
+
+def run_campaign(host, run, run_id, source=SOURCE, import_author=None):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", run_id):
         raise ValueError("unsafe_run_id")
     if not run.resolve().is_relative_to((ROOT / "artifacts/r10").resolve()):
@@ -281,6 +312,7 @@ def run_campaign(host, run, run_id, source=SOURCE):
         raise ValueError("rubric_campaign_already_exists_no_silent_resume")
     frozen = bindings(source)
     env = environment(host)
+    imported, import_proof = completed_author_import(import_author, source) if import_author else (None, None)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
     scope = {"scope_version": "r10.rubric_compilation_scope.2", "campaign_id": run_id,
              "source_commit": commit, "source_files_sha256": {
@@ -289,17 +321,23 @@ def run_campaign(host, run, run_id, source=SOURCE):
              "environment": env, "tasks": frozen, "models": CONFIGS,
              "assignments": [{"task_id": tid, "phase": p} for tid in TASKS for p in CONFIGS],
              "max_attempts": 6, "global_retries": 2, "max_attempts_per_assignment": 2,
-             "excluded": ["solver", "scoring", "gdpval", "holdout", "task_mutation", "release"]}
+             "excluded": ["solver", "scoring", "gdpval", "holdout", "task_mutation", "release"],
+             "completed_author_import": import_proof}
     write(run / "scope.json", scope)
     write(run / "receipt.json", {"scope_sha256": digest(scope), "consumed_at": now(),
                                 "authority": "user_approved_two_task_rubric_generation_and_review"})
+    if imported:
+        write(run / "attempts.json", {"attempts": 1, "retries": 0})
+        write(run / TASKS[0] / "author/result.json", imported)
+        write(run / TASKS[0] / "author/state.json", {"status": "completed", "attempt": 1,
+              "origin": "offline_import_no_model_call", "output_sha256": digest(imported), "proof": import_proof})
     result = {"status": "incomplete", "tasks": {}, "first_failure": None,
               "evidence_level": "generation_only_llm_proxy", "scope_sha256": digest(scope)}
     try:
         for task_id in TASKS:
             if bindings(source) != frozen:
                 raise ValueError("rubric_frozen_source_drift")
-            compiled = execute_assignment(host, run, run_id, source, task_id, "author")
+            compiled = imported if imported and task_id == TASKS[0] else execute_assignment(host, run, run_id, source, task_id, "author")
             chinese_report(run, task_id, compiled)
             if compiled.status == "upstream_issue":
                 result["tasks"][task_id] = {"status": "upstream_issue", "author_sha256": digest(compiled)}
@@ -328,8 +366,10 @@ def main():
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--run-id", default="r10_10_rubric_generation_20260903")
     parser.add_argument("--host", default="huago-cone")
+    parser.add_argument("--import-completed-author", type=Path)
     args = parser.parse_args()
-    result = read(args.run_root / "result.json") if args.command == "status" else run_campaign(args.host, args.run_root, args.run_id)
+    result = read(args.run_root / "result.json") if args.command == "status" else run_campaign(
+        args.host, args.run_root, args.run_id, import_author=args.import_completed_author)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

@@ -134,9 +134,18 @@ def _visible_file(root: Path, name: str) -> Path:
 
 def validate_rubric(rubric: TaskSpecificRubricV2, matrix: TaskDecisionMatrixV1, root: Path) -> None:
     expected = {row.decision_id for row in matrix.decision_points}
-    if {row.decision_id for row in rubric.criteria} != expected:
+    actual = {row.decision_id for row in rubric.criteria}
+    if not expected <= actual or not actual <= expected | {"deliverable_structure"}:
         raise ValueError("rubric_decision_coverage_invalid")
     for row in rubric.criteria:
+        if row.decision_id == "deliverable_structure":
+            # A declared delivery requirement is not a new professional decision.
+            # Its support must be exclusively the visible task and single contract.
+            public_contract = {"candidate_task.md", "deliverable_contract.json"}
+            basis = {item.path for item in row.requirement_basis}
+            if ("deliverable_contract.json" not in basis or not basis <= public_contract
+                    or not set(row.evidence_paths) <= public_contract):
+                raise ValueError("rubric_delivery_group_requires_visible_contract")
         for name in row.evidence_paths + [basis.path for basis in row.requirement_basis]:
             _visible_file(root, name)
 
@@ -173,6 +182,8 @@ and decision_matrix.json. Preserve all inputs byte-for-byte. Task ID: {task_id}.
 Compile a new TaskSpecificRubricV2; return RubricCompilationV2 matching grade_schema.json.
 Use concise Chinese for requirements, anchors, explanations and summary; preserve source filenames and exact citations.
 Keep the existing professional decisions. A decision may have several independently observable scoring items.
+An explicitly requested deliverable-structure item may use decision_id deliverable_structure, grounded
+only in candidate_task.md and deliverable_contract.json; this is not a new professional decision.
 Choose items and positive integer maxima for this actual task; no fixed item count or mechanical 50/30/20 split.
 Every allowed integer from zero through max_points needs a concrete boundary. Binary items need 0 and 1 only.
 Each requirement must follow from the candidate's requested work or a candidate-visible professional basis.

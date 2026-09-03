@@ -115,6 +115,45 @@ class RubricCompilationTests(unittest.TestCase):
         value["checks"][0]["status"] = "uncertain"
         with self.assertRaises(ValueError):
             RubricAuthorReviewV2.model_validate(value)
+
+    def test_delivery_structure_is_contract_backed_not_a_professional_decision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"; make_source(source)
+            workspace = Path(tmp) / "workspace"; runner.stage(workspace, source / runner.TASKS[0], "author")
+            r = rubric()
+            item = r.criteria[0].model_copy(deep=True)
+            item.criterion_id = "delivery_file"; item.decision_id = "deliverable_structure"
+            item.requirement = "Submit the single explicitly required workbook."
+            item.requirement_basis[0].path = "deliverable_contract.json"
+            item.evidence_paths = ["deliverable_contract.json"]
+            r.criteria.append(item)
+            validate_rubric(r, matrix(), workspace)
+            item.evidence_paths = ["reference_files/ledger.txt"]
+            with self.assertRaises(ValueError):
+                validate_rubric(r, matrix(), workspace)
+
+    def test_author_import_requires_receipt_and_unchanged_frozen_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"; make_source(source)
+            parent = Path(tmp) / "parent"
+            first = parent / runner.TASKS[0] / "author"
+            workspace = first / "attempt_1/workspace"
+            runner.stage(workspace, source / runner.TASKS[0], "author")
+            old = {"tasks": runner.bindings(source), "models": runner.CONFIGS,
+                   "environment": {"image_sha256": runner.IMAGE_SHA}}
+            runner.write(parent / "scope.json", old)
+            runner.write(parent / "receipt.json", {"scope_sha256": runner.digest(old)})
+            runner.write(parent / "attempts.json", {"attempts": 1, "retries": 0})
+            runner.write(first / "state.json", {"status": "incomplete"})
+            runner.write(first / "attempt_1/diagnostics.json", {"exit_code": 0, "terminal": True})
+            runner.write(workspace / "grade.raw.json", compiled(runner.TASKS[0]))
+            (workspace / "agent.jsonl").write_text('{"type":"turn.completed"}\n', encoding="utf-8")
+            value, proof = runner.completed_author_import(parent, source)
+            self.assertEqual(proof["model_calls_inherited"], 1)
+            self.assertEqual(value, compiled(runner.TASKS[0]))
+            (workspace / "candidate_task.md").write_text("changed", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                runner.completed_author_import(parent, source)
         value = reviewed(runner.TASKS[0]).model_dump(mode="json"); value["checks"].pop()
         with self.assertRaises(ValueError):
             RubricAuthorReviewV2.model_validate(value)
