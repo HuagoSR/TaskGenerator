@@ -13,7 +13,7 @@ import random
 from collections import defaultdict
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, StrictInt, model_validator
 
 from task_generator.core.scenario_first import ScenarioFirstModel
 
@@ -141,6 +141,83 @@ def score_gdpval_bundle(
     earned = sum(items[item_id].score * values[value.rating] for item_id, value in assessments.items())
     total = sum(item.score for item in items.values())
     return round(earned / total, 6)
+
+
+class GDPvalSingleItemV1(ScenarioFirstModel):
+    rubric_item_id: str
+    awarded: StrictInt = Field(ge=0)
+    applicability: Literal["applicable", "not_triggered", "unresolved"]
+    evidence_paths: list[str] = Field(min_length=1)
+    rationale: str = Field(min_length=5, max_length=1200)
+
+
+class GDPvalSingleReviewV1(ScenarioFirstModel):
+    review_version: Literal["r10.gdpval_single_review.1"] = "r10.gdpval_single_review.1"
+    material_status: Literal["complete", "incomplete"]
+    material_notes: str
+    assessments: list[GDPvalSingleItemV1] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def unique_items(self) -> "GDPvalSingleReviewV1":
+        ids = [row.rubric_item_id for row in self.assessments]
+        if len(ids) != len(set(ids)):
+            raise ValueError("gdpval_duplicate_rubric_assessment")
+        return self
+
+
+class GDPvalMaterialIncomplete(ValueError):
+    """Semantic evidence gap: never eligible for a formatting redraw."""
+
+
+def score_gdpval_single(binding: GDPvalTaskBindingV1, review: GDPvalSingleReviewV1) -> float:
+    items = {row.rubric_item_id: row for row in binding.rubric_items}
+    rows = {row.rubric_item_id: row for row in review.assessments}
+    if set(items) != set(rows):
+        raise ValueError("gdpval_assessments_do_not_match_human_rubric")
+    if review.material_status != "complete" or any(row.applicability == "unresolved" for row in rows.values()):
+        raise GDPvalMaterialIncomplete("gdpval_material_or_applicability_incomplete")
+    for ident, row in rows.items():
+        maximum = items[ident].score
+        if not float(maximum).is_integer() or row.awarded > maximum:
+            raise ValueError("gdpval_single_awarded_out_of_range")
+        if row.applicability == "not_triggered" and row.awarded != maximum:
+            raise ValueError("gdpval_untriggered_condition_must_not_lose_points")
+    return round(sum(row.awarded for row in rows.values()) / sum(row.score for row in items.values()), 6)
+
+
+def summarize_single_scores(rows: list[dict[str, Any]], assignments: list[dict[str, str]]) -> dict[str, Any]:
+    expected = {row["assignment_id"]: row for row in assignments}
+    if len(expected) != len(assignments) or len({r["assignment_id"] for r in rows}) != len(rows):
+        raise ValueError("gdpval_single_duplicate_assignment")
+    for row in rows:
+        spec = expected.get(row["assignment_id"])
+        if spec is None or any(row[k] != spec[k] for k in ("task_id", "solver_id", "judge_id", "role")):
+            raise ValueError("gdpval_single_assignment_identity_drift")
+    primary = [row for row in rows if row["role"] == "primary"]
+    means = {}
+    for model in sorted({a["solver_id"] for a in assignments}):
+        required = {a["task_id"] for a in assignments if a["role"] == "primary" and a["solver_id"] == model}
+        found = [r for r in primary if r["solver_id"] == model]
+        if {r["task_id"] for r in found} == required and len(found) == len(required):
+            means[model] = round(sum(r["score"] for r in found) / len(found), 6)
+    comparisons = []
+    models = sorted(means)
+    for i, first in enumerate(models):
+        for second in models[i + 1:]:
+            delta = round(means[first] - means[second], 6)
+            comparisons.append({"model_a": first, "model_b": second, "delta": delta,
+                                "interpretation": "difference_unclear" if abs(delta) < .05 else "descriptive_difference"})
+    checks = []
+    for check in (r for r in rows if r["role"] == "check"):
+        main = next((r for r in primary if (r["task_id"], r["solver_id"]) == (check["task_id"], check["solver_id"])), None)
+        if main:
+            checks.append({"task_id": check["task_id"], "solver_id": check["solver_id"],
+                           "primary_score": main["score"], "check_score": check["score"],
+                           "delta": round(check["score"] - main["score"], 6)})
+    return {"status": "preliminary_scoring_complete" if len(rows) == len(assignments) else "preliminary_scoring_partial",
+            "completed": len(rows), "planned": len(assignments), "primary_means": means,
+            "comparisons": comparisons, "cross_judge_checks": checks, "results": rows,
+            "evaluator_validated": False, "evidence_level": "exploratory_development_subset_llm_proxy"}
 
 
 def normalize_pair_review(review: GDPvalPairReviewV1) -> dict[str, Any]:

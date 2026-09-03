@@ -40,12 +40,16 @@ from task_generator.evaluation.r10_gdpval_validation import (
     GDPvalPairReviewV1,
     GDPvalRankingSnapshotV1,
     GDPvalTaskBindingV1,
+    GDPvalSingleReviewV1,
+    GDPvalMaterialIncomplete,
     balanced_order,
     bootstrap_model_order,
     canonical_sha256,
     normalize_pair_review,
     ordinal_direction_agreement,
     score_gdpval_bundle,
+    score_gdpval_single,
+    summarize_single_scores,
 )
 from task_generator.planning.scenario_task_compiler import tree_sha256
 from task_generator.production.campaign import atomic_json
@@ -81,6 +85,195 @@ JUDGES = {
 }
 PAIR_SEED = 1010
 SENTINEL_COUNT = 6
+
+SINGLE_TASKS = (
+    "7d7fc9a7-21a7-4b83-906f-416dea5ad04f",
+    "1b1ade2d-f9f6-4a04-baa5-aa15012b53be",
+    "36d567ba-e205-4313-9756-931c6e4691fe",
+)
+
+
+def _single_assignments() -> list[dict[str, str]]:
+    models = list(SOLVERS)
+    specs = [(task, model, SECONDARY_JUDGE, "primary") for task in SINGLE_TASKS for model in models]
+    specs += [(task, models[index], PRIMARY_JUDGE, "check") for index, task in enumerate(SINGLE_TASKS)]
+    return [{"assignment_id": "single_" + canonical_sha256(spec)[:24], "task_id": spec[0],
+             "solver_id": spec[1], "judge_id": spec[2], "role": spec[3]} for spec in specs]
+
+
+def _single_scope(run_id: str, data_root: Path, bindings: list[GDPvalTaskBindingV1], solver_root: Path) -> dict[str, Any]:
+    scope = _judge_scope(run_id, data_root, bindings, solver_root)
+    chosen = [b for b in bindings if b.task_id in SINGLE_TASKS]
+    if len(chosen) != 3 or any(b.split != "development" for b in chosen) or len({b.occupation for b in chosen}) != 3:
+        raise ValueError("gdpval_single_development_subset_invalid")
+    assignments = _single_assignments()
+    outputs = scope["solver_output_sha256"]
+    required = {f"{a['solver_id']}/{a['task_id']}" for a in assignments}
+    if not required <= outputs.keys():
+        raise ValueError("gdpval_single_missing_valid_delivery")
+    for key in ("ranking_snapshot_sha256", "sentinel_count", "sentinel_design", "pair_seed", "optional_luna"):
+        scope.pop(key, None)
+    scope.update({"scope_version": "r10.gdpval_single_scope.1", "protocol": "balanced_integer_rubric_only",
+                  "task_binding_sha256": {b.task_id: b.canonical_sha256() for b in chosen},
+                  "solver_output_sha256": {key: outputs[key] for key in sorted(required)},
+                  "evaluator_sha256": _sha(ROOT / "src/task_generator/evaluation/r10_gdpval_validation.py"),
+                  "assignments": assignments, "max_attempts": 14, "global_retry_limit": 2,
+                  "format_retry_limit": 1, "solver_execution_allowed": False})
+    return scope
+
+
+def _stage_single(target: Path, data_root: Path, run_root: Path, binding: GDPvalTaskBindingV1, solver_id: str) -> None:
+    target.mkdir(parents=True)
+    task = _task_root(data_root, binding.task_id)
+    shutil.copy2(task / "prompt.txt", target / "candidate_task.md")
+    shutil.copytree(task / "reference_files", target / "reference_files")
+    shutil.copytree(_delivery_root(run_root, data_root, binding.task_id, solver_id), target / "anonymous_submission")
+    _write(target / "human_rubric.json", [row.model_dump(mode="json") for row in binding.rubric_items])
+    _write(target / "grade_schema.json", _strict_output_schema(GDPvalSingleReviewV1.model_json_schema()))
+    (target / "TASK.md").write_text("""Grade ONE anonymous submission independently against human_rubric.json.
+Read candidate_task.md, every reference_files file and the whole anonymous_submission bundle.
+Use a balanced policy: full credit when satisfied, partial integer credit when partially satisfied,
+zero when unmet. The rubric score is the maximum for that row; use its actual value, not a fixed weight list.
+Include each rubric_item_id exactly once with integer awarded, applicability, concise rationale and actual evidence_paths.
+Do not invent criteria, add a holistic veto, issue a preference, infer authorship, or penalize high scores.
+Conditional items: if the reference-supported prerequisite is absent, use not_triggered and full row credit,
+explaining the absent prerequisite. If necessary materials cannot be read or applicability cannot be established,
+use unresolved and material_status incomplete; never guess or manufacture evidence.
+Deduct only under a rubric item, not merely because you prefer different wording. If the rubric explicitly
+requires a format/title, apply that requirement; do not add one where absent.
+Inspect XLSX cell contents/formulas and document contents using the installed tools. Use python3 (openpyxl),
+LibreOffice and pdftotext as appropriate. Keep each file's converted output in a separate directory to avoid
+same-name overwrites. Try OOXML text extraction for readable DOCX contents if conversion fails; report any
+remaining inspection limits. Layout claims or deductions need rendered-file evidence, not guesses from plain text.
+Return one JSON object matching grade_schema.json. Do not return totals, preference, model, task or judge identity.
+The controller alone computes scores. For Codex, return the JSON as your final answer; do not change any inputs.
+""", encoding="utf-8")
+
+
+def _parse_single(workspace: Path, binding: GDPvalTaskBindingV1, judge_id: str, stdout: str = "") -> GDPvalSingleReviewV1:
+    raw = workspace / "grade.raw.json"
+    if not raw.is_file() and judge_id.startswith("deepseek"):
+        text = (workspace / "agent.jsonl").read_text(encoding="utf-8") if (workspace / "agent.jsonl").is_file() else stdout
+        extracted = _extract_opencode_json(text) or _extract_fenced_json_from_opencode(text)
+        if extracted:
+            raw.write_text(extracted, encoding="utf-8")
+    review = GDPvalSingleReviewV1.model_validate_json(raw.read_text(encoding="utf-8"))
+    score_gdpval_single(binding, review)
+    for item in review.assessments:
+        for name in item.evidence_paths:
+            path = Path(name)
+            if (path.is_absolute() or ".." in path.parts or "\\" in name or
+                not (name == "candidate_task.md" or name.startswith(("reference_files/", "anonymous_submission/"))) or
+                not (workspace / path).is_file() or not (workspace / path).resolve().is_relative_to(workspace.resolve())):
+                raise ValueError("gdpval_single_invalid_evidence_path")
+    return review
+
+
+def _single_budget(run_root: Path, retry: bool) -> None:
+    states = [_state(path.parent) for path in (run_root / "singles").glob("*/state.json")]
+    used = sum(s.get("attempt", 0) for s in states)
+    retries = sum(max(0, s.get("attempt", 0) - 1) for s in states)
+    if used >= 14 or (retry and retries >= 2):
+        raise RuntimeError("gdpval_single_global_attempt_limit")
+
+
+def _run_single(host: str, data_root: Path, run_root: Path, run_id: str,
+                binding: GDPvalTaskBindingV1, spec: dict[str, str]) -> dict[str, Any]:
+    root = run_root / "singles" / spec["assignment_id"]
+    state = _state(root)
+    if state:
+        if state["status"] != "completed":
+            raise RuntimeError("gdpval_single_started_assignment_not_rerunnable")
+        record = json.loads((root / "result.json").read_text(encoding="utf-8"))
+        review = GDPvalSingleReviewV1.model_validate_json((root / "review.json").read_text(encoding="utf-8"))
+        if (canonical_sha256(record) != state["result_sha256"] or canonical_sha256(review) != record["review_sha256"]
+                or any(record[k] != v for k, v in spec.items()) or score_gdpval_single(binding, review) != record["score"]):
+            raise ValueError("gdpval_single_completed_record_drift")
+        return record
+    config = JUDGES[spec["judge_id"]]
+    first_failure = None
+    frozen = None
+    started = time.monotonic()
+    for attempt in (1, 2):
+        _single_budget(run_root, retry=attempt == 2)
+        workspace = root / f"attempt_{attempt}" / "workspace"
+        _stage_single(workspace, data_root, run_root, binding, spec["solver_id"])
+        digest = tree_sha256(workspace)
+        if frozen is not None and digest != frozen:
+            raise ValueError("gdpval_single_retry_input_drift")
+        frozen = digest
+        _write(root / "state.json", {"status": "running", "attempt": attempt, "started_at": _now(),
+                                     "input_sha256": digest, "first_failure": first_failure})
+        retryable = False
+        try:
+            code, stdout, stderr = _run_remote(
+                host=host, remote=f"{REMOTE_HOME}/{run_id}/singles/{spec['assignment_id']}/attempt_{attempt}",
+                local=workspace, stack=config["stack"], grade=True, image=IMAGE, codex_auth_dir=CODEX_AUTH_DIR,
+                timeout_seconds=1800, model_override=config["model"],
+                codex_reasoning_effort=config.get("reasoning"), opencode_variant=config.get("variant"))
+            if code != 0 or not _agent_completed(workspace, config["stack"]):
+                raise RuntimeError(f"gdpval_single_agent_not_terminal:{code}")
+            retryable = True
+            review = _parse_single(workspace, binding, spec["judge_id"], stdout)
+            record = {**spec, "score": score_gdpval_single(binding, review), "review_sha256": canonical_sha256(review)}
+            _write(root / "review.json", review)
+            _write(root / "result.json", record)
+            _write(root / "state.json", {"status": "completed", "attempt": attempt, "completed_at": _now(),
+                "first_failure": first_failure, "input_sha256": digest,
+                "duration_seconds": round(time.monotonic() - started, 3), "result_sha256": canonical_sha256(record)})
+            return record
+        except Exception as exc:
+            # Never persist raw provider exception text that may contain credentials.
+            failure = f"{type(exc).__name__}:single_review_failed"
+            first_failure = first_failure or failure
+            if isinstance(exc, GDPvalMaterialIncomplete):
+                retryable = False
+            details = ([{"loc": list(e["loc"]), "type": e["type"]} for e in exc.errors(include_input=False, include_context=False)]
+                       if hasattr(exc, "errors") else [])
+            _write(root / f"attempt_{attempt}" / "failure.json", {"failure": failure, "retryable": retryable,
+                "schema_errors": details,
+                "agent_jsonl_sha256": _sha(workspace / "agent.jsonl") if (workspace / "agent.jsonl").is_file() else None})
+            _write(root / "state.json", {"status": "incomplete", "attempt": attempt,
+                                         "first_failure": first_failure, "completed_at": _now()})
+            if not retryable or attempt == 2:
+                raise RuntimeError(failure) from None
+    raise AssertionError("unreachable")
+
+
+def run_single_scoring(host: str, data_root: Path, run_root: Path, run_id: str,
+                       scope: dict[str, Any]) -> dict[str, Any]:
+    bindings = {b.task_id: b for b in _bindings(data_root)}
+    rows = []
+    failure = None
+    for spec in scope["assignments"]:
+        try:
+            if (run_root / "STOP_REQUESTED").exists():
+                raise RuntimeError("user_requested_stop_before_next_assignment")
+            binding = bindings[spec["task_id"]]
+            if binding.canonical_sha256() != scope["task_binding_sha256"][binding.task_id]:
+                raise ValueError("single_binding_drift")
+            _verify_public_files(data_root, [binding])
+            if tree_sha256(_delivery_root(run_root, data_root, binding.task_id, spec["solver_id"])) != scope["solver_output_sha256"][f"{spec['solver_id']}/{binding.task_id}"]:
+                raise ValueError("single_delivery_drift")
+            rows.append(_run_single(host, data_root, run_root, run_id, binding, spec))
+        except Exception as exc:
+            failure = {"assignment_id": spec["assignment_id"], "error_type": type(exc).__name__}
+        report = summarize_single_scores(rows, scope["assignments"])
+        report.update({"updated_at": _now(), "first_failure": failure})
+        # Retain concrete cross-judge disagreements without averaging judges.
+        for check in report["cross_judge_checks"]:
+            matching = [r for r in rows if (r["task_id"], r["solver_id"]) == (check["task_id"], check["solver_id"])]
+            assessments = {}
+            for r in matching:
+                review = GDPvalSingleReviewV1.model_validate_json((run_root / "singles" / r["assignment_id"] / "review.json").read_text(encoding="utf-8"))
+                assessments[r["role"]] = {a.rubric_item_id: a.awarded for a in review.assessments}
+            check["differing_items"] = [{"rubric_item_id": k, "primary": v, "check": assessments["check"][k]}
+                                        for k, v in assessments["primary"].items() if v != assessments["check"][k]]
+        _write(run_root / "single_result.json", report)
+        print(json.dumps({"completed": len(rows), "planned": 12, "first_failure": failure}), flush=True)
+        if failure:
+            break
+    return report
 
 
 def _now() -> str:
@@ -676,7 +869,7 @@ def status(run_root: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["scope", "solve", "judge", "aggregate", "all", "status", "recover-solver"])
+    parser.add_argument("action", choices=["scope", "solve", "judge", "aggregate", "all", "status", "recover-solver", "single-scope", "single-judge"])
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--run-id", default="r10_10_gdpval_validation_20260903")
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA)
@@ -692,6 +885,30 @@ def main() -> None:
     if args.action == "all":
         parser.error("run solve first, then create a separate judge-only scope; legacy all is read-only history")
     bindings = _bindings(args.data_root)
+    if args.action in {"single-scope", "single-judge"}:
+        if args.solver_run_root is None or args.solver_run_root.resolve() == args.run_root.resolve():
+            parser.error("single scoring requires a separate frozen solver root")
+        scope = _single_scope(args.run_id, args.data_root, bindings, args.solver_run_root)
+        if (args.run_root / "scope.json").exists():
+            if json.loads((args.run_root / "scope.json").read_text(encoding="utf-8")) != scope:
+                raise RuntimeError("gdpval_single_scope_drift")
+            receipt = json.loads((args.run_root / "receipt.json").read_text(encoding="utf-8"))
+            if receipt["scope_sha256"] != canonical_sha256(scope):
+                raise RuntimeError("gdpval_single_receipt_drift")
+        else:
+            if args.run_root.exists() and any(args.run_root.iterdir()):
+                raise RuntimeError("gdpval_single_new_root_must_be_empty")
+            _write(args.run_root / "scope.json", scope)
+            _write(args.run_root / "receipt.json", {"scope_sha256": canonical_sha256(scope), "consumed_at": _now()})
+        if args.action == "single-scope":
+            print(json.dumps({"scope_sha256": canonical_sha256(scope)}, indent=2)); return
+        result = run_single_scoring(args.host, args.data_root, args.run_root, args.run_id, scope)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if result["status"] != "preliminary_scoring_complete":
+            raise SystemExit(2)
+        return
+    if args.action == "judge" and (args.run_root / "scope_reduction.json").exists():
+        raise RuntimeError("gdpval_full_queue_disabled_by_user")
     if args.action in {"judge", "aggregate"} and args.solver_run_root is None:
         parser.error("judge/aggregate require --solver-run-root and a new judge-only run root")
     if args.solver_run_root is not None:

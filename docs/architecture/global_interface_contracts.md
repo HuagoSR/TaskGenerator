@@ -117,6 +117,8 @@ R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文�
 - `CounterbalancedPairReviewV2`：记录匿名 bundle、展示顺序、逐项评价、重大错误和 pair preference。A/B 与 B/A 必须映射回同一语义结果，位置不稳定单独报告。
 - `EvaluatorCalibrationResultV1` — `proposed / not_implemented`：未来统一 R10/GDPval closeout；当前实现分别使用 split result 与 GDPval result，不能以部分协议指标代替全部验收条件。
 - `GDPvalTaskBindingV1` / `GDPvalPairReviewV1` / `GDPvalRankingSnapshotV1`：冻结公开题、细粒度 human rubric、匿名槽位评分与外部排序快照。评分项必须完整且唯一；程序重算权重。模型身份不进入 Agent 输出 schema，只在解析后绑定。
+- `GDPvalSingleItemV1` / `GDPvalSingleReviewV1` — `implemented / exploratory`：单份匿名交付逐项给整数 awarded、适用状态和文件依据；原 rubric 是满分权威，程序检查完整性并求和，不接受模型自报总分或 preference。未触发条件不得扣分；材料/适用性未决阻断该评分且不作为格式重抽。
+- `r10.gdpval_single_scope.1`：固定三个开发题、九个 DeepSeek 主评和三个 Terra 抽查 assignment，绑定原 Solver receipt、九份交付、rubric、源码和环境。最多十四次尝试、两次全局格式补跑；抽查不进入主排名。结果仅为 preliminary_scoring_complete / preliminary_scoring_partial。
 - `r10.gdpval_judge_only_scope.2`：绑定原 Solver scope/receipt、完整结果、交付树、当前源码与评分协议；不授予重新作答权限。六组 sentinel 按职业和数据划分分层选取，分别记录同 Judge 换序和同序跨 Judge 比较。动态模型别名与旧绝对评分 baseline 未验证时须保留证据限制。
 
 开发集最多允许三个 evaluator profile 版本；留出集只执行一次。任何 profile 变更都不得修改任务、Teacher Truth、原始 rubric、Solver 交付或专业事实。
