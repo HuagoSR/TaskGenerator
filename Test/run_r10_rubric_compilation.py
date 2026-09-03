@@ -120,14 +120,59 @@ def parse_output(workspace: Path, phase: str):
     if phase == "author":
         raw = (workspace / "grade.raw.json").read_text(encoding="utf-8")
     else:
-        events = (workspace / "agent.jsonl").read_text(encoding="utf-8")
-        # Preserve legal U+2028 inside JSON strings: event boundaries are LF only.
-        escaped = "\n".join(json.dumps(json.loads(line), ensure_ascii=True) for line in events.split("\n") if line.strip())
-        raw = _extract_opencode_json(escaped)
-        if not raw:
-            raise ValueError("rubric_review_json_missing")
+        raw, repair = review_payload(workspace)
+        write(workspace / "parse_diagnostics.json", repair)
     model = RubricCompilationV2 if phase == "author" else RubricAuthorReviewV2
     return model.model_validate_json(raw)
+
+
+def review_payload(workspace):
+    events = (workspace / "agent.jsonl").read_text(encoding="utf-8")
+    # Preserve legal U+2028 inside JSON strings: event boundaries are LF only.
+    escaped = "\n".join(json.dumps(json.loads(line), ensure_ascii=True) for line in events.split("\n") if line.strip())
+    raw = _extract_opencode_json(escaped)
+    if not raw:
+        texts = [e.get("part", {}).get("text", "") for e in
+                 [json.loads(line) for line in escaped.split("\n") if line.strip()]
+                 if e.get("type") == "text"]
+        raw = texts[-1] if texts else ""
+    return review_json_envelope(raw)
+
+
+def review_json_envelope(text):
+    """Only remove prose/fences and escape quotes in known free-text fields.
+
+    Never repair IDs, decisions, ratings, numbers, truncated JSON or missing
+    fields. Preserve the source event and a normalization proof for auditing.
+    """
+    starts = list(re.finditer(r'\{\s*"(?:review_version|task_id)"\s*:', text))
+    if len(starts) != 1 or "}" not in text:
+        raise ValueError("rubric_review_json_envelope_ambiguous")
+    raw = text[starts[0].start():text.rfind("}") + 1]
+    lines, edits = [], []
+    for index, line in enumerate(raw.split("\n")):
+        match = re.fullmatch(r'(\s*"(?:rationale_zh|summary_zh|explanation)"\s*:\s*")(.*)("\s*,?\s*)', line)
+        if match:
+            try:
+                json.loads('"' + match[2] + '"')
+            except json.JSONDecodeError:
+                body, slashes, escaped_quotes = "", 0, 0
+                for char in match[2]:
+                    if char == '"' and slashes % 2 == 0:
+                        body += "\\"
+                        escaped_quotes += 1
+                    body += char
+                    slashes = slashes + 1 if char == "\\" else 0
+                if escaped_quotes:
+                    edits.append({"line": index + 1, "escaped_quotes": escaped_quotes,
+                                  "raw_line_sha256": hashlib.sha256(line.encode()).hexdigest()})
+                    line = match[1] + body + match[3]
+        lines.append(line)
+    normalized = "\n".join(lines)
+    json.loads(normalized)  # Remaining corruption is not silently repaired.
+    return normalized, {"source_text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                        "normalized_sha256": hashlib.sha256(normalized.encode()).hexdigest(),
+                        "free_text_quote_escapes": edits, "semantic_fields_unchanged": True}
 
 
 def verify_remote_inputs(host, remote, frozen):
@@ -303,7 +348,44 @@ def completed_author_import(parent: Path, source: Path):
     return output, proof
 
 
-def run_campaign(host, run, run_id, source=SOURCE, import_author=None):
+def completed_pair_import(parent: Path, source: Path):
+    """Import the first task only after a redundant format retry was stopped."""
+    scope = read(parent / "scope.json")
+    if (read(parent / "receipt.json")["scope_sha256"] != digest(scope)
+            or scope["tasks"] != bindings(source) or scope["models"] != CONFIGS
+            or scope["environment"]["image_sha256"] != IMAGE_SHA
+            or read(parent / "attempts.json") != {"attempts": 3, "retries": 1}):
+        raise ValueError("rubric_pair_import_drift")
+    original = Path(scope["completed_author_import"]["parent_run"])
+    author, proof = completed_author_import(original, source)
+    if proof != scope["completed_author_import"]:
+        raise ValueError("rubric_pair_author_provenance_drift")
+    review_root = parent / TASKS[0] / "review"
+    state = read(review_root / "state.json")
+    first = read(review_root / "attempt_1/diagnostics.json")
+    second = read(review_root / "attempt_2/diagnostics.json")
+    if (state["status"] != "incomplete" or state["attempt"] != 2
+            or first["exit_code"] != 0 or not first["terminal"]
+            or second["exit_code"] == 0 or second["terminal"]
+            or (parent / TASKS[1]).exists()):
+        raise ValueError("rubric_pair_import_requires_completed_first_and_stopped_retry")
+    workspace = review_root / "attempt_1/workspace"
+    for name, expected in scope["tasks"][TASKS[0]]["inputs"].items():
+        if sha(workspace / name) != expected:
+            raise ValueError("rubric_pair_review_input_drift")
+    if read(workspace / "new_rubric.json") != author.rubric.model_dump(mode="json") or not completed(workspace, "review"):
+        raise ValueError("rubric_pair_review_rubric_drift")
+    raw, normalization = review_payload(workspace)
+    review = RubricAuthorReviewV2.model_validate_json(raw)
+    validate_review(review, author.rubric, workspace)
+    return author, review, {"parent_scope_sha256": digest(scope), "parent_run": str(parent.resolve()),
+                           "author_proof": proof, "review_sha256": digest(review),
+                           "review_events_sha256": sha(workspace / "agent.jsonl"),
+                           "normalization": normalization,
+                           "model_calls_inherited": 3, "stopped_redundant_retry_count": 1}
+
+
+def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pair=None):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", run_id):
         raise ValueError("unsafe_run_id")
     if not run.resolve().is_relative_to((ROOT / "artifacts/r10").resolve()):
@@ -312,7 +394,13 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None):
         raise ValueError("rubric_campaign_already_exists_no_silent_resume")
     frozen = bindings(source)
     env = environment(host)
-    imported, import_proof = completed_author_import(import_author, source) if import_author else (None, None)
+    if import_author and import_pair:
+        raise ValueError("only_one_rubric_import_mode")
+    imported_review = None
+    if import_pair:
+        imported, imported_review, import_proof = completed_pair_import(import_pair, source)
+    else:
+        imported, import_proof = completed_author_import(import_author, source) if import_author else (None, None)
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
     scope = {"scope_version": "r10.rubric_compilation_scope.2", "campaign_id": run_id,
              "source_commit": commit, "source_files_sha256": {
@@ -327,10 +415,14 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None):
     write(run / "receipt.json", {"scope_sha256": digest(scope), "consumed_at": now(),
                                 "authority": "user_approved_two_task_rubric_generation_and_review"})
     if imported:
-        write(run / "attempts.json", {"attempts": 1, "retries": 0})
+        write(run / "attempts.json", {"attempts": 3 if imported_review else 1, "retries": 1 if imported_review else 0})
         write(run / TASKS[0] / "author/result.json", imported)
         write(run / TASKS[0] / "author/state.json", {"status": "completed", "attempt": 1,
               "origin": "offline_import_no_model_call", "output_sha256": digest(imported), "proof": import_proof})
+        if imported_review:
+            write(run / TASKS[0] / "review/result.json", imported_review)
+            write(run / TASKS[0] / "review/state.json", {"status": "completed", "attempt": 1,
+                  "origin": "offline_import_first_response", "output_sha256": digest(imported_review)})
     result = {"status": "incomplete", "tasks": {}, "first_failure": None,
               "evidence_level": "generation_only_llm_proxy", "scope_sha256": digest(scope)}
     try:
@@ -342,7 +434,10 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None):
             if compiled.status == "upstream_issue":
                 result["tasks"][task_id] = {"status": "upstream_issue", "author_sha256": digest(compiled)}
                 continue
-            review = execute_assignment(host, run, run_id, source, task_id, "review", compiled.rubric)
+            if bindings(source) != frozen:
+                raise ValueError("rubric_frozen_source_drift")
+            review = imported_review if imported_review and task_id == TASKS[0] else execute_assignment(
+                host, run, run_id, source, task_id, "review", compiled.rubric)
             chinese_report(run, task_id, compiled, review)
             result["tasks"][task_id] = {"status": review.decision, "author_sha256": digest(compiled),
                                        "review_sha256": digest(review), "items": len(compiled.rubric.criteria),
@@ -367,9 +462,11 @@ def main():
     parser.add_argument("--run-id", default="r10_10_rubric_generation_20260903")
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--import-completed-author", type=Path)
+    parser.add_argument("--import-completed-pair", type=Path)
     args = parser.parse_args()
     result = read(args.run_root / "result.json") if args.command == "status" else run_campaign(
-        args.host, args.run_root, args.run_id, import_author=args.import_completed_author)
+        args.host, args.run_root, args.run_id, import_author=args.import_completed_author,
+        import_pair=args.import_completed_pair)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

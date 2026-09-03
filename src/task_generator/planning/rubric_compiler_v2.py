@@ -161,7 +161,12 @@ def validate_review(review: RubricAuthorReviewV2, rubric: TaskSpecificRubricV2, 
         if set(check.criterion_ids) != ids:
             raise ValueError("rubric_review_coverage_incomplete")
         for basis in check.evidence:
-            _visible_file(root, basis.path)
+            if basis.path in {"new_rubric.json", "teacher_truth.json", "decision_matrix.json"}:
+                file = root / basis.path
+                if not file.is_file() or file.is_symlink() or not file.resolve().is_relative_to(root.resolve()):
+                    raise ValueError("rubric_review_source_missing_or_unsafe")
+            else:
+                _visible_file(root, basis.path)
 
 
 def sum_rubric_points(rubric: TaskSpecificRubricV2, awarded: dict[str, int]) -> float:

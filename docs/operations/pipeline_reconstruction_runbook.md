@@ -24,6 +24,8 @@
 
 ## 停止点
 
+如果首次审查已正常结束但仅序列化/控制器引用检查失败，误触发的第二次尝试已停止且未产生正常终态，可用 `--import-completed-pair <原run>` 离线接纳首题首次生成与首次审查。该模式仅允许这一个固定首题，验证完整来源链、原输入、正常事件和停止证明；三个已消耗尝试全部计入新 scope 上限，原 run 不改写，不读取或挑选第二份审查结论。
+
 入口为 `Test/run_r10_rubric_compilation.py run/status --run-root <ignored路径> --run-id <新ID>`。首项已正常结束但因控制器准入缺陷未接纳时，可显式使用 `--import-completed-author <原run>`：只允许唯一的首个 author，校验 receipt、任务/输入/模型/镜像、正常终态与原输出；新 scope 绑定导入证明并继承一次调用计数。旧 run 不改写，running 或其余已开始项不允许重跑。
 
 两份 rubric 和独立审查完成后提供中文检查材料、提交状态。存在题干/监督/来源冲突时明确标记，不伪造通过。只作生成侧初步验证，不是专家证据或 evaluator_validated。

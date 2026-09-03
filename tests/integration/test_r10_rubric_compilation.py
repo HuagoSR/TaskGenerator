@@ -186,6 +186,31 @@ class RubricCompilationTests(unittest.TestCase):
             self.assertNotIn("hidden", (root / "agent.jsonl").read_text(encoding="utf-8"))
             self.assertTrue(runner.completed(root, "review"))
 
+    def test_review_prose_and_free_text_quote_repair_only(self):
+        obj = reviewed(runner.TASKS[0]).model_dump(mode="json")
+        obj["summary_zh"] = 'Visible phrase "section three" remains unchanged in the review.'
+        valid = json.dumps(obj, ensure_ascii=False, indent=2)
+        malformed = valid.replace('\\"section three\\"', '"section three"')
+        normalized, proof = runner.review_json_envelope("Introductory explanation.\n" + malformed + "\n")
+        self.assertEqual(json.loads(normalized), obj)
+        self.assertEqual(sum(e["escaped_quotes"] for e in proof["free_text_quote_escapes"]), 2)
+        for bad in (malformed[:-1], valid + "\n" + valid,
+                    valid.replace('"decision": "pass"', '"decision": unquoted')):
+            with self.assertRaises(ValueError):
+                runner.review_json_envelope(bad)
+
+    def test_review_can_cite_reviewed_supervision_but_author_cannot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"; make_source(source)
+            ws = Path(tmp) / "workspace"; runner.stage(ws, source / runner.TASKS[0], "review", rubric())
+            review = reviewed(runner.TASKS[0])
+            for c in review.checks:
+                c.evidence[0].path = "new_rubric.json"
+            validate_review(review, rubric(), ws)
+            review.checks[0].evidence[0].path = "../outside.json"
+            with self.assertRaises(ValueError):
+                validate_review(review, rubric(), ws)
+
     def test_global_retry_limit_and_no_replay(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -197,7 +222,7 @@ class RubricCompilationTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 runner.reserve_attempt(root, False)
 
-    def simulate(self, *, format_once=False, low_quality=False, nonterminal=False, upstream=False):
+    def simulate(self, *, format_once=False, low_quality=False, nonterminal=False, upstream=False, import_pair=False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); source = root / "source"; make_source(source)
             run = root / "artifacts/r10/trial"
@@ -222,8 +247,11 @@ class RubricCompilationTests(unittest.TestCase):
                 return 0, "", ""
             with patch.object(runner, "ROOT", root), patch.object(runner, "environment", return_value={"image_sha256": runner.IMAGE_SHA}), \
                  patch.object(runner.subprocess, "run", return_value=SimpleNamespace(stdout="a" * 40)), \
-                 patch.object(runner, "_run_remote", side_effect=remote), patch.object(runner, "verify_remote_inputs"):
-                result = runner.run_campaign("fixture", run, "trial", source)
+                 patch.object(runner, "_run_remote", side_effect=remote), patch.object(runner, "verify_remote_inputs"), \
+                 patch.object(runner, "completed_pair_import", return_value=(compiled(runner.TASKS[0]),
+                     reviewed(runner.TASKS[0]), {"model_calls_inherited": 3})):
+                result = runner.run_campaign("fixture", run, "trial", source,
+                                             import_pair=root / "old" if import_pair else None)
                 with self.assertRaises(ValueError):
                     runner.run_campaign("fixture", run, "trial", source)
             self.assertEqual(runner.bindings(source), before)
@@ -236,6 +264,13 @@ class RubricCompilationTests(unittest.TestCase):
         self.assertEqual(result["attempts"], {"attempts": 4, "retries": 0})
         self.assertEqual(calls[0][2]["codex_reasoning_effort"], "medium")
         self.assertEqual(calls[1][2]["opencode_variant"], "max")
+
+    def test_pair_import_calls_only_unstarted_procurement(self):
+        result, calls = self.simulate(import_pair=True)
+        self.assertEqual(result["status"], "rubric_compilation_supported")
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(call[0] == runner.TASKS[1] for call in calls))
+        self.assertEqual(result["attempts"], {"attempts": 5, "retries": 1})
 
     def test_one_format_retry_preserves_frozen_input(self):
         result, calls = self.simulate(format_once=True)
