@@ -37,6 +37,8 @@
 
 专业条目绑定既有 decision；题干明确要求的交付结构可绑定保留组 `deliverable_structure`，但依据和证据必须仅来自题干及 DeliverableContract，不得以此创建新的专业判断或隐藏义务。
 
+交付结构项的核验目标也可引用 DeliverableContract 精确声明的未来交付路径；此时不要求该文件在出题阶段存在。要求依据仍只能是现有候选题干/合同，不能拿尚未生成的答案证明要求；未声明路径仍阻断。
+
 作者的要求依据只能引用 candidate-visible 输入；独立审查员还可以引用被审查的 rubric、Teacher Truth 和矩阵。两种引用边界不能混用。审查响应可剥离 JSON 外的说明，并只对已知说明文本字段内的未转义引号补转义；不修补 ID、状态、分值、缺项或截断，保存原始事件与规范化证明。
 
 ### Source, skill and planning

@@ -110,6 +110,25 @@ class RubricCompilationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_rubric(r, matrix(), workspace)
 
+    def test_delivery_verification_can_target_exact_future_contract_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"; make_source(source)
+            workspace = Path(tmp) / "workspace"; runner.stage(workspace, source / runner.TASKS[0], "author")
+            runner.write(workspace / "deliverable_contract.json", {
+                "deliverables": [{"relative_path": "deliverable_files/report.docx"}]})
+            r = rubric(); item = r.criteria[0].model_copy(deep=True)
+            item.criterion_id = "structure"; item.decision_id = "deliverable_structure"
+            item.requirement = "Submit the explicit memorandum."
+            item.requirement_basis[0].path = "deliverable_contract.json"
+            item.evidence_paths = ["deliverable_files/report.docx"]; r.criteria.append(item)
+            validate_rubric(r, matrix(), workspace)
+            for name in ("deliverable_files/other.docx", "../report.docx", "teacher_truth.json"):
+                item.evidence_paths = [name]
+                with self.assertRaises(ValueError): validate_rubric(r, matrix(), workspace)
+            item.evidence_paths = ["deliverable_files/report.docx"]
+            item.requirement_basis[0].path = "deliverable_files/report.docx"
+            with self.assertRaises(ValueError): validate_rubric(r, matrix(), workspace)
+
     def test_review_complete_and_cannot_pass_issues(self):
         value = reviewed(runner.TASKS[0]).model_dump(mode="json")
         value["checks"][0]["status"] = "uncertain"
@@ -164,6 +183,32 @@ class RubricCompilationTests(unittest.TestCase):
             self.assertIn(marker, text)
         self.assertIn("unresolved applicability means incomplete", text)
         self.assertNotIn("GDPval", text)
+
+    def test_import_drafts_only_allows_unstarted_final_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source"; make_source(source)
+            parent = Path(tmp) / "parent"
+            proof = {"parent_run": str(Path(tmp) / "earlier"), "model_calls_inherited": 3}
+            scope = {"tasks": runner.bindings(source), "models": runner.CONFIGS,
+                     "environment": {"image_sha256": runner.IMAGE_SHA}, "completed_author_import": proof}
+            runner.write(parent / "scope.json", scope)
+            runner.write(parent / "receipt.json", {"scope_sha256": runner.digest(scope)})
+            runner.write(parent / "attempts.json", {"attempts": 4, "retries": 1})
+            author_root = parent / runner.TASKS[1] / "author"
+            workspace = author_root / "attempt_1/workspace"
+            runner.stage(workspace, source / runner.TASKS[1], "author")
+            runner.write(author_root / "state.json", {"status": "incomplete", "attempt": 1})
+            runner.write(author_root / "attempt_1/diagnostics.json", {"exit_code": 0, "terminal": True})
+            runner.write(workspace / "grade.raw.json", compiled(runner.TASKS[1]))
+            (workspace / "agent.jsonl").write_text('{"type":"turn.completed"}\n', encoding="utf-8")
+            with patch.object(runner, "completed_pair_import", return_value=(compiled(runner.TASKS[0]), reviewed(runner.TASKS[0]), proof)):
+                before = runner.tree_sha256(parent)
+                _, _, second, imported = runner.completed_drafts_import(parent, source)
+                self.assertEqual(imported["model_calls_inherited"], 4)
+                self.assertEqual(second.task_id, runner.TASKS[1])
+                self.assertEqual(before, runner.tree_sha256(parent))
+                (parent / runner.TASKS[1] / "review").mkdir()
+                with self.assertRaises(ValueError): runner.completed_drafts_import(parent, source)
 
     def test_no_private_answers_or_old_rubric_staged(self):
         with tempfile.TemporaryDirectory() as tmp:

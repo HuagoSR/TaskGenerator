@@ -5,6 +5,7 @@ it does not alter the V1 decision matrix, teacher truth or historical grades.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path, PurePosixPath
 from typing import Literal
 
@@ -143,10 +144,22 @@ def validate_rubric(rubric: TaskSpecificRubricV2, matrix: TaskDecisionMatrixV1, 
             # Its support must be exclusively the visible task and single contract.
             public_contract = {"candidate_task.md", "deliverable_contract.json"}
             basis = {item.path for item in row.requirement_basis}
+            contract = json.loads(_visible_file(root, "deliverable_contract.json").read_text(encoding="utf-8"))
+            declared = {item["relative_path"] for item in contract.get("deliverables", [])}
+            for name in declared:
+                path = PurePosixPath(name)
+                if (path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name
+                        or not name.startswith("deliverable_files/")):
+                    raise ValueError("rubric_delivery_contract_path_unsafe")
             if ("deliverable_contract.json" not in basis or not basis <= public_contract
-                    or not set(row.evidence_paths) <= public_contract):
+                    or not set(row.evidence_paths) <= public_contract | declared):
                 raise ValueError("rubric_delivery_group_requires_visible_contract")
-        for name in row.evidence_paths + [basis.path for basis in row.requirement_basis]:
+            # Prospective deliverables are verification targets, not existing inputs.
+            # Only exact paths already declared by the frozen contract are allowed.
+            existing_evidence = [name for name in row.evidence_paths if name not in declared]
+        else:
+            existing_evidence = row.evidence_paths
+        for name in existing_evidence + [basis.path for basis in row.requirement_basis]:
             _visible_file(root, name)
 
 

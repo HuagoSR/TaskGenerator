@@ -385,7 +385,40 @@ def completed_pair_import(parent: Path, source: Path):
                            "model_calls_inherited": 3, "stopped_redundant_retry_count": 1}
 
 
-def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pair=None):
+def completed_drafts_import(parent: Path, source: Path):
+    """Finish only the unstarted final review after exact-deliverable admission repair."""
+    scope = read(parent / "scope.json")
+    if (read(parent / "receipt.json")["scope_sha256"] != digest(scope)
+            or scope["tasks"] != bindings(source) or scope["models"] != CONFIGS
+            or scope["environment"]["image_sha256"] != IMAGE_SHA
+            or read(parent / "attempts.json") != {"attempts": 4, "retries": 1}
+            or (parent / TASKS[1] / "review").exists()):
+        raise ValueError("rubric_drafts_import_drift")
+    author, review, proof = completed_pair_import(Path(scope["completed_author_import"]["parent_run"]), source)
+    if proof != scope["completed_author_import"]:
+        raise ValueError("rubric_drafts_prior_proof_drift")
+    first = parent / TASKS[1] / "author"
+    diagnostics = read(first / "attempt_1/diagnostics.json")
+    state = read(first / "state.json")
+    workspace = first / "attempt_1/workspace"
+    if (diagnostics["exit_code"] != 0 or not diagnostics["terminal"]
+            or state["status"] != "incomplete" or state["attempt"] != 1
+            or not completed(workspace, "author")):
+        raise ValueError("rubric_drafts_import_not_terminal")
+    for name, expected in scope["tasks"][TASKS[1]]["inputs"].items():
+        if sha(workspace / name) != expected:
+            raise ValueError("rubric_drafts_input_drift")
+    second = parse_output(workspace, "author")
+    if second.status != "compiled" or second.task_id != TASKS[1]:
+        raise ValueError("rubric_drafts_not_compiled")
+    validate_rubric(second.rubric, TaskDecisionMatrixV1.model_validate(read(workspace / "decision_matrix.json")), workspace)
+    return author, review, second, {"parent_scope_sha256": digest(scope), "parent_run": str(parent.resolve()),
+        "first_task_proof": proof, "second_author_sha256": digest(second),
+        "raw_output_sha256": sha(workspace / "grade.raw.json"), "model_calls_inherited": 4,
+        "stopped_redundant_retry_count": 1, "content_unchanged": True}
+
+
+def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pair=None, import_drafts=None):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", run_id):
         raise ValueError("unsafe_run_id")
     if not run.resolve().is_relative_to((ROOT / "artifacts/r10").resolve()):
@@ -394,10 +427,13 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pa
         raise ValueError("rubric_campaign_already_exists_no_silent_resume")
     frozen = bindings(source)
     env = environment(host)
-    if import_author and import_pair:
+    if sum(bool(x) for x in (import_author, import_pair, import_drafts)) > 1:
         raise ValueError("only_one_rubric_import_mode")
     imported_review = None
-    if import_pair:
+    second_author = None
+    if import_drafts:
+        imported, imported_review, second_author, import_proof = completed_drafts_import(import_drafts, source)
+    elif import_pair:
         imported, imported_review, import_proof = completed_pair_import(import_pair, source)
     else:
         imported, import_proof = completed_author_import(import_author, source) if import_author else (None, None)
@@ -415,7 +451,7 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pa
     write(run / "receipt.json", {"scope_sha256": digest(scope), "consumed_at": now(),
                                 "authority": "user_approved_two_task_rubric_generation_and_review"})
     if imported:
-        write(run / "attempts.json", {"attempts": 3 if imported_review else 1, "retries": 1 if imported_review else 0})
+        write(run / "attempts.json", {"attempts": import_proof["model_calls_inherited"], "retries": 1 if imported_review else 0})
         write(run / TASKS[0] / "author/result.json", imported)
         write(run / TASKS[0] / "author/state.json", {"status": "completed", "attempt": 1,
               "origin": "offline_import_no_model_call", "output_sha256": digest(imported), "proof": import_proof})
@@ -423,13 +459,19 @@ def run_campaign(host, run, run_id, source=SOURCE, import_author=None, import_pa
             write(run / TASKS[0] / "review/result.json", imported_review)
             write(run / TASKS[0] / "review/state.json", {"status": "completed", "attempt": 1,
                   "origin": "offline_import_first_response", "output_sha256": digest(imported_review)})
+        if second_author:
+            write(run / TASKS[1] / "author/result.json", second_author)
+            write(run / TASKS[1] / "author/state.json", {"status": "completed", "attempt": 1,
+                  "origin": "offline_import_no_model_call", "output_sha256": digest(second_author), "proof": import_proof})
     result = {"status": "incomplete", "tasks": {}, "first_failure": None,
               "evidence_level": "generation_only_llm_proxy", "scope_sha256": digest(scope)}
     try:
         for task_id in TASKS:
             if bindings(source) != frozen:
                 raise ValueError("rubric_frozen_source_drift")
-            compiled = imported if imported and task_id == TASKS[0] else execute_assignment(host, run, run_id, source, task_id, "author")
+            compiled = (imported if imported and task_id == TASKS[0] else second_author
+                        if second_author and task_id == TASKS[1] else
+                        execute_assignment(host, run, run_id, source, task_id, "author"))
             chinese_report(run, task_id, compiled)
             if compiled.status == "upstream_issue":
                 result["tasks"][task_id] = {"status": "upstream_issue", "author_sha256": digest(compiled)}
@@ -463,10 +505,11 @@ def main():
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--import-completed-author", type=Path)
     parser.add_argument("--import-completed-pair", type=Path)
+    parser.add_argument("--import-completed-drafts", type=Path)
     args = parser.parse_args()
     result = read(args.run_root / "result.json") if args.command == "status" else run_campaign(
         args.host, args.run_root, args.run_id, import_author=args.import_completed_author,
-        import_pair=args.import_completed_pair)
+        import_pair=args.import_completed_pair, import_drafts=args.import_completed_drafts)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
