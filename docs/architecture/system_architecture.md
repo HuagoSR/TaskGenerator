@@ -109,4 +109,4 @@ GDPval 校准只验证评分协议和相对排序，不把公开题目、rubric 
 - GDPval 仅作形态和评测校准，不进入生成或训练输入。
 - candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
 - 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.9 合同与证据继续只读保留。R10.9 的 4/4 静态任务、4/4 三档 Judge 校准及 8/8 Solver 交付通过，但正式 paired review 全部出现 Judge 偏好或 major-error 边界歧义。R10.10 只允许建立新的 evaluator profile 和校准 campaign；不得借此手改历史任务、交付或评分，也不得提前扩大到十题。
+- 已实现的 R10.0–R10.9 合同与证据继续只读保留。当前仅派生独立 rubric V2，不覆盖历史任务、监督、交付或评分；不提前扩大到十题。

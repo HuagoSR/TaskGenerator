@@ -23,7 +23,7 @@
 | R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
 | R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
 | R10.9 World-First pilot | `completed / evaluator_revision_required` | 四个 matched 世界与任务、Truth audit、三档校准和 8/8 Solver 交付完整；四题 paired review 均因偏好或 major-error 边界不一致而为 `judge_ambiguous`。 |
-| R10.10 Evaluator V2 | `implemented / calibration ongoing` | 冻结 R10.9 任务与交付，分离客观事实、专业判断、成果质量和重大错误，通过换序配对、开发/留出隔离与公开 GDPval Gold 子集验证评分稳定性；已实现不等于已验证。 |
+| R10.10 Evaluator V2 | `implemented / historical experiment` | 评分探索的 profile、换序和校准合同只读保留；不再自动启动排名验证队列，已实现不等于已验证。 |
 
 ## Stable Implemented Contracts
 
