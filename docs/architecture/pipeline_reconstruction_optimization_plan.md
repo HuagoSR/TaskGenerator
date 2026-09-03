@@ -100,7 +100,7 @@ R10.9 不再先写答案再组织证据。它复用“公司自产信息可靠�
 
 实际执行中，四个工作世界、Task Mining、Truth 重建/审计和三档 Judge 校准全部通过，两种 Solver 形成 8/8 有效交付。正式 paired review 的四题却全部为 `judge_ambiguous`：部分题的优胜方向相反，且 GPT Judge 多次判定 DeepSeek 交付存在重大错误，而 DeepSeek Judge 不认同。聚合器已修正为优先把此类边界不稳归为 `evaluator_revision_required`，不得误写为 `not_supported`。下一阶段若继续研究，应先验证灰区判断的 evaluator 稳定性；不得通过重评、改题或扩十题掩盖该结果。
 
-### R10.10 — Evaluator V2 and GDPval calibration — `active / not_implemented`
+### R10.10 — Evaluator V2 and GDPval calibration — `implemented / calibration ongoing`
 
 R10.10 先创建不覆盖历史 rubric 的 campaign-scoped evaluator profile，把客观事实、专业判断和成果质量分层，并将重大错误写成有必要条件、证据与业务后果的独立规则。冻结 R10.9 的两道 baseline 任务作为开发集、两道 adversarial 任务作为留出集；开发集最多迭代三个 evaluator 版本，留出集只运行一次。
 
@@ -109,6 +109,8 @@ R10 配对使用匿名 A/B 与 B/A 换序。主要 Judge 为 GPT-5.6 Terra `medi
 随后使用 12 道公开 GDPval Gold 任务做方向性排名校准。Solver 主矩阵固定为 GPT-5.6 Sol `none`、DeepSeek V4 Pro `max`、DeepSeek V4 Flash `high`；Luna `medium` 只在预设证据不足条件下整批启用。Gemini 不进入必需链，Tuzi 只能形成独立 transport campaign。该校准不复制 GDPval 内容进生成链，也不宣称复刻 Artificial Analysis 的绝对 Elo。
 
 只有换序稳定、重大错误边界无重复冲突、GDPval 至少三个 Solver 各完成 10/12，且模型排序方向与冻结的 GDPval-AA 公开排序大体一致时，才输出 `evaluator_validated`。否则分别记录 `evaluator_improved_but_partial`、`r10_rubric_revision_required`、`evaluator_not_validated` 或 `evaluation_incomplete`。
+
+开发版本一经冻结并打开留出集，不再修改该 profile。GDPval 评分前可以修复与结果无关的身份泄漏、状态恢复或统计实现错误，但必须使用新的 judge-only scope、保持原始交付与 human rubric 不变。sentinel 必须分别测量位置效应与评委差异；不得把同一次“换顺序且换评委”的一致率报告为两个独立指标。旧绝对评分 baseline 与排行榜模型版本核验未完成时，不输出完整验证成功。
 
 ## Acceptance Metrics
 

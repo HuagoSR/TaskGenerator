@@ -76,4 +76,13 @@ R10.10 可以在开发集上最多修订三版 evaluator，但每版只能修复
 
 ## Closeout
 
+### R10.10 GDPval 恢复与评分入口
+
+- `Test/run_r10_gdpval_validation.py solve` 只承接原 Solver campaign；已开始项不得再次调用 Agent。
+- 本机控制器中断但远端已经正常结束时，先下载白名单回传目录；`recover-solver` 校验原输入、正常终态、交付可打开性后仅导入结果，保存原 running 状态，不伪造退出码或耗时。
+- 全部 Solver 状态落盘后，使用独立 run root 执行 `judge --solver-run-root <冻结Solver运行目录>`。新 scope 绑定原 receipt、输出 SHA 和修复后的评分协议；旧自动续跑脚本不得直接在 Solver run root 启动评分。
+- 每个 pair 只进行一次实质评分；正常结束但空/非法/schema 不完整输出可原输入补跑一次。无正常终态不是格式失败，不自动再启动 Agent。
+- 六组 sentinel 额外执行主要 Judge 反向顺序与次要 Judge 原顺序；位置一致率和 Judge 一致率分别计算。不得根据结果重新挑选 sentinel。
+- 当前控制器运行在本机、Agent 运行在服务器；本机关机后不能保证队列继续调度。仅“已启动的远端 Agent 可完成”不等于“整批已在服务器自主运行”。
+
 每次 R10 切片结束时，更新《项目概要》中的当前状态，将细节报告写入 `artifacts/`，并在 workstream 关闭后归档其计划。不得把运行记录不断追加到本 runbook。

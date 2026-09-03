@@ -79,6 +79,13 @@ class GDPvalAnonymousAssessmentV1(ScenarioFirstModel):
     slot: Literal["slot_1", "slot_2"]
     assessments: list[GDPvalItemAssessmentV1] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def unique_items(self) -> "GDPvalAnonymousAssessmentV1":
+        ids = [item.rubric_item_id for item in self.assessments]
+        if len(ids) != len(set(ids)):
+            raise ValueError("gdpval_duplicate_rubric_assessment")
+        return self
+
 
 class GDPvalPairReviewV1(ScenarioFirstModel):
     review_version: Literal["r10.gdpval_pair_review.1"] = "r10.gdpval_pair_review.1"

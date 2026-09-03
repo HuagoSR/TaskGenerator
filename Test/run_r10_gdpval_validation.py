@@ -12,6 +12,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import zipfile
 from datetime import UTC, datetime
@@ -103,6 +104,19 @@ def _bindings(data_root: Path) -> list[GDPvalTaskBindingV1]:
     }:
         raise ValueError("gdpval_fixed_subset_binding_invalid")
     return values
+
+
+def _verify_public_files(data_root: Path, bindings: list[GDPvalTaskBindingV1]) -> None:
+    for binding in bindings:
+        task = _task_root(data_root, binding.task_id)
+        # The preparation contract fingerprints Unicode prompt text before
+        # platform newline conversion, unlike the byte-based artifact trees.
+        import hashlib
+        prompt_sha = hashlib.sha256((task / "prompt.txt").read_text(encoding="utf-8").encode()).hexdigest()
+        if (prompt_sha != binding.prompt_sha256
+            or tree_sha256(task / "reference_files") != binding.reference_tree_sha256
+            or tree_sha256(task / "human_gold") != binding.gold_tree_sha256):
+            raise ValueError(f"gdpval_public_input_drift:{binding.task_id}")
 
 
 def _scope(run_id: str, data_root: Path, bindings: list[GDPvalTaskBindingV1]) -> dict[str, Any]:
@@ -246,14 +260,110 @@ def _run_solver(
     return result
 
 
+def recover_solver(data_root: Path, run_root: Path, solver_id: str, task_id: str,
+                   recovered_root: Path) -> dict[str, Any]:
+    """Import a terminal allowlisted return; never launch another agent."""
+    root = run_root / "solvers" / solver_id / task_id
+    original = _state(root)
+    if solver_id not in SOLVERS or not original or original["status"] != "running":
+        raise ValueError("gdpval_recovery_requires_running_assignment")
+    binding = next(item for item in _bindings(data_root) if item.task_id == task_id)
+    workspace = root / "workspace"
+    # The interrupted controller may leave its generated shell script behind;
+    # it was written after the semantic input fingerprint was persisted.
+    with tempfile.TemporaryDirectory(prefix="gdpval-recovery-input-") as temporary:
+        copied = Path(temporary) / "input"
+        shutil.copytree(workspace, copied, ignore=shutil.ignore_patterns(".r10_agent.sh"))
+        if tree_sha256(copied) != original["input_sha256"]:
+            raise ValueError("gdpval_recovery_input_drift")
+    allowed = {"agent.jsonl", "stderr.txt", "docker_stdout.txt", "docker_stderr.txt",
+               "docx_office_opened.txt", "deliverable_files", ".docx_office_check"}
+    if any(p.is_symlink() for p in recovered_root.rglob("*")) or any(
+        p.name not in allowed for p in recovered_root.iterdir()
+    ):
+        raise ValueError("gdpval_recovery_non_allowlisted_output")
+    events = [json.loads(line) for line in (recovered_root / "agent.jsonl").read_text(
+        encoding="utf-8").splitlines() if line.strip()]
+    terminal = bool(events) and (events[-1].get("type") == "turn.completed" or (
+        events[-1].get("type") == "step_finish" and events[-1].get("part", {}).get("reason") == "stop"))
+    if not terminal or any(e.get("type") in {"error", "turn.failed"} for e in events):
+        raise ValueError("gdpval_recovery_no_clean_terminal")
+    delivery = _validate_delivery(recovered_root, binding, _task_root(data_root, task_id))
+    if not delivery["valid"]:
+        raise ValueError("gdpval_recovery_delivery_invalid")
+    _write(root / "recovery.json", {"original_state": original,
+                                    "returned_tree_sha256": tree_sha256(recovered_root),
+                                    "recovered_at": _now(), "provider_calls": 0})
+    shutil.copytree(recovered_root, workspace, dirs_exist_ok=True)
+    result = {"status": "completed", "task_id": task_id, "solver_id": solver_id,
+              "returncode": None, "duration_seconds": None,
+              "recovered_without_provider_call": True, "delivery": delivery,
+              "output_tree_sha256": tree_sha256(workspace / "deliverable_files"),
+              "agent_jsonl_sha256": _sha(workspace / "agent.jsonl"),
+              "first_failure": "local_controller_interrupted_after_remote_completion",
+              "completed_at": _now()}
+    _write(root / "state.json", result)
+    return result
+
+
 def _delivery_root(run_root: Path, data_root: Path, task_id: str, identity: str) -> Path:
     if identity == "human_gold":
         return _task_root(data_root, task_id) / "human_gold"
-    return run_root / "solvers" / identity / task_id / "workspace" / "deliverable_files"
+    return _solver_source(run_root) / "solvers" / identity / task_id / "workspace" / "deliverable_files"
+
+
+def _solver_source(run_root: Path) -> Path:
+    scope_file = run_root / "scope.json"
+    scope = json.loads(scope_file.read_text(encoding="utf-8")) if scope_file.is_file() else {}
+    return Path(scope.get("solver_run_root", run_root))
+
+
+def _judge_scope(run_id: str, data_root: Path, bindings: list[GDPvalTaskBindingV1],
+                 solver_root: Path) -> dict[str, Any]:
+    _verify_public_files(data_root, bindings)
+    scope = _scope(run_id, data_root, bindings)
+    parent = json.loads((solver_root / "scope.json").read_text(encoding="utf-8"))
+    receipt = json.loads((solver_root / "receipt.json").read_text(encoding="utf-8"))
+    if receipt["scope_sha256"] != canonical_sha256(parent):
+        raise ValueError("gdpval_solver_receipt_drift")
+    for key in ("task_binding_sha256", "dataset_manifest_sha256", "image_sha256", "solvers"):
+        if parent[key] != scope[key]:
+            raise ValueError(f"gdpval_solver_parent_drift:{key}")
+    result = json.loads((solver_root / "solver_result.json").read_text(encoding="utf-8"))
+    outputs = {}
+    for identity, tasks in result["results"].items():
+        for task_id, state in tasks.items():
+            if state["status"] != "completed":
+                continue
+            path = solver_root / "solvers" / identity / task_id
+            if _state(path) != state:
+                raise ValueError("gdpval_solver_state_drift")
+            digest = tree_sha256(path / "workspace" / "deliverable_files")
+            if digest != state["output_tree_sha256"]:
+                raise ValueError("gdpval_solver_delivery_drift")
+            outputs[f"{identity}/{task_id}"] = digest
+    # These are controller/protocol corrections, frozen before any GDPval
+    # judging; they do not tune R10 profiles using held-out outcomes.
+    scope.update({"scope_version": "r10.gdpval_judge_only_scope.2",
+                  "solver_run_root": str(solver_root.resolve()),
+                  "solver_scope_sha256": canonical_sha256(parent),
+                  "solver_result_sha256": _sha(solver_root / "solver_result.json"),
+                  "solver_output_sha256": outputs,
+                  "runner_sha256": _sha(Path(__file__)),
+                  "protocol": "anonymous_controller_metadata_independent_order_and_judge_checks",
+                  "sentinel_design": "two_tasks_per_occupation_primary_reverse_secondary_same_order",
+                  "format_retry_limit": 1})
+    return scope
 
 
 def _pair_schema() -> dict[str, Any]:
-    return _strict_output_schema(GDPvalPairReviewV1.model_json_schema())
+    schema = GDPvalPairReviewV1.model_json_schema()
+    for name in ("task_id", "judge_id", "pair_id", "order_id"):
+        schema["properties"].pop(name)
+        schema["required"].remove(name)
+    # The removed judge field is the only reference to this enum. Do not
+    # advertise panel model names through otherwise-unused schema definitions.
+    return _strict_output_schema(schema)
 
 
 def _stage_pair(
@@ -274,12 +384,13 @@ def _stage_pair(
 
 Read candidate_task.md, reference_files, human_rubric.json, anonymous_slot_1 and anonymous_slot_2. Evaluate each work product independently against every human rubric item before comparing them. Include every rubric_item_id exactly once for each slot. Use met, partial, or not_met; keep rationales concise and cite actual files. Then select slot_1, slot_2, or tie based on overall professional quality and rubric coverage. Do not infer model identity or whether either slot is human-authored.
 
-Return exactly one JSON object matching grade_schema.json. Set task_id to `{binding.task_id}`, judge_id to `{judge_id}`, pair_id to `{pair_id}`, and order_id to `{order}`.
+Return exactly one JSON object matching grade_schema.json. Do not include task, model, provider, judge, pair or display-order identifiers; the controller supplies administrative metadata after review.
 """, encoding="utf-8"
     )
 
 
-def _parse_pair(workspace: Path, judge_id: str, stdout: str) -> GDPvalPairReviewV1:
+def _parse_pair(workspace: Path, judge_id: str, stdout: str, *, binding: GDPvalTaskBindingV1,
+                pair_id: str, order: str) -> GDPvalPairReviewV1:
     raw = workspace / "grade.raw.json"
     if not raw.is_file() and judge_id.startswith("deepseek"):
         text = (workspace / "agent.jsonl").read_text(encoding="utf-8", errors="replace") if (workspace / "agent.jsonl").is_file() else stdout
@@ -288,7 +399,27 @@ def _parse_pair(workspace: Path, judge_id: str, stdout: str) -> GDPvalPairReview
             raw.write_text(extracted, encoding="utf-8")
     if not raw.is_file():
         raise ValueError("gdpval_pair_output_missing")
-    return GDPvalPairReviewV1.model_validate_json(raw.read_text(encoding="utf-8"))
+    value = json.loads(raw.read_text(encoding="utf-8"))
+    if any(key in value for key in ("task_id", "judge_id", "pair_id", "order_id")):
+        raise ValueError("gdpval_model_supplied_controller_metadata")
+    review = GDPvalPairReviewV1.model_validate({**value, "task_id": binding.task_id,
+        "judge_id": judge_id, "pair_id": pair_id, "order_id": order})
+    for bundle in review.bundles:
+        score_gdpval_bundle(binding, bundle)
+    return review
+
+
+def _agent_completed(workspace: Path, stack: str) -> bool:
+    try:
+        events = [json.loads(line) for line in (workspace / "agent.jsonl").read_text(
+            encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, ValueError):
+        return False
+    if any(e.get("type") in {"error", "turn.failed"} for e in events):
+        return False
+    if stack == CHATGPT_CODEX_STACK:
+        return any(e.get("type") == "turn.completed" for e in events)
+    return bool(events) and events[-1].get("type") == "step_finish" and events[-1].get("part", {}).get("reason") == "stop"
 
 
 def _run_pair(
@@ -296,57 +427,78 @@ def _run_pair(
     binding: GDPvalTaskBindingV1, candidate_a: str, candidate_b: str,
     pair_id: str, order: str, judge_id: str,
 ) -> GDPvalPairReviewV1:
-    assignment = f"{binding.task_id}__{pair_id}__{judge_id.replace('@', '_')}__{order}"
+    assignment = "review_" + canonical_sha256([binding.task_id, pair_id, judge_id, order])[:24]
     root = run_root / "judges" / assignment
     existing = _state(root)
     if existing:
         if existing["status"] == "completed":
-            return GDPvalPairReviewV1.model_validate_json((root / "review.json").read_text(encoding="utf-8"))
-        workspace = root / "workspace"
+            review = GDPvalPairReviewV1.model_validate_json((root / "review.json").read_text(encoding="utf-8"))
+            if canonical_sha256(review) != existing["review_sha256"] or (
+                review.task_id, review.judge_id, review.pair_id, review.order_id
+            ) != (binding.task_id, judge_id, pair_id, order):
+                raise ValueError("gdpval_completed_review_drift")
+            for bundle in review.bundles:
+                score_gdpval_bundle(binding, bundle)
+            return review
+        workspace = root / f"attempt_{existing.get('attempt', 1)}" / "workspace"
         try:
-            review = _parse_pair(workspace, judge_id, "")
+            review = _parse_pair(workspace, judge_id, "", binding=binding, pair_id=pair_id, order=order)
+            if not _agent_completed(workspace, JUDGES[judge_id]["stack"]):
+                raise ValueError("gdpval_judge_recovery_no_terminal")
         except Exception as exc:
             raise RuntimeError(f"gdpval_started_judge_not_rerunnable:{assignment}") from exc
         _write(root / "review.json", review)
         _write(root / "state.json", {"status": "completed", "recovered_without_provider_call": True,
+                                      "first_failure": existing.get("first_failure"),
                                       "review_sha256": canonical_sha256(review), "completed_at": _now()})
         return review
-    workspace = root / "workspace"
-    _stage_pair(target=workspace, data_root=data_root, run_root=run_root, binding=binding,
-                candidate_a=candidate_a, candidate_b=candidate_b, order=order,
-                pair_id=pair_id, judge_id=judge_id)
-    _write(root / "state.json", {"status": "running", "started_at": _now(), "input_sha256": tree_sha256(workspace)})
     config = JUDGES[judge_id]
     started = time.monotonic()
-    code, stdout, stderr = _run_remote(
-        host=host, remote=f"{remote_root}/judges/{assignment}", local=workspace,
-        stack=config["stack"], grade=True, image=IMAGE, codex_auth_dir=CODEX_AUTH_DIR,
-        timeout_seconds=1800, model_override=config["model"],
-        codex_reasoning_effort=config.get("reasoning"), opencode_variant=config.get("variant"),
-    )
-    try:
-        if code != 0:
-            raise RuntimeError(f"gdpval_judge_exit:{code}:{stderr[-600:]}")
-        if config["stack"] == CHATGPT_CODEX_STACK and not _codex_turn_completed(workspace / "agent.jsonl"):
-            raise RuntimeError("gdpval_judge_codex_turn_not_completed")
-        review = _parse_pair(workspace, judge_id, stdout)
-        if (review.task_id, review.judge_id, review.pair_id, review.order_id) != (
-            binding.task_id, judge_id, pair_id, order
-        ):
-            raise ValueError("gdpval_judge_identity_mismatch")
-        expected = {item.rubric_item_id for item in binding.rubric_items}
-        if any({item.rubric_item_id for item in bundle.assessments} != expected for bundle in review.bundles):
-            raise ValueError("gdpval_judge_rubric_coverage_invalid")
-        _write(root / "review.json", review)
-        _write(root / "state.json", {"status": "completed", "completed_at": _now(),
-                                      "duration_seconds": round(time.monotonic() - started, 3),
-                                      "review_sha256": canonical_sha256(review)})
-        return review
-    except Exception as exc:
-        _write(root / "state.json", {"status": "incomplete", "completed_at": _now(),
-                                      "duration_seconds": round(time.monotonic() - started, 3),
-                                      "first_failure": f"{type(exc).__name__}:{exc}"})
-        raise
+    first_failure = None
+    frozen_input = None
+    for attempt in (1, 2):
+        workspace = root / f"attempt_{attempt}" / "workspace"
+        _stage_pair(target=workspace, data_root=data_root, run_root=run_root, binding=binding,
+                    candidate_a=candidate_a, candidate_b=candidate_b, order=order,
+                    pair_id=pair_id, judge_id=judge_id)
+        digest = tree_sha256(workspace)
+        if frozen_input is not None and digest != frozen_input:
+            raise ValueError("gdpval_format_retry_input_drift")
+        frozen_input = digest
+        _write(root / "state.json", {"status": "running", "attempt": attempt,
+                                    "started_at": _now(), "input_sha256": digest,
+                                    "first_failure": first_failure})
+        code, stdout, stderr = _run_remote(
+            host=host, remote=f"{remote_root}/judges/{assignment}/attempt_{attempt}", local=workspace,
+            stack=config["stack"], grade=True, image=IMAGE, codex_auth_dir=CODEX_AUTH_DIR,
+            timeout_seconds=1800, model_override=config["model"],
+            codex_reasoning_effort=config.get("reasoning"), opencode_variant=config.get("variant"),
+        )
+        # A started but nonterminal agent is not a formatting failure. Never
+        # draw a replacement while a remote semantic call may still be alive.
+        retryable = False
+        try:
+            if code != 0 or not _agent_completed(workspace, config["stack"]):
+                raise RuntimeError(f"gdpval_judge_not_completed:{code}:{stderr[-600:]}")
+            retryable = True
+            review = _parse_pair(workspace, judge_id, stdout, binding=binding, pair_id=pair_id, order=order)
+            _write(root / "review.json", review)
+            _write(root / "state.json", {"status": "completed", "attempt": attempt,
+                "completed_at": _now(), "first_failure": first_failure,
+                "duration_seconds": round(time.monotonic() - started, 3),
+                "review_sha256": canonical_sha256(review)})
+            return review
+        except Exception as exc:
+            failure = f"{type(exc).__name__}:{exc}"
+            first_failure = first_failure or failure
+            _write(root / f"attempt_{attempt}" / "failure.json", {
+                "failure": failure, "returncode": code, "format_retryable": retryable,
+                "agent_jsonl_sha256": _sha(workspace / "agent.jsonl") if (workspace / "agent.jsonl").is_file() else None})
+            _write(root / "state.json", {"status": "incomplete", "attempt": attempt,
+                "completed_at": _now(), "first_failure": first_failure})
+            if not retryable or attempt == 2:
+                raise
+    raise AssertionError("unreachable")
 
 
 def run_solvers(host: str, data_root: Path, run_root: Path, run_id: str) -> dict[str, Any]:
@@ -394,7 +546,7 @@ def run_solvers(host: str, data_root: Path, run_root: Path, run_id: str) -> dict
 
 
 def _eligible_solvers(run_root: Path) -> list[str]:
-    result = json.loads((run_root / "solver_result.json").read_text(encoding="utf-8"))
+    result = json.loads((_solver_source(run_root) / "solver_result.json").read_text(encoding="utf-8"))
     return [solver for solver, count in result["valid_counts"].items() if count >= 10]
 
 
@@ -409,11 +561,11 @@ def run_judges(host: str, data_root: Path, run_root: Path, run_id: str) -> dict[
     sentinel_candidates = []
     for task_index, binding in enumerate(bindings):
         for first, second in model_pairs:
-            state_first = _state(run_root / "solvers" / first / binding.task_id)
-            state_second = _state(run_root / "solvers" / second / binding.task_id)
+            state_first = _state(_solver_source(run_root) / "solvers" / first / binding.task_id)
+            state_second = _state(_solver_source(run_root) / "solvers" / second / binding.task_id)
             if not state_first or not state_second or state_first["status"] != "completed" or state_second["status"] != "completed":
                 continue
-            pair_id = f"{first.replace('@', '_')}_vs_{second.replace('@', '_')}"
+            pair_id = "pair_" + canonical_sha256([binding.task_id, first, second])[:24]
             order = balanced_order(task_id=binding.task_id, pair_id=pair_id, seed=PAIR_SEED)
             review = _run_pair(host=host, remote_root=remote_root, data_root=data_root, run_root=run_root,
                                binding=binding, candidate_a=first, candidate_b=second,
@@ -423,27 +575,44 @@ def run_judges(host: str, data_root: Path, run_root: Path, run_id: str) -> dict[
             assignments.append(row)
             sentinel_candidates.append((binding, first, second, pair_id, order, row))
         anchor = solvers[task_index % len(solvers)]
-        state = _state(run_root / "solvers" / anchor / binding.task_id)
+        state = _state(_solver_source(run_root) / "solvers" / anchor / binding.task_id)
         if state and state["status"] == "completed":
-            pair_id = f"{anchor.replace('@', '_')}_vs_human_gold"
+            pair_id = "pair_" + canonical_sha256([binding.task_id, anchor, "human_gold"])[:24]
             order = balanced_order(task_id=binding.task_id, pair_id=pair_id, seed=PAIR_SEED)
             review = _run_pair(host=host, remote_root=remote_root, data_root=data_root, run_root=run_root,
                                binding=binding, candidate_a=anchor, candidate_b="human_gold",
                                pair_id=pair_id, order=order, judge_id=PRIMARY_JUDGE)
             assignments.append(_pair_result(binding, review, normalize_pair_review(review), anchor, "human_gold", "gold_anchor"))
     sentinel_results = []
-    for binding, first, second, pair_id, original_order, primary in sentinel_candidates[:SENTINEL_COUNT]:
+    for binding, first, second, pair_id, original_order, primary in _select_sentinels(sentinel_candidates):
         reverse = "b_a" if original_order == "a_b" else "a_b"
+        reversed_review = _run_pair(host=host, remote_root=remote_root, data_root=data_root, run_root=run_root,
+                           binding=binding, candidate_a=first, candidate_b=second,
+                           pair_id=pair_id, order=reverse, judge_id=PRIMARY_JUDGE)
+        reversed_row = _pair_result(binding, reversed_review, normalize_pair_review(reversed_review), first, second, "sentinel_order")
         review = _run_pair(host=host, remote_root=remote_root, data_root=data_root, run_root=run_root,
                            binding=binding, candidate_a=first, candidate_b=second,
-                           pair_id=pair_id, order=reverse, judge_id=SECONDARY_JUDGE)
+                           pair_id=pair_id, order=original_order, judge_id=SECONDARY_JUDGE)
         secondary = _pair_result(binding, review, normalize_pair_review(review), first, second, "sentinel")
-        secondary["agrees_with_primary"] = secondary["preference"] == primary["preference"]
+        secondary["judge_agrees_with_primary"] = secondary["preference"] == primary["preference"]
+        secondary["position_consistent"] = reversed_row["preference"] == primary["preference"]
+        secondary["primary_reverse"] = reversed_row
         sentinel_results.append(secondary)
     result = {"completed_at": _now(), "eligible_solvers": solvers,
               "pair_results": assignments, "sentinel_results": sentinel_results}
     _write(run_root / "judge_result.json", result)
     return result
+
+
+def _select_sentinels(candidates: list[tuple]) -> list[tuple]:
+    """Six prespecified coverage strata, independent of scores/preferences."""
+    selected = []
+    for occupation in sorted({row[0].occupation for row in candidates}):
+        for split in ("development", "holdout"):
+            rows = [row for row in candidates if row[0].occupation == occupation and row[0].split == split]
+            if rows:
+                selected.append(min(rows, key=lambda row: canonical_sha256([PAIR_SEED, row[0].task_id, row[3]])))
+    return selected
 
 
 def _pair_result(binding, review, normalized, first, second, kind):
@@ -458,7 +627,7 @@ def _pair_result(binding, review, normalized, first, second, kind):
 
 
 def aggregate(data_root: Path, run_root: Path) -> dict[str, Any]:
-    solver = json.loads((run_root / "solver_result.json").read_text(encoding="utf-8"))
+    solver = json.loads((_solver_source(run_root) / "solver_result.json").read_text(encoding="utf-8"))
     judges = json.loads((run_root / "judge_result.json").read_text(encoding="utf-8"))
     snapshot = GDPvalRankingSnapshotV1.model_validate_json((data_root / "ranking_snapshot.json").read_text(encoding="utf-8"))
     model_rows = [row for row in judges["pair_results"] if row["kind"] == "model_pair"]
@@ -467,7 +636,8 @@ def aggregate(data_root: Path, run_root: Path) -> dict[str, Any]:
     reference = [model for model in snapshot.reference_order if model in judges["eligible_solvers"]]
     ordinal = ordinal_direction_agreement(ranking["observed_order"], reference)
     sentinels = judges["sentinel_results"]
-    position_rate = sum(row["agrees_with_primary"] for row in sentinels) / len(sentinels) if sentinels else 0.0
+    position_rate = sum(row["position_consistent"] for row in sentinels) / len(sentinels) if sentinels else 0.0
+    judge_rate = sum(row["judge_agrees_with_primary"] for row in sentinels) / len(sentinels) if sentinels else 0.0
     # Direction consistency is evaluated on the deliberately duplicated
     # sentinel pairs; the rest of the public set is judged once to bound cost.
     result = {
@@ -475,12 +645,17 @@ def aggregate(data_root: Path, run_root: Path) -> dict[str, Any]:
         "valid_solver_counts": solver["valid_counts"], "ranking": ranking,
         "reference_order": reference, "ordinal_direction": ordinal,
         "sentinel_position_consistency": round(position_rate, 6),
-        "judge_direction_consistency": round(position_rate, 6),
+        "judge_direction_consistency": round(judge_rate, 6),
+        "sentinel_count": len(sentinels),
+        "legacy_absolute_baseline": "not_evaluated",
+        "reference_alias_match": "unverified_not_exact_model_snapshot_identity",
+        "evidence_ceiling": "protocol_diagnostic_not_full_evaluator_validation",
         "gold_anchor_count": sum(row["kind"] == "gold_anchor" for row in judges["pair_results"]),
         "decision": (
-            "gdpval_protocol_validated" if len(judges["eligible_solvers"]) >= 3
+            "gdpval_protocol_checks_passed" if len(judges["eligible_solvers"]) >= 3
             and all(solver["valid_counts"].get(model, 0) >= 10 for model in judges["eligible_solvers"][:3])
-            and position_rate >= .9 and ordinal["rate"] is not None and ordinal["rate"] >= 2 / 3
+            and len(sentinels) == SENTINEL_COUNT and position_rate >= .9 and judge_rate >= .7
+            and ordinal["rate"] is not None and ordinal["rate"] >= 2 / 3
             else "gdpval_protocol_partial"
         ),
     }
@@ -501,16 +676,30 @@ def status(run_root: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["scope", "solve", "judge", "aggregate", "all", "status"])
+    parser.add_argument("action", choices=["scope", "solve", "judge", "aggregate", "all", "status", "recover-solver"])
     parser.add_argument("--host", default="huago-cone")
     parser.add_argument("--run-id", default="r10_10_gdpval_validation_20260903")
     parser.add_argument("--data-root", type=Path, default=DEFAULT_DATA)
     parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN)
+    parser.add_argument("--solver-run-root", type=Path,
+                        help="Frozen solver campaign; required for separate judge-only execution")
+    parser.add_argument("--solver-id")
+    parser.add_argument("--task-id")
+    parser.add_argument("--recovered-root", type=Path)
     args = parser.parse_args()
     if args.action == "status":
         print(json.dumps(status(args.run_root), ensure_ascii=False, indent=2)); return
+    if args.action == "all":
+        parser.error("run solve first, then create a separate judge-only scope; legacy all is read-only history")
     bindings = _bindings(args.data_root)
-    scope = _scope(args.run_id, args.data_root, bindings)
+    if args.action in {"judge", "aggregate"} and args.solver_run_root is None:
+        parser.error("judge/aggregate require --solver-run-root and a new judge-only run root")
+    if args.solver_run_root is not None:
+        if args.action not in {"scope", "judge", "aggregate"} or args.solver_run_root.resolve() == args.run_root.resolve():
+            parser.error("judge-only scope must be separate and cannot execute solvers")
+        scope = _judge_scope(args.run_id, args.data_root, bindings, args.solver_run_root)
+    else:
+        scope = _scope(args.run_id, args.data_root, bindings)
     args.run_root.mkdir(parents=True, exist_ok=True)
     if not (args.run_root / "scope.json").exists():
         _write(args.run_root / "scope.json", scope)
@@ -519,6 +708,11 @@ def main() -> None:
         raise RuntimeError("gdpval_campaign_scope_drift")
     if args.action == "scope":
         print(json.dumps({"scope_sha256": canonical_sha256(scope)}, indent=2)); return
+    if args.action == "recover-solver":
+        if not all((args.solver_id, args.task_id, args.recovered_root)):
+            parser.error("recovery requires solver-id, task-id and recovered-root")
+        print(json.dumps(recover_solver(args.data_root, args.run_root, args.solver_id,
+                                       args.task_id, args.recovered_root), indent=2)); return
     if args.action in {"solve", "all"}:
         print(json.dumps(run_solvers(args.host, args.data_root, args.run_root, args.run_id), ensure_ascii=False, indent=2))
     if args.action in {"judge", "all"}:

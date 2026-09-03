@@ -66,7 +66,7 @@ Task Miner 只读取候选材料和公开角色/触发背景，不读取 world l
 
 静态门禁只检查来源追溯、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。文件与记录规模、正常背景比例和多 motif 覆盖作为质量指导，由用户审阅和行为实验检验，而不再驱动新的复杂本体。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
 
-## R10.10 Evaluator V2 目标架构
+## R10.10 Evaluator V2 已实现结构
 
 ```text
 冻结任务、Teacher Truth、rubric 与 Solver 交付
@@ -85,6 +85,8 @@ R10 留出验证与公开 GDPval Gold 排名校准
 Evaluator V2 不重写 R10.9 的任务监督。它创建 campaign-scoped profile，把可计算事实交给程序，将职业灰区交给 Judge，并把重大错误从普通扣分中分离。配对结论必须在交换展示顺序后保持语义一致；Judge 分歧作为不确定性证据保存，而不是强制平均成一个看似精确的分数。
 
 GDPval 校准只验证评分协议和相对排序，不把公开题目、rubric 或 Gold 交付物送入生成链。Solver 的模型、provider、Agent 和推理强度都作为栈身份记录，避免将实用栈结果误称为纯模型能力。
+
+评分 payload 只包含匿名槽位、任务资料和 rubric；模型、评委及配对身份由控制器在解析后补入。GDPval Judge 使用独立 scope 绑定冻结 Solver receipt、交付树与评分协议。位置一致性由同 Judge 换序计算，跨 Judge 一致性由同序比较计算，不将两个因素同时改变后的结果算作两个指标。
 
 ## Skill 与 Motif 的新职责
 
