@@ -81,6 +81,7 @@ R10.10 可以在开发集上最多修订三版 evaluator，但每版只能修复
 - 用户已将当前评分收缩为小样本诊断。原后台控制器已停止派发；仅允许收回已经启动的远端评分，禁止直接重启旧 `continue_after_solvers.ps1` 或全量 `judge` 命令。原 scope/receipt 与完成评分保持不变，缩减记录保存在 run root 的 `scope_reduction.json`。后续如需额外样本，先固定具体子集，不默认恢复 60 次队列。
 - 最新批准的后续子集为三道开发题、九份单独主评与三份固定抽查。使用新的单份评分入口和 scope；不得调用旧全量 judge/aggregate。每项一次实质评分，最多一次格式/传输补跑且全局最多两次；不能重试仍活跃的远端 Agent。排名只使用九份 DeepSeek 主评分，Terra 抽查不加权混入。无新环境漂移时不重复 provider 探针。
 - 单份入口为 `Test/run_r10_gdpval_validation.py single-scope` 与 `single-judge`，必须指定独立 `--run-root`、`--run-id`、`--solver-run-root`。在 run root 放置 `STOP_REQUESTED` 可在当前项完成后阻断下一次派发。completed 项仅校验复用，running/incomplete 项不会静默重跑；不完整结果写入 `single_result.json`。
+- JSONL 只按 LF 分隔；PDF 等工具文本中的合法 Unicode 行分隔符不代表事件结束。原始响应保留，损坏 JSON 仍阻断。evidence_paths 只接受真实输入相对文件路径；页码、sheet/cell 定位写在 rationale，不能混入文件名或引用未回传的临时渲染文件。解析故障后的离线修复不自动重新消费旧 receipt。
 - `Test/run_r10_gdpval_validation.py solve` 只承接原 Solver campaign；已开始项不得再次调用 Agent。
 - 本机控制器中断但远端已经正常结束时，先下载白名单回传目录；`recover-solver` 校验原输入、正常终态、交付可打开性后仅导入结果，保存原 running 状态，不伪造退出码或耗时。
 - 全部 Solver 状态落盘后，使用独立 run root 执行 `judge --solver-run-root <冻结Solver运行目录>`。新 scope 绑定原 receipt、输出 SHA 和修复后的评分协议；旧自动续跑脚本不得直接在 Solver run root 启动评分。

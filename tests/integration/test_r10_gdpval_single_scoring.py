@@ -83,6 +83,21 @@ class SingleScoringTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     runner._parse_single(target, binding(), runner.PRIMARY_JUDGE)
 
+    def test_jsonl_unicode_separators_are_not_record_boundaries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "anonymous_submission").mkdir()
+            (root / "anonymous_submission/report.txt").write_text("Conclusion")
+            rows = [{"type": "tool_use", "part": {"output": "PDF text\u2028next line\u0085more"}},
+                    {"type": "text", "part": {"text": json.dumps(raw())}},
+                    {"type": "step_finish", "part": {"reason": "stop"}}]
+            path = root / "agent.jsonl"
+            path.write_text("\n".join(json.dumps(row, ensure_ascii=False) for row in rows), encoding="utf-8")
+            self.assertTrue(runner._agent_completed(root, runner.DEEPSEEK_OPENCODE_STACK))
+            self.assertEqual(runner._parse_single(root, binding(), runner.SECONDARY_JUDGE).material_status, "complete")
+            path.write_text('{"type":\ninvalid}\n', encoding="utf-8")
+            self.assertFalse(runner._agent_completed(root, runner.DEEPSEEK_OPENCODE_STACK))
+
     def test_budget_limit(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

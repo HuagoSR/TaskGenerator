@@ -135,6 +135,8 @@ Read candidate_task.md, every reference_files file and the whole anonymous_submi
 Use a balanced policy: full credit when satisfied, partial integer credit when partially satisfied,
 zero when unmet. The rubric score is the maximum for that row; use its actual value, not a fixed weight list.
 Include each rubric_item_id exactly once with integer awarded, applicability, concise rationale and actual evidence_paths.
+evidence_paths must contain only existing input-relative filenames (anonymous_submission/..., reference_files/...
+or candidate_task.md). Put sheet/cell/page locations in rationale, not in the filename. Do not cite temporary renders as paths.
 Do not invent criteria, add a holistic veto, issue a preference, infer authorship, or penalize high scores.
 Conditional items: if the reference-supported prerequisite is absent, use not_triggered and full row credit,
 explaining the absent prerequisite. If necessary materials cannot be read or applicability cannot be established,
@@ -154,6 +156,8 @@ def _parse_single(workspace: Path, binding: GDPvalTaskBindingV1, judge_id: str, 
     raw = workspace / "grade.raw.json"
     if not raw.is_file() and judge_id.startswith("deepseek"):
         text = (workspace / "agent.jsonl").read_text(encoding="utf-8") if (workspace / "agent.jsonl").is_file() else stdout
+        # JSONL is LF-delimited. Legal Unicode separators inside tool text are not record boundaries.
+        text = "\n".join(json.dumps(json.loads(line), ensure_ascii=True) for line in text.split("\n") if line.strip())
         extracted = _extract_opencode_json(text) or _extract_fenced_json_from_opencode(text)
         if extracted:
             raw.write_text(extracted, encoding="utf-8")
@@ -605,7 +609,7 @@ def _parse_pair(workspace: Path, judge_id: str, stdout: str, *, binding: GDPvalT
 def _agent_completed(workspace: Path, stack: str) -> bool:
     try:
         events = [json.loads(line) for line in (workspace / "agent.jsonl").read_text(
-            encoding="utf-8").splitlines() if line.strip()]
+            encoding="utf-8").split("\n") if line.strip()]
     except (OSError, ValueError):
         return False
     if any(e.get("type") in {"error", "turn.failed"} for e in events):
