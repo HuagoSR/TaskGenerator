@@ -13,7 +13,11 @@ Skill/*.log
 Skill/agent_logs/
 Skill/debate_logs/
 artifacts/
-Test/
+Test/*
+!Test/run_r10_process_first_pilot.py
+!Test/r10_process_first_tools.py
+!Test/run_r10_task_method_pilot.py
+!Test/run_r10_agent_factory_pilot.py
 .cache/
 build/
 *.egg-info/

@@ -1,87 +1,67 @@
 # TaskGenerator Project Instructions
 
-## Project Goal
-
-TaskGenerator is a governed factory for GDPval-style professional tasks. Its research goal is to automatically construct realistic, multi-file occupational scenarios with candidate-visible evidence, teacher-only truth, executable delivery contracts and behavior-backed evaluation. Training-data production is a future outcome, not an assumption.
-
 ## Read First
 
-1. `项目概要.md` — only project-level source of truth.
-2. `docs/README.md` — documentation lifecycle and index.
-3. `docs/architecture/system_architecture.md` — current and target architecture.
-4. `docs/architecture/global_interface_contracts.md` — stable and proposed contracts.
-5. `docs/architecture/production_mvp_definition.md` — production semantics.
-6. `docs/architecture/pipeline_reconstruction_problem_statement.md` — R10 research problem.
-7. `docs/architecture/pipeline_reconstruction_optimization_plan.md` — active R10 plan.
-8. `docs/operations/pipeline_reconstruction_runbook.md` — operational stop point and preconditions.
+1. [项目概要.md](项目概要.md): sole source of macro status, evidence, limitations and next direction.
+2. [docs/README.md](docs/README.md): document index and lifecycle.
+3. [System architecture](docs/architecture/system_architecture.md): structure and responsibilities.
+4. [Contracts](docs/architecture/global_interface_contracts.md): interface index; code owns field definitions.
+5. [Production MVP](docs/architecture/production_mvp_definition.md): production and evidence semantics.
+6. [Research problem](docs/architecture/pipeline_reconstruction_problem_statement.md): hypotheses.
+7. [Next direction](docs/architecture/pipeline_reconstruction_optimization_plan.md): proposed work.
+8. [Runbook](docs/operations/pipeline_reconstruction_runbook.md): executable boundaries.
 
-Use `docs/archive/` only for historical evidence; it never overrides the overview.
+Historical docs never override the overview. Do not duplicate campaign status across these files.
 
-## Current State
+## Goal and Current Boundary
 
-R9 proved the production and evaluation infrastructure; R7's fully fresh reproduction froze at 5/10 because the task-design provider was unstable. Both are historical evidence. Do not resume R7, merge cohorts or interpret it as a partial evaluation.
+Automatically construct realistic, solvable, multi-file occupational tasks with candidate evidence, teacher supervision and fair rubrics. Evaluation supports task generation; building a leaderboard is not the project goal.
 
-R10 Scenario-First remains the active research boundary. Its tasks, deliveries and historical evaluator experiments stay frozen. The active R10.10 slice returns exploratory grading lessons to task generation: author and independently review new rubrics for two existing development tasks only. Do not resume the old ranking queue or expand task production. Consult the overview for outcomes and remaining issues.
+All released task packages must remain compatible with the GDPval task shape: `dataset_row.json`, `reference_files/`, `deliverable_files/`, and the original task rubric semantics. GDPval itself remains calibration-only.
 
-## Architecture Boundaries
+The current quality target is a reproducible method that repeatedly produces realistic, evidence-grounded, solvable occupational tasks with fair rubrics. Strong/weak separation is auxiliary behavioral evidence, not the production objective. Controlled Solver calibration uses one frozen Stirrup/E2B harness across models. The retained grading calibration uses constrained native Codex/OpenCode Agents: one anonymous submission at a time, every rubric item exactly once, structured evidence references, integer item awards and controller-computed totals. Pairwise preference, holistic evaluation and high-score-triggered downward audit are diagnostic-only and cannot change the primary score.
 
-Latest approved slice: independent GDPval grading is complete (12/12), exploratory only. Return lessons to task generation through two baseline-only rubric compilation/review experiments. Preserve historical tasks, supervision and grades; do not run solvers, new scoring or the old 60-job queue. TaskSpecificRubricV2 may map multiple observable items to a decision, with requirement provenance and verification coverage. Do not provide GDPval content, solver answers or scores to author/reviewer. Current status is owned by the overview.
+RL, training and an automatic score-to-generator feedback optimizer are out of scope. Task-generation research may proceed under a new scope without a fully supported grading baseline; difficulty and separation claims still require adequate behavioral evidence.
 
-```text
-Public Work Seed + Professional Rules
-→ Professional Skill / natural-difficulty deliberation
-→ frozen work world and candidate business artifacts
-→ independent Task Mining
-→ independent Teacher Truth / Rubric reconstruction
-→ Judge calibration → Behavioral Admission
-```
+Grader expansion is paused. Do not resume old grading queues or execute the prepared G2-B scope. Its execution arrangement is cancelled, not a failed or completed grading run. The G2 runner blocks execution; no bypass is provided. Preserve existing scopes and results. Any future external experiment requires a new explicit input/model/environment/budget-bound scope. Macro results and known limitations belong in the overview.
 
-- A `WorkSeed` explains why a real worker receives a task; it is not a prompt or complete case.
-- Historical `ScenarioBible` remains a teacher-only parent authority. R10.9 does not reuse those Bibles or introduce Bible V2; its new teacher-only world ledger is campaign-scoped and exists before task mining.
-- Candidate files are projections of the same world state. Facts, not labels such as `Questionable` or `Exception`, must reveal conflicts and gaps.
-- Professional Skill is an agent-native, source-grounded knowledge package for factory-side professional judgment, coverage and failure attribution. Generic tool skills are reused rather than duplicated. Motif is a relationship label and analysis dimension; neither determines task form alone.
-- GDPval is `eval_calibration_only`; never use its tasks, hidden rubrics or content as generation or training inputs.
-- Candidate-visible truth, teacher-only supervision and run/governance evidence must remain separate.
-- LLM may propose semantic content and evidence extensions. Deterministic code retains only the hard boundaries: source linkage, candidate/teacher isolation, openable files, answer-leakage checks, submission paths, manifests and state changes.
+The coverage/method split is offline-tested only. Labels and valid citations do not prove professional verification. Prioritize reusable generation methods, stage-visible requirements, conditional credit and credible record causality. Separate development from frozen validation, retain every failed position, and report production cost and intervention alongside task quality. Directions and previous batches do not authorize another external batch.
 
-## Repository Layout
+The next proposed direction is a task-production harness with isolated development solving and reproducible calculation evidence for rubric compilation; see the [research record](docs/research/agent_task_production_harness_20260907.md). These additions are not implemented. Do not resume old validation or repair batches as a prerequisite. Development feedback must not be confused with blind final review or frozen behavioral evaluation; producer intent is not candidate-visible evidence.
 
-- Reusable implementation: `src/task_generator/`.
-- CLI and smoke runners: `Test/`.
-- Active architecture docs: `docs/architecture/`.
-- Operational docs: `docs/operations/`.
-- Historical plans and reports: `docs/archive/`.
-- Historical registry: `SkillRegistry/` (read-only for R10); draft professional Skill packages live in `.agents/skills/r10/`, with discovery metadata in `data/r10/professional_skills/catalog.json`.
-- Generated outputs and run reports: ignored `artifacts/`.
+## Architecture Rules
 
-Do not add implementation modules, experiments, screenshots, generated outputs or notebooks to the repository root. `Test/v2_outputs/` is no-touch unless the user explicitly reopens it.
+- Public Work Seed and Rules describe occupational triggers and methods, not organization-specific facts.
+- Professional Skills are source-grounded factory-side knowledge packages, loaded on demand; reuse generic file-tool skills. Motif is an analysis label, not a task template.
+- World-First creates business materials before Task Mining. The miner does not read the hidden ledger, difficulty identity or expected answer.
+- Historical Scenario Bibles remain frozen; do not build Bible V2 or restore mechanical file/record quotas.
+- Keep candidate files, teacher supervision and run evidence separate. Facts rather than answer labels must reveal conflicts.
+- Rubric V2 derives requirements from candidate-visible obligations. A decision may have multiple independently observable items. Equivalent forms cannot cancel explicit requirements.
+- Code checks identity, safe paths, source linkage, file openability, references, isolation and score consistency. Agents handle professional semantics; avoid new business ontologies or generic validation frameworks.
+- GDPval is eval_calibration_only. Its tasks, files, rubrics, Gold and model answers must never enter generation/training inputs. Held-out cases cannot guide prompt tuning.
 
-## Documentation Governance
+## Repository and Documentation
 
-- `项目概要.md` alone owns macro status, evidence, bottlenecks and roadmap.
-- Architecture documents own only structure and interfaces; the runbook owns executable boundaries.
-- Completed workstream detail goes to `artifacts/` and later `docs/archive/`; do not append campaign logs to active docs.
-- Code schemas are the source of truth for implemented field-level contracts. Proposed docs must say `not_implemented`.
+- Implementation: src/task_generator/; stage runners: Test/.
+- Architecture and operations: docs/architecture/ and docs/operations/.
+- Source-backed research notes: docs/research/; proposals do not authorize implementation or model calls.
+- Historical material: docs/archive/; generated evidence and logs: ignored artifacts/.
+- Historical Registry: SkillRegistry/ (read-only for R10).
+- Professional Skills: .agents/skills/r10/; catalog: data/r10/professional_skills/catalog.json.
+- Do not add implementation, experiments or generated outputs at repository root.
+- Test/v2_outputs/ is no-touch unless explicitly reopened.
+- Keep active docs concise and role-specific. Link to code/artifacts rather than duplicating schemas or execution logs. Mark unimplemented proposals explicitly; preserve history instead of creating duplicate snapshots.
 
-## Secrets and Artifacts
+## Safety and Execution
 
-- `.env`, `deepseek-key.txt`, API keys, bearer tokens and authentication files must never be printed, committed, copied into images or written into artifacts.
-- Provider output, task packages, graders, retry logs and execution logs remain ignored artifacts.
-- Preserve user-owned dirty changes and unrelated artifacts. Never reset or overwrite them.
-- External evaluation authorization is campaign-scoped; a previous consent never authorizes a new private-package upload.
-
-## Engineering Rules
-
-- Use `apply_patch` for hand edits; preserve unrelated worktree changes.
-- Prefer report-first diagnostics and convert recurring defects into contracts, validators or compiler improvements.
-- Compile prompt submission instructions, expected deliverables, staging and grading from one `DeliverableContract`.
-- Keep structural validity, professional validity, delivery success and model behavior as separate evidence axes.
-- Do not grade invalid deliveries or redraw a low-score answer.
-- Before costly execution, run structural readiness, verifier/export checks, package fingerprinting and applicable parity.
-- Treat static checks and LLM proxies as provisional; they do not establish expert validity, training admission or default-chain promotion.
-
-## R10 Implementation Boundary
-
-The implemented foundation defines `WorkSeedV1`, `ProfessionalRuleSetV1`, `ScenarioBibleV1`, `EvidenceProjectionPlanV1`, `TaskDecisionMatrixV1`, `ScenarioFirstAdmissionReportV1`, `ProfessionalSkillCatalogEntryV1`, source-bound professional-Skill curation, thin paired-evidence experiment contracts, and the R10.6 task/truth compiler. For the active R10 path, file and record counts are quality guidance, not new hard contracts. Hard boundaries are source linkage, normal business context, candidate/teacher isolation, no answer-label leakage, solvability (including supported uncertainty), openable deliverables, evidence-map closure and exact submission paths. R10.6 compiles two user-review tasks from frozen winning bundles; it must not run solver/grader. Four tasks require static and multi-model behavioral admission before any ten-task production plan.
-
-The current R10.10 slice adds independently versioned TaskSpecificRubricV2 and requirement-grounded author/review validation. Terra medium authors; official DeepSeek V4 Pro max reviews. It does not run Solver or grade submissions. Held-out R10 and GDPval cases cannot inform generation or further prompt tuning. Preserve original rubrics and all first responses; report semantic issues without rewriting outputs to obtain a pass. Future evaluation requires a separate plan; GDPval remains evaluation-only.
+- Use apply_patch for manual edits. Preserve unrelated dirty changes; never reset them.
+- Never print, commit or package .env, deepseek-key.txt, API keys, tokens or authentication content.
+- Provider responses, task packages and execution logs remain ignored artifacts.
+- External execution needs an input/model/environment-bound scope and receipt within the user's current authorization; old receipts do not authorize new calls.
+- Preserve first failures and immutable inputs. Do not silently rerun started/terminal sessions or redraw low scores and unwanted conclusions.
+- Derive submission instructions, expected paths, staging and grading from one DeliverableContract.
+- Do not grade invalid deliveries. Keep structural validity, professional judgment, delivery success and model behavior separate.
+- Before costly execution perform applicable readiness, fingerprint and environment checks; do not repeat expensive probes when verified environment evidence has not changed.
+- Code changes require targeted/full regression and secret/diff checks. Documentation-only changes require link, state and scope checks; do not claim new code tests were run.
+- No automatic expansion, deployment, training, public release, registry mutation or default-model change. LLM proxies remain provisional, not expert evidence.
+- The 2026-09-07 checkpoint request explicitly authorizes one local commit of reviewed existing implementation, tests and updated documentation after regression and secret/scope checks. It does not authorize a push, new harness implementation or external experiments; prior scope-specific no-commit statements remain historical.

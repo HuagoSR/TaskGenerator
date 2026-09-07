@@ -1,112 +1,70 @@
-# TaskGenerator 系统架构
+# 系统架构
 
-> 状态：`active`
-> 职责：区分当前已实现能力与 R10 目标架构；项目状态以《项目概要》为准。
+> 状态：active；核对日期：2026-09-07。
+> 只说明结构与职责；完成情况见[项目概要](../../项目概要.md)。
 
-## 当前已实现的 R9 工厂
-
-```text
-公开来源
-→ skill extraction / scratch registry
-→ CapabilityBrief + motif planning
-→ LLM task-design proposal
-→ deterministic materialization
-→ candidate/teacher package
-→ integrity / render / export validation
-→ solver / grader execution
-```
-
-这条链已经能生成候选文件、交付合同、teacher artifacts 和 rw-task export，并支持受治理的服务器生产与模型执行。确定性代码负责 provenance、事实边界、candidate/teacher isolation、文件路径、package fingerprint、导出和状态变更；LLM 只提出语义设计与表达。
-
-R9/R7 证明了工程闭环可运行，但不能证明自动任务具备职业真实性。R7 从零复验的 5/10 provider freeze 是历史诊断，不得继续或拼接。
-
-## R10.9 World-First / Task-Mining 已实现架构
+## R10 研究主线
 
 ```text
-公开 Work Seed、Rules 与专业来源
-        ↓
-Professional Skill 与自然难度辩论
-        ↓
-无题干、无 rubric 的完整工作世界
-        ↓
-冻结 candidate-visible 多来源业务文件
-        ↓
-独立 Task Miner 发现自然工作任务
-        ↓
-独立 Agent 重建 Teacher Truth / Decision Matrix
-        ↓
-三档完整交付校准 Judge
-        ↓
-静态准入与多模型行为验收
+公开 Work Seed + Professional Rules
+→ 专业 Skill 与来源约束的难度设计
+→ 工作世界及自然业务材料
+→ 冻结候选文件
+→ 独立 Task Mining
+→ 独立 Teacher Truth / Decision Matrix / Rubric 编译
+→ 静态检查与按实验计划进行的行为验收
 ```
 
-### Work Seed 与专业规则
+这是已实现的研究方法链，由阶段 runner 执行；不等于已验证的无人值守规模化生产服务。
 
-`WorkSeedV1` 是职业工作原型，不是完整题目。它记录角色、触发事件、业务目标、典型输入、自然问题、交付物和受众，并绑定公开可追溯的来源。专业规则说明适用条件、证据要求、例外与可接受处理。
+## 各层职责
 
-### 历史 Scenario Bible 与新工作世界
+- **Work Seed / Rules**：解释角色为何此时收到工作、成果供谁使用，以及专业方法与规则。公开规范不是虚构组织的事实。
+- **专业 Skill**：按需加载的出题侧职业知识包，说明自然证据关系、判断与常见错误。通用文件操作由现成工具承担；Skill 不预先决定题目模板，首轮不提供给 Solver。
+- **工作世界**：先形成组织、时间线、正常业务背景与跨系统记录，不先写题干或 rubric。隐藏 world_ledger.md 和候选业务文件分离。
+- **Task Miner**：只看候选材料与公开角色/触发背景，不看隐藏 ledger、难度条件或预期答案，从工作材料中发现任务。
+- **Truth / Task Compiler**：从可见材料与规则重建专业判断，编译单一交付合同和监督；任务要求必须可由候选证据支持，包括允许不确定结论。
+- **Admission / Evaluation**：分开记录结构有效、专业合理性、交付成功和模型行为。校准或 Agent 审查通过，不代替真实行为证据或专家有效性。
 
-`ScenarioBibleV1` 继续作为 R10.2–R10.8 的冻结事实权威。R10.9 不修改或复用这些 Bible，也不建设结构化 Bible V2。新实验由 Agent 先产生 campaign-scoped `world_ledger.md` 和自然业务材料；此时不存在题干、交付合同、rubric 或预设答案。工作世界冻结后，Task Miner 才从 candidate-visible 材料中发现任务。
+## 自主工厂的现有实现与下一阶段边界
 
-### 专业 Skill 与派生证据包
+[自主工厂入口](../../Test/run_r10_agent_factory_pilot.py)复用原生 Codex/OpenCode；[核心模块](../../src/task_generator/production/agent_factory.py)管理角色会话、版本父依赖、预算及下游失效，[工具模块](../../src/task_generator/production/agent_factory_tools.py)提供文件检查、快照、咨询、意见处理和提交，[批次模块](../../src/task_generator/production/agent_factory_batch.py)管理固定位置。现有主链为生产、提交、终审、通过后的末端试做；试做不回流旧题修订。
 
-专业 Skill 是 Agent-native 知识包，而不是任务装配图。其 `SKILL.md` 只说明触发条件、工作目标、专业判断步骤和严重错误；长法规、模板和失败案例按需置于 `references/`、`assets/` 或 `scripts/`。通用表格、文档和 PDF 操作由现成工具 Skill 提供。
+下一阶段 proposed：在生产开发过程中接入独立候选试做，编译者先基于候选材料独立重建要求与计算依据，再参考本题试做成果和障碍；有限返工后冻结，另用新会话终审。尚未实现开发试做反馈、计算依据包或相应调度接口，不能直接用现有 solve 入口实现新语义。
 
-原始 `ScenarioBibleV1` 保持冻结。出题 Agent 依据 Bible 与选中的 2–4 个专业 Skill 产生一个带父 Bible ID 的派生证据包，其中记录新增且不冲突的情景事实、candidate 文件和 teacher-only 证据映射。文件必须保留形成目的、时间和口径；冲突只能由日期、金额、审批、版本或缺失等事实体现，不能使用结论性标签。
+隔离单位是任务、角色和版本，包括文件、提示词、反馈、持久会话和工具可见性。生产者说明单独存储，不能传给盲态试做者；编译者读取试做后不再称盲态审查。程序只管理合法请求与边界，不要求新增全知调度 Agent；同题修改按依赖顺序执行。设计论据见[调研记录](../research/agent_task_production_harness_20260907.md)。
 
-### Task Mining 与 Truth Reconstruction
+## 保留的主评分路径（执行暂停）
 
-Task Miner 只读取候选材料和公开角色/触发背景，不读取 world ledger、难度计划或预期答案。它必须发现真实从业者会自然收到的任务、业务受众和领域原生交付物。另一 Agent 再从冻结题干、候选材料、Rules 与 Skill 中重建 Teacher Truth。`TaskDecisionMatrixV1` 继续把判断点映射到可见证据、可接受结论、严重错误和后续行动。
+固定任务、原 rubric 与一份匿名交付 → 材料完整性检查 → Judge 逐 rubric item 独立评分 → 控制器校验覆盖、分值、条件项和证据路径 → 控制器求和并绑定哈希。
 
-### 职业对抗难度与 Judge 校准
+主路径不产生 pairwise preference 或 holistic score，不在高分后启动第二轮降分审计，也不以 rubric 外偏好扣分。Agent-native 文件检查与逐项评分是保留的实验能力；pairwise 只作诊断。无效交付先在结构层停止；材料不足标记 `incomplete`，不进入可比较的语义总分。
 
-难度只能由职业流程中的正常业务量、跨系统口径、证据可靠性、权限边界或支持有条件结论的信息缺口产生。基础世界与强化世界保持角色、目标和交付类型可比，强化版最多应用两个来源可解释的变化。正式 Solver 之前，每题以优质、合理但不完整、重大捷径错误三档完整交付校准两位 Judge；校准失败不得用 Solver 结果掩盖。
+任务交换边界保持 GDPval 兼容；R10 冻结任务只制作适配副本，原包不改动。实现入口见[合同索引](global_interface_contracts.md)。
 
-### Admission 与反馈
+评分扩展现已暂停；下述为保留实现，不代表已通过可靠性验收。完整评分基线不再是所有造题研究的前置条件，但行为分差结论仍需充分证据。现有 G2 容器仅系统根只读，workspace 实际为读写挂载；提示词中的只读要求不能视为输入只读挂载保证。原文件哈希核对与证据包哈希也不证明全部运行时输入未被修改或专业核验充分。
 
-静态门禁只检查来源追溯、candidate/teacher isolation、可解性、答案泄漏、文件可用性和交付合同。文件与记录规模、正常背景比例和多 motif 覆盖作为质量指导，由用户审阅和行为实验检验，而不再驱动新的复杂本体。多模型行为验收检查任务是否既非饱和也非不可完成，并将失败归因到 Skill、证据、场景或执行层。
+## Controlled Solver 校准路径
 
-## R10.10 历史 Evaluator V2 结构（不再扩展评分队列）
+固定 GDPval 任务包与模型组 → 统一 `stirrup==0.1.8` 工具循环 → 固定 E2B template/build → GDPval 交付收集 → 交付合同核验 → strict 独立逐项主评分。昂贵 Solver 前先依次通过 route 目录快照、完整工具闭环预检和 Judge 合同微型探针；任何硬门槛失败均冻结 scope，不以换模型或改端点继续。跨 Judge 校准可将 strict 指令、原 rubric、证据根、确定性材料文本和 schema 固定成同一匿名 packet，transport 只负责返回逐项 JSON。模型间固定 prompt、工具、turn 上限与 sandbox；provider 输出上限与 Agent 上下文窗口分开配置；每次运行单独记录版本、哈希、不含机密的请求/工具进度、首次失败及合法技术恢复。交付收集遵循 rw-task 的 finish 路径语义，核验数量、类型、非空与可打开性，不将隐藏 reference 文件名当作 Solver 义务。
 
-```text
-冻结任务、Teacher Truth、rubric 与 Solver 交付
-        ↓
-客观事实 / 专业判断 / 成果质量分层
-        ↓
-独立、证据绑定的 major-error triggers
-        ↓
-匿名 A/B 与 B/A 配对审阅
-        ↓
-原子得分 + panel preference + 不确定性
-        ↓
-R10 留出验证与公开 GDPval Gold 排名校准
-```
+Codex/OpenCode 原生 harness 仍可用于真实 Agent-stack 行为诊断，但其不同工具编排不能替代受控模型比较。shadow downward audit 只解释旧系统的非对称降分效应，永不覆盖主分。实现保持为阶段薄控制器，不扩展成通用 evaluator 框架。
 
-Evaluator V2 不重写 R10.9 的任务监督。它创建 campaign-scoped profile，把可计算事实交给程序，将职业灰区交给 Judge，并把重大错误从普通扣分中分离。配对结论必须在交换展示顺序后保持语义一致；Judge 分歧作为不确定性证据保存，而不是强制平均成一个看似精确的分数。
+Motif 是生成后的信息关系标签，不是生成起点。难度来自业务量、口径、时间、权限和证据限制，不能来自不可见答案或格式破坏。文件数、记录数是质量指引，不是新配额。
 
-GDPval 校准只验证评分协议和相对排序，不把公开题目、rubric 或 Gold 交付物送入生成链。Solver 的模型、provider、Agent 和推理强度都作为栈身份记录，避免将实用栈结果误称为纯模型能力。
+## 既有局部改良：Rubric V2
 
-评分 payload 只包含匿名槽位、任务资料和 rubric；模型、评委及配对身份由控制器在解析后补入。GDPval Judge 使用独立 scope 绑定冻结 Solver receipt、交付树与评分协议。位置一致性由同 Judge 换序计算，跨 Judge 一致性由同序比较计算，不将两个因素同时改变后的结果算作两个指标。
+冻结任务要求、候选材料及监督 → Terra 编译评分项 → DeepSeek 独立审查 → 中文检查材料。
 
-## 当前生成侧 Rubric V2
+一个专业判断可以对应多个可辨认的成果。每项同时说明要求来源、分值边界、条件例外、等价表达和核验范围；不套用固定拆分比例。上述既有派生实验不读取 Solver 答案、成绩、排名或 GDPval 内容，也不自动启动评分。下一阶段拟允许本题开发试做向编译提供证据，但不改变旧实验隔离规则或接入历史答案。接口见[合同索引](global_interface_contracts.md)。
 
-冻结的任务要求、候选证据和 Decision Matrix → Terra 编译多个可核验评分项 → DeepSeek 独立检查要求一致性、例外、等价表达和核验范围 → 中文用户检查材料。
+## 历史能力与隔离
 
-本路径不读取 Solver 交付、成绩、排名或 GDPval 内容。3–5 个专业判断不再等于只能有 3–5 条评分项，也不机械套用 evaluator 的结论/证据/后续行动固定比例。新 rubric 作为独立版本保留，V1 及历史评分不变。这里只检查生成方法，不执行评分。
+- R9 工厂保留“来源→skill→brief/proposal→确定性物化→验证/导出→评测”的批处理实现，不再作为 R10 的 motif-first 生成路线。
+- R10 早期 ScenarioBibleV1 与 evidence A/B 结果只读保留；World-First 不要求补建 Bible V2。
+- 历史 paired evaluator、major-error panel 和 GDPval 排名实验不构成当前默认评分方式。当前默认是独立单份、逐项 rubric 给分、程序求和；额外偏好不改变总分。
+- 可复用实现放在 src/task_generator/，阶段入口放在 Test/，产物与运行诊断放在 ignored artifacts/。
 
-## Skill 与 Motif 的新职责
+## 硬边界
 
-| 对象 | R10 职责 | 不再承担的职责 |
-| --- | --- | --- |
-| 专业 Skill | 为出题 Agent 提供专业判断、工作步骤和错误归因 | 直接决定题目模板、表格外形或 candidate 的默认能力。 |
-| Motif | 描述生成后出现的信息关系与分析维度 | 作为先验的业务故事生成器。 |
-| Scenario Bible | 提供业务因果和事实权威 | 向 candidate 直接暴露答案。 |
-
-一个情景可以包含多个 motif；motif 应从情景关系中识别，而不是先选 motif 再拼接业务故事。
-
-## 稳定边界
-
-- GDPval 仅作形态和评测校准，不进入生成或训练输入。
-- candidate-visible 事实、teacher-only 真值与治理证据必须隔离。
-- 结构、导出和模型交付通过都不自动授予训练、promotion、release 或 registry mutation 权限。
-- 已实现的 R10.0–R10.9 合同与证据继续只读保留。当前仅派生独立 rubric V2，不覆盖历史任务、监督、交付或评分；不提前扩大到十题。
+程序只承担来源/身份追溯、路径安全、文件可打开性、候选与监督隔离、引用闭合、直接答案泄漏检查及持久化。专业语义交给 Agent 并保留不确定性，不为每个业务情景建设新本体或通用验证器。训练、公开题库、部署和默认模型变更都不由实验结果自动触发。

@@ -212,7 +212,7 @@ def _remote_command(
         # runtime files in the workspace; those are neither task evidence nor
         # safe inputs to a recursive controller download.
         'rm -rf .r10_return; mkdir -p .r10_return; '
-        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json; do '
+        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json spreadsheet_evidence.json; do '
         '[ -f "$item" ] && cp -L "$item" .r10_return/ || true; done; '
         'for item in deliverable_files .docx_office_check; do '
         '[ -d "$item" ] || continue; mkdir -p ".r10_return/$item"; cp -aL "$item/." ".r10_return/$item/"; done; '
@@ -248,7 +248,7 @@ def _remote_return_command(remote: str) -> str:
     return (
         'workspace=' + repr(remote) + '; cd "$workspace"; '
         'rm -rf .r10_return; mkdir -p .r10_return; '
-        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json; do '
+        'for item in agent.jsonl stderr.txt docker_stdout.txt docker_stderr.txt docx_office_opened.txt grade.raw.json spreadsheet_evidence.json; do '
         '[ -f "$item" ] && cp -L "$item" .r10_return/ || true; done; '
         'for item in deliverable_files .docx_office_check; do '
         '[ -d "$item" ] || continue; mkdir -p ".r10_return/$item"; cp -aL "$item/." ".r10_return/$item/"; done'

@@ -1,152 +1,108 @@
-# Global Interface Contracts
+# 接口合同索引
 
-> 状态：`reference`
-> 职责：概述稳定实现合同与 R10 proposed 合同。代码 schema 是字段级唯一事实来源；本文件不记录 campaign 历史。
+> 状态：reference；核对日期：2026-09-07。
+> 只说明接口职责和兼容边界。字段以代码为准，运行结果见[项目概要](../../项目概要.md)。
 
-## Contract Status
+## 生成侧 Rubric V2
 
-| 类别 | 状态 | 含义 |
-| --- | --- | --- |
-| Stable | `implemented` | 当前 R9 工厂或评测链使用，字段以代码 schema 为准。 |
-| Historical | `frozen` | 已关闭实验或 campaign 的读取兼容；不作为新执行入口。 |
-| R10 foundation | `implemented / offline only` | 六个 V1 合同和静态 admission validator 已实现；无 provider、文件物化或 campaign 权限。 |
-| R10.1 seed admission | `implemented / public-source only` | 来源目录、四候选×两领域的确定性准入、两套专业规则和离线 CLI 已实现。 |
-| R10.2 Bible compilation | `implemented / teacher-only` | 四份 Scenario Bible 已通过静态 admission；仍是叙事事实，不可直接物化。 |
-| R10.3 readiness diagnostic | `implemented / historical diagnostic` | 证明叙事 Bible 不适合由严格确定性投影器直接物化；不建设 Bible V2。 |
-| R10.3 professional Skill foundation | `implemented / offline draft` | 两个 draft factory-side Skill、薄目录与渐进加载器已实现；未调用 provider、未生成任务，旧 Registry 未变。 |
-| R10.4 professional Skill curation | `implemented / public-source` | 两个 curated Skill 各绑定规范、工作实践和失败模式来源；DeepSeek 仅起草冻结公开来源批次，原始响应留在 ignored artifacts。 |
-| R10.5 derived-evidence public probe | `implemented / public-only pass` | 受限外层 Docker 中的非嵌套 Codex Shell 已创建并验证公开 XLSX、DOCX、PDF；零私有 Bible 上传。 |
-| R10 paired derived-evidence experiment | `implemented / skill effect supported` | 四个隔离 session、candidate/teacher admission、condition-blind payload 和一次格式补跑受限的 DeepSeek reviewer 已实现。两个历史 cohort 为接口失败；最新自动编译 Skill cohort 的四份 admission 与两次盲审均完成，两个领域都有至少两项文件级增益。 |
-| R10 automatic Skill compiler | `implemented / completed` | Codex/Sol直接生成完整 Skill 包，DeepSeek独立审查来源与内容；共同基础 bundle 经无 Skill/有 Skill等回合审阅分叉，减少独立生成随机性。 |
-| R10 task compilation | `implemented / static-admitted` | 四份冻结任务包均已完成 task/truth 编译、静态 admission 与用户形态验收。 |
-| R10 behavioral pilot | `implemented / behaviorally_admitted` | 四道冻结任务已由双 solver 和双 LLM judge 执行；R10.8A 更正 teacher anchor 后的 judge-only 重评完整。 |
-| R10 pilot discrimination diagnosis | `implemented / compiler_revision_candidate` | 只读报告解释冻结行为记录中的评分饱和、接近平局与评委边界歧义；不修改题目或重跑模型。 |
-| R10 GDPval-calibrated compiler revision | `implemented / evaluator_revision_required` | 两道派生任务静态准入并完成新的官方 ChatGPT Codex/DeepSeek 双 solver、双 judge 比较；收入题仍接近平局，价格题出现大分差但 Judge 边界不一致，因此停止扩题。历史 Tuzi 与旧账号失败证据保持隔离。 |
-| R10.9 World-First pilot | `completed / evaluator_revision_required` | 四个 matched 世界与任务、Truth audit、三档校准和 8/8 Solver 交付完整；四题 paired review 均因偏好或 major-error 边界不一致而为 `judge_ambiguous`。 |
-| R10.10 Evaluator V2 | `implemented / historical experiment` | 评分探索的 profile、换序和校准合同只读保留；不再自动启动排名验证队列，已实现不等于已验证。 |
+实现：[rubric_compiler_v2.py](../../src/task_generator/planning/rubric_compiler_v2.py)。
 
-## Stable Implemented Contracts
+| 合同 | 职责 |
+| --- | --- |
+| `TaskSpecificRubricV2` | 独立版本的任务评分标准，一个专业判断可对应多个条目。 |
+| `TaskSpecificRubricItemV2` | 要求、整数满分、完整得分边界、要求依据、证据路径、适用条件、等价表达与核验说明。 |
+| `RubricCompilationV2` | 返回新 rubric，或报告 upstream_issue，不补造事实掩盖上游问题。 |
+| `RubricAuthorReviewV2` | 审查要求一致性、重复计分、证据、条件例外、等价表达、核验范围及监督一致性；不是给 Solver 打分。 |
 
-### TaskSpecificRubricV2 — implemented / generation validation
+结构与引用规则：
 
-独立于历史 V1 的生成侧 rubric，位于 `planning/rubric_compiler_v2.py`。一个 decision 可以对应多个独立条目；每项有整数满分、覆盖全部可得整数的边界、candidate-visible 要求依据、证据路径、适用例外、等价表达和核验范围。条目数由任务决定，没有固定拆分比例。
+- 专业条目覆盖既有 Decision Matrix；ID 唯一，每个可得整数都有边界描述，无固定条目数量。
+- 要求依据只能引用候选可见题干、交付合同或参考材料，不能由隐藏 Teacher Truth 创设义务。
+- 明确的交付结构要求可用 `deliverable_structure` 组，依据只来自题干/合同。核验目标可为合同精确声明的未来交付路径，不要求出题时该文件存在。
+- 独立审查可额外引用新 rubric、Teacher Truth 和 Decision Matrix；这不改变作者的要求依据边界。
+- 程序检查结构、路径、引用和计分；专业合理性由 Agent 审查。未来计分为逐项给分、程序求和，不另加整体偏好或隐性总分否决。
+- JSON 规范化仅限已实现的外层说明剥离和说明字段引号转义，保留原始记录与证明；不修改 ID、分值、结论或补全截断内容。
 
-`RubricCompilationV2` 允许明确返回 upstream_issue 而不补造 rubric；`RubricAuthorReviewV2` 是独立质量审查，不是 Solver 评分。旧 Teacher Truth、Decision Matrix、V1 rubric 和评价记录不迁移、不覆盖。
+V2 是独立派生物，不覆盖旧 rubric，也不因审查通过而自动启用评分。
 
-程序检查 ID、引用、分值边界与覆盖；语义准入由 Agent 审查。未来单份评分只按这些条目求和，不附加 preference 或总分否决。新版本尚未通过实际评分验证。
+## 独立逐项评分合同
 
-专业条目绑定既有 decision；题干明确要求的交付结构可绑定保留组 `deliverable_structure`，但依据和证据必须仅来自题干及 DeliverableContract，不得以此创建新的专业判断或隐藏义务。
+实现：[independent_rubric_grader.py](../../src/task_generator/evaluation/independent_rubric_grader.py)。
 
-交付结构项的核验目标也可引用 DeliverableContract 精确声明的未来交付路径；此时不要求该文件在出题阶段存在。要求依据仍只能是现有候选题干/合同，不能拿尚未生成的答案证明要求；未声明路径仍阻断。
+| 合同 | 职责 |
+| --- | --- |
+| `FrozenRubricItemV1` | 固定 item ID、整数满分和原 criterion；不改写 rubric 语义。 |
+| `IndependentRubricGradeDraftV1` | Judge 仅返回材料状态与每项整数得分、适用性、证据路径、理由。 |
+| `IndependentRubricGradeV1` | 控制器补入 item 满分，重算总分/满分/归一化分，并绑定输入、rubric、交付和评审哈希。 |
 
-作者的要求依据只能引用 candidate-visible 输入；独立审查员还可以引用被审查的 rubric、Teacher Truth 和矩阵。两种引用边界不能混用。审查响应可剥离 JSON 外的说明，并只对已知说明文本字段内的未转义引号补转义；不修补 ID、状态、分值、缺项或截断，保存原始事件与规范化证明。
+每个 item 必须且只能出现一次，得分在 `0..max_score`；`not_triggered` 不得失分，`unresolved` 或材料不足不产生可比较总分。证据只能定位到候选可见题干、参考文件或匿名交付。GDPval adapter 保留原整数满分；R10.9 V1 adapter 仅把精确百分比权重映射为 100 分制，不改原 criterion。GDPval 导出仍使用 `dataset_row.json`、`reference_files/`、`deliverable_files/` 与原 rubric；适配副本不修改冻结包。
 
-### Source, skill and planning
+G2 的 Agent-native 扩展实现见 [agent_rubric_grader.py](../../src/task_generator/evaluation/agent_rubric_grader.py)：
 
-- `RawSource` / `NormalizedSource` / `SourceBlock`：公开来源及其可审计正规化边界。
-- `ExtractedSkillCandidate` / `SkillRegistryEntry`：候选 skill、来源证据和显式 review/registry 流程。
-- `CapabilityBrief`：当前 R9 任务设计输入，绑定领域、来源、skills、capabilities 和交付意图。
-- `TaskDesignProposal`：LLM 提出的 evidence nodes、records、relations、judgments、skill bindings 和交付意图；LLM 无权定义最终真值、提交路径、registry 或 promotion。
+| 合同 | 职责 |
+| --- | --- |
+| `EvidenceRefV1` | Judge 返回结构化文件、sheet、连续 A1 范围与 support/defect 角色，不自行拼接 locator。 |
+| `AgentRubricGradeDraftV1` | 逐 item 返回 satisfaction、核验范围、整数分、结构化证据、support、defects 与理由。 |
+| `CanonicalCitationV1` | 控制器验证路径、sheet、非空范围和文件哈希后生成稳定 citation ID 与规范 locator。 |
 
-### Package generation
+XLSX 证据服务保留原值、公式、重算值、格式和循环诊断；只作事实层，不直接决定专业得分。
 
-- `EvidenceArtifactSpec`：候选文件的 typed records、事实来源、主键和方法论来源投影。
-- `DeliverableContract`：唯一的候选交付路径、格式和存在性合同；prompt、dataset row、expected deliverables 与 delivery inspection 必须由它编译。
-- `HybridMaterializationReport` / `EvidenceContentQualityReport` / `TaskVerifierReport`：物化、内容、渲染、来源和导出检查结果。
-- `CandidatePackageManifest`：candidate-visible 文件树和 package fingerprint；不得包含 teacher-only artifacts。
+`AgentRubricGradeDraftV2` 将 `coverage` 与 `verification_methods` 分开，已通过离线测试，未完成真实评分验证。V1 保留冻结结果读取兼容。当前 V2 仍沿用量化满分强制候选/参考范围的机械规则；本次不修复。合法引用、方法和覆盖标签不等于专业核验充分。
 
-### Evaluation and operations
+评分执行暂停；合同存在不代表可启动实验，宏观结果见概要，操作边界见 Runbook。
 
-- `ValidityVector`：结构、事实、交付和有效性证据的分轴记录。
-- `UtilityProfile`：productive complexity、accidental difficulty 和可用性诊断；不是训练准入。
-- `RubricPlanV2`：通用七维成果质量框架；权重在结果产生前冻结。
-- `BehavioralExecutionReport`：solver 进程、精确交付、基础设施失败和业务失败的分离记录。
-- `ProductionTaskCohortV1` / solver and judge manifests：R9 批处理生产和评测的已实现合同。R9/R7 结果是 frozen evidence，不授予新执行权限。
+## Stirrup 校准合同
 
-## Cross-Cutting Authority Rules
+实现：[stirrup_calibration.py](../../src/task_generator/evaluation/stirrup_calibration.py)。
 
-```text
-LLM: propose semantic design and prose
-Program: source boundary, facts, file projection, deliverable path,
-         candidate/teacher isolation, package identity and state mutation
-```
+| 合同 | 职责 |
+| --- | --- |
+| `StirrupPreflightResultV1` | 记录固定模型的预检状态、是否进入语义阶段、首次错误及恢复关系。 |
+| `FrozenStirrupPanelV1` | 仅在三档均通过后冻结实际模型；回退映射固定且正式运行前不可再变。 |
+| `StirrupSolverAttemptV1` | 记录一次 Solver 的阶段边界、turn 数、交付状态与错误分类。 |
+| `StirrupSolverReceiptV1` | 绑定任务、solver/provider、Stirrup/E2B 版本、template build、输入与交付哈希及首次失败链。 |
+| `ShadowDownwardAuditDiagnosticV1` | 单独保存旧式降分诊断；显式引用主评分，但不能修改 `IndependentRubricGradeV1`。 |
 
-- GDPval 是 `eval_calibration_only`。
-- candidate-visible truth、teacher-only supervision 与运行证据必须隔离。
-- `candidate_ready`、openable XLSX、provider pass 或 LLM review 不能自动成为专业有效性、训练、release 或 promotion 证据。
-- registry、默认链、release 和训练状态只能由显式 review/apply 路径改变。
-- 外部调用必须绑定当前实现、任务包、provider policy、预算和 retry 边界；历史 receipt 不可复用。
+R10.12 固定 100-turn 上限，只有首个语义 turn 前的 E2B 创建、传输或路由故障可技术恢复；无效交付不得进入 strict 语义评分。provider 单次输出上限与 Agent 上下文窗口是两个独立参数；进度记录不得包含密钥或完整 provider 输出。GDPval 交付以 Solver 通过 finish 提交的路径为准，检查数量、文件类型、非空和可打开性；不向 Solver 泄露或强求复制隐藏 reference 文件名。strict 只改变给分证据阈值，不增加 rubric 外义务，最终总分仍由 `IndependentRubricGradeV1` 控制器求和。
 
-## R10 Scenario-First Contracts
+R10.12-S1 的补充合同实现见 [stirrup_supplement.py](../../src/task_generator/evaluation/stirrup_supplement.py)：
 
-以下六个合同已在 `task_generator.core.scenario_first` 实现为严格、可规范化哈希的离线 Pydantic schema。它们不包含 provider、CLI、文件物化或外部执行语义；后续执行层仍须单独设计、测试与授权。
+| 合同 | 职责 |
+| --- | --- |
+| `StirrupSupplementProtocolProbeV1` | 对固定 Tuzi Chat route 记录至少两轮请求、工具回传、`code_exec`、`finish` 和预检文件闭环。 |
+| `FrozenStirrupSupplementPanelV1` | 只允许 `gpt-5.5`、`gpt-5.6-sol`、`glm-5.2`、`gpt-5.4-mini` 四个精确 route，无回退。 |
+| `StirrupSupplementSolverReceiptV1` | 绑定补充 session 的 route、Chat 端点、Stirrup/E2B、turn/输出上限、首次尝试及交付哈希。 |
+| `TerraTransportDiagnosticReceiptV1` | 绑定一次无重试 Terra transport probe 的环境、输入、请求状态、结构校验与结果哈希。 |
+| `StrictGradePacketV1` | 固定 strict 指令、原 rubric、证据根、确定性材料文本和输出 schema，供不同 Judge transport 消费同一匿名输入。 |
 
-### `WorkSeedV1` — implemented / offline only
+补充控制器只记录脱敏请求元数据：requested/response model、response object、端点、Request-ID、usage、请求序号和工具名；不记录密钥、完整响应、工具参数或材料正文。固定使用 `/v1/chat/completions`、`context_window=64000`、`max_completion_tokens=8192`、`max_turns=100`。它不把三档合同扩展成通用 evaluator，也不改变冻结 R10.12 结果。
 
-公开可追溯的职业工作原型。最少记录：公开来源、角色、触发事件、业务目标、典型输入、自然问题、交付物、受众和来源到抽象的说明。它不包含完整题目、答案或私有工作材料。
+S1-B receipt 额外绑定脱敏 provider/tool 轨迹哈希、完成请求数和观察到的工具名。grade packet 只存在于 ignored scope；合同不允许用近似 UUID、模型身份或历史成绩修补 Judge 输出。
 
-### `ProfessionalRuleSetV1` — implemented / offline only
+## 可复用的生产合同
 
-从来源提炼的适用条件、证据要求、例外、禁止假设和可接受处理。它约束 Scenario Bible 与评分，不得冒充具体组织的事实。
+| 层 | 主要合同与实现入口 |
+| --- | --- |
+| 种子与规则 | `WorkSeedV1`、`ProfessionalRuleSetV1`：职业触发、公开来源、适用规则；见 [scenario_first.py](../../src/task_generator/core/scenario_first.py)。 |
+| 专业 Skill | `ProfessionalSkillCatalogEntryV1`：目录元数据；SKILL.md 为知识正文权威。见 [professional_skills.py](../../src/task_generator/substrate/professional_skills.py) 与 [professional_skill_compiler.py](../../src/task_generator/substrate/professional_skill_compiler.py)。 |
+| 世界与任务 | `WorldFirstPilotManifestV1`、`ProfessionDifficultyPlanV1`：阶段、身份及难度依据；见 [r10_world_first.py](../../src/task_generator/production/r10_world_first.py)。 |
+| 任务编译 | `TaskCompilationOutputV1`、`ScenarioTaskCompilationPlanV1/V2`、`TaskDecisionMatrixV1`：任务、监督、判断点与证据关系；见 [scenario_task_compiler.py](../../src/task_generator/planning/scenario_task_compiler.py)。 |
+| 交付 | `DeliverableContractV1`：题干提交说明、预期路径、staging 和交付检查的共同依据。 |
+| 准入 | `ScenarioFirstAdmissionReportV1` 及 task admission：来源、隔离、文件、引用、泄漏与可解性检查；静态通过不等于专业有效。 |
 
-### `ScenarioBibleV1` — implemented / offline only
+## 自主工厂接口与 proposed 增量
 
-teacher-only 原始事实父权威。应含组织、角色、时间线、业务对象/交易、政策适用、正常背景、真实异常、未决问题、决策后果和正确处理。后续候选文件和 teacher truth 必须可追溯到该 Bible 或其带父链接的派生证据包。
+现有入口为 [run_r10_agent_factory_pilot.py](../../Test/run_r10_agent_factory_pilot.py) 的 prepare / execute / status / stop / report；单题与批次标识互斥。状态、版本父依赖和角色会话校验见 [agent_factory.py](../../src/task_generator/production/agent_factory.py)，工具参数和当轮错误反馈见 [agent_factory_tools.py](../../src/task_generator/production/agent_factory_tools.py)，固定位置与联合预算见 [agent_factory_batch.py](../../src/task_generator/production/agent_factory_batch.py)。这些是现有实现入口，不是新增通用 SDK。
 
-### `EvidenceProjectionPlanV1` — implemented / offline-only historical foundation
+下一阶段拟增加本题开发试做成果/障碍向编译者的受控交接，以及计算脚本、结果口径、来源哈希和 rubric 关联的依据包。尚无对应新合同或工具入口；实现前必须明确版本失效、角色可见性与开发/终审边界。候选交付继续由 DeliverableContract 管理，导出保持 GDPval 形状和 rubric 语义；不修改现有评分公共接口。设计依据见[调研记录](../research/agent_task_production_harness_20260907.md)。
 
-旧的严格投影合同。它保留读取与诊断价值，但不再要求 R10 通过补全结构化 Bible 来满足它。
+## 历史兼容
 
-### `TaskDecisionMatrixV1` — implemented / R10.6 compiler input
+- R9 的 source/skill registry、proposal、materialization、package、生产及评测合同保留读取兼容。
+- `ScenarioBibleV1`、严格 `EvidenceProjectionPlanV1`、旧 Skill curation 和 A/B evidence 合同服务于历史实验；不恢复 Bible V2 或固定文件/记录配额。
+- `TaskSpecificRubricV1`、paired evaluator、GDPval 校准与独立评分合同及其结果保持冻结。相关实现见 [r10_evaluator_v2.py](../../src/task_generator/evaluation/r10_evaluator_v2.py) 与 [r10_gdpval_validation.py](../../src/task_generator/evaluation/r10_gdpval_validation.py)。
+- 旧文档中的 proposed 接口不自动成为当前实施要求；任何新接口以新的明确计划和代码为准。
 
-每个关键判断点绑定候选可见证据、可接受结论、严重错误、允许的不确定结论和后续行动。它是 teacher truth 与 task-specific rubric 的中间权威，不允许直接暴露给 candidate。
+## 通用边界
 
-### `ScenarioFirstAdmissionReportV1` — implemented / static only
-
-R10 静态 admission 报告。当前覆盖来源追溯、世界一致性、文件投影、直接 teacher-treatment 泄漏、可解性和决策覆盖；完整 package isolation、交付合同、模型交付和模型区分度属于后续阶段。
-
-## Skill and Motif Semantics in R10
-
-- `ProfessionalSkillCatalogEntryV1` — `implemented / curated`：仅包含 contract version、skill ID、名称、触发描述、领域、相对路径、版本和状态；目录中的 `SKILL.md` 是运行时内容权威。loader 先读取目录，按 domain/text 返回至多四项，再安全加载被选中的完整正文与引用。
-- `ProfessionalSkillCurationSourcesV1` / `ProfessionalSkillCurationReportV1` — `implemented / public-source`：记录短摘要、章节、URL、访问日期、可获得的内容 SHA 与每条专业 instruction 的 source ID；只允许一次正常 provider 调用及一次格式/传输补跑。
-- `ScenarioEvidenceSessionV1` / `ScenarioEvidenceExperimentPlanV1` — `implemented / experimental`：冻结父 Bible、规则、条件、可选 Skill/source map、模型、镜像与一次 session 的输入身份；不是生产任务合同。
-- `ScenarioEvidenceCampaignScopeV1` — `implemented / awaiting authorization`：绑定一个完整四-session cohort、源码提交、plan SHA、模型/镜像、两次盲审上限与明确排除动作；只有新的私有上传授权才能消费。
-- `ScenarioExtensionRegistryV1` — `implemented / teacher-only`：登记唯一、安全的 `{fact_id, statement}`，可保留不影响闭合的 Agent 上下文；不是结构化 Bible，也不声称确定性验证新增事实的专业正确性。
-- `SkillCompilerManifestV1` / `SkillContentReviewV1` — `implemented / experimental`：仅记录自动编译输入/输出、首次失败和独立内容审查；不写入当前 catalog，也不取代旧 curation 历史。
-- `ScenarioEvidenceAdmissionReportV1` / `ConditionBlindPairReviewV1` / `ScenarioEvidenceExperimentResultV1` — `implemented / experimental`：仅记录文件隔离、可打开性、evidence-map closure、答案泄漏与盲审状态；最新完整 cohort 得到 `skill_effect_supported`，允许进入两题 task/truth controlled compilation，但不构成专家有效性或大规模生产准入。
-- `TaskCompilationOutputV1` / `TaskSpecificRubricV1` / `ScenarioTaskCompilationPlanV1` / `ScenarioTaskCompilationScopeV1` / `ScenarioTaskAdmissionReportV1` — `implemented / R10.6`：冻结父 bundle 与候选树，统一生成 candidate-facing base prompt、teacher truth、决策矩阵与一对一评分权重；交付路径仍由 `DeliverableContractV1` 编译。静态 admission 只检查闭合、隔离、路径、候选不变性、泄漏与不确定性，不决定专业答案优劣。
-- `R10BehavioralScopeV1` / `R10SolverOutcomeV1` / `R10JudgeDraftV1` / `R10JudgeReviewV1` / `R10BehavioralResultV1` — `implemented / R10.7B`：仅绑定四道冻结 R10 任务、两条原生 solver 栈、两名 route-blind LLM judge、混合 DOCX/XLSX 交付检查与任务级决策评分。它不复用 R9 的 24 题格式，也不构成专家、训练或 release 证据。
-- `TeacherAnchorCheckV1` / `TeacherAnchorAuditV1` — `implemented / R10.8A`：对 teacher-only 可计算锚点进行比例、合计、日期、数量差和阈值关系审计；它可阻断错误监督材料，但不替代专业审查或 Judge 运行可靠性。
-- `R10PilotDiscriminationReportV1` — `implemented / R10.8B-1`：只读取修正后的四题 records、行为聚合和任务绑定，按 Solver 复合分、交付/major-defect 差异及 Judge 分歧分类为饱和、接近平局、干净区分、评委歧义或不完整。它只输出 compiler 层的共性诊断，不读取密钥、不调用 provider、不改变候选或 teacher 内容。
-- `r10.gdpval_compiler_calibration.1` — `implemented / R10.8B-2`：ignored artifact 中的只读 aggregate 对照报告，只保留 GDPval 形态统计和 R10 候选树的计数/格式特征；明确排除 GDPval 的任务内容、参考文件、hidden rubric 与 gold deliverable。`productive_workload` 仅是 evidence/task compiler 的 opt-in 运行提示与额外 rubric-boundary gate，不改变冻结 V1 历史包的读取或 admission。
-- `WorldFirstPilotManifestV1` — `implemented / R10.9`：仅记录四个 matched case 的阶段状态、输入输出 SHA、Agent/环境身份、首次失败与结论；不是新的业务对象本体。
-- `ProfessionDifficultyPlanV1` — `implemented / R10.9`：记录职业原因、业务事件、候选证据影响、针对的捷径、来源、公平性与可解性。每个强化世界最多选择两项。
-- `PairedJudgeReviewV1` — `implemented / R10.9`：同一 Judge 在一次盲审中逐判断点评价两份匿名 Solver 交付，并给出偏好/平局及重大错误；程序仍按冻结权重重算分数。
-
-## R10.10 Evaluator Contracts — implemented unless noted
-
-- `EvaluatorProfileV2`：campaign-scoped 评分视图。它引用冻结任务、Teacher Truth、Decision Matrix 与原 rubric，不覆盖历史产物；criterion 只分为 `objective_fact | professional_judgment | deliverable_quality`。
-- `AtomicCriterionV2`：记录 criterion ID、冻结权重、`met / partial / not_met` 边界、证据引用和 `deterministic | llm_judge` 检查方式。可计算事实必须优先由程序验证。
-- `MajorErrorRuleV2`：记录 error ID、必要触发事实、所需证据、影响判断点和业务后果。只有确定性触发或稳定 Judge 多数对同一 ID 达成一致时，才形成 confirmed major defect。
-- `CounterbalancedPairReviewV2`：记录匿名 bundle、展示顺序、逐项评价、重大错误和 pair preference。A/B 与 B/A 必须映射回同一语义结果，位置不稳定单独报告。
-- `EvaluatorCalibrationResultV1` — `proposed / not_implemented`：未来统一 R10/GDPval closeout；当前实现分别使用 split result 与 GDPval result，不能以部分协议指标代替全部验收条件。
-- `GDPvalTaskBindingV1` / `GDPvalPairReviewV1` / `GDPvalRankingSnapshotV1`：冻结公开题、细粒度 human rubric、匿名槽位评分与外部排序快照。评分项必须完整且唯一；程序重算权重。模型身份不进入 Agent 输出 schema，只在解析后绑定。
-- `GDPvalSingleItemV1` / `GDPvalSingleReviewV1` — `implemented / exploratory`：单份匿名交付逐项给整数 awarded、适用状态和文件依据；原 rubric 是满分权威，程序检查完整性并求和，不接受模型自报总分或 preference。未触发条件不得扣分；材料/适用性未决阻断该评分且不作为格式重抽。
-- `r10.gdpval_single_scope.1`：固定三个开发题、九个 DeepSeek 主评和三个 Terra 抽查 assignment，绑定原 Solver receipt、九份交付、rubric、源码和环境。最多十四次尝试、两次全局格式补跑；抽查不进入主排名。结果仅为 preliminary_scoring_complete / preliminary_scoring_partial。
-- `r10.gdpval_judge_only_scope.2`：绑定原 Solver scope/receipt、完整结果、交付树、当前源码与评分协议；不授予重新作答权限。六组 sentinel 按职业和数据划分分层选取，分别记录同 Judge 换序和同序跨 Judge 比较。动态模型别名与旧绝对评分 baseline 未验证时须保留证据限制。
-
-开发集最多允许三个 evaluator profile 版本；留出集只执行一次。任何 profile 变更都不得修改任务、Teacher Truth、原始 rubric、Solver 交付或专业事实。
-- `SkillSelectionRecordV1` / `ScenarioEvidenceBundleV1` — `proposed`：若 A/B 实验完整通过，才考虑将其收敛为轻量生产清单；不是新的业务对象本体。
-- 专业 Skill 约束出题侧专业判断、能力覆盖和错误归因。通用工具 Skill 不进入项目 Registry。
-- Motif 从生成后的情景关系标注，用于分析；任一 motif 或 skill 都不能独自决定候选文件结构。
-
-## R10.1 Public Seed Admission
-
-- `PublicWorkSourceCatalogV1`：公开来源 URL、检索方式、可用内容 SHA 或浏览器验证说明，以及可引用的段落块。
-- `WorkSeedCandidateV1`：一个候选 Work Seed、独立工作模式 ID、接纳/拒绝状态及理由。
-- `WorkSeedAdmissionReportV1`：要求每领域四个候选、两个接纳、来源块闭合和匹配的规则集；它不调用 provider、写 registry 或创建 Scenario Bible。
-- 当前来源目录和规则集只保存公开来源摘要、段落引用与方法论边界，不保存完整网页副本。
-
-## Compatibility
-
-R10 不修改当前已持久化的 R9 package、manifest、report、rubric 或 archive。现有稳定合同保持读取兼容；R10 的外部执行、生产迁移和 release 方案仍须单独批准。
+候选材料、teacher 监督、运行证据分离；GDPval 内容仅作评测校准，不进入生成或训练。外部执行绑定输入/输出 SHA、模型、环境、scope/receipt 和首次失败，不能混合历史 cohort 或重抽低分答案。合同存在不等于授权执行；当前停止点见 [runbook](../operations/pipeline_reconstruction_runbook.md)。
