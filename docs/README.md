@@ -1,6 +1,6 @@
 # TaskGenerator 文档索引
 
-> 状态：`active`；核对日期：2026-09-07。
+> 状态：`active`；核对日期：2026-09-09。
 > 职责：定义文档入口、职责和生命周期；不记录运行状态。
 
 ## 阅读顺序
@@ -13,7 +13,7 @@
 6. [`architecture/pipeline_reconstruction_problem_statement.md`](architecture/pipeline_reconstruction_problem_statement.md)：真实性问题定义。
 7. [`architecture/pipeline_reconstruction_optimization_plan.md`](architecture/pipeline_reconstruction_optimization_plan.md)：造题研究主线与有限评分支持；后续实验须另定范围。
 8. [`operations/pipeline_reconstruction_runbook.md`](operations/pipeline_reconstruction_runbook.md)：评分暂停边界、只读查看与后续实验授权要求。
-9. [`research/agent_task_production_harness_20260907.md`](research/agent_task_production_harness_20260907.md)：造题 harness 调研、来源限制与下一阶段目标；设计尚未实施。
+9. [`research/agent_task_production_harness_20260907.md`](research/agent_task_production_harness_20260907.md)：造题 harness 调研、来源限制与设计依据；实现及最新单题闭环结果见概要。
 10. [`archive/README.md`](archive/README.md)：历史阶段材料索引。
 
 ## 生命周期

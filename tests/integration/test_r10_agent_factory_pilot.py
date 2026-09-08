@@ -207,6 +207,86 @@ def test_schema_adapts_output_location_to_current_work_mount(monkeypatch):
     assert '/output' not in result['mine'] + result['compile']
 
 
+def test_harness_schema_exposes_exact_calculation_contract(monkeypatch):
+    from task_generator.production import agent_factory_tools as tools
+    monkeypatch.setattr(f, 'read', lambda p: {'role': 'compile', 'protocol': 'task_factory_harness_v1'})
+    monkeypatch.setattr(f, 'files', lambda p: {})
+    result = tools.client('schema', {})
+    contract = result['harness']['calculation_contract']
+    assert contract['file'] == 'calculation_evidence.json'
+    assert 'rubric_ids' in contract['shape']['calculations'][0]
+
+
+def test_targeted_calculation_schema_includes_current_ids_and_hashes(tmp_path, monkeypatch):
+    from task_generator.production import agent_factory_tools as tools
+    draft = tmp_path / 'draft'
+    inputs = tmp_path / 'inputs/reference_files'
+    draft.mkdir()
+    inputs.mkdir(parents=True)
+    f.write(draft / 'new_rubric.json', {'criteria': [{'criterion_id': 'c1'}]})
+    (inputs / 'a.csv').write_text('value\n1\n', encoding='utf-8')
+    original_read, original_files = f.read, f.files
+    def fake_read(path):
+        if str(path) == '/workspace/role.json':
+            return {'role': 'compile', 'protocol': 'task_factory_harness_v1'}
+        if str(path) == '/draft/new_rubric.json':
+            return original_read(draft / 'new_rubric.json')
+        raise AssertionError(path)
+    def fake_files(path):
+        if str(path) == '/draft':
+            return original_files(draft)
+        if str(path) == '/workspace/inputs/reference_files':
+            return original_files(inputs)
+        if str(path) == '/workspace/inputs':
+            return original_files(inputs.parent)
+        raise AssertionError(path)
+    monkeypatch.setattr(f, 'read', fake_read)
+    monkeypatch.setattr(f, 'files', fake_files)
+    result = tools.client('schema', {'artifact': 'calculation_evidence'})
+    assert result['contract']['preferred_version'] == 2
+    assert result['current_rubric_ids'] == ['c1']
+    assert result['candidate_reference_files'][0]['path'] == 'reference_files/a.csv'
+
+
+def test_broker_draft_consult_auto_snapshot_and_live_status(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir(parents=True)
+    (draft / 'basis_draft.json').write_text('{}', encoding='utf-8')
+    broker = Broker({'root': str(tmp_path), 'role': 'compile', 'parents': {'world': 'w', 'mine': 'm'}})
+    hashes = f.files(draft)
+    broker.handle({'action': 'log-check', 'result': {'tool': 'check', 'mode': 'draft', 'hashes': hashes}})
+    result = broker.handle({'action': 'consult', 'reason': 'Review the incomplete basis'})
+    assert result['status'] == 'queued_end_turn_now'
+    assert broker.pending['snapshot_automatic'] == 'created'
+    status = broker.handle({'action': 'status'})
+    assert status['latest_matching_snapshot'] == broker.pending['snapshot']
+    assert status['current_check_modes'] == ['draft']
+
+
+def test_batch_dispositions_are_atomic_and_snapshot_is_reused(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir(parents=True)
+    (draft / 'basis_draft.json').write_text('{"basis":"visible"}', encoding='utf-8')
+    consultation = {'request_id': 'q1', 'finding_ids': ['1', '2']}
+    broker = Broker({'root': str(tmp_path), 'role': 'compile', 'parents': {'world': 'w', 'mine': 'm'},
+                     'consultations': [consultation]})
+    base = {'decision': 'accept', 'reason': 'Addressed in basis',
+            'evidence': [{'area': 'draft', 'path': 'basis_draft.json', 'locator': 'basis'}]}
+    with pytest.raises(ValueError, match='every_finding_once'):
+        broker.handle({'action': 'record-dispositions', 'request_id': 'q1',
+                       'items': [{'finding_id': '1', **base}]})
+    assert broker.dispositions == [] and not list((tmp_path / 'snapshots').iterdir())
+    result = broker.handle({'action': 'record-dispositions', 'request_id': 'q1',
+                            'snapshot_reason': 'Resolved consultation',
+                            'items': [{'finding_id': '1', **base}, {'finding_id': '2', **base}]})
+    assert result['recorded'] == 2
+    broker.handle({'action': 'log-check', 'result': {'tool': 'check', 'mode': 'ready',
+                                                     'hashes': f.files(draft)}})
+    broker.handle({'action': 'handoff', 'target': 'mine', 'reason': 'Ready'})
+    assert broker.pending['snapshot'] == result['snapshot']
+    assert broker.pending['snapshot_automatic'] == 'reused'
+
+
 def test_stop_without_valid_artifact(tmp_path):
     broker = make_broker(tmp_path)
     broker.handle({'action': 'handoff', 'target': 'stop', 'reason': 'No usable records'})

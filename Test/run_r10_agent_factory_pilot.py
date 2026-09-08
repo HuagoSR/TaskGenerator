@@ -18,6 +18,7 @@ import run_r10_process_first_pilot as base
 import run_r10_task_method_pilot as previous
 from task_generator.production import agent_factory as f
 from task_generator.production import agent_factory_tools as ft
+from task_generator.production import task_factory_harness as harness
 
 HOST, IMAGE, IMAGE_SHA = base.HOST, base.IMAGE, base.IMAGE_SHA
 DEFAULT_DEPS = '/home/huagosr/taskgenerator-data/r10-process-first/r10_process_first_pilot_20260905'
@@ -28,6 +29,10 @@ RUNTIME_FILES = ['src/task_generator/' + p for p in (
     'planning/__init__.py', 'planning/rubric_compiler_v2.py', 'production/__init__.py',
     'production/task_method_pilot.py', 'production/agent_factory.py', 'production/agent_factory_tools.py'
 )] + ['Test/r10_process_first_tools.py']
+HARNESS_RUNTIME_FILES = [
+    'src/task_generator/production/task_factory_harness.py',
+    'Test/r10_calculation_replay.py',
+]
 
 
 def now():
@@ -40,7 +45,8 @@ def safe_root(run_id):
     return ROOT / 'artifacts/r10' / run_id
 
 
-def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, *, spec=None, source_bundle=None, batch_id=None):
+def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, *, spec=None, source_bundle=None,
+            batch_id=None, protocol=None):
     if root.exists():
         raise FileExistsError('run_exists')
     if not re.fullmatch(r'/home/huagosr/taskgenerator-data/[A-Za-z0-9_/-]+', dependency_remote) or '..' in dependency_remote:
@@ -60,32 +66,56 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / path, target)
     shutil.copyfile(dependency_lock, root / 'dependency_lock.json')
-    for path in RUNTIME_FILES:
+    factory = f
+    runtime_files = list(RUNTIME_FILES)
+    if protocol == 'task_factory_harness_v1':
+        from task_generator.production import task_factory_harness as factory
+        runtime_files += HARNESS_RUNTIME_FILES
+    for path in runtime_files:
         target = root / 'runtime' / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / path, target)
-    for role in f.ROLES:
+    for role in factory.ROLES:
         p = root / 'prompts' / (role + '.md')
         p.parent.mkdir(exist_ok=True)
-        p.write_text(f.prompt(role), encoding='utf-8')
+        p.write_text(factory.prompt(role), encoding='utf-8')
     scope = {'created_at': now(), 'seed': spec['seed'], 'host': HOST, 'image': IMAGE, 'image_sha': IMAGE_SHA,
              'remote': REMOTE_BASE + '/' + root.name, 'dependency_remote': dependency_remote,
              'dependency_lock_sha': f.digest(root / 'dependency_lock.json'), 'public_hashes': f.files(root / 'public'),
              'source_hashes': sources, 'code_hashes': hashes, 'runtime_hashes': f.files(root / 'runtime'), 'prompt_hashes': f.files(root / 'prompts'),
-             'models': f.MODELS, 'max_launches': 12, 'production_launches': 10, 'seconds': 21600,
+             'models': factory.MODELS, 'max_launches': 16 if protocol else 12,
+             'production_launches': 14 if protocol else 10, 'seconds': 14400 if protocol else 21600,
              'per_launch_seconds': 1800, 'terminal_reserve_seconds': 3600, 'world_count': 1,
              'authorization': 'User approved one new procurement Agent development world, autonomous versioned revision, independent consultation, final review once and admitted trial once. No grading.',
              'cost_cap': None, 'no_automatic_expansion': True, 'domain': spec['domain']}
+    if protocol:
+        smoke = root / 'replay_smoke'
+        (smoke / 'scripts').mkdir(parents=True)
+        (smoke / 'scripts/value.py').write_text(
+            "import argparse,json\np=argparse.ArgumentParser();p.add_argument('--inputs');p.parse_args()\nprint(json.dumps({'value': 3}))\n",
+            encoding='utf-8')
+        f.write(smoke / 'execution_manifest.json', {'version': 2, 'executions': [{
+            'execution_id': 'smoke', 'script': 'value.py'}]})
+        (smoke / 'output').mkdir()
+        scope.update(protocol=protocol, max_upstream_revisions=1, calculation_contract_version=2,
+                     replay_smoke_hashes=f.files(smoke),
+                     authorization='User approved one new development world in this scope with isolated development solving, reproducible calculation evidence, one upstream revision, one final review and one admitted final solve. No grading.')
     if batch_id:
-        scope.update(batch_id=batch_id, case_id=spec['id'], seconds=10800,
-                     authorization='One fixed position within the user-approved 60-launch/15-hour Agent factory batch. No independent execution.')
+        if protocol == 'task_factory_harness_v1':
+            scope.update(batch_id=batch_id, case_id=spec['id'], seconds=14400,
+                         authorization='One fixed position within the user-approved task factory harness batch. No independent execution or grading.')
+        else:
+            scope.update(batch_id=batch_id, case_id=spec['id'], seconds=10800,
+                         authorization='One fixed position within the user-approved 60-launch/15-hour Agent factory batch. No independent execution.')
     f.write(root / 'scope.json', scope)
     f.write(root / 'initial_git.json', {'index_sha256': f.digest(ROOT / '.git/index'),
             'status': base._run(['git', 'status', '--porcelain']).stdout})
     f.write(root / 'receipt.json', {'status': 'prepared', 'scope_sha': f.digest(root / 'scope.json'),
             'attempts': [], 'current': {}, 'sessions': {}, 'checks': [], 'consultations': [], 'dispositions': [],
             'next': {'role': 'world'}, 'submitted': False, 'recoveries': 0,
-            'task_manual_edits': 0, 'controller_interventions': [], 'first_failure': None})
+            'task_manual_edits': 0, 'controller_interventions': [], 'first_failure': None,
+            **({'compile_stage': 'basis', 'upstream_revisions': 0, 'calculation_replays': []}
+               if protocol else {})})
     return scope
 
 
@@ -98,6 +128,8 @@ def verify(root):
     assert scope['public_hashes'] == f.files(root / 'public'), 'public_changed'
     assert scope['prompt_hashes'] == f.files(root / 'prompts'), 'prompts_changed'
     assert scope['dependency_lock_sha'] == f.digest(root / 'dependency_lock.json'), 'dependency_changed'
+    if scope.get('protocol'):
+        assert scope['replay_smoke_hashes'] == f.files(root / 'replay_smoke'), 'replay_smoke_changed'
     for relative, value in scope['source_hashes'].items():
         assert f.digest(ROOT / relative) == value, 'source_changed'
     for a in state['attempts']:
@@ -116,7 +148,8 @@ def environment(root, scope):
         raise ValueError('remote_dependencies_changed')
     if not (root / 'environment.json').exists():
         base._ssh(HOST, f'mkdir -p {REMOTE_BASE} && mkdir {remote}', timeout=60)
-        for name in ('public', 'runtime'):
+        names = ['public', 'runtime'] + (['replay_smoke'] if scope.get('protocol') else [])
+        for name in names:
             base._run(base._scp_command(str(root / name), f'{HOST}:{remote}/{name}'), timeout=180)
         for action, target in [('verify-dependencies', '/deps'), ('smoke', '/tmp/factory-smoke')]:
             cmd = base.docker_base(deps) + ['-e', 'PYTHONPATH=/deps/site', '-v', f'{deps}/deps:/deps:ro',
@@ -124,6 +157,17 @@ def environment(root, scope):
                     '--entrypoint', 'python', IMAGE, '/tools.py', action, target]
             result = base._ssh(HOST, shlex.join(cmd), timeout=180)
             (root / (action + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
+        if scope.get('protocol'):
+            cmd = base.docker_base(deps) + ['-e', 'PYTHONPATH=/deps/site',
+                    '-v', f'{remote}/runtime:/code:ro', '-v', f'{deps}/deps:/deps:ro',
+                    '-v', f'{remote}/replay_smoke/scripts:/scripts:ro',
+                    '-v', f'{remote}/replay_smoke/execution_manifest.json:/control/execution_manifest.json:ro',
+                    '-v', f'{remote}/public:/inputs:ro', '-v', f'{remote}/replay_smoke/output:/result:rw',
+                    '--entrypoint', 'python', IMAGE, '/code/Test/r10_calculation_replay.py',
+                    '--scripts', '/scripts', '--manifest', '/control/execution_manifest.json',
+                    '--inputs', '/inputs', '--output', '/result/result.json']
+            result = base._ssh(HOST, shlex.join(cmd), timeout=180)
+            (root / 'replay-smoke.log').write_text(result.stdout + result.stderr, encoding='utf-8')
         f.write(root / 'environment.json', {'checked_at': now(), 'image': identity, 'dependency_lock': lock,
                 'offline_smoke': 'passed', 'credentials': 'not_read_or_copied'})
     base.verify_remote_tree(remote + '/runtime', scope['runtime_hashes'], time.monotonic() + 120)
@@ -141,7 +185,7 @@ def version_path(root, entry):
     return p
 
 
-def build_inputs(root, state, role, target, consult_role=None):
+def build_inputs(root, state, role, target, consult_role=None, protocol=None):
     target.mkdir(parents=True)
     public = root / 'public'
     if role == 'world':
@@ -150,7 +194,7 @@ def build_inputs(root, state, role, target, consult_role=None):
     world = version_path(root, state['current']['world'])
     shutil.copytree(world / 'candidate', target / 'reference_files')
     effective = consult_role if role == 'consult' else role
-    if role != 'solve':
+    if role != 'solve' or protocol:
         copy_file(public / 'public_context.json', target / 'public_context.json')
     if effective in ('compile', 'review') or role == 'consult':
         for name in ('professional_rules.json', 'sources.json'):
@@ -164,9 +208,29 @@ def build_inputs(root, state, role, target, consult_role=None):
     f.write(target / 'deliverable_contract.json', parsed['contract'])
     if role != 'solve':
         copy_file(task, target / 'task.json')
+    if protocol == 'task_factory_harness_v1' and role == 'compile' and state.get('development_trial'):
+        from task_generator.production import task_factory_harness as harness
+        if not harness.trial_is_current(state):
+            raise ValueError('development_trial_outside_current_candidate')
+        trial = root / state['development_trial']['path']
+        if f.files(trial) != state['development_trial']['hashes']:
+            raise ValueError('development_trial_changed')
+        shutil.copytree(trial / 'deliverable_files', target / 'development_trial/deliverable_files')
+        copy_file(trial / 'diagnostic.json', target / 'development_trial/diagnostic.json')
+        copy_file(version_path(root, mine) / 'design_intent.json', target / 'design_intent.json')
     if role == 'review' or (role == 'consult' and consult_role == 'compile'):
         compiler = version_path(root, state['current']['compile'])
-        for name in ('supervision.json', 'new_rubric.json'):
+        names = ['supervision.json', 'new_rubric.json']
+        if protocol == 'task_factory_harness_v1':
+            names += ['basis_draft.json', 'calculation_evidence.json']
+            shutil.copytree(compiler / 'calculation_scripts', target / 'calculation_scripts')
+            replay = next((row for row in reversed(state['calculation_replays'])
+                           if row['compile_snapshot'] == state['current']['compile']['id']), None)
+            if replay is not None:
+                f.write(target / 'replay_results.json', replay['result'])
+            elif role == 'review':
+                raise ValueError('current_calculation_replay_required')
+        for name in names:
             copy_file(compiler / name, target / name)
 
 
@@ -176,7 +240,7 @@ def agent_script(role, session_id=None):
     lines = ['#!/bin/sh', 'set -eu', 'export HOME=/tmp',
              'export PYTHONPATH=/code/src:/code/Test:/deps/site', 'export PYTHONDONTWRITEBYTECODE=1',
              'export PATH=/workspace/bin:$PATH', 'export PIP_NO_INDEX=1']
-    if role in ('world', 'compile', 'solve'):
+    if role in ('world', 'compile', 'devsolve', 'solve'):
         lines += ['export CODEX_HOME=/state/codex', 'mkdir -p "$CODEX_HOME"',
                   'ln -sfn /run/codex-home/auth.json "$CODEX_HOME/auth.json"']
         cmd = ['codex', 'exec'] + (['resume', session_id] if session_id else [])
@@ -207,26 +271,157 @@ def session_identity(path, role):
     return ids.pop()
 
 
+def run_calculation_replay(root, scope, state, attempt, entry, remote):
+    """Run compiler-authored calculations without network or credential mounts."""
+    ordinal = attempt['ordinal']
+    local = root / 'replays' / f'{ordinal:02d}'
+    request = local / 'request'
+    request.mkdir(parents=True)
+    snapshot = version_path(root, entry)
+    manifest = f.read(snapshot / 'calculation_evidence.json')
+    shutil.copytree(snapshot / 'calculation_scripts', request / 'scripts')
+    version = str(manifest.get('version'))
+    if version == '2':
+        execution_manifest = {'version': 2, 'executions': [
+            {'execution_id': row['execution_id'], 'script': row['script']}
+            for row in manifest['executions']
+        ]}
+    else:
+        execution_manifest = {'version': 1, 'calculations': [
+            {'calculation_id': row['calculation_id'], 'script': row['script']}
+            for row in manifest['calculations']
+        ]}
+    f.write(request / 'execution_manifest.json', execution_manifest)
+    output_remote = f'{remote}/replay_output/result.json'
+    base._run(base._scp_command(str(request), f'{HOST}:{remote}/replay_request'), timeout=90)
+    base._ssh(HOST, f'mkdir -p {remote}/replay_output', timeout=30)
+    reserve = scope.get('terminal_reserve_seconds', 3600)
+    available = int(state['deadline_epoch'] - time.time() - reserve)
+    if available < 1:
+        raise ValueError('time_budget_exhausted_before_replay')
+    replay_limit = min(120, available)
+    command = base.docker_base(scope['dependency_remote']) + [
+        '-e', 'PYTHONPATH=/code/src:/code/Test:/deps/site',
+        '-v', f'{scope["remote"]}/runtime:/code:ro',
+        '-v', f'{scope["dependency_remote"]}/deps:/deps:ro',
+        '-v', f'{remote}/replay_request/scripts:/scripts:ro',
+        '-v', f'{remote}/replay_request/execution_manifest.json:/control/execution_manifest.json:ro',
+        '-v', f'{remote}/workspace/inputs/reference_files:/inputs/reference_files:ro',
+        '-v', f'{remote}/replay_output:/result:rw', '--entrypoint', 'python', IMAGE,
+        '/code/Test/r10_calculation_replay.py', '--scripts', '/scripts',
+        '--manifest', '/control/execution_manifest.json', '--inputs', '/inputs',
+        '--output', '/result/result.json', '--timeout-seconds', str(replay_limit)]
+    replay_name = f'{root.name}-replay-{ordinal:02d}'
+    command[2:2] = ['--name', replay_name, '--stop-timeout', '1']
+    try:
+        result = base._ssh(
+            HOST,
+            f'timeout --signal=TERM --kill-after=2s {replay_limit + 5}s {shlex.join(command)}',
+            timeout=replay_limit + 30, check=False)
+    finally:
+        base._ssh(HOST, f'docker rm -f {replay_name}', timeout=30, check=False)
+    exists = base._ssh(HOST, f'test -e {output_remote}', timeout=30, check=False).returncode == 0
+    if exists:
+        base._run(base._scp_command(f'{HOST}:{output_remote}', str(local / 'execution_results.json')), timeout=60)
+        execution = f.read(local / 'execution_results.json')
+    else:
+        execution = {'status': 'error', 'calculations': [], 'network': 'none',
+                     'credentials': 'not_mounted', 'diagnostic': (result.stdout + result.stderr)[-2000:]}
+        f.write(local / 'execution_results.json', execution)
+    payload = compare_calculation_results(manifest, execution)
+    payload.update(container_returncode=result.returncode, execution_result_sha256=f.digest(
+        local / 'execution_results.json'), request_hashes=f.files(request))
+    f.write(local / 'replay_results.json', payload)
+    record = {'compile_snapshot': entry['id'], 'status': payload['status'], 'result': payload,
+              'result_sha256': f.digest(local / 'replay_results.json'), 'elapsed_in_case_clock': True}
+    state.setdefault('calculation_replays', []).append(record)
+    return record
+
+
+def compare_calculation_results(manifest, execution):
+    if execution.get('status') != 'executed':
+        rows = execution.get('executions', execution.get('calculations', []))
+        return {'status': execution.get('status', 'error'), 'calculations': rows,
+                'network': 'none', 'credentials': 'not_mounted'}
+    if str(manifest.get('version')) == '2':
+        from task_generator.production import task_factory_harness as factory
+        actual_rows = execution.get('executions', [])
+        actual = {row.get('execution_id'): row for row in actual_rows}
+        expected_ids = [row['execution_id'] for row in manifest['executions']]
+        if len(actual) != len(actual_rows) or set(actual) != set(expected_ids):
+            return {'status': 'error', 'calculations': actual_rows,
+                    'diagnostic': 'execution_result_ids_do_not_match_manifest',
+                    'network': 'none', 'credentials': 'not_mounted'}
+        rows = []
+        for item in manifest['calculations']:
+            execution_row = actual[item['execution_id']]
+            try:
+                value = factory.resolve_json_pointer(execution_row.get('output'), item['result_pointer'])
+            except ValueError as error:
+                rows.append({'calculation_id': item['calculation_id'], 'execution_id': item['execution_id'],
+                             'result_pointer': item['result_pointer'], 'status': 'error',
+                             'diagnostic': str(error), 'matched': False})
+                continue
+            target, tolerance = item['expected']['value'], item['expected']['tolerance']
+            if (isinstance(value, (int, float)) and not isinstance(value, bool)
+                    and isinstance(target, (int, float)) and not isinstance(target, bool)):
+                matched = abs(value - target) <= tolerance
+            else:
+                matched = value == target and tolerance == 0
+            rows.append({'calculation_id': item['calculation_id'], 'execution_id': item['execution_id'],
+                         'result_pointer': item['result_pointer'], 'script_sha256': execution_row.get('script_sha256'),
+                         'value': value, 'expected': target, 'tolerance': tolerance, 'matched': matched})
+        return {'status': 'passed' if rows and all(row['matched'] for row in rows) else 'mismatch',
+                'calculations': rows, 'executions': actual_rows,
+                'network': 'none', 'credentials': 'not_mounted'}
+    actual_rows = execution.get('calculations', [])
+    actual = {row.get('calculation_id'): row for row in actual_rows}
+    expected_ids = [row['calculation_id'] for row in manifest['calculations']]
+    if len(actual) != len(actual_rows) or set(actual) != set(expected_ids):
+        return {'status': 'error', 'calculations': actual_rows,
+                'diagnostic': 'execution_result_ids_do_not_match_manifest',
+                'network': 'none', 'credentials': 'not_mounted'}
+    rows = []
+    for item in manifest['calculations']:
+        row = actual[item['calculation_id']]
+        value, expected = row.get('value'), item['expected']
+        target, tolerance = expected['value'], expected['tolerance']
+        if (isinstance(value, (int, float)) and not isinstance(value, bool)
+                and isinstance(target, (int, float)) and not isinstance(target, bool)):
+            matched = abs(value - target) <= tolerance
+        else:
+            matched = value == target and tolerance == 0
+        rows.append({**row, 'expected': target, 'tolerance': tolerance, 'matched': matched})
+    return {'status': 'passed' if all(row['matched'] for row in rows) else 'mismatch',
+            'calculations': rows, 'network': 'none', 'credentials': 'not_mounted'}
+
+
 def run_turn(root, scope, state, request, batch_root=None):
+    factory = f
+    if scope.get('protocol') == 'task_factory_harness_v1':
+        from task_generator.production import task_factory_harness as factory
     role = request['role']
-    feedback = f.role_feedback(state, request)
-    session = f.validate_session(state, role, root.name) if role in f.AUTHOR_ROLES else None
+    feedback = factory.role_feedback(state, request)
+    session = factory.validate_session(state, role, root.name) if role in factory.AUTHOR_ROLES else None
     if session and not re.fullmatch(re.escape(scope['remote']) + r'/state_\d{2}', session['storage']):
         raise ValueError('session_storage_outside_scope')
     if role == 'consult' and (request.get('snapshot') != state['current'][request['consult_role']]['id']
-                             or request.get('parents') != f.expected_parents(state, request['consult_role'])):
+                             or request.get('parents') != factory.expected_parents(state, request['consult_role'])):
         raise ValueError('consultation_outside_current_version')
-    limit = f.cap(state, role)
+    limit = factory.cap(state, role)
     if batch_root is not None:
-        from task_generator.production import agent_factory_batch as batch
-        limit = min(limit, batch.cap(sys.modules[__name__], batch_root, root, role))
+        if scope.get('protocol') == 'task_factory_harness_v1':
+            limit = min(limit, factory.batch_cap(batch_root, root, role))
+        else:
+            from task_generator.production import agent_factory_batch as batch
+            limit = min(limit, batch.cap(sys.modules[__name__], batch_root, root, role))
     ordinal = len(state['attempts']) + 1
     name = f'{root.name}-{ordinal:02d}'
     remote = f'{scope["remote"]}/turn_{ordinal:02d}'
     local = root / 'turns' / f'{ordinal:02d}'
     workspace = local / 'workspace'
     workspace.mkdir(parents=True)
-    build_inputs(root, state, role, workspace / 'inputs', request.get('consult_role'))
+    build_inputs(root, state, role, workspace / 'inputs', request.get('consult_role'), scope.get('protocol'))
     if feedback is not None:
         f.write(workspace / 'feedback.json', feedback)
     task = (root / 'prompts' / (role + '.md')).read_text(encoding='utf-8')
@@ -234,26 +429,55 @@ def run_turn(root, scope, state, request, batch_root=None):
         task += '\nRead /workspace/feedback.json as feedback, investigate it rather than blindly accepting it.\n'
     if role == 'consult':
         task += '\nQuestion: ' + request['question']
-    task += f'\nProduction launches remaining including this one: {10 - sum(a["role"] not in ("review", "solve") for a in state["attempts"])}.\n'
+    production_cap = scope.get('production_launches', 10)
+    if scope.get('protocol') == 'task_factory_harness_v1':
+        workflow = factory.workflow_status(state, role)
+        task += ('\nRead factory-tools status before choosing the next action. '
+                 f'Production launches remaining after this launch: '
+                 f'{workflow["budget"]["production_remaining_after_current"]}. '
+                 f'Total launches remaining after this launch: '
+                 f'{workflow["budget"]["launches_remaining_after_current"]}.\n')
+    else:
+        workflow = None
+        task += f'\nProduction launches remaining including this one: {production_cap - sum(a["role"] not in ("review", "solve") for a in state["attempts"])}.\n'
     (workspace / 'TASK.md').write_text(task, encoding='utf-8')
-    parents = f.expected_parents(state, role) if role in f.AUTHOR_ROLES else {}
-    consultations = f.relevant_consultations(state, role) if role in f.AUTHOR_ROLES else []
-    f.write(workspace / 'role.json', {'role': role, 'parents': parents, 'remaining_production_launches': 10 - len(state['attempts']),
-                                    'consultations': consultations})
+    parents = factory.expected_parents(state, role) if role in factory.AUTHOR_ROLES else {}
+    consultations = factory.relevant_consultations(state, role) if role in factory.AUTHOR_ROLES else []
+    current_id = state.get('current', {}).get(role, {}).get('id')
+    replay_passed = any(row.get('compile_snapshot') == current_id and row.get('status') == 'passed'
+                        for row in state.get('calculation_replays', []))
+    passed_replay_snapshots = sorted({row['compile_snapshot'] for row in state.get('calculation_replays', [])
+                                      if row.get('status') == 'passed'})
+    f.write(workspace / 'role.json', {'role': role, 'parents': parents,
+                                    'remaining_production_launches': (
+                                        workflow['budget']['production_remaining_after_current'] if workflow
+                                        else production_cap - len(state['attempts'])),
+                                    'consultations': consultations, 'protocol': scope.get('protocol'),
+                                    'development_trial_current': (
+                                        factory.trial_is_current(state) if workflow and 'compile' in state['current'] else False),
+                                    'passed_replay_snapshots': passed_replay_snapshots,
+                                    'calculation_contract_version': scope.get('calculation_contract_version'),
+                                    'workflow_status': workflow})
     session_id = session['id'] if session else None
     storage = session['storage'] if session else f'{scope["remote"]}/state_{ordinal:02d}'
     (workspace / 'agent.sh').write_text(agent_script(role, session_id), encoding='utf-8', newline='\n')
     (workspace / 'bin').mkdir()
     (workspace / 'bin/factory-tools').write_text('#!/bin/sh\nexec python -m task_generator.production.agent_factory_tools "$@"\n', encoding='utf-8', newline='\n')
     draft = local / 'draft'
-    if role in state['current'] and role in f.AUTHOR_ROLES:
+    if role in state['current'] and role in factory.AUTHOR_ROLES:
         shutil.copytree(version_path(root, state['current'][role]), draft)
     else:
         draft.mkdir()
     process = state['current'].get('world', {}).get('process') if role == 'world' else None
     dispositions = [d for d in state.get('dispositions', []) if d['request_id'] in {c['request_id'] for c in consultations}]
     f.write(local / 'broker_config.json', {'root': remote, 'role': role, 'parents': parents, 'process': process,
-                                         'consultations': consultations, 'dispositions': dispositions})
+                                         'consultations': consultations, 'dispositions': dispositions,
+                                         'protocol': scope.get('protocol'),
+                                         'development_trial_current': (
+                                             factory.trial_is_current(state) if workflow and 'compile' in state['current'] else False),
+                                         'passed_replay_snapshots': passed_replay_snapshots,
+                                         'calculation_contract_version': scope.get('calculation_contract_version'),
+                                         'workflow_status': workflow})
     attempt = {'ordinal': ordinal, 'role': role, 'status': 'staging', 'started_at': now(), 'remote': remote,
                'container': name, 'timeout_seconds': limit, 'resumed_session': session_id,
                'input_hashes': f.files(workspace), 'inputs': (workspace / 'inputs').relative_to(root).as_posix()}
@@ -266,11 +490,16 @@ def run_turn(root, scope, state, request, batch_root=None):
     base.verify_remote_tree(remote + '/workspace', attempt['input_hashes'], time.monotonic() + 60)
     if (root / 'STOP').exists():
         raise ValueError('user_stopped_before_semantic_start')
-    if 'deadline_epoch' not in state:
+    if state.get('deadline_epoch') is None:
         state.update(started_at=now(), deadline_epoch=time.time() + scope.get('seconds', 21600))
     if batch_root is not None:
-        limit = min(limit, batch.cap(sys.modules[__name__], batch_root, root, role, started=True, appended=True))
-    reserve = 3600 if role not in ('review', 'solve') else (1800 if role == 'review' else 0)
+        if scope.get('protocol') == 'task_factory_harness_v1':
+            limit = min(limit, factory.batch_cap(
+                batch_root, root, role, started=True, appended=False))
+        else:
+            limit = min(limit, batch.cap(
+                sys.modules[__name__], batch_root, root, role, started=True, appended=True))
+    reserve = scope.get('terminal_reserve_seconds', 3600) if role not in ('review', 'solve') else (1800 if role == 'review' else 0)
     limit = min(limit, int(state['deadline_epoch'] - time.time() - reserve))
     if limit < 1:
         raise ValueError('time_budget_exhausted_before_semantic_start')
@@ -282,7 +511,7 @@ def run_turn(root, scope, state, request, batch_root=None):
     cmd += ['-v', f'{scope["remote"]}/runtime:/code:ro', '-v', f'{deps}/deps:/deps:ro',
             '-v', f'{remote}/workspace:/workspace:ro', '-v', f'{remote}/draft:/draft:rw',
             '-v', f'{remote}/socket:/run/factory:ro', '-v', f'{storage}:/state:rw', '-w', '/workspace']
-    cmd += (['-v', '/home/huagosr/taskgenerator-secrets/codex-auth-current:/run/codex-home:rw'] if role in ('world', 'compile', 'solve')
+    cmd += (['-v', '/home/huagosr/taskgenerator-secrets/codex-auth-current:/run/codex-home:rw'] if role in ('world', 'compile', 'devsolve', 'solve')
             else ['-v', '/home/huagosr/taskgenerator-secrets/deepseek_api_key:/run/secrets/deepseek_api_key:ro'])
     cmd += ['--entrypoint', '/bin/sh', IMAGE, '/workspace/agent.sh']
     command = f'''set -eu
@@ -295,7 +524,7 @@ for factory_wait in $(seq 1 100); do [ -S {remote}/socket/tool.sock ] && break; 
 test -S {remote}/socket/tool.sock
 timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {remote}/agent.jsonl 2> {remote}/stderr.txt
 '''
-    print(f'{role}: launch {ordinal}/12' + (' resume' if session_id else ' fresh'), flush=True)
+    print(f'{role}: launch {ordinal}/{scope.get("max_launches", 12)}' + (' resume' if session_id else ' fresh'), flush=True)
     start = time.monotonic()
     result = base._ssh(HOST, command, timeout=limit, check=False)
     attempt.update(returncode=result.returncode, elapsed_seconds=time.monotonic() - start)
@@ -321,11 +550,13 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         raise ValueError('authentication_failed')
     if result.returncode or not attempt['usage']['completed'] or attempt['usage']['error_events']:
         raise ValueError('started_session_failed_no_redraw')
+    attempt.update(status='native_completed', native_status='completed', native_completed_at=now(),
+                   acceptance_status='pending')
     actual_id = session_identity(local / 'agent.jsonl', role)
     if session_id and actual_id != session_id:
         raise ValueError('resumed_identity_changed')
     attempt['session_id'] = actual_id
-    if role in f.AUTHOR_ROLES:
+    if role in factory.AUTHOR_ROLES:
         state['sessions'][role] = {'id': actual_id, 'storage': storage, 'scope': root.name, 'role': role,
                                    'parents': parents, 'normal_end': True}
     base.verify_remote_tree(remote + '/workspace', attempt['input_hashes'], time.monotonic() + 90)
@@ -336,44 +567,89 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
     for disposition in journal.get('dispositions', []):
         if disposition not in state.setdefault('dispositions', []):
             state['dispositions'].append(disposition)
-    attempt.update(status='completed', completed_at=now())
     attempt['phase'] = 'output_check'
-    if role in f.AUTHOR_ROLES:
+    if role in factory.AUTHOR_ROLES:
         pending = journal['pending']
         if not pending:
             raise ValueError('normal_turn_without_explicit_next_action')
         if pending['action'] == 'handoff' and pending.get('target') == 'stop':
             state.update(status='incomplete', stop_reason=pending['reason'], next=None)
+            attempt.update(status='completed', acceptance_status='accepted', completed_at=now())
             f.write(root / 'receipt.json', state)
             return
         entry = pending['snapshot_entry']
         entry.update(path=(raw / 'snapshots' / entry['id']).relative_to(root).as_posix(), inputs=attempt['inputs'])
         if f.files(raw / 'draft') != entry['hashes']:
             raise ValueError('draft_changed_after_yield')
-        outcome = ft.check(role, version_path(root, entry), workspace / 'inputs')
-        attempt['outcome'] = outcome
-        f.accept_snapshot(state, role, entry)
         action = pending['action']
+        outcome = ft.check(role, version_path(root, entry), workspace / 'inputs',
+                           scope.get('protocol'), 'draft' if action == 'consult' else 'ready',
+                           scope.get('calculation_contract_version'))
+        attempt['outcome'] = outcome
+        factory.accept_snapshot(state, role, entry)
+        if scope.get('protocol') == 'task_factory_harness_v1':
+            factory.validate_next_action(
+                factory.workflow_status(state, role, current_launch_included=True),
+                role, action, pending)
         if action == 'consult':
             question = ('Independently read these business records. Locate material contradictions, provenance and knowledge-time problems, useful work and concrete information gaps. Ask clarifying questions when evidence is insufficient.' if role == 'world' else pending['reason'])
             state['next'] = {'role': 'consult', 'consult_role': role, 'question': question,
                              'request_id': pending['request_id'], 'snapshot': entry['id'], 'parents': parents}
+        elif action == 'replay':
+            replay = run_calculation_replay(root, scope, state, attempt, entry, remote)
+            next_action = pending.get('next_action', 'return')
+            if replay['status'] != 'passed' or next_action == 'return':
+                state['next'] = {'role': 'compile', 'feedback': replay['result'],
+                                 'feedback_origin': 'replay', 'feedback_role': 'compile',
+                                 'feedback_snapshot': entry['id']}
+            elif next_action == 'development_trial':
+                state['compile_stage'] = 'development_trial'
+                state['next'] = {'role': 'devsolve', 'compile_snapshot': entry['id'],
+                                 'candidate_parents': factory.expected_parents(state, 'compile')}
+            else:
+                if outcome['status'] != 'completed':
+                    raise ValueError('cannot_submit_upstream_issue')
+                factory.assert_submission(state)
+                state.update(submitted=True, submitted_at=now(), next={'role': 'review'})
+        elif action == 'request-development-trial':
+            if not any(row.get('compile_snapshot') == entry['id'] and row.get('status') == 'passed'
+                       for row in state.get('calculation_replays', [])):
+                raise ValueError('current_calculation_replay_required')
+            state['compile_stage'] = 'development_trial'
+            state['next'] = {'role': 'devsolve', 'compile_snapshot': entry['id'],
+                             'candidate_parents': factory.expected_parents(state, 'compile')}
         elif action == 'submit':
             if outcome['status'] != 'completed':
                 raise ValueError('cannot_submit_upstream_issue')
-            f.assert_submission(state)
+            factory.assert_submission(state)
             state.update(submitted=True, submitted_at=now(), next={'role': 'review'})
         elif pending['target'] == 'stop':
             state.update(status='incomplete', stop_reason=pending['reason'], next=None)
         else:
-            state['next'] = f.handoff_request(state, role, pending['target'], pending['reason'])
+            state['next'] = factory.handoff_request(state, role, pending['target'], pending['reason'])
     else:
         pending = journal.get('pending') or {}
         if pending.get('action') != 'finish' or pending.get('hashes') != f.files(raw / 'draft'):
             raise ValueError('readonly_output_not_finished_or_changed')
-        outcome = ft.check(role, raw / 'draft', workspace / 'inputs')
+        outcome = ft.check(role, raw / 'draft', workspace / 'inputs', scope.get('protocol'),
+                           'ready', scope.get('calculation_contract_version'))
         attempt['outcome'] = outcome
-        if role == 'consult':
+        if role == 'devsolve':
+            destination = root / 'development_trials' / f'{ordinal:02d}'
+            shutil.copytree(raw / 'draft', destination)
+            trial = {'compile_snapshot': request['compile_snapshot'],
+                     'candidate_parents': request['candidate_parents'],
+                     'path': destination.relative_to(root).as_posix(), 'hashes': f.files(destination),
+                     'outcome': outcome}
+            state['development_trial'] = trial
+            current_compile = state['current']['compile']['id']
+            state['compile_stage'] = 'refine'
+            state['next'] = {'role': 'compile', 'feedback': {
+                                'status': 'development_trial_complete',
+                                'diagnostic': f.read(destination / 'diagnostic.json')},
+                             'feedback_origin': 'development_trial', 'feedback_role': 'compile',
+                             'feedback_snapshot': current_compile}
+        elif role == 'consult':
             feedback = f.read(raw / 'draft/consultation.json')
             if request['snapshot'] != state['current'][request['consult_role']]['id']:
                 raise ValueError('stale_consultation_result')
@@ -394,6 +670,7 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
                 state.update(status='quality_not_passed', next=None)
         else:
             state.update(trial=outcome, status='completed', next=None)
+    attempt.update(status='completed', acceptance_status='accepted', completed_at=now())
     f.write(root / 'receipt.json', state)
 
 
@@ -415,7 +692,43 @@ def export_package(root, state, inputs):
             'extra': {'internal_research_only': True, 'professional_status': 'provisional/LLM-proxy'}})
     copy_file(inputs / 'new_rubric.json', package / 'rubric_v2.json')
     copy_file(inputs / 'deliverable_contract.json', package / 'deliverable_contract.json')
+    if (inputs / 'calculation_evidence.json').is_file():
+        copy_file(inputs / 'calculation_evidence.json', package / 'calculation_evidence.json')
+        copy_file(inputs / 'replay_results.json', package / 'replay_results.json')
+        shutil.copytree(inputs / 'calculation_scripts', package / 'calculation_scripts')
     state['package_hashes'] = f.files(package)
+
+
+def record_execution_failure(root, state, error):
+    reason = type(error).__name__ + ':' + str(error)
+    if state['attempts'] and state['attempts'][-1]['status'] in ('started', 'staging'):
+        state['attempts'][-1].update(status='incomplete', reason=reason)
+    elif state['attempts'] and state['attempts'][-1]['status'] == 'native_completed':
+        state['attempts'][-1].update(acceptance_status='failed', acceptance_reason=reason)
+    state.update(status='incomplete', stop_reason=reason, stopped_at=now())
+    critical = ('authentication_failed', 'batch_', 'feedback_outside', 'session_outside', 'session_storage',
+                'resumed_identity', 'consultation_outside', 'stale_consultation', 'source_changed', 'code_changed',
+                'raw_changed', 'runtime_changed', 'scope_changed', 'version_changed', 'public_changed',
+                'prompts_changed', 'dependencies_changed', 'path_escape', 'linked_', 'hardlinked_',
+                'session_identity_not_unique', 'already_submitted', 'draft_changed',
+                'readonly_output_not_finished_or_changed')
+    last = state['attempts'][-1] if state['attempts'] else {}
+    if any(token in reason for token in critical):
+        category = 'global'
+    elif ('normal_turn_without_explicit_next_action' in reason
+          and state.get('attempts')
+          and (root / 'turns' / f'{state["attempts"][-1]["ordinal"]:02d}' / 'agent.jsonl').is_file()
+          and 'factory-tools: not found' in (root / 'turns' / f'{state["attempts"][-1]["ordinal"]:02d}' / 'agent.jsonl').read_text(encoding='utf-8')):
+        category = 'global'
+    elif ('budget_exhausted' in reason or 'started_session_failed' in reason or 'user_stopped' in reason
+          or last.get('phase') == 'output_check' and isinstance(error, (ValueError, KeyError))):
+        category = 'case'
+    else:
+        category = 'controller'
+    state['failure_category'] = category
+    state['first_failure'] = state.get('first_failure') or {
+        'launch': len(state['attempts']), 'reason': reason}
+    return reason
 
 
 def execute(root, *, batch_root=None):
@@ -462,26 +775,7 @@ def execute(root, *, batch_root=None):
                 f.write(root / 'receipt.json', state)
         state['stopped_at'] = now()
     except (Exception, KeyboardInterrupt) as error:
-        reason = type(error).__name__ + ':' + str(error)
-        # A started abnormal session is terminal, including user interruption.
-        if state['attempts'] and state['attempts'][-1]['status'] in ('started', 'staging', 'completed'):
-            state['attempts'][-1].update(status='incomplete', reason=reason)
-        state.update(status='incomplete', stop_reason=reason, stopped_at=now())
-        critical = ('authentication_failed', 'batch_', 'feedback_outside', 'session_outside', 'session_storage',
-                    'resumed_identity', 'consultation_outside', 'stale_consultation', 'source_changed', 'code_changed',
-                    'raw_changed', 'runtime_changed', 'scope_changed', 'version_changed', 'public_changed',
-                    'prompts_changed', 'dependencies_changed', 'path_escape', 'linked_', 'hardlinked_',
-                    'session_identity_not_unique', 'already_submitted', 'draft_changed', 'readonly_output_not_finished_or_changed')
-        last = state['attempts'][-1] if state['attempts'] else {}
-        if any(token in reason for token in critical):
-            category = 'global'
-        elif ('budget_exhausted' in reason or 'started_session_failed' in reason or 'user_stopped' in reason
-              or last.get('phase') == 'output_check' and isinstance(error, (ValueError, KeyError))):
-            category = 'case'
-        else:
-            category = 'controller'
-        state['failure_category'] = category
-        state['first_failure'] = state.get('first_failure') or {'launch': len(state['attempts']), 'reason': reason}
+        record_execution_failure(root, state, error)
     finally:
         f.write(root / 'receipt.json', state)
         lock.unlink(missing_ok=True)
@@ -502,12 +796,15 @@ def stop(root):
 def report(root):
     state = f.read(root / 'receipt.json')
     return {k: state.get(k) for k in ('status', 'submitted', 'review', 'trial', 'first_failure', 'stop_reason')} | {
-        'launches_used': len(state['attempts']), 'consultations': len(state['consultations']),
+        'launches_used': state.get('prior_launches', 0) + sum(
+            harness.attempt_consumes_launch(a) for a in state['attempts']),
+        'operations_recorded': len(state['attempts']), 'consultations': len(state['consultations']),
         'dispositions': len(state.get('dispositions', [])),
         'final_versions': {role: item['id'] for role, item in state['current'].items()},
         'structural_results': [{'launch': a['ordinal'], 'role': a['role'], 'outcome': a.get('outcome')}
                                for a in state['attempts']],
-        'native_elapsed_seconds': sum(a.get('elapsed_seconds', 0) for a in state['attempts']),
+        'native_elapsed_seconds': state.get('prior_native_elapsed_seconds', 0) +
+                                  sum(a.get('elapsed_seconds', 0) for a in state['attempts']),
         'started_at': state.get('started_at'), 'stopped_at': state.get('stopped_at'),
         'model_request_count': None, 'total_cost': None,
         'professional_status': 'provisional/LLM-proxy', 'task_manual_edits': state['task_manual_edits']}

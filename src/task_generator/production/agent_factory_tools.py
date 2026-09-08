@@ -16,9 +16,29 @@ import tempfile
 from task_generator.production import agent_factory as f
 
 
+def issue_for(error):
+    message = str(error)
+    head, separator, tail = message.partition(':')
+    path = head if separator and ('.' in head or '[' in head) else None
+    expected = None
+    actual = None
+    if 'expected ' in message:
+        expected = message.split('expected ', 1)[1].split(', got ', 1)[0]
+    if ', got ' in message:
+        actual = message.split(', got ', 1)[1][:500]
+    code = (head if not path else head.rsplit('.', 1)[-1]).replace('[', '_').replace(']', '')
+    return {'code': code, 'path': path, 'message': message, 'expected': expected,
+            'actual': actual, 'repair': 'query factory-tools schema for the affected artifact, revise the current draft, then rerun check'}
+
+
 class Broker:
     def __init__(self, config):
         self.config = config
+        if config.get('protocol') == 'task_factory_harness_v1':
+            from task_generator.production import task_factory_harness
+            self.factory = task_factory_harness
+        else:
+            self.factory = f
         self.root = Path(config['root'])
         self.draft = self.root / 'draft'
         self.store = self.root / 'snapshots'
@@ -28,46 +48,109 @@ class Broker:
         self.pending = None
         self.dispositions = list(config.get('dispositions', []))
 
+    def current_snapshot(self, reason):
+        hashes = self.factory.files(self.draft)
+        for event in reversed(self.events):
+            if event['action'] == 'snapshot' and event['result']['hashes'] == hashes:
+                return event['result'], 'reused'
+        result = self.factory.snapshot(self.draft, self.store, self.config['role'],
+                                       self.config['parents'], reason, self.process)
+        self.events.append({'ordinal': len(self.events) + 1, 'action': 'snapshot',
+                            'request': {'reason': reason, 'automatic': True}, 'result': result})
+        return result, 'created'
+
+    def checked(self, hashes, mode):
+        return any(event['action'] == 'log-check'
+                   and event['result']['recorded'].get('tool') == 'check'
+                   and event['result']['recorded'].get('hashes') == hashes
+                   and event['result']['recorded'].get('mode', 'ready') in (
+                       ('draft', 'ready') if mode == 'draft' else ('ready',))
+                   for event in self.events)
+
+    def validate_disposition(self, request, consultation, identity):
+        if request.get('finding_id') not in consultation['finding_ids']:
+            raise ValueError('unknown_consultation_finding')
+        if request.get('decision') not in ('accept', 'partial', 'reject') or not request.get('reason', '').strip():
+            raise ValueError('disposition_decision_and_reason_required')
+        evidence = request.get('evidence', [])
+        if not evidence:
+            raise ValueError('disposition_evidence_required')
+        for ref in evidence:
+            root = self.draft if ref.get('area') == 'draft' else self.root / 'workspace/inputs'
+            if ref.get('area') not in ('draft', 'inputs') or not ref.get('locator'):
+                raise ValueError('disposition_area_and_locator_required')
+            if not self.factory.safe_path(root, ref.get('path', '')).is_file():
+                raise ValueError('disposition_evidence_missing:' + str(ref.get('path')))
+        return {**{key: request[key] for key in ('finding_id', 'decision', 'reason', 'evidence')},
+                'request_id': consultation['request_id'], 'snapshot': identity}
+
     def handle(self, request):
         action = request['action']
         role = self.config['role']
-        if action == 'log-check':
+        if action == 'status':
+            workflow = dict(self.config.get('workflow_status', {}))
+            hashes = self.factory.files(self.draft)
+            snapshots = [event['result'] for event in self.events if event['action'] == 'snapshot'
+                         and event['result']['hashes'] == hashes]
+            checks = [event['result']['recorded'] for event in self.events if event['action'] == 'log-check'
+                      and event['result']['recorded'].get('tool') == 'check'
+                      and event['result']['recorded'].get('hashes') == hashes]
+            unresolved = []
+            current_snapshot = snapshots[-1]['id'] if snapshots else None
+            for consultation in self.config.get('consultations', []):
+                for finding in consultation['finding_ids']:
+                    if not any(row['request_id'] == consultation['request_id'] and row['finding_id'] == finding
+                               and row['snapshot'] == current_snapshot for row in self.dispositions):
+                        unresolved.append({'request_id': consultation['request_id'], 'finding_id': finding})
+            workflow.update(pending=bool(self.pending), current_draft_hashes=hashes,
+                            latest_matching_snapshot=current_snapshot,
+                            current_check_modes=sorted({row.get('mode', 'ready') for row in checks}),
+                            unresolved_findings=unresolved)
+            result = workflow
+        elif action == 'log-check':
             result = {'recorded': request['result']}
-        elif action == 'finish' and role in ('consult', 'review', 'solve'):
+        elif action == 'finish' and role in ('devsolve', 'consult', 'review', 'solve'):
             if self.pending:
                 raise ValueError('request_pending_end_turn')
-            hashes = f.files(self.draft)
+            hashes = self.factory.files(self.draft)
             if not any(e['action'] == 'log-check' and e['result']['recorded'].get('tool') == 'check'
                        and e['result']['recorded'].get('hashes') == hashes for e in self.events):
                 raise ValueError('current_version_check_required: run factory-tools check')
             self.pending = {'action': 'finish', 'hashes': hashes}
             result = {'status': 'checked_end_turn_now'}
-        elif role not in f.AUTHOR_ROLES:
+        elif role not in self.factory.AUTHOR_ROLES:
             raise ValueError('read_only_role')
         elif self.pending:
             raise ValueError('request_pending_end_turn')
-        elif action == 'record-disposition':
-            consultation = next((c for c in self.config.get('consultations', [])
-                                 if c['request_id'] == request.get('request_id')), None)
-            if not consultation or request.get('finding_id') not in consultation['finding_ids']:
-                raise ValueError('unknown_consultation_finding')
-            identity = request.get('snapshot')
-            matching = [e['result'] for e in self.events if e['action'] == 'snapshot' and e['result']['id'] == identity]
-            if not matching or f.files(self.draft) != matching[-1]['hashes']:
-                raise ValueError('snapshot_current_draft_required')
-            if request.get('decision') not in ('accept', 'partial', 'reject') or not request.get('reason', '').strip():
-                raise ValueError('disposition_decision_and_reason_required')
-            evidence = request.get('evidence', [])
-            if not evidence:
-                raise ValueError('disposition_evidence_required')
-            for ref in evidence:
-                root = self.draft if ref.get('area') == 'draft' else self.root / 'workspace/inputs'
-                if ref.get('area') not in ('draft', 'inputs') or not ref.get('locator'):
-                    raise ValueError('disposition_area_and_locator_required')
-                if not f.safe_path(root, ref['path']).is_file():
-                    raise ValueError('disposition_evidence_missing:' + ref['path'])
-            result = {k: request[k] for k in ('request_id', 'finding_id', 'snapshot', 'decision', 'reason', 'evidence')}
-            self.dispositions.append(result)
+        elif action in ('record-disposition', 'record-dispositions'):
+            if action == 'record-dispositions':
+                consultation = next((c for c in self.config.get('consultations', [])
+                                     if c['request_id'] == request.get('request_id')), None)
+                if not consultation:
+                    raise ValueError('unknown_consultation_finding')
+                items = request.get('items')
+                if not isinstance(items, list) or not items:
+                    raise ValueError('disposition_items_required')
+                ids = [item.get('finding_id') for item in items]
+                if len(ids) != len(set(ids)) or set(ids) != set(consultation['finding_ids']):
+                    raise ValueError('disposition_items_must_cover_every_finding_once')
+                prepared = [self.validate_disposition(item, consultation, '__pending__') for item in items]
+                snapshot, reuse = self.current_snapshot(request.get('snapshot_reason', 'Consultation dispositions'))
+                prepared = [{**item, 'snapshot': snapshot['id']} for item in prepared]
+                self.dispositions.extend(prepared)
+                result = {'request_id': consultation['request_id'], 'snapshot': snapshot['id'],
+                          'snapshot_status': reuse, 'recorded': len(prepared), 'unresolved': []}
+            else:
+                consultation = next((c for c in self.config.get('consultations', [])
+                                     if c['request_id'] == request.get('request_id')), None)
+                if not consultation:
+                    raise ValueError('unknown_consultation_finding')
+                identity = request.get('snapshot')
+                matching = [e['result'] for e in self.events if e['action'] == 'snapshot' and e['result']['id'] == identity]
+                if not matching or self.factory.files(self.draft) != matching[-1]['hashes']:
+                    raise ValueError('snapshot_current_draft_required')
+                result = self.validate_disposition(request, consultation, identity)
+                self.dispositions.append(result)
         elif action == 'handoff' and request.get('target') == 'stop':
             if not request.get('reason', '').strip():
                 raise ValueError('reason_required')
@@ -77,7 +160,7 @@ class Broker:
             if role != 'world':
                 raise ValueError('world_only')
             path = self.draft / 'hidden/process.md'
-            value = f.digest(path)
+            value = self.factory.digest(path)
             if not self.process and any((self.draft / 'candidate').rglob('*')):
                 raise ValueError('initial_candidate_precedes_process')
             target = self.root / 'processes' / (value + '.md')
@@ -88,22 +171,25 @@ class Broker:
             self.process = {'hash': value, 'event': len(self.events) + 1}
             result = self.process
         elif action == 'snapshot':
-            result = f.snapshot(self.draft, self.store, role, self.config['parents'],
+            result = self.factory.snapshot(self.draft, self.store, role, self.config['parents'],
                                 request.get('reason', ''), self.process)
         elif action == 'diff':
-            previous = f.safe_path(self.store, request['snapshot'])
-            old, new = f.files(previous), f.files(self.draft)
+            previous = self.factory.safe_path(self.store, request['snapshot'])
+            old, new = self.factory.files(previous), self.factory.files(self.draft)
             if not previous.is_dir():
                 raise ValueError('unknown_snapshot')
             result = {'added': sorted(new.keys() - old.keys()), 'removed': sorted(old.keys() - new.keys()),
                       'changed': sorted(k for k in old.keys() & new.keys() if old[k] != new[k])}
-        elif action in ('consult', 'handoff', 'submit'):
+        elif action in ('consult', 'handoff', 'submit', 'replay', 'request-development-trial'):
+            if request.get('snapshot') is None:
+                automatic, snapshot_status = self.current_snapshot(request.get('reason', 'Stage transition'))
+                request = {**request, 'snapshot': automatic['id'], 'snapshot_automatic': snapshot_status}
             identity = request['snapshot']
             matching = [e['result'] for e in self.events if e['action'] == 'snapshot' and e['result']['id'] == identity]
-            if not matching or f.files(self.draft) != matching[-1]['hashes']:
+            if not matching or self.factory.files(self.draft) != matching[-1]['hashes']:
                 raise ValueError('snapshot_current_draft_required')
-            if not any(e['action'] == 'log-check' and e['result']['recorded'].get('tool') == 'check'
-                       and e['result']['recorded'].get('hashes') == matching[-1]['hashes'] for e in self.events):
+            check_mode = 'draft' if action == 'consult' else 'ready'
+            if not self.checked(matching[-1]['hashes'], check_mode):
                 raise ValueError('current_version_check_required: run factory-tools check')
             if action != 'consult':
                 self.require_dispositions(identity)
@@ -111,6 +197,32 @@ class Broker:
                 raise ValueError('reason_required')
             if action == 'submit' and role != 'compile':
                 raise ValueError('compiler_submits_only')
+            if (self.config.get('protocol') == 'task_factory_harness_v1'
+                    and (action == 'submit' or action == 'replay' and request.get('next_action') == 'submit')):
+                missing = self.config.get('workflow_status', {}).get('submission_base_missing', [])
+                if missing:
+                    raise ValueError('submission_prerequisites_missing:' + ','.join(missing))
+            if action in ('replay', 'request-development-trial'):
+                if self.config.get('protocol') != 'task_factory_harness_v1' or role != 'compile':
+                    raise ValueError('harness_compiler_only')
+                passed = set(self.config.get('passed_replay_snapshots', []))
+                if action == 'request-development-trial' and self.config.get('development_trial_current'):
+                    raise ValueError('development_trial_already_completed: proceed with comparison, final replay, and submit unless an upstream revision invalidates the trial')
+                if action == 'request-development-trial' and identity not in passed:
+                    raise ValueError('current_calculation_replay_required')
+                if action == 'replay':
+                    next_action = request.get('next_action', 'return')
+                    if next_action not in ('return', 'development_trial', 'submit'):
+                        raise ValueError('invalid_replay_next_action')
+                    if next_action == 'development_trial' and self.config.get('development_trial_current'):
+                        raise ValueError('development_trial_already_completed')
+                    request = {**request, 'next_action': next_action}
+            if (self.config.get('protocol') == 'task_factory_harness_v1' and action == 'submit'
+                    and identity not in set(self.config.get('passed_replay_snapshots', []))):
+                raise ValueError('current_calculation_replay_required')
+            if self.config.get('protocol') == 'task_factory_harness_v1':
+                self.factory.validate_next_action(
+                    self.config['workflow_status'], role, action, request)
             if action == 'handoff':
                 allowed = {'world': ('mine', 'stop'), 'mine': ('world', 'compile', 'stop'),
                            'compile': ('world', 'mine', 'stop')}
@@ -121,7 +233,7 @@ class Broker:
         else:
             raise ValueError('unknown_broker_action')
         self.events.append({'ordinal': len(self.events) + 1, 'action': action, 'request': request, 'result': result})
-        f.write(self.root / 'broker.json', {'events': self.events, 'pending': self.pending, 'process': self.process,
+        self.factory.write(self.root / 'broker.json', {'events': self.events, 'pending': self.pending, 'process': self.process,
                                           'dispositions': self.dispositions})
         return result
 
@@ -142,7 +254,8 @@ def serve(config_path):
                 data = self.rfile.readline(1024 * 1024)
                 result = {'ok': True, 'result': broker.handle(json.loads(data))}
             except Exception as error:
-                result = {'ok': False, 'error': type(error).__name__ + ':' + str(error)}
+                result = {'ok': False, 'error': type(error).__name__ + ':' + str(error),
+                          'issues': [issue_for(error)]}
             self.wfile.write((json.dumps(result) + '\n').encode())
 
     address = broker.root / 'socket/tool.sock'
@@ -162,15 +275,40 @@ def broker_call(action, args):
         client.sendall((json.dumps({'action': action, **args}) + '\n').encode())
         result = json.loads(client.makefile('rb').readline(1024 * 1024))
     if not result['ok']:
-        raise ValueError(result['error'])
+        raise ValueError(result['error'] + '; details=' + json.dumps(result.get('issues', []), ensure_ascii=False))
     return result['result']
 
 
-def check(role, draft, inputs):
+def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=None):
     from task_generator.production import task_method_pilot as m
     from r10_process_first_tools import validate
-    with contextlib.redirect_stdout(io.StringIO()):
-        validate(draft)
+    if mode not in ('draft', 'ready'):
+        raise ValueError('check_mode_must_be_draft_or_ready')
+    if protocol == 'task_factory_harness_v1':
+        f.files(draft)
+        from docx import Document
+        from openpyxl import load_workbook
+        from pypdf import PdfReader
+        allowed = {'.docx', '.xlsx', '.pdf', '.csv', '.txt', '.md', '.json', '.sha256', '.py'}
+        for path in Path(draft).rglob('*'):
+            if not path.is_file():
+                continue
+            if path.suffix.lower() not in allowed or not path.stat().st_size:
+                raise ValueError('unexpected_or_empty_output')
+            if path.suffix.lower() == '.docx':
+                Document(path)
+            elif path.suffix.lower() == '.xlsx':
+                load_workbook(path).close()
+            elif path.suffix.lower() == '.pdf':
+                if not PdfReader(path).pages:
+                    raise ValueError('empty_pdf')
+            else:
+                path.read_text(encoding='utf-8')
+    else:
+        with contextlib.redirect_stdout(io.StringIO()):
+            validate(draft)
+    if mode == 'draft':
+        return {'status': 'completed', 'check_mode': 'draft', 'files': f.files(draft)}
     if role == 'world':
         records = f.read(draft / 'hidden/manifest.json')['records']
         actual = f.files(draft / 'candidate')
@@ -183,9 +321,31 @@ def check(role, draft, inputs):
             raise ValueError('world_record_missing')
         return {'status': 'completed', 'files': actual}
     if role == 'mine':
-        return m.task_result(draft, inputs)
+        outcome = m.task_result(draft, inputs)
+        if protocol == 'task_factory_harness_v1':
+            intent = f.read(draft / 'design_intent.json')
+            if not all(intent.get(key) for key in ('occupational_use', 'analysis_points', 'likely_difficulties')):
+                raise ValueError('design_intent_fields_required')
+            for ref in intent.get('evidence', []):
+                m.reference(inputs, ref.get('path'))
+                if not ref.get('locator'):
+                    raise ValueError('design_intent_locator_required')
+        return outcome
     if role == 'compile':
-        return m.compilation_result(draft, inputs)
+        outcome = m.compilation_result(draft, inputs)
+        if protocol == 'task_factory_harness_v1':
+            basis = f.read(draft / 'basis_draft.json')
+            if not isinstance(basis.get('requirements'), list) or not basis['requirements']:
+                raise ValueError('basis_requirements_required')
+            from task_generator.production import task_factory_harness as harness
+            manifest = harness.validate_calculation_bundle(draft, inputs)
+            if calculation_version is not None and str(manifest.get('version')) != str(calculation_version):
+                raise ValueError(f'calculation_evidence.json.version: expected {calculation_version} for this scope, got {manifest.get("version")!r}')
+            if (inputs / 'development_trial').is_dir():
+                comparison = f.read(draft / 'comparison.json')
+                if not all(key in comparison for key in ('trial_errors', 'compiler_omissions', 'alternatives', 'upstream_defects')):
+                    raise ValueError('comparison_fields_required_after_development_trial')
+        return outcome
     if role == 'review':
         review = f.read(draft / 'review.json')
         for i, dimension in enumerate(review.get('checks', [])):
@@ -207,17 +367,52 @@ def check(role, draft, inputs):
     contract = f.read(inputs / 'deliverable_contract.json')
     expected = {r['relative_path'] for r in contract['deliverables']}
     actual = set(f.files(draft))
+    if role == 'devsolve':
+        if 'diagnostic.json' not in actual:
+            raise ValueError('development_diagnostic_required')
+        diagnostic = f.read(draft / 'diagnostic.json')
+        if not all(key in diagnostic for key in ('evidence_used', 'calculations', 'ambiguities', 'barriers')):
+            raise ValueError('development_diagnostic_fields_required')
+        actual.remove('diagnostic.json')
     return {'status': 'completed', 'delivery_status': 'valid' if expected == actual else 'invalid',
             'missing': sorted(expected - actual), 'extra': sorted(actual - expected), 'professional_correctness': 'not_scored'}
 
 
-def inspect(args):
-    area = args.get('area', 'draft')
-    if area not in ('draft', 'inputs'):
-        raise ValueError('unknown_area')
+def _inventory(root, path):
+    if not path.is_dir():
+        raise ValueError('inventory_path_must_be_directory')
+    rows = []
+    for item in sorted(path.rglob('*')):
+        if not item.is_file():
+            continue
+        row = {'path': item.relative_to(root).as_posix(), 'sha256': f.digest(item),
+               'bytes': item.stat().st_size, 'extension': item.suffix.lower()}
+        if item.suffix.lower() == '.xlsx':
+            from openpyxl import load_workbook
+            book = load_workbook(item, read_only=True, data_only=False)
+            row['sheets'] = [{'name': sheet.title, 'rows': sheet.max_row, 'columns': sheet.max_column}
+                             for sheet in book.worksheets]
+            book.close()
+        elif item.suffix.lower() == '.docx':
+            from docx import Document
+            doc = Document(item)
+            row.update(paragraphs=len(doc.paragraphs), tables=len(doc.tables))
+        elif item.suffix.lower() == '.pdf':
+            from pypdf import PdfReader
+            row['pages'] = len(PdfReader(item).pages)
+        rows.append(row)
+    return {'root': path.relative_to(root).as_posix() or '.', 'files': rows}
+
+
+def _inspect_one(area, relative, args):
     root = Path('/draft' if area == 'draft' else '/workspace/inputs')
-    path = f.safe_path(root, args['path'])
+    path = f.safe_path(root, relative)
     f.files(root)
+    if args.get('mode') == 'inventory':
+        return _inventory(root, path)
+    limit = args.get('max_chars', 30000)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 100000:
+        raise ValueError('max_chars_must_be_integer_1_to_100000')
     if path.suffix == '.xlsx':
         from openpyxl import load_workbook
         book = load_workbook(path, data_only=args.get('cached', False))
@@ -227,19 +422,38 @@ def inspect(args):
             cells = ((cells,),)
         elif cells and not isinstance(cells[0], tuple):
             cells = (cells,)
-        return {'sheets': book.sheetnames, 'sheet': sheet.title,
-                'cells': [{'cell': c.coordinate, 'value': str(c.value), 'type': c.data_type} for row in cells for c in row if c.value is not None][:500]}
+        result = {'sheets': book.sheetnames, 'sheet': sheet.title,
+                  'cells': [{'cell': c.coordinate, 'value': str(c.value), 'type': c.data_type}
+                            for row in cells for c in row if c.value is not None][:500]}
+        book.close()
+        return result
     if path.suffix == '.docx':
         from docx import Document
         doc = Document(path)
-        return {'paragraphs': [{'paragraph': i, 'text': p.text} for i, p in enumerate(doc.paragraphs, 1)],
-                'tables': [[[c.text for c in row.cells] for row in table.rows] for table in doc.tables]}
+        return {'paragraphs': [{'paragraph': i, 'text': p.text[:limit]} for i, p in enumerate(doc.paragraphs, 1)],
+                'tables': [[[c.text[:limit] for c in row.cells] for row in table.rows] for table in doc.tables]}
     if path.suffix == '.pdf':
         from pypdf import PdfReader
         pdf = PdfReader(path)
         page = args.get('page', 1)
-        return {'pages': len(pdf.pages), 'page': page, 'text': pdf.pages[page-1].extract_text()}
-    return {'text': path.read_text(encoding='utf-8')[:30000]}
+        return {'pages': len(pdf.pages), 'page': page, 'text': (pdf.pages[page-1].extract_text() or '')[:limit]}
+    if not path.is_file():
+        raise ValueError('inspect_path_must_be_file_or_inventory_directory')
+    return {'text': path.read_text(encoding='utf-8')[:limit]}
+
+
+def inspect(args):
+    area = args.get('area', 'draft')
+    if area not in ('draft', 'inputs'):
+        raise ValueError('unknown_area')
+    paths = args.get('paths')
+    if paths is not None:
+        if not isinstance(paths, list) or not paths or len(paths) > 20 or not all(isinstance(p, str) for p in paths):
+            raise ValueError('paths_must_be_nonempty_string_list_max_20')
+        return {'items': {path: _inspect_one(area, path, args) for path in paths}}
+    if not isinstance(args.get('path'), str):
+        raise ValueError('path_or_paths_required')
+    return _inspect_one(area, args['path'], args)
 
 
 def render(args):
@@ -265,42 +479,98 @@ def render(args):
 
 def client(action, args):
     cfg = f.read('/workspace/role.json')
+    protocol = cfg.get('protocol')
     if action == 'help':
-        return {'commands': {'inspect': 'area draft|inputs, path, optional sheet/range/page/cached',
+        return {'invocation': '/workspace/bin/factory-tools <command> \'{"json":"object"}\' or pipe the same JSON object on stdin',
+                'examples': [
+                    "/workspace/bin/factory-tools schema",
+                    "/workspace/bin/factory-tools inspect '{\"area\":\"inputs\",\"path\":\"SKILL.md\"}'"
+                ],
+                'commands': {'status': 'no arguments; current versions, completed stages, legal next actions, missing prerequisites and exact remaining budget',
+                'inspect': 'area draft|inputs; path or paths (max 20); mode inventory for a directory; optional sheet/range/page/cached/max_chars',
                 'render': 'area, path, optional recalculate:true; writes scratch only',
-                'check': 'no arguments; validates current role artifacts', 'schema': 'no arguments',
+                'check': 'optional mode draft|ready (default ready)',
+                'schema': 'optional artifact calculation_evidence|task|rubric|basis|comparison|review|development_diagnostic',
                 'save-process': 'world only; first save before any candidate files',
-                'snapshot': 'reason', 'diff': 'snapshot', 'consult': 'snapshot, reason (visible evidence question)',
+                'snapshot': 'reason', 'diff': 'snapshot', 'consult': 'optional snapshot, reason (visible evidence question)',
                 'record-disposition': 'request_id, finding_id, snapshot, decision accept|partial|reject, reason, evidence:[{area:draft|inputs,path,locator}]',
-                'finish': 'consult/review/solve only; checks current output, then end normally',
-                'handoff': 'snapshot, target world|mine|compile|stop, reason', 'submit': 'snapshot, reason'},
+                'record-dispositions': 'request_id, snapshot_reason, items:[{finding_id,decision,reason,evidence:[...]}]; covers every finding once',
+                'replay': 'harness compiler only; optional snapshot, reason, optional next_action return|development_trial|submit',
+                'request-development-trial': 'harness compiler only after a passing replay; snapshot, reason',
+                'finish': 'devsolve/consult/review/solve only; checks current output, then end normally',
+                'handoff': 'optional snapshot, target world|mine|compile|stop, reason', 'submit': 'optional snapshot, reason'},
                 'role': cfg['role'], 'inputs': sorted(f.files('/workspace/inputs')),
-                'remaining_production_launches': cfg['remaining_production_launches'],
+                'workflow_status': cfg.get('workflow_status'),
                 'consultations': cfg.get('consultations', [])}
     if action == 'schema':
         from task_generator.production import task_method_pilot as m
         from task_generator.planning.rubric_compiler_v2 import TaskSpecificRubricV2
-        return {'mine': m.MINING.replace('/output', '/draft'), 'compile': m.COMPILATION.replace('/output', '/draft'), 'rubric': TaskSpecificRubricV2.model_json_schema(),
+        result = {'mine': m.MINING.replace('/output', '/draft'), 'compile': m.COMPILATION.replace('/output', '/draft'), 'rubric': TaskSpecificRubricV2.model_json_schema(),
                 'review': m.REVIEW.replace('/output', '/draft'),
                 'evidence_path_contract': 'Each finding.path is one exact existing file from citation_inputs. No joined paths, prefixes, or directories. Use separate findings for multiple sources.',
                 'reserved_decision_id': 'deliverable_structure',
                 'citation_inputs': sorted(f.files('/workspace/inputs'))}
-    if action in ('check', 'inspect', 'render'):
-        result = check(cfg['role'], Path('/draft'), Path('/workspace/inputs')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
-        broker_call('log-check', {'result': {'tool': action, 'arguments': args, 'ok': True,
-                                           'hashes': f.files('/draft'), 'role': cfg['role']}})
+        if protocol == 'task_factory_harness_v1':
+            from task_generator.production import task_factory_harness as harness
+            result['harness'] = {'mine_extra': 'design_intent.json: occupational_use, analysis_points, likely_difficulties, evidence[{path,locator}]',
+                'compile_extra': 'basis_draft.json plus calculation_evidence.json and calculation_scripts/*.py',
+                'calculation_contract': harness.calculation_contract_schema(),
+                'development_diagnostic': 'diagnostic.json: evidence_used, calculations, ambiguities, barriers',
+                'calculation_script_io': 'version 2 scripts receive --inputs <read-only input root> and emit one JSON object; calculations select scalar leaves by JSON Pointer; no writes or network'}
+        artifact = args.get('artifact')
+        if artifact:
+            allowed = {
+                'task': {'contract': result['mine']},
+                'rubric': {'contract': result['rubric']},
+                'basis': {'contract': 'basis_draft.json: requirements, supported and conditional judgments, calculations, observable results and scoring boundaries'},
+                'comparison': {'contract': 'comparison.json: trial_errors, compiler_omissions, alternatives, upstream_defects'},
+                'review': {'contract': result['review'], 'citation_inputs': result['citation_inputs']},
+                'development_diagnostic': {'contract': 'diagnostic.json: evidence_used, calculations, ambiguities, barriers'},
+            }
+            if protocol == 'task_factory_harness_v1':
+                rubric_ids = []
+                if 'new_rubric.json' in f.files('/draft'):
+                    try:
+                        rubric_ids = [row['criterion_id'] for row in f.read('/draft/new_rubric.json').get('criteria', [])]
+                    except (KeyError, TypeError, json.JSONDecodeError):
+                        rubric_ids = []
+                references = [{'path': 'reference_files/' + path, 'sha256': sha}
+                              for path, sha in sorted(f.files('/workspace/inputs/reference_files').items())]
+                allowed['calculation_evidence'] = {
+                    'contract': result['harness']['calculation_contract'],
+                    'current_rubric_ids': rubric_ids,
+                    'candidate_reference_files': references,
+                }
+            if artifact not in allowed:
+                raise ValueError('unknown_schema_artifact:' + str(artifact))
+            return {'artifact': artifact, **allowed[artifact]}
         return result
-    if action in ('consult', 'handoff', 'submit') and not (action == 'handoff' and args.get('target') == 'stop'):
-        outcome = client('check', {})
+    if action == 'status':
+        return broker_call('status', {})
+    if action in ('check', 'inspect', 'render'):
+        mode = args.get('mode', 'ready') if action == 'check' else None
+        result = check(cfg['role'], Path('/draft'), Path('/workspace/inputs'), protocol, mode,
+                       cfg.get('calculation_contract_version')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
+        broker_call('log-check', {'result': {'tool': action, 'arguments': args, 'ok': True,
+                                           'hashes': f.files('/draft'), 'role': cfg['role'],
+                                           **({'mode': mode} if action == 'check' else {})}})
+        return result
+    if action in ('consult', 'handoff', 'submit', 'replay', 'request-development-trial') and not (action == 'handoff' and args.get('target') == 'stop'):
+        outcome = client('check', {'mode': 'draft' if action == 'consult' else 'ready'})
         if outcome.get('status') != 'completed' and not (action == 'handoff' and args.get('target') in ('world', 'mine')):
             raise ValueError('output_not_ready: request upstream revision or handoff to stop; ' + outcome['status'])
     if action == 'finish':
-        if cfg['role'] not in ('consult', 'review', 'solve'):
+        if cfg['role'] not in ('devsolve', 'consult', 'review', 'solve'):
             raise ValueError('readonly_roles_finish_only')
         outcome = client('check', {})
         if outcome.get('delivery_status') == 'invalid':
             raise ValueError('delivery_contract_invalid: run check for missing and extra paths')
     return broker_call(action, args)
+
+
+def cli_payload(argv, stdin):
+    text = argv[2] if len(argv) > 2 else (stdin.read() if not stdin.isatty() else '')
+    return json.loads(text) if text.strip() else {}
 
 
 if __name__ == '__main__':
@@ -310,9 +580,9 @@ if __name__ == '__main__':
         print(json.dumps(check(sys.argv[2], Path(sys.argv[3]), Path(sys.argv[4])), ensure_ascii=False))
     else:
         try:
-            text = sys.stdin.read() if not sys.stdin.isatty() else ''
-            args = json.loads(text) if text.strip() else {}
+            args = cli_payload(sys.argv, sys.stdin)
             print(json.dumps({'ok': True, 'result': client(sys.argv[1], args)}, ensure_ascii=False))
         except Exception as error:
-            print(json.dumps({'ok': False, 'error': type(error).__name__ + ':' + str(error)}))
+            print(json.dumps({'ok': False, 'error': type(error).__name__ + ':' + str(error),
+                              'issues': [issue_for(error)]}, ensure_ascii=False))
             sys.exit(1)

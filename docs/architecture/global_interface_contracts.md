@@ -1,6 +1,6 @@
 # 接口合同索引
 
-> 状态：reference；核对日期：2026-09-07。
+> 状态：reference；核对日期：2026-09-09。
 > 只说明接口职责和兼容边界。字段以代码为准，运行结果见[项目概要](../../项目概要.md)。
 
 ## 生成侧 Rubric V2
@@ -90,11 +90,19 @@ S1-B receipt 额外绑定脱敏 provider/tool 轨迹哈希、完成请求数和�
 | 交付 | `DeliverableContractV1`：题干提交说明、预期路径、staging 和交付检查的共同依据。 |
 | 准入 | `ScenarioFirstAdmissionReportV1` 及 task admission：来源、隔离、文件、引用、泄漏与可解性检查；静态通过不等于专业有效。 |
 
-## 自主工厂接口与 proposed 增量
+## 自主工厂与开发 harness 接口
 
 现有入口为 [run_r10_agent_factory_pilot.py](../../Test/run_r10_agent_factory_pilot.py) 的 prepare / execute / status / stop / report；单题与批次标识互斥。状态、版本父依赖和角色会话校验见 [agent_factory.py](../../src/task_generator/production/agent_factory.py)，工具参数和当轮错误反馈见 [agent_factory_tools.py](../../src/task_generator/production/agent_factory_tools.py)，固定位置与联合预算见 [agent_factory_batch.py](../../src/task_generator/production/agent_factory_batch.py)。这些是现有实现入口，不是新增通用 SDK。
 
-下一阶段拟增加本题开发试做成果/障碍向编译者的受控交接，以及计算脚本、结果口径、来源哈希和 rubric 关联的依据包。尚无对应新合同或工具入口；实现前必须明确版本失效、角色可见性与开发/终审边界。候选交付继续由 DeliverableContract 管理，导出保持 GDPval 形状和 rubric 语义；不修改现有评分公共接口。设计依据见[调研记录](../research/agent_task_production_harness_20260907.md)。
+新入口 [run_r10_task_factory_harness.py](../../Test/run_r10_task_factory_harness.py) 提供同名 `prepare / execute / status / stop / report`。默认仍是两个开发位置、32次/8小时总预算；准备时可显式使用`--case procurement`冻结为一个采购位置、16次/4小时，执行时不能改选。协议见 [task_factory_harness.py](../../src/task_generator/production/task_factory_harness.py)：新增只读`devsolve`角色、一次上游返工、开发试做依赖和可复算依据合同；旧入口默认协议不变。子scope绑定所属批次，不能绕过批次锁、总预算和时钟独立执行。
+
+Miner 额外保存隔离的`design_intent.json`。编译快照增加`basis_draft.json`、`calculation_evidence.json`和`calculation_scripts/*.py`；重放结果属于运行证据。`calculation_evidence` version 2把执行与评分锚点分开：一个execution绑定脚本及候选来源路径、定位和哈希，只执行一次并输出不超过1 MiB的单个有限JSON对象；多个calculation以唯一JSON Pointer提取标量，再在教师侧与预期值、容差和rubric ID比较。重放容器不挂载预期值、rubric、监督、试做答案或凭据。version 1继续读取和历史重放，单个manifest不能混用两个版本。
+
+`factory-tools schema`可按`calculation_evidence / task / rubric / basis / comparison / review / development_diagnostic`定向查询；计算查询同时返回当前rubric ID及候选文件路径和哈希。`inspect`支持目录inventory和有限多路径读取。`check`分`draft`与`ready`：咨询只要求安全、可读、身份一致的草稿，交接、重放、试做和提交要求完整合同。阶段动作的snapshot可省略，工具会在同一次服务调用中检查并创建或复用与草稿完全一致的快照；显式snapshot和旧参数仍兼容。`record-dispositions`先验证同一请求的全部finding，再原子保存一个快照下的所有处置；逐条接口保留兼容。动态`status`返回当前草稿哈希、匹配快照、检查等级、未处理意见、阶段前提和实际预算。开发试做的`diagnostic.json`不属于DeliverableContract，最终候选交付仍由该合同精确管理。
+
+下一版拟扩展编译依据与比较合同：编译前依据须把每个评分义务映射到候选可见来源和rubric条目；试做后的比较须列出新增或改变的评分要求及候选依据。设计意图、试做、监督和计算结果均不是候选义务来源。拟增加`factory-tools <action> --input-file <角色可读JSON>`，与位置参数和stdin互斥；同时聚合并定位rubric/计算问题、标明inspect截断和继续位置、拒绝version 2重复脚本与同execution重复result_pointer。实现完成前这些是proposed接口，旧调用继续有效。
+
+绑定续跑通过父receipt哈希继承当前不可覆盖快照及开发试做，清除角色会话，并累计既有真实Provider启动数、生产启动数和原始截止时刻；语义前控制器操作保留诊断但不虚扣启动，已进入collection的超时仍计入。它不能重置预算或把失败改为首次尝试。2026-09-09的新采购开发scope已用version 2完成提交、独立终审和盲试做；这只证明接口在一个开发样例中可用，运行结论和限制见概要。
 
 ## 历史兼容
 

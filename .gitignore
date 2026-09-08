@@ -18,6 +18,8 @@ Test/*
 !Test/r10_process_first_tools.py
 !Test/run_r10_task_method_pilot.py
 !Test/run_r10_agent_factory_pilot.py
+!Test/run_r10_task_factory_harness.py
+!Test/r10_calculation_replay.py
 .cache/
 build/
 *.egg-info/
