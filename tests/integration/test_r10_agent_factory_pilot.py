@@ -1,4 +1,5 @@
 from pathlib import Path
+import io
 import json
 import sys
 
@@ -16,6 +17,40 @@ def state():
 
 def entry(identity, parents=None):
     return {'id': identity, 'parents': parents or {}, 'hashes': {'a.txt': identity}}
+
+
+def test_emit_json_falls_back_to_ascii_for_gbk_stream():
+    class GbkStream:
+        encoding = 'gbk'
+
+        def __init__(self):
+            self.value = ''
+
+        def write(self, value):
+            value.encode(self.encoding)
+            self.value += value
+
+        def flush(self):
+            pass
+
+    stream = GbkStream()
+    runner.emit_json({'text': '中文、弯引号’、减号−'}, stream=stream)
+    assert json.loads(stream.value) == {'text': '中文、弯引号’、减号−'}
+    assert '\\u2212' in stream.value
+
+
+def test_emit_json_propagates_broken_pipe_without_touching_state():
+    class BrokenStream:
+        encoding = 'utf-8'
+
+        def write(self, value):
+            raise BrokenPipeError('closed')
+
+        def flush(self):
+            pass
+
+    with pytest.raises(BrokenPipeError, match='closed'):
+        runner.emit_json({'status': 'completed'}, stream=BrokenStream())
 
 
 def test_version_invalidation_and_submission():
@@ -151,6 +186,41 @@ def test_input_isolation(tmp_path, monkeypatch):
             assert 'task.json' not in names and 'public_context.json' not in names
     runner.build_inputs(tmp_path, s, 'consult', tmp_path / 'mine-consult', 'mine')
     assert (tmp_path / 'mine-consult/candidate_task.md').exists()
+
+
+def test_quality_editor_and_compiler_inputs_are_isolated(tmp_path, monkeypatch):
+    public = tmp_path / 'public'
+    public.mkdir()
+    for name in ('public_context.json', 'professional_rules.json', 'sources.json'):
+        f.write(public / name, {})
+    (public / 'SKILL.md').write_text('factory occupational method')
+    world = tmp_path / 'world'
+    (world / 'candidate').mkdir(parents=True)
+    (world / 'candidate/record.txt').write_text('candidate evidence')
+    (world / 'hidden').mkdir()
+    (world / 'hidden/world.md').write_text('forbidden hidden answer')
+    mine = tmp_path / 'mine'; mine.mkdir()
+    f.write(mine / 'task.json', {'source': 'mine'})
+    f.write(mine / 'design_intent.json', {'secret': 'forbidden intent'})
+    edited = tmp_path / 'edit'; edited.mkdir()
+    f.write(edited / 'task.json', {'source': 'edited'})
+    f.write(edited / 'edit_record.json', {'secret': 'forbidden edit history'})
+    s = state() | {'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1'}
+    s['current']['world'] = {'path': 'world', 'hashes': f.files(world), 'inputs': 'public'}
+    s['current']['mine'] = {'path': 'mine', 'hashes': f.files(mine), 'inputs': 'public'}
+    s['current']['edit'] = {'path': 'edit', 'hashes': f.files(edited), 'inputs': 'public'}
+    monkeypatch.setattr(runner.previous.method, 'task_result',
+                        lambda raw, inputs: {'candidate_task': f.read(raw / 'task.json')['source'], 'contract': {}})
+    edit_inputs = tmp_path / 'edit-inputs'
+    runner.build_inputs(tmp_path, s, 'edit', edit_inputs, protocol='task_factory_harness_v1')
+    assert f.read(edit_inputs / 'task.json')['source'] == 'mine'
+    assert 'SKILL.md' in f.files(edit_inputs)
+    assert not any('hidden' in name or 'design_intent' in name for name in f.files(edit_inputs))
+    compile_inputs = tmp_path / 'compile-inputs'
+    runner.build_inputs(tmp_path, s, 'compile', compile_inputs, protocol='task_factory_harness_v1')
+    assert f.read(compile_inputs / 'task.json')['source'] == 'edited'
+    assert 'edit_record.json' not in f.files(compile_inputs)
+    assert 'design_intent.json' not in f.files(compile_inputs)
 
 
 def test_status_does_not_create_run(tmp_path):
@@ -362,24 +432,29 @@ def test_wrong_session_refused_before_staging(tmp_path, field, value):
 @pytest.mark.parametrize('review_quality,fault', [('pass', None), ('uncertain', None), ('issue', None),
                                                 ('pass', 'staging'), ('pass', 'timeout'), ('pass', 'stop'), ('pass', 'after_finish'),
                                                 ('pass', 'batch'), ('issue', 'batch')])
-def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch, review_quality, fault):
+def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch, review_quality, fault, harness_protocol=False):
     """Only SSH/SCP and environment/identity checks are replaced; contracts stay real."""
     import json
     import shutil
     import subprocess
     from docx import Document
     from task_generator.production import agent_factory_tools as ft
+    from task_generator.production import task_factory_harness as h
     root = tmp_path / 'batch/cases/scope' if fault == 'batch' else tmp_path / 'scope'
     root.mkdir(parents=True)
     for name in ('public_context.json', 'professional_rules.json', 'sources.json'):
         f.write(root / 'public' / name, {'role': 'reviewer'})
-    for role in f.ROLES:
+    for role in (h.ROLES if harness_protocol else f.ROLES):
         p = root / 'prompts' / (role + '.md')
         p.parent.mkdir(exist_ok=True)
-        p.write_text(f.prompt(role), encoding='utf-8')
+        p.write_text((h if harness_protocol else f).prompt(role), encoding='utf-8')
     s = state() | {'status': 'prepared', 'next': {'role': 'world'}, 'recoveries': 0,
                    'task_manual_edits': 0, 'first_failure': None}
     scope = {'remote': '/fixture/scope', 'dependency_remote': '/fixture/deps', 'code_hashes': {}}
+    if harness_protocol:
+        scope.update(protocol='task_factory_harness_v1', obligation_trace_version=2,
+                     calculation_contract_version=2, production_launches=14, seconds=14400)
+        s.update(compile_stage='basis', upstream_revisions=0, calculation_replays=[])
     if fault == 'batch':
         from task_generator.production import agent_factory_batch as batch
         batch_root = tmp_path / 'batch'
@@ -403,6 +478,7 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
     monkeypatch.setattr(runner.base, '_scp_command', lambda a, b: [a, b])
     remote_root = tmp_path / 'remote'
     counts = {}
+    transport_counts = {}
     observations = []
 
     def mapped(value):
@@ -424,6 +500,8 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
         role = cfg['role']
         counts[role] = counts.get(role, 0) + 1
         nth = counts[role]
+        if harness_protocol:
+            assert cfg['workflow_status']['budget']['launches_used'] == sum(counts.values())
         broker = Broker(cfg)
         draft, inputs = turn / 'draft', turn / 'workspace/inputs'
         names = set(f.files(inputs))
@@ -449,6 +527,9 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                     'prompt': 'Reconcile the record and explain any limitations.',
                     'requirements': [{'id': 'r1', 'requirement': 'Reconcile', 'expected_work_product': 'analysis', 'basis': basis}],
                     'deliverables': [{'file_name': 'memo.docx', 'relative_path': 'deliverable_files/memo.docx', 'format': 'docx'}]})
+            if harness_protocol:
+                f.write(draft / 'design_intent.json', {'occupational_use': 'INTERNAL_INTENT_MARKER',
+                    'analysis_points': ['Review'], 'likely_difficulties': ['Version'], 'evidence': basis})
         elif role == 'compile':
             f.write(draft / 'supervision.json', {'status': 'compiled', 'upstream_issues': [], 'decisions': [{
                 'decision_id': 'd1', 'requirement_ids': ['r1'], 'supported_judgment': 'Record allows analysis',
@@ -459,6 +540,26 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                 'requirement_basis': [{'path': 'candidate_task.md', 'locator': 'paragraph 1', 'explanation': 'Visible assignment obligation'}],
                 'evidence_paths': ['reference_files/record.txt'], 'applicability': 'Always applies',
                 'acceptable_alternatives': 'Equivalent supported forms', 'verification': 'Read analysis and trace its sources'}]})
+            if harness_protocol:
+                f.write(draft / 'basis_draft.json', {'requirements': [{
+                    'requirement_id': 'r1', 'obligation': 'Reconcile the record', 'basis_kind': 'explicit',
+                    'rubric_ids': ['analysis'], 'candidate_obligation_refs': [{
+                        'path': 'candidate_task.md', 'sha256': f.digest(inputs / 'candidate_task.md'),
+                        'locator': 'paragraph 1', 'explanation': 'Visible request'}]}]})
+                (draft / 'calculation_scripts').mkdir(exist_ok=True)
+                (draft / 'calculation_scripts/value.py').write_text(
+                    'import argparse,json\nfrom pathlib import Path\np=argparse.ArgumentParser();p.add_argument("--inputs");a=p.parse_args()\n'
+                    'print(json.dumps({"version":int((Path(a.inputs)/"reference_files/record.txt").read_text().split()[-1])}))\n')
+                f.write(draft / 'calculation_evidence.json', {'version': 2, 'executions': [{
+                    'execution_id': 'version', 'script': 'value.py', 'sources': [{
+                        'path': 'reference_files/record.txt', 'locator': 'line 1', 'sha256': f.digest(inputs / 'reference_files/record.txt')}]}],
+                    'calculations': [{'calculation_id': 'version', 'execution_id': 'version', 'result_pointer': '/version',
+                        'rubric_ids': ['analysis'], 'unit': 'record version', 'scope': 'visible record', 'method': 'parse version',
+                        'assumptions': [], 'expected': {'value': counts['world'], 'tolerance': 0}, 'alternatives': []}]})
+                if (inputs / 'development_trial').exists():
+                    assert (inputs / 'initial_basis/basis_draft.json').is_file()
+                    f.write(draft / 'comparison.json', {'initial_basis_snapshot': cfg['initial_basis_snapshot'],
+                        'trial_errors': [], 'compiler_omissions': [], 'alternatives': [], 'upstream_defects': [], 'requirement_changes': []})
         elif role == 'consult':
             f.write(draft / 'consultation.json', {'summary': 'Check provenance', 'questions': [], 'findings': [{
                 'path': 'reference_files/record.txt', 'locator': 'line 1', 'observation': 'Version requires explanation', 'limitation': 'Fixture only'}]})
@@ -469,11 +570,17 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                 'requirement_coverage': [{'requirement_id': 'r1', 'status': review_quality, 'explanation': 'Covered'}],
                 'rubric_coverage': [{'criterion_id': 'analysis', 'status': review_quality, 'explanation': 'Covered'}]})
         else:
+            if harness_protocol:
+                assert 'task.json' not in names and 'design_intent.json' not in names
+                assert not any('initial_basis' in name or 'supervision' in name for name in names)
             (draft / 'deliverable_files').mkdir()
             doc = Document()
             doc.add_paragraph('Analysis of visible record')
             doc.save(draft / 'deliverable_files/memo.docx')
-        ft.check(role, draft, inputs)
+            if role == 'devsolve':
+                f.write(draft / 'diagnostic.json', {'evidence_used': basis, 'calculations': [], 'ambiguities': [], 'barriers': []})
+        ft.check(role, draft, inputs, scope.get('protocol'), 'ready', scope.get('calculation_contract_version'),
+                 scope.get('obligation_trace_version'), cfg.get('initial_basis_snapshot'))
         broker.handle({'action': 'log-check', 'result': {'tool': 'check', 'role': role, 'hashes': f.files(draft)}})
         if role not in f.AUTHOR_ROLES:
             broker.handle({'action': 'finish'})
@@ -489,14 +596,21 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                         'evidence': [{'area': 'draft', 'path': 'candidate/record.txt', 'locator': 'line 1'}]})
             if role == 'world' and nth == 1:
                 action = {'action': 'consult'}
-            elif role == 'compile' and nth == 1:
+            elif role == 'compile' and nth == (2 if harness_protocol else 1):
                 action = {'action': 'handoff', 'target': 'world'}
+            elif role == 'compile' and harness_protocol:
+                action = {'action': 'replay', 'next_action': 'submit' if (inputs / 'development_trial').exists() else 'development_trial'}
             elif role == 'compile':
                 action = {'action': 'submit'}
             else:
                 action = {'action': 'handoff', 'target': 'mine' if role == 'world' else 'compile'}
             broker.handle(action | {'snapshot': snap['id'], 'reason': 'AUTHOR_INTENT_MARKER'})
         session = 'world-owner' if role == 'world' else f'{role}-{nth}'
+        if harness_protocol:
+            import re
+            resumed = re.search(r'codex exec resume ([A-Za-z0-9_-]+)', (turn / 'workspace/agent.sh').read_text())
+            if resumed:
+                session = resumed.group(1)
         (turn / 'agent.jsonl').write_text(json.dumps({'type': 'thread.started', 'thread_id': session}) + '\n' +
                                         json.dumps({'type': 'turn.completed', 'usage': {}}) + '\n')
         for name in ('stderr.txt', 'broker.log'):
@@ -508,8 +622,33 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                 raise subprocess.TimeoutExpired('synthetic transfer', 1)
             for piece in command.split(' && '):
                 mapped(piece.split()[-1]).mkdir(parents=True, exist_ok=True)
+        elif 'r10_calculation_replay.py' in command:
+            import r10_calculation_replay as replay
+            number = len(f.read(root / 'receipt.json')['attempts'])
+            turn = remote_root / 'scope' / f'turn_{number:02d}'
+            code = replay.main(turn / 'replay_request/scripts', turn / 'workspace/inputs',
+                               turn / 'replay_request/execution_manifest.json', turn / 'replay_output/result.json')
+            return subprocess.CompletedProcess(command, code, '', '')
         elif command.startswith('test -e '):
             return subprocess.CompletedProcess(command, 0 if mapped(command[8:]).exists() else 1, '', '')
+        elif '/raw:ro' in command and 'broker.json' in command:
+            transport_counts['inventory'] = transport_counts.get('inventory', 0) + 1
+            if fault == 'collection_retry' and transport_counts['inventory'] == 1:
+                raise subprocess.TimeoutExpired('synthetic inventory', 1)
+            number = len(f.read(root / 'receipt.json')['attempts'])
+            turn = remote_root / 'scope' / f'turn_{number:02d}'
+            inventory = {}
+            for name in ('draft', 'snapshots', 'processes', 'broker.json'):
+                path = turn / name
+                if path.is_dir():
+                    inventory[name] = {'kind': 'directory', 'hashes': f.files(path)}
+                elif path.is_file():
+                    inventory[name] = {'kind': 'file', 'sha256': f.digest(path)}
+            return subprocess.CompletedProcess(command, 0, json.dumps(inventory), '')
+        elif 'relative_to(r).as_posix()' in command and 'python3' in command:
+            number = len(f.read(root / 'receipt.json')['attempts'])
+            turn = remote_root / 'scope' / f'turn_{number:02d}'
+            return subprocess.CompletedProcess(command, 0, json.dumps(f.files(turn / 'workspace')), '')
         elif 'factory_broker_pid=$!' in command:
             number = len(f.read(root / 'receipt.json')['attempts'])
             provider(remote_root / 'scope' / f'turn_{number:02d}')
@@ -527,6 +666,9 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
     else:
         runner.execute(root)
     result = f.read(root / 'receipt.json')
+    if fault == 'collection_retry':
+        assert transport_counts['inventory'] == len(result['attempts']) + 1
+        assert result['attempts'][0]['collection']['transport_retries'][0]['kind'] == 'timeout'
     if fault == 'after_finish':
         assert result['status'] == 'incomplete'
         assert 'readonly_output_not_finished_or_changed' in result['stop_reason']
@@ -538,7 +680,9 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
         assert (root / 'STOP').exists() == (fault == 'stop')
         return
     assert result['status'] == ('completed' if review_quality == 'pass' else 'quality_not_passed'), result
-    assert counts['world'] == 3 and counts['mine'] == 2 and counts['compile'] == 2
+    assert counts['world'] == 3 and counts['mine'] == 2 and counts['compile'] == (4 if harness_protocol else 2)
+    if harness_protocol:
+        assert counts['devsolve'] == 2 and len(result['calculation_replays']) == 3
     assert counts.get('solve', 0) == int(review_quality == 'pass')
     miners = [a for a in result['attempts'] if a['role'] == 'mine']
     assert all(a['resumed_session'] is None for a in miners)

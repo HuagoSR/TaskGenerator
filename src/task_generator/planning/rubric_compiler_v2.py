@@ -68,6 +68,52 @@ class TaskSpecificRubricV2(ScenarioFirstModel):
         return sum(row.max_points for row in self.criteria)
 
 
+class TaskSpecificAtomicRubricItemV1(ScenarioFirstModel):
+    """One independently observable result scored as zero or its full weight."""
+
+    criterion_id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    decision_id: str = Field(min_length=1)
+    requirement: str = Field(min_length=5)
+    max_points: StrictInt = Field(ge=1)
+    full_credit_condition: str = Field(min_length=10)
+    weight_rationale: str = Field(min_length=5)
+    requirement_basis: list[RubricBasisV2] = Field(min_length=1)
+    evidence_paths: list[str] = Field(min_length=1)
+    applicability: str = Field(min_length=5)
+    acceptable_alternatives: str = Field(min_length=5)
+    tolerance: str = Field(min_length=2)
+    verification: str = Field(min_length=10)
+
+    @model_validator(mode="after")
+    def independent_binary_item(self):
+        if len(self.evidence_paths) != len(set(self.evidence_paths)):
+            raise ValueError("rubric_evidence_paths_duplicate")
+        return self
+
+
+class TaskSpecificAtomicRubricV1(ScenarioFirstModel):
+    """GDPval-exportable atomic rubric; this is the sole scoring authority."""
+
+    rubric_version: Literal["r10.atomic_rubric.1"] = "r10.atomic_rubric.1"
+    task_id: str = Field(min_length=1)
+    scoring: Literal["binary_weighted"] = "binary_weighted"
+    criteria: list[TaskSpecificAtomicRubricItemV1] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def unique_items(self):
+        ids = [row.criterion_id for row in self.criteria]
+        if len(ids) != len(set(ids)):
+            raise ValueError("rubric_duplicate_criterion")
+        requirements = [" ".join(row.requirement.casefold().split()) for row in self.criteria]
+        if len(requirements) != len(set(requirements)):
+            raise ValueError("rubric_exact_duplicate_requirement")
+        return self
+
+    @property
+    def total_points(self) -> int:
+        return sum(row.max_points for row in self.criteria)
+
+
 class RubricCompilationV2(ScenarioFirstModel):
     result_version: Literal["r10.rubric_compilation.2"] = "r10.rubric_compilation.2"
     task_id: str
@@ -159,8 +205,18 @@ def validate_rubric(rubric: TaskSpecificRubricV2, matrix: TaskDecisionMatrixV1, 
             existing_evidence = [name for name in row.evidence_paths if name not in declared]
         else:
             existing_evidence = row.evidence_paths
-        for name in existing_evidence + [basis.path for basis in row.requirement_basis]:
-            _visible_file(root, name)
+        for index, name in enumerate(existing_evidence):
+            try:
+                _visible_file(root, name)
+            except ValueError as error:
+                raise ValueError(
+                    f'new_rubric.json.criteria[{row.criterion_id}].evidence_paths[{index}]: {error}') from error
+        for index, basis in enumerate(row.requirement_basis):
+            try:
+                _visible_file(root, basis.path)
+            except ValueError as error:
+                raise ValueError(
+                    f'new_rubric.json.criteria[{row.criterion_id}].requirement_basis[{index}].path: {error}') from error
 
 
 def validate_review(review: RubricAuthorReviewV2, rubric: TaskSpecificRubricV2, root: Path) -> None:
@@ -190,6 +246,17 @@ def sum_rubric_points(rubric: TaskSpecificRubricV2, awarded: dict[str, int]) -> 
         score = awarded[row.criterion_id]
         if type(score) is not int or not 0 <= score <= row.max_points:
             raise ValueError("rubric_award_out_of_bounds")
+    return sum(awarded.values()) / rubric.total_points
+
+
+def sum_atomic_rubric_points(rubric: TaskSpecificAtomicRubricV1,
+                             awarded: dict[str, int]) -> float:
+    """Enforce the new contract's zero-or-full-weight scoring semantics."""
+    if set(awarded) != {row.criterion_id for row in rubric.criteria}:
+        raise ValueError("rubric_awards_incomplete")
+    for row in rubric.criteria:
+        if type(awarded[row.criterion_id]) is not int or awarded[row.criterion_id] not in (0, row.max_points):
+            raise ValueError("atomic_rubric_award_must_be_zero_or_full")
     return sum(awarded.values()) / rubric.total_points
 
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 import json
 import contextlib
 import io
+import itertools
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -12,6 +14,8 @@ import socketserver
 import subprocess
 import sys
 import tempfile
+import time
+import uuid
 
 from task_generator.production import agent_factory as f
 
@@ -27,8 +31,29 @@ def issue_for(error):
     if ', got ' in message:
         actual = message.split(', got ', 1)[1][:500]
     code = (head if not path else head.rsplit('.', 1)[-1]).replace('[', '_').replace(']', '')
-    return {'code': code, 'path': path, 'message': message, 'expected': expected,
-            'actual': actual, 'repair': 'query factory-tools schema for the affected artifact, revise the current draft, then rerun check'}
+    artifact = next((name for prefix, name in (
+        ('calculation_evidence.json', 'calculation_evidence'), ('new_rubric.json', 'rubric'),
+        ('basis_draft.json', 'basis'), ('comparison.json', 'comparison'),
+        ('supervision.json', 'supervision'), ('consultation.json', 'consultation'),
+        ('review.json', 'review'), ('diagnostic.json', 'development_diagnostic'))
+        if message.startswith(prefix)), None)
+    repair = (f'run factory-tools schema with artifact {artifact}, revise the located field, then rerun check'
+              if artifact else 'query factory-tools schema for the affected artifact, revise the current draft, then rerun check')
+    subject = re.search(r'\.(criteria|executions|calculations)\[([^]]+)\]', message)
+    context = {}
+    if subject:
+        name = {'criteria': 'criterion', 'executions': 'execution', 'calculations': 'calculation'}[subject[1]]
+        context[name + ('_index' if subject[2].isdigit() else '_id')] = subject[2]
+    for known in ('invalid_supervision', 'rubric_basis_not_candidate_visible', 'reference_not_in_stage_allowlist'):
+        if known in message:
+            code = known
+    return {'code': code, 'path': path, 'artifact': artifact, 'message': message, 'expected': expected,
+            'actual': actual, 'repair': repair, **context}
+
+
+def issues_for(error):
+    messages = getattr(error, 'messages', None)
+    return [issue_for(ValueError(message)) for message in messages] if messages else [issue_for(error)]
 
 
 class Broker:
@@ -87,11 +112,25 @@ class Broker:
     def handle(self, request):
         action = request['action']
         role = self.config['role']
+        if self.config.get('purpose') == 'tool_microtest' and (
+                action in ('submit', 'request-development-trial')
+                or action == 'handoff' and request.get('target') != 'stop'
+                or action == 'replay' and request.get('next_action') != 'stop'):
+            raise ValueError('action_outside_microtest_scope')
+        if self.config.get('allowed_actions') is not None and action not in self.config['allowed_actions']:
+            raise ValueError('action_outside_scope')
+        if action in ('consult', 'replay', 'submit', 'request-development-trial', 'handoff') and not (action == 'handoff' and request.get('target') == 'stop'):
+            deadline = self.config.get('launch_deadline_epoch')
+            if deadline is not None and time.time() >= deadline:
+                raise ValueError('launch_time_budget_exhausted')
         if action == 'status':
-            workflow = dict(self.config.get('workflow_status', {}))
+            workflow = json.loads(json.dumps(self.config.get('workflow_status', {})))
             hashes = self.factory.files(self.draft)
             snapshots = [event['result'] for event in self.events if event['action'] == 'snapshot'
                          and event['result']['hashes'] == hashes]
+            starting = self.config.get('starting_snapshot')
+            if not snapshots and starting and starting.get('hashes') == hashes and starting.get('parents') == self.config.get('parents'):
+                snapshots = [starting]
             checks = [event['result']['recorded'] for event in self.events if event['action'] == 'log-check'
                       and event['result']['recorded'].get('tool') == 'check'
                       and event['result']['recorded'].get('hashes') == hashes]
@@ -106,7 +145,27 @@ class Broker:
                             latest_matching_snapshot=current_snapshot,
                             current_check_modes=sorted({row.get('mode', 'ready') for row in checks}),
                             unresolved_findings=unresolved)
+            workflow['pending_action'] = self.pending.get('action') if self.pending else None
+            workflow['passing_replay_current'] = current_snapshot in self.config.get('passed_replay_snapshots', [])
+            if not workflow['passing_replay_current']:
+                workflow['legal_next_actions'] = [x for x in workflow.get('legal_next_actions', []) if x != 'submit']
+            if self.config.get('purpose') == 'tool_microtest':
+                workflow['legal_next_actions'] = [x for x in workflow.get('legal_next_actions', [])
+                    if x in ('status', 'inspect', 'render', 'check', 'snapshot', 'diff', 'handoff:stop', 'consult', 'finish')]
+                if role == 'compile' and self.config.get('consultations'):
+                    workflow['legal_next_actions'].append('replay:stop')
+            if self.pending:
+                workflow['legal_next_actions'] = ['status']
+            deadline = self.config.get('deadline_epoch')
+            if deadline is not None:
+                workflow.setdefault('budget', {})['case_seconds_remaining'] = max(
+                    0, int(deadline - time.time()))
+            if self.config.get('launch_deadline_epoch') is not None:
+                workflow.setdefault('budget', {})['launch_seconds_remaining'] = max(
+                    0, int(self.config['launch_deadline_epoch'] - time.time()))
             result = workflow
+        elif action == 'log-call':
+            result = {'recorded': request['record']}
         elif action == 'log-check':
             result = {'recorded': request['result']}
         elif action == 'finish' and role in ('devsolve', 'consult', 'review', 'solve'):
@@ -212,7 +271,8 @@ class Broker:
                     raise ValueError('current_calculation_replay_required')
                 if action == 'replay':
                     next_action = request.get('next_action', 'return')
-                    if next_action not in ('return', 'development_trial', 'submit'):
+                    allowed_next = ('return', 'development_trial', 'submit') + (('stop',) if self.config.get('purpose') == 'tool_microtest' else ())
+                    if next_action not in allowed_next:
                         raise ValueError('invalid_replay_next_action')
                     if next_action == 'development_trial' and self.config.get('development_trial_current'):
                         raise ValueError('development_trial_already_completed')
@@ -224,8 +284,11 @@ class Broker:
                 self.factory.validate_next_action(
                     self.config['workflow_status'], role, action, request)
             if action == 'handoff':
-                allowed = {'world': ('mine', 'stop'), 'mine': ('world', 'compile', 'stop'),
-                           'compile': ('world', 'mine', 'stop')}
+                quality = bool(self.config.get('candidate_edit_version'))
+                allowed = {'world': ('mine', 'stop'),
+                           'mine': ('world', 'edit', 'stop') if quality else ('world', 'compile', 'stop'),
+                           'edit': ('world', 'mine', 'compile', 'stop'),
+                           'compile': ('world', 'mine', 'edit', 'stop') if quality else ('world', 'mine', 'stop')}
                 if request.get('target') not in allowed[role]:
                     raise ValueError('invalid_handoff')
             self.pending = {**request, 'snapshot_entry': matching[-1], 'request_id': f.fingerprint(request)}
@@ -255,7 +318,7 @@ def serve(config_path):
                 result = {'ok': True, 'result': broker.handle(json.loads(data))}
             except Exception as error:
                 result = {'ok': False, 'error': type(error).__name__ + ':' + str(error),
-                          'issues': [issue_for(error)]}
+                          'issues': issues_for(error)}
             self.wfile.write((json.dumps(result) + '\n').encode())
 
     address = broker.root / 'socket/tool.sock'
@@ -279,7 +342,16 @@ def broker_call(action, args):
     return result['result']
 
 
-def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=None):
+def teacher_citation_paths(inputs, protocol):
+    if protocol != 'task_factory_harness_v1':
+        return ()
+    return tuple(path for path in f.files(inputs) if path in (
+        'basis_draft.json', 'calculation_evidence.json', 'replay_results.json')
+        or path.startswith('calculation_scripts/'))
+
+
+def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=None,
+          obligation_trace_version=None, initial_basis_snapshot=None, atomic_rubric_version=None):
     from task_generator.production import task_method_pilot as m
     from r10_process_first_tools import validate
     if mode not in ('draft', 'ready'):
@@ -319,6 +391,16 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                 raise ValueError('manifest_provenance')
         if not (draft / 'hidden/world.md').is_file():
             raise ValueError('world_record_missing')
+        if atomic_rubric_version:
+            checks = f.read(draft / 'hidden/material_checks.json').get('checks')
+            if not isinstance(checks, list) or not checks:
+                raise ValueError('hidden/material_checks.json.checks: targeted material checks required')
+            candidate = f.files(draft / 'candidate')
+            for index, row in enumerate(checks):
+                if (not isinstance(row, dict) or row.get('path') not in candidate
+                        or any(not str(row.get(key, '')).strip() for key in (
+                            'locator', 'assertion', 'method', 'result', 'limitation'))):
+                    raise ValueError(f'hidden/material_checks.json.checks[{index}]: exact candidate path and complete check evidence required')
         return {'status': 'completed', 'files': actual}
     if role == 'mine':
         outcome = m.task_result(draft, inputs)
@@ -331,36 +413,70 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                 if not ref.get('locator'):
                     raise ValueError('design_intent_locator_required')
         return outcome
+    if role == 'edit':
+        if not atomic_rubric_version:
+            raise ValueError('candidate_editor_requires_versioned_quality_scope')
+        return m.editor_result(draft, inputs)
     if role == 'compile':
-        outcome = m.compilation_result(draft, inputs)
-        if protocol == 'task_factory_harness_v1':
+        if protocol != 'task_factory_harness_v1':
+            return m.compilation_result(draft, inputs)
+        from task_generator.production import task_factory_harness as harness
+        errors = []
+        outcome = None
+        try:
+            outcome = (m.atomic_compilation_result(draft, inputs) if atomic_rubric_version
+                       else m.compilation_result(draft, inputs))
+        except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as error:
+            errors.extend(getattr(error, 'messages', [str(error)]))
+        if outcome and outcome.get('status') == 'upstream_issue':
+            return outcome
+        try:
             basis = f.read(draft / 'basis_draft.json')
             if not isinstance(basis.get('requirements'), list) or not basis['requirements']:
-                raise ValueError('basis_requirements_required')
-            from task_generator.production import task_factory_harness as harness
+                raise ValueError('basis_draft.json.requirements: expected a nonempty list')
+            if obligation_trace_version is not None:
+                harness.validate_obligation_trace(
+                    draft, inputs,
+                    require_comparison=(inputs / 'development_trial').is_dir(),
+                    initial_basis_snapshot=initial_basis_snapshot, version=obligation_trace_version)
+        except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as error:
+            errors.extend(getattr(error, 'messages', [str(error)]))
+        try:
             manifest = harness.validate_calculation_bundle(draft, inputs)
             if calculation_version is not None and str(manifest.get('version')) != str(calculation_version):
                 raise ValueError(f'calculation_evidence.json.version: expected {calculation_version} for this scope, got {manifest.get("version")!r}')
-            if (inputs / 'development_trial').is_dir():
+        except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as error:
+            errors.extend(getattr(error, 'messages', [str(error)]))
+        if (inputs / 'development_trial').is_dir():
+            try:
                 comparison = f.read(draft / 'comparison.json')
                 if not all(key in comparison for key in ('trial_errors', 'compiler_omissions', 'alternatives', 'upstream_defects')):
-                    raise ValueError('comparison_fields_required_after_development_trial')
+                    raise ValueError('comparison.json: fields trial_errors, compiler_omissions, alternatives and upstream_defects are required after development trial')
+            except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as error:
+                errors.extend(getattr(error, 'messages', [str(error)]))
+        if errors:
+            raise harness.ContractIssues(dict.fromkeys(errors))
         return outcome
     if role == 'review':
         review = f.read(draft / 'review.json')
+        extra_allowed = teacher_citation_paths(inputs, protocol)
         for i, dimension in enumerate(review.get('checks', [])):
             for j, finding in enumerate(dimension.get('findings', [])):
                 try:
-                    m.reference(inputs, finding.get('path'))
+                    m.reference(inputs, finding.get('path'), extra_allowed=extra_allowed)
                 except ValueError as error:
                     raise ValueError(f'review.json checks[{i}].findings[{j}].path: use one exact file from schema citation_inputs; separate multiple sources into separate findings') from error
-        return m.review_result(draft, inputs)
+        return m.review_result(draft, inputs, extra_allowed=extra_allowed)
     if role == 'consult':
         result = f.read(draft / 'consultation.json')
         if not isinstance(result.get('summary'), str) or not isinstance(result.get('findings'), list) or not isinstance(result.get('questions'), list):
             raise ValueError('invalid_consultation')
-        for r in result['findings']:
-            m.reference(inputs, r['path'])
+        extra_allowed = teacher_citation_paths(inputs, protocol)
+        for index, r in enumerate(result['findings']):
+            try:
+                m.reference(inputs, r['path'], extra_allowed=extra_allowed)
+            except ValueError as error:
+                raise ValueError(f'consultation.json.findings[{index}].path: {error}; expected one exact allowed file from schema consultation citation_inputs') from error
             if not all(r.get(k) for k in ('locator', 'observation', 'limitation')):
                 raise ValueError('consultation_evidence_required')
         return {'status': 'completed'}
@@ -378,11 +494,17 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
             'missing': sorted(expected - actual), 'extra': sorted(actual - expected), 'professional_correctness': 'not_scored'}
 
 
-def _inventory(root, path):
+def _inventory(root, path, args=None):
     if not path.is_dir():
         raise ValueError('inventory_path_must_be_directory')
     rows = []
-    for item in sorted(path.rglob('*')):
+    args = args or {}
+    offset = args.get('offset', 0)
+    limit = args.get('max_chars', 30000)
+    paths = (item for item in sorted(path.rglob('*')) if item.is_file())
+    truncated = False
+    used = 0
+    for index, item in enumerate(itertools.islice(paths, offset, None), offset):
         if not item.is_file():
             continue
         row = {'path': item.relative_to(root).as_posix(), 'sha256': f.digest(item),
@@ -400,49 +522,108 @@ def _inventory(root, path):
         elif item.suffix.lower() == '.pdf':
             from pypdf import PdfReader
             row['pages'] = len(PdfReader(item).pages)
+        size = len(json.dumps(row, ensure_ascii=False).encode('utf-8'))
+        if rows and (len(rows) >= 100 or used + size > limit):
+            truncated = True
+            break
         rows.append(row)
-    return {'root': path.relative_to(root).as_posix() or '.', 'files': rows}
+        used += size
+    return {'root': path.relative_to(root).as_posix() or '.', 'files': rows,
+            'truncated': truncated, 'offset': offset, 'next_offset': offset + len(rows) if truncated else None,
+            'read_limit_bytes': limit}
+
+
+def _page_records(records, args, limit):
+    """Bound serialized UTF-8 content; oversized records have resumable fragments."""
+    offset = args.get('offset', 0)
+    fragment = args.get('fragment_offset', 0)
+    if type(fragment) is not int or fragment < 0:
+        raise ValueError('fragment_offset_must_be_nonnegative_integer')
+    iterator = iter(itertools.islice(records, offset, None))
+    selected, used = [], 0
+    for index, record in enumerate(iterator, offset):
+        encoded = json.dumps(record, ensure_ascii=False).encode('utf-8')
+        if fragment or len(encoded) > limit:
+            if selected:
+                return {'records': selected, 'truncated': True, 'next_offset': index, 'next_fragment_offset': 0}
+            # Fragment offsets are characters in the serialized record, never bytes.
+            text = encoded.decode('utf-8')
+            piece = text[fragment:fragment + max(1, limit // 4)]
+            complete = fragment + len(piece) >= len(text)
+            return {'records': [], 'record_json_fragment': piece, 'record_complete': complete,
+                    'truncated': True, 'next_offset': index + int(complete),
+                    'next_fragment_offset': 0 if complete else fragment + len(piece)}
+        if used + len(encoded) > limit or len(selected) >= 200:
+            return {'records': selected, 'truncated': True, 'next_offset': index, 'next_fragment_offset': 0}
+        selected.append(record)
+        used += len(encoded)
+    return {'records': selected, 'truncated': False, 'next_offset': None, 'next_fragment_offset': None}
 
 
 def _inspect_one(area, relative, args):
     root = Path('/draft' if area == 'draft' else '/workspace/inputs')
     path = f.safe_path(root, relative)
     f.files(root)
-    if args.get('mode') == 'inventory':
-        return _inventory(root, path)
     limit = args.get('max_chars', 30000)
+    offset = args.get('offset', 0)
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1 or limit > 100000:
         raise ValueError('max_chars_must_be_integer_1_to_100000')
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise ValueError('offset_must_be_nonnegative_integer')
+    if args.get('mode') == 'inventory':
+        return _inventory(root, path, args)
     if path.suffix == '.xlsx':
         from openpyxl import load_workbook
-        book = load_workbook(path, data_only=args.get('cached', False))
+        from openpyxl.utils.cell import range_boundaries
+        book = load_workbook(path, read_only=True, data_only=args.get('cached', False))
         sheet = book[args['sheet']] if args.get('sheet') else book.active
-        cells = sheet[args.get('range', sheet.calculate_dimension())]
-        if not isinstance(cells, tuple):
-            cells = ((cells,),)
-        elif cells and not isinstance(cells[0], tuple):
-            cells = (cells,)
-        result = {'sheets': book.sheetnames, 'sheet': sheet.title,
-                  'cells': [{'cell': c.coordinate, 'value': str(c.value), 'type': c.data_type}
-                            for row in cells for c in row if c.value is not None][:500]}
-        book.close()
-        return result
+        bounds = range_boundaries(args.get('range', sheet.calculate_dimension()))
+        cells = sheet.iter_rows(min_col=bounds[0], min_row=bounds[1], max_col=bounds[2], max_row=bounds[3])
+        records = ({'cell': c.coordinate, 'value': str(c.value), 'type': c.data_type}
+                   for row in cells for c in row if c.value is not None)
+        try:
+            page = _page_records(records, args, limit)
+            return {'sheets': book.sheetnames, 'sheet': sheet.title, 'cells': page.pop('records'),
+                    'read_limit_bytes': limit, 'offset': offset, **page}
+        finally:
+            book.close()
     if path.suffix == '.docx':
         from docx import Document
         doc = Document(path)
-        return {'paragraphs': [{'paragraph': i, 'text': p.text[:limit]} for i, p in enumerate(doc.paragraphs, 1)],
-                'tables': [[[c.text[:limit] for c in row.cells] for row in table.rows] for table in doc.tables]}
+        section = args.get('section', 'paragraphs')
+        if section not in ('paragraphs', 'tables'):
+            raise ValueError('docx_section_must_be_paragraphs_or_tables')
+        records = ({'paragraph': i, 'text': p.text} for i, p in enumerate(doc.paragraphs, 1)) if section == 'paragraphs' else (
+            {'table': t, 'row': r, 'cells': [c.text for c in row.cells]}
+            for t, table in enumerate(doc.tables, 1) for r, row in enumerate(table.rows, 1))
+        page = _page_records(records, args, limit)
+        return {section: page.pop('records'), 'section': section, 'paragraph_count': len(doc.paragraphs),
+                'table_count': len(doc.tables), 'read_limit_bytes': limit, 'offset': offset, **page}
     if path.suffix == '.pdf':
         from pypdf import PdfReader
         pdf = PdfReader(path)
         page = args.get('page', 1)
-        return {'pages': len(pdf.pages), 'page': page, 'text': (pdf.pages[page-1].extract_text() or '')[:limit]}
+        text = pdf.pages[page-1].extract_text() or ''
+        selected = text[offset:offset + limit]
+        return {'pages': len(pdf.pages), 'page': page, 'text': selected,
+                'read_limit': limit, 'offset': offset,
+                'truncated': offset + len(selected) < len(text),
+                'next_offset': offset + len(selected) if offset + len(selected) < len(text) else None}
     if not path.is_file():
         raise ValueError('inspect_path_must_be_file_or_inventory_directory')
-    return {'text': path.read_text(encoding='utf-8')[:limit]}
+    text = path.read_text(encoding='utf-8')
+    selected = text[offset:offset + limit]
+    return {'text': selected, 'read_limit': limit, 'offset': offset,
+            'truncated': offset + len(selected) < len(text),
+            'next_offset': offset + len(selected) if offset + len(selected) < len(text) else None}
 
 
 def inspect(args):
+    args = dict(args)
+    if args.get('mode') == 'inventory' and 'path' not in args and 'paths' not in args:
+        args['path'] = '.'
+    if isinstance(args.get('path'), list) and 'paths' not in args:
+        args['paths'] = args.pop('path')
     area = args.get('area', 'draft')
     if area not in ('draft', 'inputs'):
         raise ValueError('unknown_area')
@@ -450,9 +631,14 @@ def inspect(args):
     if paths is not None:
         if not isinstance(paths, list) or not paths or len(paths) > 20 or not all(isinstance(p, str) for p in paths):
             raise ValueError('paths_must_be_nonempty_string_list_max_20')
-        return {'items': {path: _inspect_one(area, path, args) for path in paths}}
+        per_file = dict(args, max_chars=min(args.get('max_chars', 30000), 100000 // len(paths)))
+        items = {path: _inspect_one(area, path, per_file) for path in paths}
+        return {'items': items,
+                'requested_paths': len(paths),
+                'truncated_paths': [path for path, result in items.items()
+                                    if result.get('truncated')]}
     if not isinstance(args.get('path'), str):
-        raise ValueError('path_or_paths_required')
+        raise ValueError('inspect.path: path_or_paths_required; expected path string or paths array; for root inventory use mode inventory')
     return _inspect_one(area, args['path'], args)
 
 
@@ -477,11 +663,36 @@ def render(args):
     return {'output': str(path), 'pages': [str(p) for p in sorted(target.glob('page-*.png'))], 'original_unchanged': True}
 
 
+_CALL_STACK = []
+
+
 def client(action, args):
+    cfg = f.read('/workspace/role.json')
+    if cfg.get('event_version') != 2:
+        return _client(action, args)
+    record = {'call_id': uuid.uuid4().hex, 'parent_call_id': _CALL_STACK[-1] if _CALL_STACK else None,
+              'origin': 'internal' if _CALL_STACK else 'explicit', 'action': action, 'ok': False}
+    _CALL_STACK.append(record['call_id'])
+    started = time.monotonic()
+    try:
+        result = _client(action, args)
+        record['ok'] = True
+        return result
+    except Exception as error:
+        record['error_type'] = type(error).__name__
+        raise
+    finally:
+        _CALL_STACK.pop()
+        record['elapsed_seconds'] = time.monotonic() - started
+        broker_call('log-call', {'record': record})
+
+
+def _client(action, args):
     cfg = f.read('/workspace/role.json')
     protocol = cfg.get('protocol')
     if action == 'help':
-        return {'invocation': '/workspace/bin/factory-tools <command> \'{"json":"object"}\' or pipe the same JSON object on stdin',
+        result = {'invocation': ('/workspace/bin/factory-tools <command> \'{"json":"object"}\', pipe JSON on stdin, '
+                               'or use --input-file <JSON file> inside /tmp/factory-requests (scratch), /workspace/inputs or /draft; explicit input does not consume stdin'),
                 'examples': [
                     "/workspace/bin/factory-tools schema",
                     "/workspace/bin/factory-tools inspect '{\"area\":\"inputs\",\"path\":\"SKILL.md\"}'"
@@ -490,7 +701,7 @@ def client(action, args):
                 'inspect': 'area draft|inputs; path or paths (max 20); mode inventory for a directory; optional sheet/range/page/cached/max_chars',
                 'render': 'area, path, optional recalculate:true; writes scratch only',
                 'check': 'optional mode draft|ready (default ready)',
-                'schema': 'optional artifact calculation_evidence|task|rubric|basis|comparison|review|development_diagnostic',
+                'schema': 'optional artifact calculation_evidence|task|supervision|rubric|basis|comparison|consultation|review|development_diagnostic',
                 'save-process': 'world only; first save before any candidate files',
                 'snapshot': 'reason', 'diff': 'snapshot', 'consult': 'optional snapshot, reason (visible evidence question)',
                 'record-disposition': 'request_id, finding_id, snapshot, decision accept|partial|reject, reason, evidence:[{area:draft|inputs,path,locator}]',
@@ -502,9 +713,16 @@ def client(action, args):
                 'role': cfg['role'], 'inputs': sorted(f.files('/workspace/inputs')),
                 'workflow_status': cfg.get('workflow_status'),
                 'consultations': cfg.get('consultations', [])}
+        if cfg.get('purpose') == 'tool_microtest':
+            result['commands']['replay'] = 'microtest compiler only: optional snapshot, reason, next_action stop; requires ready draft and dispositions'
+            for command in ('submit', 'request-development-trial'):
+                result['commands'].pop(command, None)
+            result['commands']['handoff'] = 'target stop only'
+        return result
     if action == 'schema':
         from task_generator.production import task_method_pilot as m
-        from task_generator.planning.rubric_compiler_v2 import TaskSpecificRubricV2
+        from task_generator.planning.rubric_compiler_v2 import TaskSpecificAtomicRubricV1, TaskSpecificRubricV2
+        rubric_model = TaskSpecificAtomicRubricV1 if cfg.get('atomic_rubric_version') else TaskSpecificRubricV2
         result = {'mine': m.MINING.replace('/output', '/draft'), 'compile': m.COMPILATION.replace('/output', '/draft'), 'rubric': TaskSpecificRubricV2.model_json_schema(),
                 'review': m.REVIEW.replace('/output', '/draft'),
                 'evidence_path_contract': 'Each finding.path is one exact existing file from citation_inputs. No joined paths, prefixes, or directories. Use separate findings for multiple sources.',
@@ -519,14 +737,64 @@ def client(action, args):
                 'calculation_script_io': 'version 2 scripts receive --inputs <read-only input root> and emit one JSON object; calculations select scalar leaves by JSON Pointer; no writes or network'}
         artifact = args.get('artifact')
         if artifact:
+            extra_citations = teacher_citation_paths(Path('/workspace/inputs'), protocol) if artifact == 'consultation' else ()
             allowed = {
                 'task': {'contract': result['mine']},
-                'rubric': {'contract': result['rubric']},
-                'basis': {'contract': 'basis_draft.json: requirements, supported and conditional judgments, calculations, observable results and scoring boundaries'},
-                'comparison': {'contract': 'comparison.json: trial_errors, compiler_omissions, alternatives, upstream_defects'},
+                'supervision': {'contract': {
+                    'file': 'supervision.json', 'status': 'string: compiled or upstream_issue',
+                    'upstream_issues': 'empty array for compiled; nonempty located issues for upstream_issue',
+                    'decisions': [{'decision_id': 'unique string', 'requirement_ids': ['IDs from task.json, complete coverage'],
+                        'supported_judgment': 'nonempty supported judgment', 'conditional_completion': 'nonempty conditional path',
+                        'gaps': 'array', 'follow_up': 'array', 'evidence': [{'path': 'candidate-visible file',
+                            'locator': 'exact location', 'explanation': 'nonempty support explanation'}]}]},
+                    'reserved_decision_id': 'deliverable_structure needs no fabricated professional decision'},
+                'consultation': {'contract': {'file': 'consultation.json', 'summary': 'string',
+                    'questions': 'array', 'findings': [{'path': 'one exact allowed input file', 'locator': 'nonempty string',
+                        'observation': 'nonempty string', 'limitation': 'nonempty string'}]},
+                    'citation_inputs': [path for path in result['citation_inputs'] if path.startswith('reference_files/')
+                        or path in ('candidate_task.md', 'deliverable_contract.json', 'task.json', 'public_context.json',
+                            'professional_rules.json', 'sources.json', 'supervision.json', 'new_rubric.json')
+                        or path in extra_citations]},
+                'rubric': {'contract': rubric_model.model_json_schema(),
+                    'scoring_authority': 'new_rubric.json is the sole scoring authority'},
+                'task_edit': {'contract': {
+                    'files': ['task.json', 'edit_record.json'],
+                    'edit_record': {'version': 'r10.candidate_edit.1',
+                        'source_task_sha256': 'canonical JSON SHA-256 from schema response',
+                        'edited_task_sha256': 'canonical JSON SHA-256 of draft task.json',
+                        'changes': [{'change_id': 'unique', 'area': 'prompt|requirements|deliverables',
+                            'original_locator': 'located source', 'edit_summary': 'what changed',
+                            'business_reason': 'why this returns judgment to candidate',
+                            'preserved_evidence': [{'path': 'candidate-visible path', 'locator': 'location',
+                                'explanation': 'what remains supported'}],
+                            'returned_judgment': 'professional judgment no longer disclosed'}],
+                        'no_change_reason': 'required only when changes is empty'},
+                    'source_task_sha256': __import__('hashlib').sha256(json.dumps(
+                        f.read('/workspace/inputs/task.json'), ensure_ascii=False, sort_keys=True,
+                        separators=(',', ':')).encode()).hexdigest() if Path('/workspace/inputs/task.json').is_file() else None}},
+                'basis': {'contract': ('basis_draft.json: requirements [{requirement_id, obligation, '
+                    'candidate_obligation_refs:[{path:candidate_task.md|deliverable_contract.json,locator,explanation}], '
+                    'rubric_ids:[criterion_id]}], plus supported and conditional judgments, calculations, '
+                    'observable results and scoring boundaries. Candidate evidence supports analysis but does not create obligations.')},
+                'comparison': {'contract': ('comparison.json: initial_basis_snapshot, trial_errors, compiler_omissions, '
+                    'alternatives, upstream_defects, requirement_changes [{change_type:clarify|add|remove, description, '
+                    'rubric_ids, candidate_obligation_refs}]. New scoring work requires candidate-visible support or upstream revision.')},
                 'review': {'contract': result['review'], 'citation_inputs': result['citation_inputs']},
                 'development_diagnostic': {'contract': 'diagnostic.json: evidence_used, calculations, ambiguities, barriers'},
             }
+            if cfg.get('atomic_rubric_version'):
+                allowed['supervision'] = {'contract': {
+                    'file': 'supervision.json', 'status': 'compiled or upstream_issue',
+                    'upstream_issues': 'empty for compiled; located issues for upstream_issue',
+                    'decisions': [{'decision_id': 'unique string',
+                        'requirement_ids': ['task requirement IDs; complete coverage'],
+                        'reference_analysis': 'teacher reference derivation, not a scoring rule',
+                        'known_facts': ['candidate-visible supported facts'],
+                        'uncertainties': ['unresolved limits'], 'follow_up': ['useful actions'],
+                        'evidence': [{'path': 'candidate-visible file', 'locator': 'exact location',
+                                     'explanation': 'support and limitation'}]}],
+                    'forbidden_scoring_fields': ['conditional_completion', 'score_boundaries'],
+                    'authority': 'new_rubric.json alone defines every scoring condition'}}
             if protocol == 'task_factory_harness_v1':
                 rubric_ids = []
                 if 'new_rubric.json' in f.files('/draft'):
@@ -541,6 +809,28 @@ def client(action, args):
                     'current_rubric_ids': rubric_ids,
                     'candidate_reference_files': references,
                 }
+                if str(cfg.get('obligation_trace_version')) == '2':
+                    allowed['basis']['contract'] = (
+                        'requirements:[{requirement_id,obligation,basis_kind:explicit|material_instruction|necessary_derivation|optional,'
+                        'candidate_obligation_refs:[{path,locator,explanation,sha256}],rubric_ids}]. '
+                        'Sources: candidate_task.md, deliverable_contract.json, public_context.json, reference_files/*. '
+                        'Necessary derivation also needs serves_requirement_id (explicit/material_instruction), necessity, alternative_paths. '
+                        'Optional analysis has empty rubric_ids; it cannot be a full-credit condition. '
+                        'Facts alone do not establish obligations. deliverable_structure is the contract-grounded exception.')
+                    allowed['basis']['candidate_sources'] = {
+                        path: sha for path, sha in f.files('/workspace/inputs').items()
+                        if path in ('candidate_task.md', 'deliverable_contract.json', 'public_context.json') or path.startswith('reference_files/')}
+                    allowed['comparison']['contract'] = (
+                        'initial_basis_snapshot plus trial_errors, compiler_omissions, alternatives, upstream_defects, '
+                        'requirement_changes:[{change_id,change_type,description,rubric_ids,candidate_obligation_refs}]. '
+                        'Cover every actual_changes ID exactly once; explain professional support and alternative paths.')
+                    allowed['comparison']['initial_basis_snapshot'] = cfg.get('initial_basis_snapshot')
+                    if Path('/workspace/inputs/initial_basis').is_dir():
+                        from task_generator.production.obligation_trace import actual_changes
+                        try:
+                            allowed['comparison']['actual_changes'] = actual_changes('/workspace/inputs/initial_basis', '/draft')
+                        except (ValueError, KeyError, OSError) as error:
+                            allowed['comparison']['diff_error'] = str(error)
             if artifact not in allowed:
                 raise ValueError('unknown_schema_artifact:' + str(artifact))
             return {'artifact': artifact, **allowed[artifact]}
@@ -550,7 +840,8 @@ def client(action, args):
     if action in ('check', 'inspect', 'render'):
         mode = args.get('mode', 'ready') if action == 'check' else None
         result = check(cfg['role'], Path('/draft'), Path('/workspace/inputs'), protocol, mode,
-                       cfg.get('calculation_contract_version')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
+                       cfg.get('calculation_contract_version'), cfg.get('obligation_trace_version'),
+                       cfg.get('initial_basis_snapshot'), cfg.get('atomic_rubric_version')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
         broker_call('log-check', {'result': {'tool': action, 'arguments': args, 'ok': True,
                                            'hashes': f.files('/draft'), 'role': cfg['role'],
                                            **({'mode': mode} if action == 'check' else {})}})
@@ -568,9 +859,41 @@ def client(action, args):
     return broker_call(action, args)
 
 
-def cli_payload(argv, stdin):
-    text = argv[2] if len(argv) > 2 else (stdin.read() if not stdin.isatty() else '')
-    return json.loads(text) if text.strip() else {}
+def cli_payload(argv, stdin, allowed_roots=None):
+    trailing = argv[2:]
+    input_file = None
+    positional = []
+    if '--input-file' in trailing:
+        if trailing.count('--input-file') != 1:
+            raise ValueError('input_file_option_must_appear_once')
+        index = trailing.index('--input-file')
+        if index + 1 >= len(trailing):
+            raise ValueError('input_file_path_required')
+        input_file = trailing[index + 1]
+        positional = trailing[:index] + trailing[index + 2:]
+    else:
+        positional = trailing
+    # Explicit input must never wait for an inherited, open pipe to close.
+    stdin_text = stdin.read(1024 * 1024 + 1) if not positional and input_file is None and not stdin.isatty() else ''
+    provided = int(bool(positional)) + int(input_file is not None) + int(bool(stdin_text.strip()))
+    if provided > 1 or len(positional) > 1:
+        raise ValueError('use_exactly_one_of_positional_json_stdin_or_input_file')
+    if input_file is not None:
+        path = Path(input_file).resolve()
+        roots = tuple(Path(root).resolve() for root in (allowed_roots or ('/workspace/inputs', '/draft', '/tmp/factory-requests')))
+        if not any(path.is_relative_to(root) for root in roots) or not path.is_file():
+            raise ValueError('input_file_must_be_readable_within_role_directories')
+        if path.stat().st_size > 1024 * 1024:
+            raise ValueError('request_exceeds_1_mib')
+        text = path.read_text(encoding='utf-8')
+    else:
+        text = positional[0] if positional else stdin_text
+    if len(text.encode('utf-8')) > 1024 * 1024:
+        raise ValueError('request_exceeds_1_mib')
+    value = json.loads(text) if text.strip() else {}
+    if not isinstance(value, dict):
+        raise ValueError('request_must_be_json_object')
+    return value
 
 
 if __name__ == '__main__':
@@ -584,5 +907,5 @@ if __name__ == '__main__':
             print(json.dumps({'ok': True, 'result': client(sys.argv[1], args)}, ensure_ascii=False))
         except Exception as error:
             print(json.dumps({'ok': False, 'error': type(error).__name__ + ':' + str(error),
-                              'issues': [issue_for(error)]}, ensure_ascii=False))
+                              'issues': issues_for(error)}, ensure_ascii=False))
             sys.exit(1)

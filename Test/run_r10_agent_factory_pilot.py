@@ -31,8 +31,132 @@ RUNTIME_FILES = ['src/task_generator/' + p for p in (
 )] + ['Test/r10_process_first_tools.py']
 HARNESS_RUNTIME_FILES = [
     'src/task_generator/production/task_factory_harness.py',
+    'src/task_generator/production/obligation_trace.py',
     'Test/r10_calculation_replay.py',
 ]
+
+COLLECTION_RETRY_DELAYS = (0, 2, 5)
+LOCAL_ADMISSION_RETRY_DELAYS = (0, 0.1, 0.5, 1.0)
+
+
+def _transport_retry(operation, *, deadline_epoch, label):
+    """Retry only bounded transport failures; callers still validate content."""
+    failures = []
+    for index, delay in enumerate(COLLECTION_RETRY_DELAYS):
+        if delay:
+            time.sleep(delay)
+        remaining = int(deadline_epoch - time.time())
+        if remaining < 1:
+            raise ValueError(f'collection_time_exhausted:{label}')
+        try:
+            result = operation(min(120, remaining))
+        except subprocess.TimeoutExpired as error:
+            failures.append({'attempt': index + 1, 'kind': 'timeout', 'detail': str(error)})
+            continue
+        if result.returncode == 0:
+            return result, failures
+        failures.append({'attempt': index + 1, 'kind': 'returncode',
+                         'returncode': result.returncode, 'detail': result.stderr[-800:]})
+        transient = (result.returncode == 255 or any(token in result.stderr.lower() for token in (
+            'connection reset', 'connection timed out', 'operation timed out', 'broken pipe',
+            'connection closed')))
+        if not transient:
+            raise ValueError(f'collection_command_failed:{label}:{result.returncode}')
+    raise ValueError(f'collection_transport_failed:{label}:{json.dumps(failures, ensure_ascii=False)}')
+
+
+def _admit_collected_tree(staging, raw, *, deadline_epoch):
+    """Retry only transient local rename failures while preserving one atomic admission."""
+    failures = []
+    for delay in LOCAL_ADMISSION_RETRY_DELAYS:
+        if delay:
+            time.sleep(delay)
+        if time.time() >= deadline_epoch:
+            raise ValueError('collection_time_exhausted:local_admission')
+        try:
+            staging.replace(raw)
+            return failures
+        except PermissionError as error:
+            failures.append({'kind': 'permission', 'detail': str(error)})
+    raise ValueError('collection_local_admission_failed:'
+                     + json.dumps(failures, ensure_ascii=False))
+
+
+def _collect_remote_outputs(root, state, attempt, remote, runtime_remote, local, deps, role,
+                            deadline_epoch):
+    """Validate one remote inventory and atomically admit its downloaded copy."""
+    deadline = min(deadline_epoch, time.time() + 360)
+    inventory_code = (
+        "import json,pathlib; "
+        "from task_generator.production.agent_factory import files,digest; "
+        "r=pathlib.Path('/raw'); out={}; "
+        "names=('draft','snapshots','processes','broker.json'); "
+        "[(out.__setitem__(n, {'kind':'directory','hashes':files(p)}) if p.is_dir() "
+        "else out.__setitem__(n, {'kind':'file','sha256':digest(p)})) "
+        "for n in names for p in (r/n,) if p.exists()]; "
+        "print(json.dumps(out,sort_keys=True))"
+    )
+    safe_cmd = base.docker_base(deps) + [
+        '-e', 'PYTHONPATH=/code/src:/code/Test:/deps/site',
+        '-v', f'{runtime_remote}/runtime:/code:ro',
+        '-v', f'{remote}:/raw:ro', '--entrypoint', 'python', IMAGE, '-c', inventory_code]
+    result, retries = _transport_retry(
+        lambda timeout: base._ssh(HOST, shlex.join(safe_cmd), timeout=timeout, check=False),
+        deadline_epoch=deadline, label='inventory')
+    try:
+        inventory = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError('collection_inventory_invalid_json') from error
+    required = {'draft', 'broker.json'} | ({'snapshots'} if role in f.AUTHOR_ROLES else set())
+    missing = sorted(required - set(inventory))
+    if missing:
+        raise ValueError('collection_required_output_missing:' + ','.join(missing))
+    collection = attempt.setdefault('collection', {})
+    collection.update(status='inventory_validated', inventory=inventory)
+    collection.setdefault('transport_retries', []).extend(retries)
+    collection.setdefault('confirmed', {})
+    f.write(root / 'receipt.json', state)
+    staging = local / 'collection'
+    staging.mkdir()
+    for name, expected in inventory.items():
+        destination = staging / name
+        result, item_retries = _transport_retry(
+            lambda timeout, n=name, d=destination: base._run(
+                base._scp_command(f'{HOST}:{remote}/{n}', str(d)), timeout=timeout, check=False),
+            deadline_epoch=deadline, label='download_' + name)
+        if expected['kind'] == 'directory':
+            actual = {'kind': 'directory', 'hashes': f.files(destination)}
+        else:
+            actual = {'kind': 'file', 'sha256': f.digest(destination)}
+        if actual != expected:
+            raise ValueError('collection_download_hash_mismatch:' + name)
+        collection['confirmed'][name] = actual
+        collection['transport_retries'].extend(item_retries)
+        f.write(root / 'receipt.json', state)
+    raw = local / 'raw'
+    local_retries = _admit_collected_tree(staging, raw, deadline_epoch=deadline)
+    collection.setdefault('local_admission_retries', []).extend(local_retries)
+    collection.update(status='collected', raw_path=raw.relative_to(root).as_posix())
+    attempt.update(raw_path=raw.relative_to(root).as_posix(), raw_hashes=f.files(raw))
+    f.write(root / 'receipt.json', state)
+    return raw
+
+
+def _verify_remote_tree_with_retry(remote_path, expected, deadline_epoch):
+    code = ("import hashlib,json,pathlib,sys; r=pathlib.Path(sys.argv[1]); "
+            "print(json.dumps({p.relative_to(r).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() "
+            "for p in sorted(r.rglob('*')) if p.is_file()}))")
+    result, retries = _transport_retry(
+        lambda timeout: base._ssh(
+            HOST, shlex.join(['python3', '-c', code, remote_path]), timeout=timeout, check=False),
+        deadline_epoch=deadline_epoch, label='verify_remote_inputs')
+    try:
+        actual = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError('remote_input_fingerprint_invalid_json') from error
+    if actual != expected:
+        raise ValueError('remote_input_fingerprint_changed')
+    return retries
 
 
 def now():
@@ -46,7 +170,7 @@ def safe_root(run_id):
 
 
 def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, *, spec=None, source_bundle=None,
-            batch_id=None, protocol=None):
+            batch_id=None, protocol=None, harness_options=None, synthetic_public=None):
     if root.exists():
         raise FileExistsError('run_exists')
     if not re.fullmatch(r'/home/huagosr/taskgenerator-data/[A-Za-z0-9_/-]+', dependency_remote) or '..' in dependency_remote:
@@ -55,7 +179,12 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
         raise ValueError('dependency_pins_changed')
     root.mkdir()
     spec = spec or previous.method.CASES[0]
-    if source_bundle is not None:
+    if synthetic_public is not None:
+        if (harness_options or {}).get('purpose') != 'tool_microtest' or spec['seed'] != 'synthetic_tool_fixture':
+            raise ValueError('synthetic_public_requires_microtest_scope')
+        shutil.copytree(synthetic_public, root / 'public')
+        sources = {}
+    elif source_bundle is not None:
         from task_generator.production import agent_factory_batch as batch
         sources = batch.public_inputs(sys.modules[__name__], root / 'public', spec, source_bundle)
     else:
@@ -75,10 +204,11 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
         target = root / 'runtime' / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / path, target)
+    prompt_options = harness_options or {}
     for role in factory.ROLES:
         p = root / 'prompts' / (role + '.md')
         p.parent.mkdir(exist_ok=True)
-        p.write_text(factory.prompt(role), encoding='utf-8')
+        p.write_text(factory.prompt(role, prompt_options), encoding='utf-8')
     scope = {'created_at': now(), 'seed': spec['seed'], 'host': HOST, 'image': IMAGE, 'image_sha': IMAGE_SHA,
              'remote': REMOTE_BASE + '/' + root.name, 'dependency_remote': dependency_remote,
              'dependency_lock_sha': f.digest(root / 'dependency_lock.json'), 'public_hashes': f.files(root / 'public'),
@@ -98,8 +228,10 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
             'execution_id': 'smoke', 'script': 'value.py'}]})
         (smoke / 'output').mkdir()
         scope.update(protocol=protocol, max_upstream_revisions=1, calculation_contract_version=2,
+                     obligation_trace_version=2,
                      replay_smoke_hashes=f.files(smoke),
                      authorization='User approved one new development world in this scope with isolated development solving, reproducible calculation evidence, one upstream revision, one final review and one admitted final solve. No grading.')
+        scope.update(harness_options or {})
     if batch_id:
         if protocol == 'task_factory_harness_v1':
             scope.update(batch_id=batch_id, case_id=spec['id'], seconds=14400,
@@ -114,7 +246,9 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
             'attempts': [], 'current': {}, 'sessions': {}, 'checks': [], 'consultations': [], 'dispositions': [],
             'next': {'role': 'world'}, 'submitted': False, 'recoveries': 0,
             'task_manual_edits': 0, 'controller_interventions': [], 'first_failure': None,
-            **({'compile_stage': 'basis', 'upstream_revisions': 0, 'calculation_replays': []}
+            **({'compile_stage': 'basis', 'upstream_revisions': 0, 'calculation_replays': [],
+                'candidate_edit_version': scope.get('candidate_edit_version'),
+                'atomic_rubric_version': scope.get('atomic_rubric_version')}
                if protocol else {})})
     return scope
 
@@ -196,18 +330,25 @@ def build_inputs(root, state, role, target, consult_role=None, protocol=None):
     effective = consult_role if role == 'consult' else role
     if role != 'solve' or protocol:
         copy_file(public / 'public_context.json', target / 'public_context.json')
-    if effective in ('compile', 'review') or role == 'consult':
+    if effective in ('edit', 'compile', 'review') or role == 'consult':
         for name in ('professional_rules.json', 'sources.json'):
             copy_file(public / name, target / name)
+        if state.get('candidate_edit_version') and effective in ('edit', 'compile') and (public / 'SKILL.md').is_file():
+            copy_file(public / 'SKILL.md', target / 'SKILL.md')
     if effective == 'world' or (effective == 'mine' and role != 'consult'):
         return
     mine = state['current']['mine']
-    task = version_path(root, mine) / 'task.json'
-    parsed = previous.method.task_result(task.parent, root / mine['inputs'])
+    use_edited = (state.get('candidate_edit_version') and 'edit' in state.get('current', {})
+                  and not (effective == 'edit' and role != 'consult'))
+    task_owner = state['current']['edit'] if use_edited else mine
+    task = version_path(root, task_owner) / 'task.json'
+    parsed = previous.method.task_result(task.parent, root / task_owner['inputs'])
     (target / 'candidate_task.md').write_text(parsed['candidate_task'], encoding='utf-8')
     f.write(target / 'deliverable_contract.json', parsed['contract'])
-    if role != 'solve':
+    if role not in ('devsolve', 'solve'):
         copy_file(task, target / 'task.json')
+    if role == 'consult' and consult_role == 'edit':
+        copy_file(version_path(root, state['current']['edit']) / 'edit_record.json', target / 'edit_record.json')
     if protocol == 'task_factory_harness_v1' and role == 'compile' and state.get('development_trial'):
         from task_generator.production import task_factory_harness as harness
         if not harness.trial_is_current(state):
@@ -218,6 +359,11 @@ def build_inputs(root, state, role, target, consult_role=None, protocol=None):
         shutil.copytree(trial / 'deliverable_files', target / 'development_trial/deliverable_files')
         copy_file(trial / 'diagnostic.json', target / 'development_trial/diagnostic.json')
         copy_file(version_path(root, mine) / 'design_intent.json', target / 'design_intent.json')
+        initial = state.get('initial_basis_snapshot', {}).get('entry')
+        if initial is not None:
+            source = version_path(root, initial)
+            for name in ('basis_draft.json', 'new_rubric.json', 'calculation_evidence.json'):
+                copy_file(source / name, target / 'initial_basis' / name)
     if role == 'review' or (role == 'consult' and consult_role == 'compile'):
         compiler = version_path(root, state['current']['compile'])
         names = ['supervision.json', 'new_rubric.json']
@@ -239,8 +385,9 @@ def agent_script(role, session_id=None):
         raise ValueError('unsafe_session_id')
     lines = ['#!/bin/sh', 'set -eu', 'export HOME=/tmp',
              'export PYTHONPATH=/code/src:/code/Test:/deps/site', 'export PYTHONDONTWRITEBYTECODE=1',
-             'export PATH=/workspace/bin:$PATH', 'export PIP_NO_INDEX=1']
-    if role in ('world', 'compile', 'devsolve', 'solve'):
+             'export PATH=/workspace/bin:$PATH', 'export PIP_NO_INDEX=1',
+             'mkdir -p /tmp/factory-requests']
+    if role in ('world', 'edit', 'compile', 'devsolve', 'solve'):
         lines += ['export CODEX_HOME=/state/codex', 'mkdir -p "$CODEX_HOME"',
                   'ln -sfn /run/codex-home/auth.json "$CODEX_HOME/auth.json"']
         cmd = ['codex', 'exec'] + (['resume', session_id] if session_id else [])
@@ -283,12 +430,14 @@ def run_calculation_replay(root, scope, state, attempt, entry, remote):
     version = str(manifest.get('version'))
     if version == '2':
         execution_manifest = {'version': 2, 'executions': [
-            {'execution_id': row['execution_id'], 'script': row['script']}
+            {'execution_id': row['execution_id'], 'script': row['script'],
+             'script_sha256': f.digest(request / 'scripts' / row['script']), 'sources': row['sources']}
             for row in manifest['executions']
         ]}
     else:
         execution_manifest = {'version': 1, 'calculations': [
-            {'calculation_id': row['calculation_id'], 'script': row['script']}
+            {'calculation_id': row['calculation_id'], 'script': row['script'],
+             'script_sha256': f.digest(request / 'scripts' / row['script']), 'sources': row['sources']}
             for row in manifest['calculations']
         ]}
     f.write(request / 'execution_manifest.json', execution_manifest)
@@ -320,6 +469,11 @@ def run_calculation_replay(root, scope, state, attempt, entry, remote):
             timeout=replay_limit + 30, check=False)
     finally:
         base._ssh(HOST, f'docker rm -f {replay_name}', timeout=30, check=False)
+    version_path(root, entry)
+    base.verify_remote_tree(remote + '/replay_request', f.files(request), time.monotonic() + 60)
+    if attempt.get('inputs'):
+        base.verify_remote_tree(remote + '/workspace/inputs/reference_files',
+                                f.files(root / attempt['inputs'] / 'reference_files'), time.monotonic() + 60)
     exists = base._ssh(HOST, f'test -e {output_remote}', timeout=30, check=False).returncode == 0
     if exists:
         base._run(base._scp_command(f'{HOST}:{output_remote}', str(local / 'execution_results.json')), timeout=60)
@@ -367,7 +521,7 @@ def compare_calculation_results(manifest, execution):
                     and isinstance(target, (int, float)) and not isinstance(target, bool)):
                 matched = abs(value - target) <= tolerance
             else:
-                matched = value == target and tolerance == 0
+                matched = type(value) is type(target) and value == target and tolerance == 0
             rows.append({'calculation_id': item['calculation_id'], 'execution_id': item['execution_id'],
                          'result_pointer': item['result_pointer'], 'script_sha256': execution_row.get('script_sha256'),
                          'value': value, 'expected': target, 'tolerance': tolerance, 'matched': matched})
@@ -390,16 +544,29 @@ def compare_calculation_results(manifest, execution):
                 and isinstance(target, (int, float)) and not isinstance(target, bool)):
             matched = abs(value - target) <= tolerance
         else:
-            matched = value == target and tolerance == 0
+            matched = type(value) is type(target) and value == target and tolerance == 0
         rows.append({**row, 'expected': target, 'tolerance': tolerance, 'matched': matched})
     return {'status': 'passed' if all(row['matched'] for row in rows) else 'mismatch',
             'calculations': rows, 'network': 'none', 'credentials': 'not_mounted'}
+
+
+def checked_output(attempt, *args):
+    try:
+        return ft.check(*args)
+    except ValueError:
+        attempt['failure_kind'] = 'output_contract'
+        raise
 
 
 def run_turn(root, scope, state, request, batch_root=None):
     factory = f
     if scope.get('protocol') == 'task_factory_harness_v1':
         from task_generator.production import task_factory_harness as factory
+    if scope.get('purpose') == 'tool_microtest':
+        if not state.get('microtest_execution'):
+            raise ValueError('microtest_entry_required')
+        state['budget_limits'] = {key: scope[key] for key in (
+            'max_launches', 'production_launches', 'seconds', 'per_launch_seconds', 'terminal_reserve_seconds')}
     role = request['role']
     feedback = factory.role_feedback(state, request)
     session = factory.validate_session(state, role, root.name) if role in factory.AUTHOR_ROLES else None
@@ -449,6 +616,8 @@ def run_turn(root, scope, state, request, batch_root=None):
     passed_replay_snapshots = sorted({row['compile_snapshot'] for row in state.get('calculation_replays', [])
                                       if row.get('status') == 'passed'})
     f.write(workspace / 'role.json', {'role': role, 'parents': parents,
+                                    'event_version': 2,
+                                    'purpose': scope.get('purpose'),
                                     'remaining_production_launches': (
                                         workflow['budget']['production_remaining_after_current'] if workflow
                                         else production_cap - len(state['attempts'])),
@@ -457,6 +626,11 @@ def run_turn(root, scope, state, request, batch_root=None):
                                         factory.trial_is_current(state) if workflow and 'compile' in state['current'] else False),
                                     'passed_replay_snapshots': passed_replay_snapshots,
                                     'calculation_contract_version': scope.get('calculation_contract_version'),
+                                    'obligation_trace_version': scope.get('obligation_trace_version'),
+                                    'candidate_edit_version': scope.get('candidate_edit_version'),
+                                    'atomic_rubric_version': scope.get('atomic_rubric_version'),
+                                    'initial_basis_snapshot': state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
+                                    'deadline_epoch': state.get('deadline_epoch'),
                                     'workflow_status': workflow})
     session_id = session['id'] if session else None
     storage = session['storage'] if session else f'{scope["remote"]}/state_{ordinal:02d}'
@@ -471,12 +645,19 @@ def run_turn(root, scope, state, request, batch_root=None):
     process = state['current'].get('world', {}).get('process') if role == 'world' else None
     dispositions = [d for d in state.get('dispositions', []) if d['request_id'] in {c['request_id'] for c in consultations}]
     f.write(local / 'broker_config.json', {'root': remote, 'role': role, 'parents': parents, 'process': process,
+                                         'purpose': scope.get('purpose'),
+                                         'starting_snapshot': state.get('current', {}).get(role),
                                          'consultations': consultations, 'dispositions': dispositions,
                                          'protocol': scope.get('protocol'),
                                          'development_trial_current': (
                                              factory.trial_is_current(state) if workflow and 'compile' in state['current'] else False),
                                          'passed_replay_snapshots': passed_replay_snapshots,
                                          'calculation_contract_version': scope.get('calculation_contract_version'),
+                                         'obligation_trace_version': scope.get('obligation_trace_version'),
+                                         'candidate_edit_version': scope.get('candidate_edit_version'),
+                                         'atomic_rubric_version': scope.get('atomic_rubric_version'),
+                                         'initial_basis_snapshot': state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
+                                         'deadline_epoch': state.get('deadline_epoch'),
                                          'workflow_status': workflow})
     attempt = {'ordinal': ordinal, 'role': role, 'status': 'staging', 'started_at': now(), 'remote': remote,
                'container': name, 'timeout_seconds': limit, 'resumed_session': session_id,
@@ -503,6 +684,25 @@ def run_turn(root, scope, state, request, batch_root=None):
     limit = min(limit, int(state['deadline_epoch'] - time.time() - reserve))
     if limit < 1:
         raise ValueError('time_budget_exhausted_before_semantic_start')
+    # Clocks start after staging, then the exact launch-time identity is frozen.
+    # Re-upload only controller-owned configuration before either process starts.
+    for config_path in (workspace / 'role.json', local / 'broker_config.json'):
+        config = f.read(config_path)
+        config['deadline_epoch'] = state['deadline_epoch']
+        config['launch_deadline_epoch'] = time.time() + limit
+        if workflow:
+            runtime_state = {**state, 'attempts': [*state['attempts'][:-1],
+                {**state['attempts'][-1], 'status': 'started', 'phase': 'native'}]}
+            config['workflow_status'] = factory.workflow_status(runtime_state, role, current_launch_included=True)
+        f.write(config_path, config)
+        destination = remote + ('/workspace/role.json' if config_path.name == 'role.json' else '/broker_config.json')
+        base._run(base._scp_command(str(config_path), f'{HOST}:{destination}'), timeout=60)
+    attempt['input_hashes'] = f.files(workspace)
+    attempt['broker_config_sha256'] = f.digest(local / 'broker_config.json')
+    base.verify_remote_tree(remote + '/workspace', attempt['input_hashes'], time.monotonic() + 60)
+    limit = min(limit, int(state['deadline_epoch'] - time.time() - reserve))
+    if limit < 1:
+        raise ValueError('time_budget_exhausted_before_semantic_start')
     attempt.update(status='started', started_at=now(), timeout_seconds=limit, phase='native')
     f.write(root / 'receipt.json', state)
     deps = scope['dependency_remote']
@@ -511,7 +711,7 @@ def run_turn(root, scope, state, request, batch_root=None):
     cmd += ['-v', f'{scope["remote"]}/runtime:/code:ro', '-v', f'{deps}/deps:/deps:ro',
             '-v', f'{remote}/workspace:/workspace:ro', '-v', f'{remote}/draft:/draft:rw',
             '-v', f'{remote}/socket:/run/factory:ro', '-v', f'{storage}:/state:rw', '-w', '/workspace']
-    cmd += (['-v', '/home/huagosr/taskgenerator-secrets/codex-auth-current:/run/codex-home:rw'] if role in ('world', 'compile', 'devsolve', 'solve')
+    cmd += (['-v', '/home/huagosr/taskgenerator-secrets/codex-auth-current:/run/codex-home:rw'] if role in ('world', 'edit', 'compile', 'devsolve', 'solve')
             else ['-v', '/home/huagosr/taskgenerator-secrets/deepseek_api_key:/run/secrets/deepseek_api_key:ro'])
     cmd += ['--entrypoint', '/bin/sh', IMAGE, '/workspace/agent.sh']
     command = f'''set -eu
@@ -528,38 +728,49 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
     start = time.monotonic()
     result = base._ssh(HOST, command, timeout=limit, check=False)
     attempt.update(returncode=result.returncode, elapsed_seconds=time.monotonic() - start)
-    attempt['phase'] = 'collection'
-    for p in ('agent.jsonl', 'stderr.txt', 'broker.log'):
-        base._run(base._scp_command(f'{HOST}:{remote}/{p}', str(local / p)), timeout=90)
-    attempt['usage'] = base.usage(local / 'agent.jsonl')
-    # Preserve safe original drafts, snapshots and broker evidence even on semantic failure.
-    safe_cmd = base.docker_base(deps) + ['-e', 'PYTHONPATH=/code/src:/code/Test:/deps/site', '-v', f'{scope["remote"]}/runtime:/code:ro',
-             '-v', f'{remote}:/raw:ro', '--entrypoint', 'python', IMAGE, '-c',
-             'from task_generator.production.agent_factory import files; files("/raw/draft"); files("/raw/snapshots"); files("/raw/processes"); print("SAFE")']
-    base._ssh(HOST, shlex.join(safe_cmd), timeout=120)
-    raw = local / 'raw'
-    raw.mkdir()
-    for p in ('draft', 'snapshots', 'processes', 'broker.json'):
-        exists = base._ssh(HOST, f'test -e {remote}/{p}', timeout=30, check=False).returncode == 0
-        if exists:
-            base._run(base._scp_command(f'{HOST}:{remote}/{p}', str(raw / p)), timeout=120)
-    attempt.update(raw_path=raw.relative_to(root).as_posix(), raw_hashes=f.files(raw))
+    attempt['phase'] = 'collection_logs'
+    collection_deadline = state['deadline_epoch']
+    if batch_root is not None:
+        batch_deadline = f.read(batch_root / 'receipt.json').get('deadline_epoch')
+        if batch_deadline is not None:
+            collection_deadline = min(collection_deadline, batch_deadline)
+    attempt['collection'] = {'status': 'collecting_logs', 'confirmed': {}, 'transport_retries': []}
     f.write(root / 'receipt.json', state)
+    for p in ('agent.jsonl', 'stderr.txt', 'broker.log'):
+        transferred, retries = _transport_retry(
+            lambda timeout, name=p: base._run(
+                base._scp_command(f'{HOST}:{remote}/{name}', str(local / name)),
+                timeout=timeout, check=False),
+            deadline_epoch=collection_deadline, label='download_' + p)
+        attempt['collection']['transport_retries'].extend(retries)
+        attempt['collection']['confirmed'][p] = {'sha256': f.digest(local / p)}
+        f.write(root / 'receipt.json', state)
+    attempt['usage'] = base.usage(local / 'agent.jsonl')
     native, stderr = (local / 'agent.jsonl').read_text(encoding='utf-8'), (local / 'stderr.txt').read_text(encoding='utf-8')
-    if previous.authentication_failed(result.returncode, attempt['usage'], stderr, native):
+    authentication_failed = previous.authentication_failed(result.returncode, attempt['usage'], stderr, native)
+    native_completed = (not authentication_failed and not result.returncode
+                        and attempt['usage']['completed'] and not attempt['usage']['error_events'])
+    if native_completed:
+        actual_id = session_identity(local / 'agent.jsonl', role)
+        if session_id and actual_id != session_id:
+            raise ValueError('resumed_identity_changed')
+        attempt.update(status='native_completed', native_status='completed', native_completed_at=now(),
+                       acceptance_status='pending', session_id=actual_id, phase='collection_outputs')
+        if role in factory.AUTHOR_ROLES:
+            state['sessions'][role] = {'id': actual_id, 'storage': storage, 'scope': root.name, 'role': role,
+                                       'parents': parents, 'normal_end': True}
+    else:
+        attempt.update(native_status='failed', acceptance_status='not_applicable', phase='collection_outputs')
+    f.write(root / 'receipt.json', state)
+    raw = _collect_remote_outputs(
+        root, state, attempt, remote, scope['remote'], local, deps, role, collection_deadline)
+    attempt['collection']['input_verification_retries'] = _verify_remote_tree_with_retry(
+        remote + '/workspace', attempt['input_hashes'], collection_deadline)
+    f.write(root / 'receipt.json', state)
+    if authentication_failed:
         raise ValueError('authentication_failed')
-    if result.returncode or not attempt['usage']['completed'] or attempt['usage']['error_events']:
+    if not native_completed:
         raise ValueError('started_session_failed_no_redraw')
-    attempt.update(status='native_completed', native_status='completed', native_completed_at=now(),
-                   acceptance_status='pending')
-    actual_id = session_identity(local / 'agent.jsonl', role)
-    if session_id and actual_id != session_id:
-        raise ValueError('resumed_identity_changed')
-    attempt['session_id'] = actual_id
-    if role in factory.AUTHOR_ROLES:
-        state['sessions'][role] = {'id': actual_id, 'storage': storage, 'scope': root.name, 'role': role,
-                                   'parents': parents, 'normal_end': True}
-    base.verify_remote_tree(remote + '/workspace', attempt['input_hashes'], time.monotonic() + 90)
     journal = f.read(raw / 'broker.json') if (raw / 'broker.json').exists() else {'events': [], 'pending': None}
     for event in journal['events']:
         if event['action'] == 'log-check':
@@ -582,9 +793,11 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         if f.files(raw / 'draft') != entry['hashes']:
             raise ValueError('draft_changed_after_yield')
         action = pending['action']
-        outcome = ft.check(role, version_path(root, entry), workspace / 'inputs',
+        outcome = checked_output(attempt, role, version_path(root, entry), workspace / 'inputs',
                            scope.get('protocol'), 'draft' if action == 'consult' else 'ready',
-                           scope.get('calculation_contract_version'))
+                           scope.get('calculation_contract_version'), scope.get('obligation_trace_version'),
+                           state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
+                           scope.get('atomic_rubric_version'))
         attempt['outcome'] = outcome
         factory.accept_snapshot(state, role, entry)
         if scope.get('protocol') == 'task_factory_harness_v1':
@@ -598,11 +811,21 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         elif action == 'replay':
             replay = run_calculation_replay(root, scope, state, attempt, entry, remote)
             next_action = pending.get('next_action', 'return')
-            if replay['status'] != 'passed' or next_action == 'return':
+            if next_action == 'stop' and scope.get('purpose') == 'tool_microtest':
+                state.update(status='microtest_completed' if replay['status'] == 'passed' else 'microtest_failed', next=None)
+            elif replay['status'] != 'passed' or next_action == 'return':
                 state['next'] = {'role': 'compile', 'feedback': replay['result'],
                                  'feedback_origin': 'replay', 'feedback_role': 'compile',
                                  'feedback_snapshot': entry['id']}
             elif next_action == 'development_trial':
+                if state.get('initial_basis_snapshot') is None:
+                    state['initial_basis_snapshot'] = {
+                        'compile_snapshot': entry['id'],
+                        'entry': dict(entry),
+                        'candidate_parents': factory.expected_parents(state, 'compile'),
+                        'basis_sha256': f.digest(version_path(root, entry) / 'basis_draft.json'),
+                        'rubric_sha256': f.digest(version_path(root, entry) / 'new_rubric.json'),
+                    }
                 state['compile_stage'] = 'development_trial'
                 state['next'] = {'role': 'devsolve', 'compile_snapshot': entry['id'],
                                  'candidate_parents': factory.expected_parents(state, 'compile')}
@@ -615,6 +838,14 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
             if not any(row.get('compile_snapshot') == entry['id'] and row.get('status') == 'passed'
                        for row in state.get('calculation_replays', [])):
                 raise ValueError('current_calculation_replay_required')
+            if state.get('initial_basis_snapshot') is None:
+                state['initial_basis_snapshot'] = {
+                    'compile_snapshot': entry['id'],
+                    'entry': dict(entry),
+                    'candidate_parents': factory.expected_parents(state, 'compile'),
+                    'basis_sha256': f.digest(version_path(root, entry) / 'basis_draft.json'),
+                    'rubric_sha256': f.digest(version_path(root, entry) / 'new_rubric.json'),
+                }
             state['compile_stage'] = 'development_trial'
             state['next'] = {'role': 'devsolve', 'compile_snapshot': entry['id'],
                              'candidate_parents': factory.expected_parents(state, 'compile')}
@@ -631,8 +862,10 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         pending = journal.get('pending') or {}
         if pending.get('action') != 'finish' or pending.get('hashes') != f.files(raw / 'draft'):
             raise ValueError('readonly_output_not_finished_or_changed')
-        outcome = ft.check(role, raw / 'draft', workspace / 'inputs', scope.get('protocol'),
-                           'ready', scope.get('calculation_contract_version'))
+        outcome = checked_output(attempt, role, raw / 'draft', workspace / 'inputs', scope.get('protocol'),
+                           'ready', scope.get('calculation_contract_version'),
+                           scope.get('obligation_trace_version'), None,
+                           scope.get('atomic_rubric_version'))
         attempt['outcome'] = outcome
         if role == 'devsolve':
             destination = root / 'development_trials' / f'{ordinal:02d}'
@@ -678,19 +911,27 @@ def export_package(root, state, inputs):
     package = root / 'package'
     package.mkdir()
     shutil.copytree(inputs / 'reference_files', package / 'reference_files')
+    atomic = f.read(root / 'scope.json').get('atomic_rubric_version') if (root / 'scope.json').exists() else None
+    if atomic and (inputs / 'public_context.json').is_file():
+        copy_file(inputs / 'public_context.json', package / 'reference_files/public_context.json')
     (package / 'deliverable_files').mkdir()
     rubric = f.read(inputs / 'new_rubric.json')
     task = f.read(inputs / 'task.json')
+    formal_rubric = json.dumps({
+        'rubric_version': rubric.get('rubric_version'),
+        'scoring': rubric.get('scoring', 'integer_boundaries'),
+        'criteria': rubric['criteria'],
+    }, ensure_ascii=False, sort_keys=True)
     f.write(package / 'dataset_row.json', {'task_id': 'anonymous_task', 'title': task['title'],
             'sector': f.read(root / 'scope.json').get('domain', 'procurement_operations') if (root / 'scope.json').exists() else 'procurement_operations',
             'occupation': f.read(root / 'public/public_context.json')['role'],
             'prompt': (inputs / 'candidate_task.md').read_text(encoding='utf-8'),
             'reference_files': ['reference_files/' + p for p in f.files(package / 'reference_files')],
             'deliverable_files': [r['relative_path'] for r in f.read(inputs / 'deliverable_contract.json')['deliverables']],
-            'rubric': 'Original Rubric V2 criteria retained; provisional LLM-proxy.',
+            'rubric': formal_rubric if atomic else 'Original Rubric V2 criteria retained; provisional LLM-proxy.',
             'rubric_json': json.dumps(rubric['criteria'], ensure_ascii=False),
             'extra': {'internal_research_only': True, 'professional_status': 'provisional/LLM-proxy'}})
-    copy_file(inputs / 'new_rubric.json', package / 'rubric_v2.json')
+    copy_file(inputs / 'new_rubric.json', package / ('atomic_rubric_v1.json' if atomic else 'rubric_v2.json'))
     copy_file(inputs / 'deliverable_contract.json', package / 'deliverable_contract.json')
     if (inputs / 'calculation_evidence.json').is_file():
         copy_file(inputs / 'calculation_evidence.json', package / 'calculation_evidence.json')
@@ -704,7 +945,12 @@ def record_execution_failure(root, state, error):
     if state['attempts'] and state['attempts'][-1]['status'] in ('started', 'staging'):
         state['attempts'][-1].update(status='incomplete', reason=reason)
     elif state['attempts'] and state['attempts'][-1]['status'] == 'native_completed':
-        state['attempts'][-1].update(acceptance_status='failed', acceptance_reason=reason)
+        last_attempt = state['attempts'][-1]
+        if str(last_attempt.get('phase', '')).startswith('collection'):
+            last_attempt.setdefault('collection', {}).update(status='collection_failed', reason=reason)
+            last_attempt.update(acceptance_status='pending', acceptance_reason=reason)
+        else:
+            last_attempt.update(acceptance_status='failed', acceptance_reason=reason)
     state.update(status='incomplete', stop_reason=reason, stopped_at=now())
     critical = ('authentication_failed', 'batch_', 'feedback_outside', 'session_outside', 'session_storage',
                 'resumed_identity', 'consultation_outside', 'stale_consultation', 'source_changed', 'code_changed',
@@ -721,7 +967,7 @@ def record_execution_failure(root, state, error):
           and 'factory-tools: not found' in (root / 'turns' / f'{state["attempts"][-1]["ordinal"]:02d}' / 'agent.jsonl').read_text(encoding='utf-8')):
         category = 'global'
     elif ('budget_exhausted' in reason or 'started_session_failed' in reason or 'user_stopped' in reason
-          or last.get('phase') == 'output_check' and isinstance(error, (ValueError, KeyError))):
+          or last.get('failure_kind') == 'output_contract'):
         category = 'case'
     else:
         category = 'controller'
@@ -779,7 +1025,29 @@ def execute(root, *, batch_root=None):
     finally:
         f.write(root / 'receipt.json', state)
         lock.unlink(missing_ok=True)
-    print(json.dumps(report(root), ensure_ascii=False, indent=2))
+    if batch_root is not None:
+        persisted = f.read(root / 'receipt.json')
+        return {key: persisted.get(key) for key in (
+            'status', 'submitted', 'review', 'trial', 'first_failure', 'stop_reason')}
+    return report(root)
+
+
+def emit_json(value, stream=None):
+    """Write one JSON document without coupling persisted execution state to console encoding."""
+    stream = stream or sys.stdout
+    if stream is sys.stdout and hasattr(stream, 'reconfigure'):
+        try:
+            stream.reconfigure(encoding='utf-8', errors='strict')
+        except (AttributeError, OSError, ValueError):
+            pass
+    payload = json.dumps(value, ensure_ascii=False, indent=2)
+    encoding = getattr(stream, 'encoding', None) or 'utf-8'
+    try:
+        payload.encode(encoding)
+    except (LookupError, UnicodeEncodeError):
+        payload = json.dumps(value, ensure_ascii=True, indent=2)
+    stream.write(payload + '\n')
+    stream.flush()
 
 
 def stop(root):
@@ -794,17 +1062,131 @@ def stop(root):
 
 
 def report(root):
+    if not root.exists():
+        raise FileNotFoundError(root)
+    try:
+        return _report(root)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        try:
+            state = f.read(root / 'receipt.json')
+        except (OSError, ValueError):
+            state = {}
+        return {'status': state.get('status', 'unreadable'), 'submitted': state.get('submitted'),
+                'first_failure': state.get('first_failure'), 'report_incomplete': True,
+                'report_errors': [type(error).__name__ + ':' + str(error)],
+                'professional_status': 'provisional/LLM-proxy'}
+
+
+def _report(root):
     state = f.read(root / 'receipt.json')
+    consultations = state.get('consultations', [])
+    finding_keys = {(row['request_id'], finding)
+                    for row in consultations for finding in row.get('finding_ids', [])}
+    current_ids = {entry['id'] for entry in state.get('current', {}).values()}
+    dispositions = state.get('dispositions', [])
+    successful_tool_calls = 0
+    disposition_calls = 0
+    call_records = []
+    report_errors = []
+    for attempt in state.get('attempts', []):
+        raw = root / attempt.get('raw_path', '') / 'broker.json' if attempt.get('raw_path') else None
+        if raw and raw.is_file():
+            try:
+                events = f.read(raw).get('events', [])
+            except (OSError, ValueError) as error:
+                report_errors.append({'path': raw.relative_to(root).as_posix(), 'error': str(error)})
+                continue
+            call_records.extend(event['result']['recorded'] for event in events if event.get('action') == 'log-call')
+            successful_tool_calls += len(events)
+            disposition_calls += sum(event.get('action') in ('record-disposition', 'record-dispositions')
+                                     for event in events)
+    replay_execution_counts = []
+    duplicate_executions = 0
+    for replay in state.get('calculation_replays', []):
+        rows = replay.get('result', {}).get('executions', replay.get('result', {}).get('calculations', []))
+        identities = [row.get('execution_id', row.get('calculation_id')) for row in rows]
+        replay_execution_counts.append(len(identities))
+        duplicate_executions += len(identities) - len(set(identities))
+    requirement_changes = None
+    compile_entry = state.get('current', {}).get('compile')
+    if compile_entry:
+        try:
+            comparison_path = version_path(root, compile_entry) / 'comparison.json'
+            if comparison_path.is_file():
+                requirement_changes = f.read(comparison_path).get('requirement_changes')
+        except (OSError, ValueError) as error:
+            report_errors.append({'path': compile_entry['path'], 'error': str(error)})
+    workbook_evidence = []
+    workbook_roots = []
+    if state.get('development_trial'):
+        workbook_roots.append(('development_trial', root / state['development_trial']['path']))
+    solve_attempt = next((attempt for attempt in reversed(state.get('attempts', []))
+                          if attempt.get('role') == 'solve' and attempt.get('raw_path')), None)
+    if solve_attempt:
+        workbook_roots.append(('blind_solve', root / solve_attempt['raw_path'] / 'draft'))
+    for stage, workbook_root in workbook_roots:
+        for path in workbook_root.rglob('*.xlsx'):
+            from openpyxl import load_workbook
+            try:
+                formulas = load_workbook(path, read_only=True, data_only=False)
+                cached = load_workbook(path, read_only=True, data_only=True)
+                formula_count = cached_count = 0
+                for formula_sheet, cached_sheet in zip(formulas.worksheets, cached.worksheets):
+                    for formula_row, cached_row in zip(formula_sheet.iter_rows(), cached_sheet.iter_rows()):
+                        for formula_cell, cached_cell in zip(formula_row, cached_row):
+                            if formula_cell.data_type == 'f':
+                                formula_count += 1
+                                cached_count += cached_cell.value is not None
+                formulas.close()
+                cached.close()
+                evidence = {'formula_cells': formula_count, 'formula_cached_values': cached_count}
+            except Exception as error:
+                evidence = {'read_error': type(error).__name__ + ':' + str(error)}
+            workbook_evidence.append({
+                'stage': stage, 'path': path.relative_to(root).as_posix(),
+                'sha256': f.digest(path), **evidence, 'copy_recalculation': None,
+                'claim_limit': 'Openability and cached-value coverage do not prove calculation correctness.',
+            })
     return {k: state.get(k) for k in ('status', 'submitted', 'review', 'trial', 'first_failure', 'stop_reason')} | {
         'launches_used': state.get('prior_launches', 0) + sum(
             harness.attempt_consumes_launch(a) for a in state['attempts']),
-        'operations_recorded': len(state['attempts']), 'consultations': len(state['consultations']),
-        'dispositions': len(state.get('dispositions', [])),
+        'operations_recorded': len(state['attempts']), 'consultations': len(consultations),
+        'distinct_findings': len(finding_keys), 'disposition_records': len(dispositions),
+        'dispositions': len(dispositions),
+        'final_version_valid_dispositions': sum(
+            any(row.get('snapshot') == state['current'].get(c['role'], {}).get('id')
+                and row.get('request_id') == c['request_id'] and row.get('finding_id') in c['finding_ids']
+                and c.get('parents') == f.expected_parents(state, c['role']) for c in consultations
+                if c['role'] in state['current']) for row in dispositions),
+        'disposition_tool_calls': disposition_calls,
+        'successful_broker_tool_calls': successful_tool_calls,
+        'broker_events_not_explicit_calls': successful_tool_calls,
+        'explicit_tool_calls': sum(r['origin'] == 'explicit' for r in call_records) if call_records else None,
+        'explicit_tool_failures': sum(r['origin'] == 'explicit' and not r['ok'] for r in call_records) if call_records else None,
+        'internal_tool_calls': sum(r['origin'] == 'internal' for r in call_records) if call_records else None,
+        'tool_call_measurement': 'recorded calls only; CLI parse failures before dispatch and historical uninstrumented calls unknown',
+        'report_errors': report_errors,
+        'failed_tool_calls': None,
+        'explicit_vs_internal_checks': {
+            'explicit_successful': sum(a.get('tool') == 'check' for a in state.get('checks', [])),
+            'internal_stage_checks': sum(a.get('outcome') is not None for a in state.get('attempts', [])),
+        },
+        'calculation_replay_count': len(state.get('calculation_replays', [])),
+        'replay_execution_counts': replay_execution_counts,
+        'duplicate_executions_within_replays': duplicate_executions,
+        'initial_basis_snapshot': state.get('initial_basis_snapshot'),
+        'compiler_requirement_changes': requirement_changes,
+        'workbook_evidence': workbook_evidence,
         'final_versions': {role: item['id'] for role, item in state['current'].items()},
         'structural_results': [{'launch': a['ordinal'], 'role': a['role'], 'outcome': a.get('outcome')}
                                for a in state['attempts']],
         'native_elapsed_seconds': state.get('prior_native_elapsed_seconds', 0) +
                                   sum(a.get('elapsed_seconds', 0) for a in state['attempts']),
+        'native_completed_operations': sum(a.get('native_status') == 'completed' for a in state['attempts']),
+        'collection_failed_operations': sum(
+            a.get('collection', {}).get('status') == 'collection_failed' for a in state['attempts']),
+        'pending_controller_acceptance': sum(
+            a.get('acceptance_status') == 'pending' for a in state['attempts']),
         'started_at': state.get('started_at'), 'stopped_at': state.get('stopped_at'),
         'model_request_count': None, 'total_cost': None,
         'professional_status': 'provisional/LLM-proxy', 'task_manual_edits': state['task_manual_edits']}
@@ -834,11 +1216,11 @@ if __name__ == '__main__':
             result = batch.stop(sys.modules[__name__], root)
         else:
             result = batch.report(root)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        emit_json(result)
     elif args.action == 'prepare':
         prepare(root, args.dependency_lock, args.dependency_remote)
-        print(json.dumps(report(root)))
+        emit_json(report(root))
     elif args.action == 'execute':
-        execute(root)
+        emit_json(execute(root))
     else:
-        print(json.dumps(stop(root) if args.action == 'stop' else report(root), ensure_ascii=False, indent=2))
+        emit_json(stop(root) if args.action == 'stop' else report(root))

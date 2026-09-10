@@ -6,7 +6,9 @@ from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 
 from task_generator.core.deliverable_contract import DeliverableContractCompiler, DeliverableContractV1, DeliverableSpecV1
-from task_generator.planning.rubric_compiler_v2 import TaskSpecificRubricV2, validate_rubric
+from task_generator.planning.rubric_compiler_v2 import (
+    TaskSpecificAtomicRubricV1, TaskSpecificRubricV2, validate_rubric,
+)
 
 CASES = [
     {"id": "dev_01", "phase": "development", "seed": "seed_procurement_price_reasonableness", "skill": "procurement-price-reasonableness", "domain": "procurement_operations"},
@@ -145,7 +147,7 @@ def prompts(amendment: str = "") -> dict[str, str]:
             for stage, text in zip((*STAGES, "solve"), (GENERATION, MINING, COMPILATION, REVIEW, SOLVE))}
 
 
-def reference(root: Path, value: str, *, candidate_only: bool = False) -> Path:
+def reference(root: Path, value: str, *, candidate_only: bool = False, extra_allowed=()) -> Path:
     if not isinstance(value, str) or not value or "\\" in value or ":" in value:
         raise ValueError("unsafe_reference")
     path = PurePosixPath(value)
@@ -154,6 +156,8 @@ def reference(root: Path, value: str, *, candidate_only: bool = False) -> Path:
     allowed = {"candidate_task.md", "deliverable_contract.json"} if candidate_only else {
         "candidate_task.md", "deliverable_contract.json", "task.json", "public_context.json",
         "professional_rules.json", "sources.json", "supervision.json", "new_rubric.json"}
+    if not candidate_only:
+        allowed.update(extra_allowed)
     if not value.startswith("reference_files/") and value not in allowed:
         raise ValueError("reference_not_in_stage_allowlist")
     target = root / value
@@ -202,12 +206,56 @@ def task_result(raw: Path, inputs: Path) -> dict:
             "candidate_task": DeliverableContractCompiler().compile_prompt(task["prompt"], contract)}
 
 
+def editor_result(raw: Path, inputs: Path) -> dict:
+    """Validate an edited candidate task without granting access to teacher data."""
+    result = task_result(raw, inputs)
+    if result["status"] != "completed":
+        raise ValueError("editor_cannot_remove_natural_task")
+    source = load(inputs / "task.json")
+    edited = load(raw / "task.json")
+    record = load(raw / "edit_record.json")
+    import hashlib
+    canonical = lambda value: hashlib.sha256(json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")).hexdigest()
+    if record.get("version") != "r10.candidate_edit.1":
+        raise ValueError("edit_record.json.version: expected r10.candidate_edit.1")
+    if record.get("source_task_sha256") != canonical(source):
+        raise ValueError("edit_record.json.source_task_sha256: source task identity mismatch")
+    if record.get("edited_task_sha256") != canonical(edited):
+        raise ValueError("edit_record.json.edited_task_sha256: edited task identity mismatch")
+    changes = record.get("changes")
+    if not isinstance(changes, list):
+        raise ValueError("edit_record.json.changes: expected an array")
+    changed = canonical(source) != canonical(edited)
+    if changed != bool(changes):
+        raise ValueError("edit_record.json.changes: must match the actual task change")
+    if not changed and not str(record.get("no_change_reason", "")).strip():
+        raise ValueError("edit_record.json.no_change_reason: required when task is unchanged")
+    seen = set()
+    for index, row in enumerate(changes):
+        location = f"edit_record.json.changes[{index}]"
+        required = ("change_id", "area", "original_locator", "edit_summary",
+                    "business_reason", "preserved_evidence", "returned_judgment")
+        if not isinstance(row, dict) or any(not row.get(key) for key in required):
+            raise ValueError(location + ": incomplete edit record")
+        if row["change_id"] in seen or row["area"] not in {"prompt", "requirements", "deliverables"}:
+            raise ValueError(location + ": duplicate ID or invalid area")
+        seen.add(row["change_id"])
+        evidence(inputs, row["preserved_evidence"], True)
+    return {**result, "edited": changed, "change_count": len(changes)}
+
+
 def compilation_result(raw: Path, inputs: Path) -> dict:
     supervision = load(raw / "supervision.json")
     if supervision.get("status") == "upstream_issue" and supervision.get("upstream_issues"):
         return {"status": "upstream_issue", "issues": supervision["upstream_issues"]}
-    if supervision.get("status") != "compiled" or supervision.get("upstream_issues") or not supervision.get("decisions"):
-        raise ValueError("invalid_supervision")
+    if supervision.get("status") != "compiled":
+        raise ValueError("supervision.json.status: invalid_supervision; expected compiled, or upstream_issue with nonempty upstream_issues")
+    if supervision.get("upstream_issues"):
+        raise ValueError("supervision.json.upstream_issues: invalid_supervision; expected empty issues when compiled")
+    if not supervision.get("decisions"):
+        raise ValueError("supervision.json.decisions: invalid_supervision; expected nonempty decisions when compiled")
     decisions = supervision["decisions"]
     ids = [r["decision_id"] for r in decisions]
     requirements = {r["id"] for r in load(inputs / "task.json")["requirements"]}
@@ -226,7 +274,48 @@ def compilation_result(raw: Path, inputs: Path) -> dict:
     return {"status": "completed", "total_rubric_points": rubric.total_points}
 
 
-def review_result(raw: Path, inputs: Path) -> dict:
+def atomic_compilation_result(raw: Path, inputs: Path) -> dict:
+    """Validate reference supervision and the sole, binary atomic rubric."""
+    supervision = load(raw / "supervision.json")
+    if supervision.get("status") == "upstream_issue" and supervision.get("upstream_issues"):
+        return {"status": "upstream_issue", "issues": supervision["upstream_issues"]}
+    if supervision.get("status") != "compiled" or supervision.get("upstream_issues"):
+        raise ValueError("supervision.json.status: invalid atomic supervision")
+    decisions = supervision.get("decisions")
+    if not isinstance(decisions, list) or not decisions:
+        raise ValueError("supervision.json.decisions: expected nonempty decisions")
+    ids = [row.get("decision_id") for row in decisions]
+    requirements = {row["id"] for row in load(inputs / "task.json")["requirements"]}
+    covered = set()
+    for index, row in enumerate(decisions):
+        required = ("decision_id", "requirement_ids", "reference_analysis", "known_facts",
+                    "uncertainties", "follow_up", "evidence")
+        if any(key not in row for key in required):
+            raise ValueError(f"supervision.json.decisions[{index}]: reference fields missing")
+        if "conditional_completion" in row or "score_boundaries" in row:
+            raise ValueError(f"supervision.json.decisions[{index}]: scoring semantics belong only in new_rubric.json")
+        if not row["reference_analysis"] or not isinstance(row["known_facts"], list) \
+                or not isinstance(row["uncertainties"], list) or not isinstance(row["follow_up"], list):
+            raise ValueError(f"supervision.json.decisions[{index}]: invalid reference analysis")
+        if not isinstance(row["requirement_ids"], list):
+            raise ValueError(f"supervision.json.decisions[{index}].requirement_ids: expected array")
+        unknown = set(row["requirement_ids"]) - requirements
+        if unknown:
+            raise ValueError(f"supervision.json.decisions[{index}].requirement_ids: unknown IDs {sorted(unknown)}")
+        covered.update(row["requirement_ids"])
+        evidence(inputs, row["evidence"], True)
+    if len(ids) != len(set(ids)) or covered != requirements:
+        raise ValueError("supervision_requirement_coverage")
+    rubric = TaskSpecificAtomicRubricV1.model_validate(load(raw / "new_rubric.json"))
+    if rubric.task_id != "anonymous_task":
+        raise ValueError("rubric_task_identity")
+    matrix = SimpleNamespace(decision_points=[SimpleNamespace(decision_id=value) for value in ids])
+    validate_rubric(rubric, matrix, inputs)
+    return {"status": "completed", "total_rubric_points": rubric.total_points,
+            "scoring": "binary_weighted"}
+
+
+def review_result(raw: Path, inputs: Path, *, extra_allowed=()) -> dict:
     review = load(raw / "review.json")
     if sorted(r["dimension"] for r in review["checks"]) != sorted(DIMENSIONS):
         raise ValueError("review_dimensions")
@@ -236,7 +325,7 @@ def review_result(raw: Path, inputs: Path) -> dict:
         if not row.get("findings"):
             raise ValueError("review_evidence_missing")
         for f in row["findings"]:
-            reference(inputs, f["path"])
+            reference(inputs, f["path"], extra_allowed=extra_allowed)
             if not all(isinstance(f.get(k), str) and f[k].strip() for k in ("observation", "locator", "limitation")):
                 raise ValueError("review_evidence_incomplete")
     for key, expected, field in (

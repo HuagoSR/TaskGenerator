@@ -27,7 +27,7 @@ Grader expansion is paused. Do not resume old grading queues or execute the prep
 
 The coverage/method split is offline-tested only. Labels and valid citations do not prove professional verification. Prioritize reusable generation methods, stage-visible requirements, conditional credit and credible record causality. Separate development from frozen validation, retain every failed position, and report production cost and intervention alongside task quality. Directions and previous batches do not authorize another external batch.
 
-The current direction is a task-production harness with isolated development solving and reproducible calculation evidence for rubric compilation; see the [research record](docs/research/agent_task_production_harness_20260907.md). The earlier 2026-09-08 scopes ended incomplete and must not be resumed. A new procurement development scope finished the full loop on 2026-09-09 using calculation-evidence version 2, draft consultation, atomic snapshots and batch dispositions; its independent review passed and its blind solve produced a valid delivery. Researcher closeout is uncertain because the compiler promoted an affordability calculation seen in design/trial evidence into full-credit rubric language without an unambiguous candidate obligation; the 199 workbook formulas also lacked cached values, so an error-cell scan was not recalculation evidence. Fix obligation provenance, error location, CLI input and evidence metrics offline before the authorized four-position frozen validation. Development feedback must not create candidate obligations or be confused with blind final review; producer intent is not candidate-visible evidence.
+The current direction is candidate-task editing and atomic, reproducible rubric evidence; see the [research record](docs/research/agent_task_production_harness_20260907.md). Macro results belong only in the overview. The authorized `quality-development-v1` development and read-only comparison are closed; neither unused budget nor earlier continuation authority permits new calls. The prior missing-image claim was based on an unverified alternative SSH destination; the real huago-cone alias has the fixed image and dependency lock. Never substitute a guessed SSH endpoint. Development and blind solving share candidate inputs; producer intent, edit records and trial answers are never obligation sources. Obligation provenance distinguishes explicit requirements, material instructions, necessary derivations and optional analysis; code checks identity and actual changes, independent review checks professional adequacy. Binary scoring does not prove semantic atomicity, and an edit record does not prove candidate-visible changes. Preserve original review decisions and record researcher quality disagreements separately. Historical protocols and results remain unchanged.
 
 ## Architecture Rules
 
@@ -36,7 +36,7 @@ The current direction is a task-production harness with isolated development sol
 - World-First creates business materials before Task Mining. The miner does not read the hidden ledger, difficulty identity or expected answer.
 - Historical Scenario Bibles remain frozen; do not build Bible V2 or restore mechanical file/record quotas.
 - Keep candidate files, teacher supervision and run evidence separate. Facts rather than answer labels must reveal conflicts.
-- Rubric V2 derives requirements from candidate-visible obligations. A decision may have multiple independently observable items. Equivalent forms cannot cancel explicit requirements.
+- Historical Rubric V2 remains readable. New quality-development scopes use the versioned atomic rubric: one independently observable result per weighted item, scored only zero or full weight. The formal rubric is the sole scoring authority; supervision cannot add or narrow scoring conditions. Equivalent forms cannot cancel explicit requirements.
 - Code checks identity, safe paths, source linkage, file openability, references, isolation and score consistency. Agents handle professional semantics; avoid new business ontologies or generic validation frameworks.
 - GDPval is eval_calibration_only. Its tasks, files, rubrics, Gold and model answers must never enter generation/training inputs. Held-out cases cannot guide prompt tuning.
 
@@ -53,6 +53,8 @@ The current direction is a task-production harness with isolated development sol
 - Keep active docs concise and role-specific. Link to code/artifacts rather than duplicating schemas or execution logs. Mark unimplemented proposals explicitly; preserve history instead of creating duplicate snapshots.
 
 ## Safety and Execution
+
+- The synthetic microtest, original frozen batch, bound continuations, and subsequent quality-development scope remain closed. The stopped `remaining_v2` parent must not be executed directly. Preserve all original receipts and packages; read-only closeout reports may qualify package admission without changing original review or acceptance records. New production or a continuation requires new explicit authorization bound to inputs, method, environment, model and budget. No current external production authorization remains.
 
 - Use apply_patch for manual edits. Preserve unrelated dirty changes; never reset them.
 - Never print, commit or package .env, deepseek-key.txt, API keys, tokens or authentication content.

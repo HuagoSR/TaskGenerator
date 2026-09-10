@@ -1,9 +1,13 @@
 # 接口合同索引
 
-> 状态：reference；核对日期：2026-09-09。
+> 状态：reference；核对日期：2026-09-10。
 > 只说明接口职责和兼容边界。字段以代码为准，运行结果见[项目概要](../../项目概要.md)。
 
 ## 生成侧 Rubric V2
+
+本轮义务追溯扩展见[obligation_trace.py](../../src/task_generator/production/obligation_trace.py)，新scope绑定`obligation_trace_version=2`，历史版本1保留。要求按明示、材料指令、必要推导、可选分析分类，候选引用带文件哈希；必要推导关联已有义务，可选分析不关联扣分项。初始依据/评分标准/计算清单保存于不可覆盖快照，续轮可查询实际差异；`comparison.json`须逐项解释程序列出的change ID。程序只核对身份、映射和变更覆盖，专业必要性由独立终审判断。
+
+开发试做与盲试做共用候选输入构建，不接收内部`task.json`。编译者在开发试做后才读取教师侧`initial_basis/`和试做证据，最终复核不接收该修订历史。`factory-tools schema`按当前协议返回合同；JSON请求可放`/tmp/factory-requests/`，不进入交付。inspect提供记录分页和超长记录续读，工具调用事件区分显式调用与内部检查。计算v2仍为一个execution多锚点，类型严格比较、脚本与来源哈希复验、执行中限制输出并共享120秒时限。
 
 实现：[rubric_compiler_v2.py](../../src/task_generator/planning/rubric_compiler_v2.py)。
 
@@ -100,9 +104,19 @@ Miner 额外保存隔离的`design_intent.json`。编译快照增加`basis_draft
 
 `factory-tools schema`可按`calculation_evidence / task / rubric / basis / comparison / review / development_diagnostic`定向查询；计算查询同时返回当前rubric ID及候选文件路径和哈希。`inspect`支持目录inventory和有限多路径读取。`check`分`draft`与`ready`：咨询只要求安全、可读、身份一致的草稿，交接、重放、试做和提交要求完整合同。阶段动作的snapshot可省略，工具会在同一次服务调用中检查并创建或复用与草稿完全一致的快照；显式snapshot和旧参数仍兼容。`record-dispositions`先验证同一请求的全部finding，再原子保存一个快照下的所有处置；逐条接口保留兼容。动态`status`返回当前草稿哈希、匹配快照、检查等级、未处理意见、阶段前提和实际预算。开发试做的`diagnostic.json`不属于DeliverableContract，最终候选交付仍由该合同精确管理。
 
-下一版拟扩展编译依据与比较合同：编译前依据须把每个评分义务映射到候选可见来源和rubric条目；试做后的比较须列出新增或改变的评分要求及候选依据。设计意图、试做、监督和计算结果均不是候选义务来源。拟增加`factory-tools <action> --input-file <角色可读JSON>`，与位置参数和stdin互斥；同时聚合并定位rubric/计算问题、标明inspect截断和继续位置、拒绝version 2重复脚本与同execution重复result_pointer。实现完成前这些是proposed接口，旧调用继续有效。
+2026-09-09的提交后工作已实现上述扩展，并仅由带`obligation_trace_version`的新scope强制启用。`basis_draft.json.requirements`把评分义务映射到最终`candidate_task.md`或`deliverable_contract.json`中的候选可见依据及rubric条目；内部`task.json`、设计意图、试做、监督和计算结果均不能创设候选义务。`comparison.json`记录初始依据快照和要求变化，`deliverable_structure`是交付合同的保留例外。`factory-tools <action> --input-file <角色可读JSON>`与位置参数、stdin互斥；inspect返回截断、上限和续读offset；计算version 2拒绝重复execution ID、重复脚本、同execution重复result pointer及版本字段混用。检查可返回多个带产物路径和修复入口的问题；旧调用和历史scope仍按原合同读取。
 
 绑定续跑通过父receipt哈希继承当前不可覆盖快照及开发试做，清除角色会话，并累计既有真实Provider启动数、生产启动数和原始截止时刻；语义前控制器操作保留诊断但不虚扣启动，已进入collection的超时仍计入。它不能重置预算或把失败改为首次尝试。2026-09-09的新采购开发scope已用version 2完成提交、独立终审和盲试做；这只证明接口在一个开发样例中可用，运行结论和限制见概要。
+
+2026-09-10的有限修复已把原生执行、收集和接纳拆开：日志核验后立即持久化原生状态、会话、returncode及消耗；远端安全清单一次读取，必需产物与可选目录分别判断；文件先进入临时目录并校验大小和哈希，再原子接纳。临时SSH/SCP错误按收集预算有限恢复，安全、身份和哈希异常不重试；最终失败保留`native_completed`、已核验文件、`collection_failed`及`acceptance_status=pending`。历史原批receipt保持不变。
+
+新Harness准备参数`--continue-unstarted-from <原batch-id>`与`--profile`、`--case`及`--parent-batch`互斥。它逐位置核验没有attempt、会话、生产快照或交付，只承接真正未启动的位置；保存父batch/receipt、子scope及职业输入哈希，继承原截止时间和累计消耗，并创建新运行身份。该接口不能作为一般授权或绕过批次限制。历史续跑曾暴露父包装器stdout编码未规范化，修复见下段；修复不复活已关闭批次。
+
+输出缺口已于2026-09-10修复：执行函数返回结构化结果，CLI使用`emit_json`统一输出；可配置流使用UTF-8，不可配置流在编码预检失败时使用ASCII转义。批次调用子执行时不生成完整报告，先根据持久化子receipt推进游标；已完成子题不会重复启动，批次锁通过`finally`释放。`--continuation-budget new-8h`只可与`--continue-unstarted-from`组合，保存新的32次/8小时授权并从首次正式启动建钟；省略时保留原截止继承语义。续跑链验证每层父manifest/receipt绑定、来源与scope哈希，并按全链实际产物识别已启动位置。
+
+`quality-development-v1`新增版本化`edit`角色与`r10.atomic_rubric.1`，旧scope仍使用原角色图和Rubric V2。编辑快照只含编辑后的`task.json`及内部`edit_record.json`；后者记录修改声明、业务理由和保留证据，不进入编译、试做、终审或GDPval包。候选实际变化须比较prompt、合同和材料，不能用内部requirements/rationale的变化代替。原子rubric合同每项只有0或`max_points`，满分条件、权重理由、适用条件、容差、替代路径和核验方式均在正式rubric中；结构通过不保证成果真正独立、不重复计分或条款之间无矛盾。监督改用参考分析、已知事实、不确定性、跟进和来源，拒绝`conditional_completion`等命名字段，但自由文本是否暗加规则仍需专业复核。正式GDPval形状导出的`rubric`字段由原子合同确定性生成，不以额外教师文件补全评分规则；候选公开背景随reference_files导出。历史占位rubric导出不追改，不能据存在rubric_json就声称正式字段已自足。
+
+现有`stop`和批次根`STOP`表示尽快停止，会传播到当前子控制器，不表示“当前题完整结束后暂停”。历史`remaining_v2`因此在世界修订后终止并将父游标推进；不能直接执行该父批来恢复采购二。未来如实现题后暂停，须增加不同的显式状态与测试，不能改变历史停止记录。
 
 ## 历史兼容
 
@@ -112,5 +126,7 @@ Miner 额外保存隔离的`design_intent.json`。编译快照增加`basis_draft
 - 旧文档中的 proposed 接口不自动成为当前实施要求；任何新接口以新的明确计划和代码为准。
 
 ## 通用边界
+
+定向`schema`支持`supervision`及`consultation`；返回实际字段及本阶段引用清单。新Harness咨询/终审仅可额外引用已经挂载的依据、计算清单、重放结果及计算脚本，不能引用开发试做、设计意图或初始版本历史；此扩展不改变候选义务来源，也不放宽历史协议。`inspect`接受目录inventory省略根路径和明确路径数组，仍受同一可见范围及分页上限约束。
 
 候选材料、teacher 监督、运行证据分离；GDPval 内容仅作评测校准，不进入生成或训练。外部执行绑定输入/输出 SHA、模型、环境、scope/receipt 和首次失败，不能混合历史 cohort 或重抽低分答案。合同存在不等于授权执行；当前停止点见 [runbook](../operations/pipeline_reconstruction_runbook.md)。

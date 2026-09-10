@@ -20,6 +20,8 @@ Test/*
 !Test/run_r10_agent_factory_pilot.py
 !Test/run_r10_task_factory_harness.py
 !Test/r10_calculation_replay.py
+!Test/run_r10_harness_microtest.py
+!Test/r10_harness_offline_smoke.py
 .cache/
 build/
 *.egg-info/

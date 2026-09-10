@@ -343,7 +343,10 @@ def test_structured_calculation_rejects_bad_pointer_and_unused_execution(tmp_pat
     with pytest.raises(ValueError, match='RFC 6901'):
         harness.validate_calculation_bundle(draft, inputs)
     evidence['calculations'][0]['result_pointer'] = '/totals/quote'
-    evidence['executions'].append({**evidence['executions'][0], 'execution_id': 'unused'})
+    (draft / 'calculation_scripts/unused.py').write_text(
+        'import json\nprint(json.dumps({"unused": 1}))\n', encoding='utf-8')
+    evidence['executions'].append({**evidence['executions'][0], 'execution_id': 'unused',
+                                   'script': 'unused.py'})
     legacy.write(draft / 'calculation_evidence.json', evidence)
     with pytest.raises(ValueError, match='every execution'):
         harness.validate_calculation_bundle(draft, inputs)
@@ -398,6 +401,7 @@ def test_replay_container_exposes_no_expected_answers_and_has_separate_output(tm
                                stdout='', stderr='')
 
     monkeypatch.setattr(runner.base, '_ssh', fake_ssh)
+    monkeypatch.setattr(runner.base, 'verify_remote_tree', lambda *args: None)
     monkeypatch.setattr(runner.base, '_run', lambda *args, **kwargs: SimpleNamespace(returncode=0))
     monkeypatch.setattr(runner.base, '_scp_command', lambda *args: ['scp'])
     result = runner.run_calculation_replay(
@@ -443,7 +447,7 @@ def test_development_trial_is_candidate_only_and_compile_gets_it_later(tmp_path)
     runner.build_inputs(root, value, 'devsolve', trial_inputs, protocol='task_factory_harness_v1')
     names = legacy.files(trial_inputs)
     assert 'candidate_task.md' in names and 'public_context.json' in names
-    assert 'task.json' in names and 'design_intent.json' not in names
+    assert 'task.json' not in names and 'design_intent.json' not in names
     assert not any('rubric' in name or 'supervision' in name or 'hidden' in name for name in names)
     trial = root / 'trials/1'
     (trial / 'deliverable_files').mkdir(parents=True)
@@ -557,7 +561,66 @@ def test_controller_acceptance_failure_does_not_relabel_native_completion(tmp_pa
     runner.record_execution_failure(tmp_path, value, ValueError('current_calculation_replay_required'))
     assert value['attempts'][0]['status'] == 'native_completed'
     assert value['attempts'][0]['acceptance_status'] == 'failed'
-    assert value['failure_category'] == 'case'
+    assert value['failure_category'] == 'controller'
+
+
+def test_collection_failure_preserves_native_completion_and_pending_acceptance(tmp_path):
+    value = state()
+    value['attempts'] = [{'ordinal': 1, 'role': 'solve', 'status': 'native_completed',
+                          'phase': 'collection_outputs', 'collection': {'status': 'inventory_validated'}}]
+    runner.record_execution_failure(tmp_path, value, TimeoutError('ssh collection timed out'))
+    attempt = value['attempts'][0]
+    assert attempt['status'] == 'native_completed'
+    assert attempt['acceptance_status'] == 'pending'
+    assert attempt['collection']['status'] == 'collection_failed'
+    assert harness.attempt_consumes_launch(attempt)
+
+
+def test_transport_retry_only_retries_timeout_and_ssh_255(monkeypatch):
+    monkeypatch.setattr(runner.time, 'sleep', lambda _: None)
+    outcomes = [subprocess.TimeoutExpired('ssh', 1),
+                subprocess.CompletedProcess([], 255, '', 'connection reset'),
+                subprocess.CompletedProcess([], 0, 'ok', '')]
+
+    def operation(_timeout):
+        value = outcomes.pop(0)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    result, failures = runner._transport_retry(
+        operation, deadline_epoch=runner.time.time() + 100, label='fixture')
+    assert result.stdout == 'ok'
+    assert [row['kind'] for row in failures] == ['timeout', 'returncode']
+
+    calls = []
+    with pytest.raises(ValueError, match='collection_command_failed'):
+        runner._transport_retry(
+            lambda _timeout: calls.append(True) or subprocess.CompletedProcess([], 1, '', 'missing'),
+            deadline_epoch=runner.time.time() + 100, label='not_optional_probe')
+    assert len(calls) == 1
+
+
+def test_local_collection_admission_retries_transient_permission_error(tmp_path, monkeypatch):
+    staging = tmp_path / 'collection'
+    raw = tmp_path / 'raw'
+    staging.mkdir()
+    (staging / 'result.txt').write_text('complete', encoding='utf-8')
+    original = Path.replace
+    calls = []
+
+    def transient_replace(path, target):
+        calls.append((path, target))
+        if len(calls) == 1:
+            raise PermissionError('synthetic scanner lock')
+        return original(path, target)
+
+    monkeypatch.setattr(Path, 'replace', transient_replace)
+    monkeypatch.setattr(runner.time, 'sleep', lambda _: None)
+    failures = runner._admit_collected_tree(
+        staging, raw, deadline_epoch=runner.time.time() + 10)
+    assert len(failures) == 1
+    assert (raw / 'result.txt').read_text(encoding='utf-8') == 'complete'
 
 
 def test_harness_prompt_uses_absolute_tool_path():
@@ -569,6 +632,195 @@ def test_factory_tool_accepts_json_argument_or_stdin():
     expected = {'area': 'inputs', 'path': 'SKILL.md'}
     assert tools.cli_payload(['factory-tools', 'inspect', json.dumps(expected)], io.StringIO('')) == expected
     assert tools.cli_payload(['factory-tools', 'inspect'], io.StringIO(json.dumps(expected))) == expected
+
+
+def test_factory_tool_accepts_input_file_and_rejects_mixed_forms(tmp_path):
+    payload = tmp_path / 'request.json'
+    expected = {'area': 'inputs', 'path': 'SKILL.md'}
+    payload.write_text(json.dumps(expected), encoding='utf-8')
+    assert tools.cli_payload(
+        ['factory-tools', 'inspect', '--input-file', str(payload)], io.StringIO(''),
+        allowed_roots=(tmp_path,)) == expected
+    with pytest.raises(ValueError, match='exactly_one'):
+        tools.cli_payload(
+            ['factory-tools', 'inspect', '{}', '--input-file', str(payload)], io.StringIO(''),
+            allowed_roots=(tmp_path,))
+
+
+def test_calculation_v2_rejects_duplicate_script_and_result_reference(tmp_path):
+    draft, inputs = make_structured_calculation(tmp_path)
+    evidence = legacy.read(draft / 'calculation_evidence.json')
+    evidence['executions'].append({**evidence['executions'][0], 'execution_id': 'duplicate_script'})
+    evidence['calculations'].append({**evidence['calculations'][0], 'calculation_id': 'duplicate_result'})
+    legacy.write(draft / 'calculation_evidence.json', evidence)
+    with pytest.raises(harness.ContractIssues) as caught:
+        harness.validate_calculation_bundle(draft, inputs)
+    assert len(caught.value.messages) == 2
+    assert any('duplicate script' in message for message in caught.value.messages)
+    assert any('duplicate result reference' in message for message in caught.value.messages)
+
+
+def test_calculation_versions_cannot_mix_fields(tmp_path):
+    draft, inputs = make_structured_calculation(tmp_path)
+    evidence = legacy.read(draft / 'calculation_evidence.json')
+    evidence['calculations'][0]['script'] = 'structured.py'
+    legacy.write(draft / 'calculation_evidence.json', evidence)
+    with pytest.raises(ValueError, match='belong in executions'):
+        harness.validate_calculation_bundle(draft, inputs)
+
+
+def test_candidate_obligation_trace_maps_all_professional_criteria(tmp_path):
+    draft, inputs = make_calculation(tmp_path)
+    for name in ('candidate_task.md', 'task.json', 'deliverable_contract.json'):
+        (inputs / name).write_text('{}' if name.endswith('.json') else 'Analyze.', encoding='utf-8')
+    legacy.write(draft / 'basis_draft.json', {'requirements': [{
+        'requirement_id': 'r1', 'obligation': 'Analyze the amount',
+        'candidate_obligation_refs': [{'path': 'candidate_task.md', 'locator': 'sentence 1',
+                                       'explanation': 'Explicit analysis request'}],
+        'rubric_ids': ['c1'],
+    }]})
+    assert harness.validate_obligation_trace(draft, inputs)['requirements'][0]['requirement_id'] == 'r1'
+    rubric = legacy.read(draft / 'new_rubric.json')
+    rubric['criteria'].append({**rubric['criteria'][0], 'criterion_id': 'delivery',
+                               'decision_id': 'deliverable_structure'})
+    legacy.write(draft / 'new_rubric.json', rubric)
+    harness.validate_obligation_trace(draft, inputs)
+
+
+def test_internal_task_json_cannot_create_candidate_obligation(tmp_path):
+    draft, inputs = make_calculation(tmp_path)
+    for name in ('candidate_task.md', 'task.json', 'deliverable_contract.json'):
+        (inputs / name).write_text('{}' if name.endswith('.json') else 'Analyze.', encoding='utf-8')
+    legacy.write(draft / 'basis_draft.json', {'requirements': [{
+        'requirement_id': 'r1', 'obligation': 'Hidden structured requirement',
+        'candidate_obligation_refs': [{'path': 'task.json', 'locator': '/requirements/0',
+                                       'explanation': 'Internal representation'}],
+        'rubric_ids': ['c1'],
+    }]})
+    with pytest.raises(ValueError, match='candidate_task.md'):
+        harness.validate_obligation_trace(draft, inputs)
+
+
+def test_post_trial_requirement_addition_needs_candidate_visible_support(tmp_path):
+    draft, inputs = make_calculation(tmp_path)
+    for name in ('candidate_task.md', 'task.json', 'deliverable_contract.json'):
+        (inputs / name).write_text('{}' if name.endswith('.json') else 'Analyze.', encoding='utf-8')
+    legacy.write(draft / 'basis_draft.json', {'requirements': [{
+        'requirement_id': 'r1', 'obligation': 'Analyze',
+        'candidate_obligation_refs': [{'path': 'candidate_task.md', 'locator': 'sentence 1',
+                                       'explanation': 'Explicit request'}],
+        'rubric_ids': ['c1'],
+    }]})
+    legacy.write(draft / 'comparison.json', {
+        'initial_basis_snapshot': 'initial', 'requirement_changes': [{
+            'change_type': 'add', 'description': 'New scored calculation', 'rubric_ids': ['c1'],
+            'candidate_obligation_refs': [],
+        }]})
+    with pytest.raises(ValueError, match='needs candidate-visible support'):
+        harness.validate_obligation_trace(
+            draft, inputs, require_comparison=True, initial_basis_snapshot='initial')
+
+
+def test_frozen_validation_profile_has_four_fixed_isolated_positions():
+    assert [row['id'] for row in batch_runner.FROZEN_VALIDATION_V1_CASES] == [
+        'frozen_procurement_price_01', 'frozen_audit_reliability_01',
+        'frozen_procurement_price_02', 'frozen_audit_reliability_02']
+    assert [row['seed'] for row in batch_runner.FROZEN_VALIDATION_V1_CASES] == [
+        'seed_procurement_price_reasonableness', 'seed_audit_company_information_reliability',
+        'seed_procurement_price_reasonableness', 'seed_audit_company_information_reliability']
+
+
+def test_frozen_profile_prepare_binds_obligation_contract_and_64_launch_budget(tmp_path, monkeypatch):
+    root = tmp_path / 'frozen'
+    source = tmp_path / 'source'
+    source.mkdir()
+    (source / 'public.txt').write_text('source', encoding='utf-8')
+    readiness = tmp_path / 'readiness.json'
+    legacy.write(readiness, {'tests_passed': True, 'commands': ['targeted', 'full']})
+
+    def fake_prepare(child, dependency_lock, dependency_remote, **kwargs):
+        child.mkdir(parents=True)
+        scope = {'batch_id': kwargs['batch_id'], 'protocol': kwargs['protocol'], 'code_hashes': {},
+                 **kwargs.get('harness_options', {})}
+        legacy.write(child / 'scope.json', scope)
+        legacy.write(child / 'receipt.json', state() | {
+            'status': 'prepared', 'task_manual_edits': 0, 'recoveries': 0})
+        return scope
+
+    monkeypatch.setattr(batch_runner.runner, 'prepare', fake_prepare)
+    batch_runner.prepare(root, source, tmp_path / 'lock.json', '/remote/deps', readiness,
+                         profile='frozen-validation-v1')
+    manifest = legacy.read(root / 'batch.json')
+    assert manifest['profile'] == 'frozen-validation-v1'
+    assert manifest['max_launches'] == 64 and manifest['seconds'] == 57600
+    assert len(manifest['cases']) == 4
+    for row in manifest['cases']:
+        scope = legacy.read(root / row['path'] / 'scope.json')
+        assert scope['obligation_trace_version'] == 2
+        assert scope['method_profile'] == 'frozen-validation-v1'
+
+
+def test_remaining_continuation_selects_only_unstarted_cases_and_preserves_deadline(tmp_path, monkeypatch):
+    parent = tmp_path / 'parent'
+    source = parent / 'source_bundle'
+    source.mkdir(parents=True)
+    (source / 'public.txt').write_text('frozen', encoding='utf-8')
+    cases = []
+    frozen_scope = {
+        'seed': {}, 'image': runner.IMAGE, 'image_sha': runner.IMAGE_SHA,
+        'dependency_remote': '/remote/deps', 'dependency_lock_sha': 'lock',
+        'public_hashes': {'public': 'hash'}, 'prompt_hashes': {'prompt': 'hash'},
+        'models': harness.MODELS, 'domain': 'fixture',
+        'calculation_contract_version': 2, 'obligation_trace_version': 2,
+        'method_profile': 'frozen-validation-v1',
+    }
+    for index, spec in enumerate(batch_runner.FROZEN_VALIDATION_V1_CASES):
+        child = parent / 'cases' / spec['id']
+        child.mkdir(parents=True)
+        scope = frozen_scope | {'case_id': spec['id']}
+        legacy.write(child / 'scope.json', scope)
+        receipt = state() | {'status': 'incomplete' if index == 0 else 'prepared',
+                             'task_manual_edits': 0, 'recoveries': 0}
+        if index == 0:
+            receipt['attempts'] = [{'role': 'world', 'status': 'completed', 'phase': 'output_check'}]
+        legacy.write(child / 'receipt.json', receipt)
+        cases.append({'id': spec['id'], 'path': child.relative_to(parent).as_posix(),
+                      'scope_sha256': legacy.digest(child / 'scope.json')})
+    manifest = {'profile': 'frozen-validation-v1', 'cases': cases, 'seconds': 57600,
+                'source_bundle_hashes': legacy.files(source)}
+    legacy.write(parent / 'batch.json', manifest)
+    legacy.write(parent / 'receipt.json', {
+        'status': 'incomplete', 'manifest_sha256': legacy.digest(parent / 'batch.json'),
+        'started_at': '2026-09-09T13:45:12+00:00', 'deadline_epoch': 2000000000,
+        'first_failure': {'reason': 'collection timeout'}})
+    readiness = tmp_path / 'readiness.json'
+    legacy.write(readiness, {'tests_passed': True, 'commands': ['targeted', 'full']})
+
+    def fake_prepare(child, dependency_lock, dependency_remote, **kwargs):
+        child.mkdir(parents=True)
+        scope = frozen_scope | {'case_id': kwargs['spec']['id'], 'batch_id': kwargs['batch_id'],
+                                'protocol': kwargs['protocol'], 'code_hashes': {},
+                                **kwargs.get('harness_options', {})}
+        legacy.write(child / 'scope.json', scope)
+        legacy.write(child / 'receipt.json', state() | {
+            'status': 'prepared', 'task_manual_edits': 0, 'recoveries': 0})
+        return scope
+
+    monkeypatch.setattr(batch_runner.runner, 'prepare', fake_prepare)
+    monkeypatch.setattr(batch_runner.runner, 'report', lambda _: {'launches_used': 0})
+    result_root = tmp_path / 'remaining'
+    batch_runner.prepare(result_root, None, tmp_path / 'lock.json', '/remote/deps', readiness,
+                         continue_unstarted_from=parent)
+    result_manifest = legacy.read(result_root / 'batch.json')
+    result_receipt = legacy.read(result_root / 'receipt.json')
+    assert [row['id'] for row in result_manifest['cases']] == [
+        'frozen_audit_reliability_01', 'frozen_procurement_price_02',
+        'frozen_audit_reliability_02']
+    assert result_manifest['prior_launches'] == 1
+    assert result_manifest['max_new_launches'] == 48
+    assert result_manifest['max_launches'] == 49
+    assert result_receipt['deadline_epoch'] == 2000000000
+    assert result_receipt['position'] == 0
 
 
 def test_batch_stop_is_not_overwritten_by_completion(tmp_path, monkeypatch):
@@ -621,3 +873,42 @@ def test_batch_records_terminal_case_failure_while_finishing_fixed_schedule(tmp_
     result = batch_runner.execute(root)
     assert result['status'] == 'completed'
     assert result['first_failure']['case_id'] == 'case'
+
+
+def test_batch_advances_already_completed_child_without_relaunch(tmp_path, monkeypatch):
+    root = tmp_path / 'batch'
+    child = root / 'cases/case'
+    child.mkdir(parents=True)
+    legacy.write(root / 'batch.json', {'cases': [{'id': 'case', 'path': 'cases/case'}],
+        'max_launches': 16, 'seconds': 14400, 'prior_launches': 0})
+    legacy.write(root / 'receipt.json', {'status': 'prepared', 'position': 0,
+        'deadline_epoch': None, 'started_at': None, 'first_failure': None})
+    legacy.write(child / 'receipt.json', state() | {'status': 'completed'})
+    monkeypatch.setattr(batch_runner, 'verify', lambda value: (
+        legacy.read(root / 'batch.json'), legacy.read(root / 'receipt.json')))
+    monkeypatch.setattr(batch_runner.runner, 'execute', lambda *args, **kwargs: pytest.fail('relaunch'))
+    monkeypatch.setattr(batch_runner.runner, 'report', lambda value: {
+        'status': 'completed', 'launches_used': 0, 'stop_reason': None})
+    result = batch_runner.execute(root)
+    assert result['status'] == 'completed'
+    assert result['position'] == 1
+    assert not (root / 'execution.lock').exists()
+
+
+def test_batch_releases_lock_when_child_report_raises(tmp_path, monkeypatch):
+    root = tmp_path / 'batch'
+    child = root / 'cases/case'
+    child.mkdir(parents=True)
+    legacy.write(root / 'batch.json', {'cases': [{'id': 'case', 'path': 'cases/case'}],
+        'max_launches': 16, 'seconds': 14400, 'prior_launches': 0})
+    legacy.write(root / 'receipt.json', {'status': 'prepared', 'position': 0,
+        'deadline_epoch': None, 'started_at': None, 'first_failure': None})
+    legacy.write(child / 'receipt.json', state() | {'status': 'completed'})
+    monkeypatch.setattr(batch_runner, 'verify', lambda value: (
+        legacy.read(root / 'batch.json'), legacy.read(root / 'receipt.json')))
+    monkeypatch.setattr(batch_runner.runner, 'report', lambda value: (_ for _ in ()).throw(
+        UnicodeEncodeError('gbk', '−', 0, 1, 'unsupported')))
+    with pytest.raises(UnicodeEncodeError):
+        batch_runner.execute(root)
+    assert legacy.read(root / 'receipt.json')['position'] == 1
+    assert not (root / 'execution.lock').exists()
