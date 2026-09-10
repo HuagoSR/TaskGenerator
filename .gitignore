@@ -21,6 +21,9 @@ Test/*
 !Test/run_r10_task_factory_harness.py
 !Test/r10_calculation_replay.py
 !Test/run_r10_harness_microtest.py
+!Test/run_r10_quality_diagnostic_micro.py
+!Test/prepare_r10_rw_task_latest_two.py
+!Test/run_r10_rw_task_latest_two_eval.py
 !Test/r10_harness_offline_smoke.py
 .cache/
 build/

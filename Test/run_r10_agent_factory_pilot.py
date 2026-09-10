@@ -32,6 +32,7 @@ RUNTIME_FILES = ['src/task_generator/' + p for p in (
 HARNESS_RUNTIME_FILES = [
     'src/task_generator/production/task_factory_harness.py',
     'src/task_generator/production/obligation_trace.py',
+    'src/task_generator/production/quality_diagnostics.py',
     'Test/r10_calculation_replay.py',
 ]
 
@@ -180,7 +181,8 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
     root.mkdir()
     spec = spec or previous.method.CASES[0]
     if synthetic_public is not None:
-        if (harness_options or {}).get('purpose') != 'tool_microtest' or spec['seed'] != 'synthetic_tool_fixture':
+        if ((harness_options or {}).get('purpose') not in ('tool_microtest', 'quality_diagnostic_microtest')
+                or spec['seed'] != 'synthetic_tool_fixture'):
             raise ValueError('synthetic_public_requires_microtest_scope')
         shutil.copytree(synthetic_public, root / 'public')
         sources = {}
@@ -248,7 +250,8 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
             'task_manual_edits': 0, 'controller_interventions': [], 'first_failure': None,
             **({'compile_stage': 'basis', 'upstream_revisions': 0, 'calculation_replays': [],
                 'candidate_edit_version': scope.get('candidate_edit_version'),
-                'atomic_rubric_version': scope.get('atomic_rubric_version')}
+                'atomic_rubric_version': scope.get('atomic_rubric_version'),
+                'quality_diagnostics_version': scope.get('quality_diagnostics_version')}
                if protocol else {})})
     return scope
 
@@ -568,6 +571,15 @@ def run_turn(root, scope, state, request, batch_root=None):
         state['budget_limits'] = {key: scope[key] for key in (
             'max_launches', 'production_launches', 'seconds', 'per_launch_seconds', 'terminal_reserve_seconds')}
     role = request['role']
+    from task_generator.production.quality_diagnostics import micro_enabled
+    diagnostic_micro = micro_enabled(scope)
+    if diagnostic_micro:
+        from run_r10_quality_diagnostic_micro import check_batch_launch
+        deadline = check_batch_launch(root, scope)
+        if state.get('deadline_epoch') != deadline:
+            raise ValueError('diagnostic_batch_deadline_changed')
+    if diagnostic_micro and role not in ('compile', 'review'):
+        raise ValueError('diagnostic_micro_role_not_allowed')
     feedback = factory.role_feedback(state, request)
     session = factory.validate_session(state, role, root.name) if role in factory.AUTHOR_ROLES else None
     if session and not re.fullmatch(re.escape(scope['remote']) + r'/state_\d{2}', session['storage']):
@@ -589,6 +601,8 @@ def run_turn(root, scope, state, request, batch_root=None):
     workspace = local / 'workspace'
     workspace.mkdir(parents=True)
     build_inputs(root, state, role, workspace / 'inputs', request.get('consult_role'), scope.get('protocol'))
+    if diagnostic_micro and role == 'compile':
+        shutil.copytree(root / 'fixture/diagnostic_context', workspace / 'inputs/diagnostic_context')
     if feedback is not None:
         f.write(workspace / 'feedback.json', feedback)
     task = (root / 'prompts' / (role + '.md')).read_text(encoding='utf-8')
@@ -616,6 +630,8 @@ def run_turn(root, scope, state, request, batch_root=None):
     passed_replay_snapshots = sorted({row['compile_snapshot'] for row in state.get('calculation_replays', [])
                                       if row.get('status') == 'passed'})
     f.write(workspace / 'role.json', {'role': role, 'parents': parents,
+                                    'diagnostic_micro_version': scope.get('diagnostic_micro_version'),
+                                    'diagnostic_subjects': scope.get('diagnostic_subjects'),
                                     'event_version': 2,
                                     'purpose': scope.get('purpose'),
                                     'remaining_production_launches': (
@@ -629,6 +645,7 @@ def run_turn(root, scope, state, request, batch_root=None):
                                     'obligation_trace_version': scope.get('obligation_trace_version'),
                                     'candidate_edit_version': scope.get('candidate_edit_version'),
                                     'atomic_rubric_version': scope.get('atomic_rubric_version'),
+                                    'quality_diagnostics_version': scope.get('quality_diagnostics_version'),
                                     'initial_basis_snapshot': state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
                                     'deadline_epoch': state.get('deadline_epoch'),
                                     'workflow_status': workflow})
@@ -640,11 +657,19 @@ def run_turn(root, scope, state, request, batch_root=None):
     draft = local / 'draft'
     if role in state['current'] and role in factory.AUTHOR_ROLES:
         shutil.copytree(version_path(root, state['current'][role]), draft)
+    elif (scope.get('purpose') == 'quality_diagnostic_microtest' and role == 'compile'
+          and scope.get('initial_compile_draft')):
+        initial = root / scope['initial_compile_draft']
+        if f.files(initial) != scope.get('initial_compile_draft_hashes'):
+            raise ValueError('quality_microtest_initial_draft_changed')
+        shutil.copytree(initial, draft)
     else:
         draft.mkdir()
     process = state['current'].get('world', {}).get('process') if role == 'world' else None
     dispositions = [d for d in state.get('dispositions', []) if d['request_id'] in {c['request_id'] for c in consultations}]
     f.write(local / 'broker_config.json', {'root': remote, 'role': role, 'parents': parents, 'process': process,
+                                         'diagnostic_micro_version': scope.get('diagnostic_micro_version'),
+                                         'diagnostic_subjects': scope.get('diagnostic_subjects'),
                                          'purpose': scope.get('purpose'),
                                          'starting_snapshot': state.get('current', {}).get(role),
                                          'consultations': consultations, 'dispositions': dispositions,
@@ -656,6 +681,7 @@ def run_turn(root, scope, state, request, batch_root=None):
                                          'obligation_trace_version': scope.get('obligation_trace_version'),
                                          'candidate_edit_version': scope.get('candidate_edit_version'),
                                          'atomic_rubric_version': scope.get('atomic_rubric_version'),
+                                         'quality_diagnostics_version': scope.get('quality_diagnostics_version'),
                                          'initial_basis_snapshot': state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
                                          'deadline_epoch': state.get('deadline_epoch'),
                                          'workflow_status': workflow})
@@ -703,8 +729,13 @@ def run_turn(root, scope, state, request, batch_root=None):
     limit = min(limit, int(state['deadline_epoch'] - time.time() - reserve))
     if limit < 1:
         raise ValueError('time_budget_exhausted_before_semantic_start')
-    attempt.update(status='started', started_at=now(), timeout_seconds=limit, phase='native')
+    if diagnostic_micro:
+        check_batch_launch(root, scope)
+    attempt.update(status='started', started_at=now(), timeout_seconds=limit, phase='native', semantic_started=True)
     f.write(root / 'receipt.json', state)
+    if diagnostic_micro:
+        from run_r10_quality_diagnostic_micro import persist_batch_launches
+        persist_batch_launches(root)
     deps = scope['dependency_remote']
     cmd = base.docker_base(deps, network=True)
     cmd[2:2] = ['--name', name, '--stop-timeout', '1']
@@ -779,6 +810,29 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         if disposition not in state.setdefault('dispositions', []):
             state['dispositions'].append(disposition)
     attempt['phase'] = 'output_check'
+    if diagnostic_micro and role == 'compile':
+        from task_generator.production.quality_diagnostics import micro_result
+        pending = journal.get('pending') or {}
+        if pending.get('action') != 'finish' or pending.get('hashes') != f.files(raw / 'draft'):
+            raise ValueError('diagnostic_output_not_finished_or_changed')
+        outcome = micro_result(raw / 'draft', workspace / 'inputs', scope)
+        entry = pending['snapshot_entry']
+        entry.update(path=(raw / 'snapshots' / entry['id']).relative_to(root).as_posix(), inputs=attempt['inputs'])
+        if f.files(version_path(root, entry)) != pending['hashes']:
+            raise ValueError('diagnostic_snapshot_changed')
+        factory.accept_snapshot(state, role, entry)
+        state['diagnostic_result'] = outcome
+        if outcome['status'] == 'upstream_issue':
+            replay = {'status': 'not_run', 'reason': 'diagnostic_upstream_issue'}
+            state.update(status='diagnostic_upstream_issue', next=None)
+        else:
+            replay = run_calculation_replay(root, scope, state, attempt, entry, remote)
+            state.update(status='running' if replay['status'] == 'passed' else 'diagnostic_replay_failed',
+                         next={'role': 'review'} if replay['status'] == 'passed' else None)
+        attempt['replay'] = replay
+        attempt.update(outcome=outcome, status='completed', acceptance_status='accepted', completed_at=now())
+        f.write(root / 'receipt.json', state)
+        return
     if role in factory.AUTHOR_ROLES:
         pending = journal['pending']
         if not pending:
@@ -797,7 +851,7 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
                            scope.get('protocol'), 'draft' if action == 'consult' else 'ready',
                            scope.get('calculation_contract_version'), scope.get('obligation_trace_version'),
                            state.get('initial_basis_snapshot', {}).get('compile_snapshot'),
-                           scope.get('atomic_rubric_version'))
+                           scope.get('atomic_rubric_version'), scope.get('quality_diagnostics_version'))
         attempt['outcome'] = outcome
         factory.accept_snapshot(state, role, entry)
         if scope.get('protocol') == 'task_factory_harness_v1':
@@ -865,7 +919,7 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
         outcome = checked_output(attempt, role, raw / 'draft', workspace / 'inputs', scope.get('protocol'),
                            'ready', scope.get('calculation_contract_version'),
                            scope.get('obligation_trace_version'), None,
-                           scope.get('atomic_rubric_version'))
+                           scope.get('atomic_rubric_version'), scope.get('quality_diagnostics_version'))
         attempt['outcome'] = outcome
         if role == 'devsolve':
             destination = root / 'development_trials' / f'{ordinal:02d}'
@@ -896,7 +950,9 @@ timeout --signal=TERM --kill-after=2s {max(1, limit-5)}s {shlex.join(cmd)} > {re
                              'feedback_role': owner, 'feedback_snapshot': state['current'][owner]['id']}
         elif role == 'review':
             state['review'] = outcome
-            if outcome['quality'] == 'pass':
+            if diagnostic_micro:
+                state.update(status='diagnostic_review_complete', next=None)
+            elif outcome['quality'] == 'pass':
                 export_package(root, state, workspace / 'inputs')
                 state['next'] = {'role': 'solve'}
             else:

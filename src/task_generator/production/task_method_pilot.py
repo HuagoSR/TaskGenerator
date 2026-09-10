@@ -206,7 +206,7 @@ def task_result(raw: Path, inputs: Path) -> dict:
             "candidate_task": DeliverableContractCompiler().compile_prompt(task["prompt"], contract)}
 
 
-def editor_result(raw: Path, inputs: Path) -> dict:
+def editor_result(raw: Path, inputs: Path, *, quality_diagnostics_version=None) -> dict:
     """Validate an edited candidate task without granting access to teacher data."""
     result = task_result(raw, inputs)
     if result["status"] != "completed":
@@ -239,11 +239,24 @@ def editor_result(raw: Path, inputs: Path) -> dict:
                     "business_reason", "preserved_evidence", "returned_judgment")
         if not isinstance(row, dict) or any(not row.get(key) for key in required):
             raise ValueError(location + ": incomplete edit record")
-        if row["change_id"] in seen or row["area"] not in {"prompt", "requirements", "deliverables"}:
+        if row["change_id"] in seen or row["area"] not in {"prompt", "requirements", "deliverables", "metadata"}:
             raise ValueError(location + ": duplicate ID or invalid area")
         seen.add(row["change_id"])
         evidence(inputs, row["preserved_evidence"], True)
-    return {**result, "edited": changed, "change_count": len(changes)}
+    outcome = {**result, "edited": changed, "change_count": len(changes)}
+    if quality_diagnostics_version is not None:
+        if str(quality_diagnostics_version) != "1":
+            raise ValueError("unsupported_quality_diagnostics_version")
+        unexpected = {path.relative_to(raw).as_posix() for path in raw.rglob("*") if path.is_file()} - {
+            "task.json", "edit_record.json"}
+        if unexpected:
+            raise ValueError("candidate_editor_cannot_modify_materials_or_add_outputs:" + ",".join(sorted(unexpected)))
+        from task_generator.production.quality_diagnostics import edit_difference, validate_edit_claims
+        source_result = task_result(inputs, inputs)
+        diagnostic = edit_difference(source, edited, source_result, result)
+        validate_edit_claims(record, diagnostic)
+        outcome["edit_diagnostic"] = diagnostic
+    return outcome
 
 
 def compilation_result(raw: Path, inputs: Path) -> dict:

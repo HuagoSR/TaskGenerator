@@ -432,7 +432,8 @@ def test_wrong_session_refused_before_staging(tmp_path, field, value):
 @pytest.mark.parametrize('review_quality,fault', [('pass', None), ('uncertain', None), ('issue', None),
                                                 ('pass', 'staging'), ('pass', 'timeout'), ('pass', 'stop'), ('pass', 'after_finish'),
                                                 ('pass', 'batch'), ('issue', 'batch')])
-def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch, review_quality, fault, harness_protocol=False):
+def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch, review_quality, fault,
+                                                          harness_protocol=False, quality_diagnostics=False):
     """Only SSH/SCP and environment/identity checks are replaced; contracts stay real."""
     import json
     import shutil
@@ -447,7 +448,8 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
     for role in (h.ROLES if harness_protocol else f.ROLES):
         p = root / 'prompts' / (role + '.md')
         p.parent.mkdir(exist_ok=True)
-        p.write_text((h if harness_protocol else f).prompt(role), encoding='utf-8')
+        options = {'atomic_rubric_version': 1, 'quality_diagnostics_version': 1} if quality_diagnostics else None
+        p.write_text((h.prompt(role, options) if harness_protocol else f.prompt(role)), encoding='utf-8')
     s = state() | {'status': 'prepared', 'next': {'role': 'world'}, 'recoveries': 0,
                    'task_manual_edits': 0, 'first_failure': None}
     scope = {'remote': '/fixture/scope', 'dependency_remote': '/fixture/deps', 'code_hashes': {}}
@@ -455,6 +457,9 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
         scope.update(protocol='task_factory_harness_v1', obligation_trace_version=2,
                      calculation_contract_version=2, production_launches=14, seconds=14400)
         s.update(compile_stage='basis', upstream_revisions=0, calculation_replays=[])
+        if quality_diagnostics:
+            scope.update(candidate_edit_version=1, atomic_rubric_version=1, quality_diagnostics_version=1)
+            s.update(candidate_edit_version=1, atomic_rubric_version=1, quality_diagnostics_version=1)
     if fault == 'batch':
         from task_generator.production import agent_factory_batch as batch
         batch_root = tmp_path / 'batch'
@@ -522,6 +527,14 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
             (draft / 'hidden/world.md').write_text('HIDDEN_MARKER')
             f.write(draft / 'hidden/manifest.json', {'records': [{'path': 'record.txt', 'producer': 'clerk',
                     'business_purpose': 'review', 'source_dependencies': []}]})
+            if quality_diagnostics:
+                f.write(draft / 'hidden/material_checks.json', {'checks': [{
+                    'path': 'record.txt', 'locator': 'line 1', 'assertion': 'Record version is readable',
+                    'method': 'Read the exact line', 'result': 'Version text is present',
+                    'limitation': 'This does not establish professional sufficiency'}]})
+                f.write(draft / 'hidden/material_relations.json', {'version': 'r10.quality_diagnostics.1',
+                    'observations': [], 'relations': [],
+                    'not_applicable_reason': 'The small fixture contains no represented time relationship.'})
         elif role == 'mine':
             f.write(draft / 'task.json', {'natural_task': True, 'rationale': 'Visible request', 'title': 'Review',
                     'prompt': 'Reconcile the record and explain any limitations.',
@@ -530,16 +543,43 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
             if harness_protocol:
                 f.write(draft / 'design_intent.json', {'occupational_use': 'INTERNAL_INTENT_MARKER',
                     'analysis_points': ['Review'], 'likely_difficulties': ['Version'], 'evidence': basis})
+        elif role == 'edit':
+            task = f.read(inputs / 'task.json')
+            f.write(draft / 'task.json', task)
+            identity = __import__('hashlib').sha256(json.dumps(
+                task, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            f.write(draft / 'edit_record.json', {'version': 'r10.candidate_edit.1',
+                'source_task_sha256': identity, 'edited_task_sha256': identity, 'changes': [],
+                'no_change_reason': 'The fixture prompt contains no producer-added answer hint.'})
         elif role == 'compile':
-            f.write(draft / 'supervision.json', {'status': 'compiled', 'upstream_issues': [], 'decisions': [{
-                'decision_id': 'd1', 'requirement_ids': ['r1'], 'supported_judgment': 'Record allows analysis',
-                'conditional_completion': 'Explain any remaining gap', 'gaps': [], 'follow_up': [], 'evidence': basis}]})
-            f.write(draft / 'new_rubric.json', {'task_id': 'anonymous_task', 'criteria': [{
-                'criterion_id': 'analysis', 'decision_id': 'd1', 'requirement': 'Reconcile the record', 'max_points': 1,
-                'score_boundaries': [{'awarded': 0, 'description': 'No supported analysis'}, {'awarded': 1, 'description': 'Supported conditional analysis'}],
-                'requirement_basis': [{'path': 'candidate_task.md', 'locator': 'paragraph 1', 'explanation': 'Visible assignment obligation'}],
-                'evidence_paths': ['reference_files/record.txt'], 'applicability': 'Always applies',
-                'acceptable_alternatives': 'Equivalent supported forms', 'verification': 'Read analysis and trace its sources'}]})
+            decision = {'decision_id': 'd1', 'requirement_ids': ['r1'],
+                'evidence': basis, 'follow_up': []}
+            if quality_diagnostics:
+                decision.update(reference_analysis='Record allows a bounded analysis', known_facts=['Visible version'],
+                                uncertainties=[])
+                rubric_item = {'criterion_id': 'analysis', 'decision_id': 'd1',
+                    'requirement': 'Reconcile the record', 'max_points': 1,
+                    'full_credit_condition': 'States one supported reconciliation conclusion.',
+                    'weight_rationale': 'The conclusion is the independently observable work product.',
+                    'requirement_basis': [{'path': 'candidate_task.md', 'locator': 'paragraph 1',
+                                           'explanation': 'Visible assignment obligation'}],
+                    'evidence_paths': ['reference_files/record.txt'], 'applicability': 'Always applies',
+                    'acceptable_alternatives': 'An evidence-bounded conclusion with follow-up is accepted.',
+                    'tolerance': 'No numeric tolerance applies.',
+                    'verification': 'Read the conclusion and trace its source.'}
+                rubric_value = {'rubric_version': 'r10.atomic_rubric.1', 'task_id': 'anonymous_task',
+                                'scoring': 'binary_weighted', 'criteria': [rubric_item]}
+            else:
+                decision.update(supported_judgment='Record allows analysis',
+                                conditional_completion='Explain any remaining gap', gaps=[])
+                rubric_value = {'task_id': 'anonymous_task', 'criteria': [{
+                    'criterion_id': 'analysis', 'decision_id': 'd1', 'requirement': 'Reconcile the record', 'max_points': 1,
+                    'score_boundaries': [{'awarded': 0, 'description': 'No supported analysis'}, {'awarded': 1, 'description': 'Supported conditional analysis'}],
+                    'requirement_basis': [{'path': 'candidate_task.md', 'locator': 'paragraph 1', 'explanation': 'Visible assignment obligation'}],
+                    'evidence_paths': ['reference_files/record.txt'], 'applicability': 'Always applies',
+                    'acceptable_alternatives': 'Equivalent supported forms', 'verification': 'Read analysis and trace its sources'}]}
+            f.write(draft / 'supervision.json', {'status': 'compiled', 'upstream_issues': [], 'decisions': [decision]})
+            f.write(draft / 'new_rubric.json', rubric_value)
             if harness_protocol:
                 f.write(draft / 'basis_draft.json', {'requirements': [{
                     'requirement_id': 'r1', 'obligation': 'Reconcile the record', 'basis_kind': 'explicit',
@@ -556,6 +596,24 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                     'calculations': [{'calculation_id': 'version', 'execution_id': 'version', 'result_pointer': '/version',
                         'rubric_ids': ['analysis'], 'unit': 'record version', 'scope': 'visible record', 'method': 'parse version',
                         'assumptions': [], 'expected': {'value': counts['world'], 'tolerance': 0}, 'alternatives': []}]})
+                if quality_diagnostics:
+                    from task_generator.production import quality_diagnostics as qd
+                    view = qd.rubric_view(rubric_value, f.read(draft / 'basis_draft.json'),
+                                          f.read(draft / 'calculation_evidence.json'), inputs)
+                    criterion = view['criteria'][0]
+                    f.write(draft / 'rubric_diagnostic.json', {'version': qd.VERSION,
+                        'rubric_sha256': view['rubric_sha256'], 'basis_sha256': view['basis_sha256'],
+                        'calculation_evidence_sha256': view['calculation_evidence_sha256'],
+                        'candidate_input_hashes': view['candidate_input_hashes'], 'decision': 'pass',
+                        'criteria': [{'criterion_id': 'analysis', 'criterion_sha256': criterion['criterion_sha256'],
+                            'candidate_requirement_ids': ['r1'], 'atomicity': 'pass',
+                            'atomicity_rationale': 'One conclusion is independently observable.',
+                            'alternative_consistency': 'pass',
+                            'alternative_consistency_rationale': 'The bounded alternative satisfies the same conclusion.',
+                            'overlap': 'pass', 'overlap_rationale': 'No peer criterion repeats it.',
+                            'clause_refs': {'atomicity': ['/criteria/0/full_credit_condition'],
+                                'alternative_consistency': ['/criteria/0/acceptable_alternatives'],
+                                'overlap': ['/criteria/0/requirement']}, 'overlap_criterion_ids': []}]})
                 if (inputs / 'development_trial').exists():
                     assert (inputs / 'initial_basis/basis_draft.json').is_file()
                     f.write(draft / 'comparison.json', {'initial_basis_snapshot': cfg['initial_basis_snapshot'],
@@ -569,6 +627,29 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
                 'checks': [{'dimension': d, 'status': review_quality, 'findings': [finding]} for d in runner.previous.method.DIMENSIONS],
                 'requirement_coverage': [{'requirement_id': 'r1', 'status': review_quality, 'explanation': 'Covered'}],
                 'rubric_coverage': [{'criterion_id': 'analysis', 'status': review_quality, 'explanation': 'Covered'}]})
+            if quality_diagnostics:
+                from task_generator.production import quality_diagnostics as qd
+                rubric_value = f.read(inputs / 'new_rubric.json')
+                view = qd.rubric_view(rubric_value, f.read(inputs / 'basis_draft.json'),
+                                      f.read(inputs / 'calculation_evidence.json'), inputs)
+                criterion = view['criteria'][0]
+                state = 'pass' if review_quality == 'pass' else review_quality
+                decision = 'pass' if state == 'pass' else 'revision_required'
+                f.write(draft / 'rubric_diagnostic.json', {'version': qd.VERSION,
+                    'rubric_sha256': view['rubric_sha256'], 'basis_sha256': view['basis_sha256'],
+                    'calculation_evidence_sha256': view['calculation_evidence_sha256'],
+                    'candidate_input_hashes': view['candidate_input_hashes'], 'decision': decision,
+                    'criteria': [{'criterion_id': 'analysis', 'criterion_sha256': criterion['criterion_sha256'],
+                        'candidate_requirement_ids': ['r1'], 'atomicity': state,
+                        'atomicity_rationale': 'Independent review of the single conclusion.',
+                        'alternative_consistency': state,
+                        'alternative_consistency_rationale': 'Independent review of the bounded alternative.',
+                        'overlap': state, 'overlap_rationale': 'Independent review found no peer duplication.',
+                        'clause_refs': {'atomicity': ['/criteria/0/full_credit_condition'],
+                            'alternative_consistency': ['/criteria/0/acceptable_alternatives'],
+                            'overlap': ['/criteria/0/requirement']}, 'overlap_criterion_ids': []}]})
+                f.write(draft / 'record_relations.json', {'version': qd.VERSION, 'observations': [],
+                    'relations': [], 'not_applicable_reason': 'The fixture contains no represented time relationship.'})
         else:
             if harness_protocol:
                 assert 'task.json' not in names and 'design_intent.json' not in names
@@ -580,14 +661,16 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
             if role == 'devsolve':
                 f.write(draft / 'diagnostic.json', {'evidence_used': basis, 'calculations': [], 'ambiguities': [], 'barriers': []})
         ft.check(role, draft, inputs, scope.get('protocol'), 'ready', scope.get('calculation_contract_version'),
-                 scope.get('obligation_trace_version'), cfg.get('initial_basis_snapshot'))
+                 scope.get('obligation_trace_version'), cfg.get('initial_basis_snapshot'),
+                 scope.get('atomic_rubric_version'), scope.get('quality_diagnostics_version'))
         broker.handle({'action': 'log-check', 'result': {'tool': 'check', 'role': role, 'hashes': f.files(draft)}})
-        if role not in f.AUTHOR_ROLES:
+        is_author = role in f.AUTHOR_ROLES or (quality_diagnostics and role == 'edit')
+        if not is_author:
             broker.handle({'action': 'finish'})
             if fault == 'after_finish' and role == 'review':
                 with (draft / 'review.json').open('a') as handle:
                     handle.write(' ')
-        if role in f.AUTHOR_ROLES:
+        if is_author:
             snap = broker.handle({'action': 'snapshot', 'reason': 'Actual version'})
             for c in cfg.get('consultations', []):
                 for finding in c['finding_ids']:
@@ -603,7 +686,9 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
             elif role == 'compile':
                 action = {'action': 'submit'}
             else:
-                action = {'action': 'handoff', 'target': 'mine' if role == 'world' else 'compile'}
+                target = ('mine' if role == 'world' else
+                          'edit' if role == 'mine' and quality_diagnostics else 'compile')
+                action = {'action': 'handoff', 'target': target}
             broker.handle(action | {'snapshot': snap['id'], 'reason': 'AUTHOR_INTENT_MARKER'})
         session = 'world-owner' if role == 'world' else f'{role}-{nth}'
         if harness_protocol:
@@ -679,10 +764,15 @@ def test_real_controller_roundtrip_with_transport_fixture(tmp_path, monkeypatch,
         assert result['attempts'][0]['raw_hashes'] and counts == {'world': 1}
         assert (root / 'STOP').exists() == (fault == 'stop')
         return
+    if quality_diagnostics and result['status'] != 'completed':
+        raise AssertionError({'status': result['status'], 'stop_reason': result.get('stop_reason'),
+                              'first_failure': result.get('first_failure'), 'counts': counts})
     assert result['status'] == ('completed' if review_quality == 'pass' else 'quality_not_passed'), result
     assert counts['world'] == 3 and counts['mine'] == 2 and counts['compile'] == (4 if harness_protocol else 2)
     if harness_protocol:
         assert counts['devsolve'] == 2 and len(result['calculation_replays']) == 3
+        if quality_diagnostics:
+            assert counts['edit'] == 2
     assert counts.get('solve', 0) == int(review_quality == 'pass')
     miners = [a for a in result['attempts'] if a['role'] == 'mine']
     assert all(a['resumed_session'] is None for a in miners)

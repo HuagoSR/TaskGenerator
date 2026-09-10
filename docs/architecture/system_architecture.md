@@ -1,6 +1,6 @@
 # 系统架构
 
-> 状态：active；核对日期：2026-09-10。
+> 状态：active；核对日期：2026-09-11。
 > 只说明结构与职责；完成情况见[项目概要](../../项目概要.md)。
 
 ## R10 研究主线
@@ -16,6 +16,16 @@
 ```
 
 这是已实现的研究方法链，由阶段 runner 执行；不等于已验证的无人值守规模化生产服务。
+
+## 诊断工具与微测的职责边界
+
+质量诊断沿用现有角色与工具，正式rubric是唯一评分标准；诊断只记录证据或触发修订。`quality_diagnostics_version=1`的身份、覆盖和条款检查已有离线实现，不代表真实Agent已可靠识别语义问题。微测入口复用生产控制器，但其预置阶段尚不能满足完整生产提交前提，不能视为已跑通的轻量诊断链。
+
+后续拟将合成诊断结果接纳与正式生产提交明确区分，保持同一权限、版本和预算基础；不得伪造咨询/试做或放宽生产准入来让微测通过。该接入仍为proposed，结果与限制见概要。
+
+## Legacy rw-task 兼容诊断
+
+`Test/prepare_r10_rw_task_latest_two.py`从已冻结候选包生成候选侧 GDPval-like 副本，隔离教师文件和运行证据；为旧 rw-task 读取，将原子 rubric 的`max_points`复制到旧字段`score`，同时保留稳定 criterion ID 和完整文本。`Test/run_r10_rw_task_latest_two_eval.py`只编排 ignored scope 中的旧 Solver、交付结构检查与 strict legacy grader，不修改 rw-task 源码。该适配不改变正式原子 rubric，旧 grader 的整数部分分和向下审计只用于行为诊断；运行结果见概要。
 
 ## 各层职责
 

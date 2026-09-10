@@ -745,7 +745,11 @@ redundant deliverable only by updating the task and its deliverable list togethe
 Write edited task.json plus edit_record.json matching schema artifact task_edit.
 Every edit must locate its source, explain the business reason, cite preserved
 candidate evidence, and state the judgment returned to the candidate. An explicit
-no-change result is valid. Consult when useful and handoff to compile when ready.''',
+no-change result is valid. When quality diagnostics are enabled, query
+factory-tools diagnose {subject:"edit"} and put its exact actual_change_paths in
+every edit_record change. Internal-only changes are valid but must never be
+presented as a candidate prompt change. Consult when useful and handoff to
+compile when ready.''',
     'compile': '''Independently reconstruct the candidate-visible obligations before
 seeing any trial or design intent. Write basis_draft.json, supervision.json,
 new_rubric.json, calculation_evidence.json and executable Python files under
@@ -787,6 +791,7 @@ Do not infer teacher intent.''',
 def prompt(role, options=None):
     options = options or {}
     atomic = bool(options.get('atomic_rubric_version'))
+    quality_diagnostics = str(options.get('quality_diagnostics_version', '')) == '1'
     if role in ('review', 'solve'):
         from task_generator.production import task_method_pilot
         body = task_method_pilot.REVIEW if role == 'review' else task_method_pilot.SOLVE
@@ -807,6 +812,14 @@ tolerance, applicability and reasonable alternatives. supervision.json may
 explain calculations and uncertainty but may not add, narrow or override any
 scoring condition. Also assess whether editing left substantive professional
 judgment for the candidate instead of exposing anomaly identities or conclusions.\n'''
+            if quality_diagnostics:
+                body += '''Use factory-tools diagnose {subject:"rubric"}, then write an
+independent rubric_diagnostic.json with one row for every criterion. Explain
+atomicity, alternative-condition consistency, and overlap separately; do not use
+teacher rationale to repair a scoring conflict. Also use diagnose
+{subject:"record-relations"} and write record_relations.json from candidate-visible
+records only. Record actual time/source comparisons, preserving timezone and
+precision. An issue or uncertainty must make review.json non-pass.\n'''
         return COMMON + READONLY_FLOW + body.replace('/output', '/draft')
     body = ROLE_PROMPTS[role]
     if role == 'world' and atomic:
@@ -820,7 +833,12 @@ generation contradiction by checking author identity, knowledge time, authority,
 record purpose and shared sources. Missing evidence may support a bounded
 analysis and next action; it never proves that the underlying event did not occur.
 Write hidden/material_checks.json with checks [{path, locator, assertion,
-method, result, limitation}] for the targeted checks you actually performed.\n'''
+method, result, limitation}] for the targeted checks you actually performed.
+When quality diagnostics are enabled, use factory-tools diagnose
+{subject:"record-relations"} and write hidden/material_relations.json for the
+record creation, update, distribution, event, query or excerpt relationships you
+actually compare. Bind each observation to a quote, current file hash, timezone
+and stated precision. Do not infer undocumented updates or seconds.\n'''
     if role == 'compile' and atomic:
         body += '''\nThis scope uses r10.atomic_rubric.1. Query schema artifacts
 supervision and rubric. supervision.json is reference analysis only: use
@@ -835,5 +853,11 @@ It is scored only 0 or max_points. Use weight 3 for a core professional judgment
 result unless a located reason justifies another positive integer. Do not split
 units or harmless presentation details into artificial criteria, and do not
 repeat one fact to amplify its weight. Every scoring condition and alternative
-must appear in the rubric, never only in supervision or calculation evidence.\n'''
+must appear in the rubric, never only in supervision or calculation evidence.
+When quality diagnostics are enabled, call factory-tools diagnose
+{subject:"rubric"}, then write rubric_diagnostic.json for every criterion. State
+whether the result is independently observable, alternatives are consistent with
+the full-credit condition, and the criterion overlaps another; each needs a
+rationale. A diagnostic pass requires all rows pass. The diagnostic cannot add
+conditions: revise new_rubric.json or report an upstream issue instead.\n'''
     return COMMON + (AUTHOR_FLOW if role in AUTHOR_ROLES else READONLY_FLOW) + body

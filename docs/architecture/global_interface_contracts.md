@@ -1,7 +1,13 @@
 # 接口合同索引
 
-> 状态：reference；核对日期：2026-09-10。
+> 状态：reference；核对日期：2026-09-11。
 > 只说明接口职责和兼容边界。字段以代码为准，运行结果见[项目概要](../../项目概要.md)。
+
+## 合成诊断入口的接口边界
+
+[质量微测入口](../../Test/run_r10_quality_diagnostic_micro.py)尚未形成可完成的诊断交接合同：`check ready`只证明当前草稿结构有效，`replay next_action=submit`仍检查完整生产依赖；预置编译不自动获得世界检查、咨询或开发试做证据。不能把ready解释为可提交，也不能把无pending动作直接解释为Agent未尝试交接。
+
+当前工作区已实现限定合成诊断的结束/复核接纳语义及失败启动计量；它不声明生产提交类型，也不放宽历史接口。父级report按子attempt核对启动数，模型完成、动作排队、控制器接纳和复核结论分别解释。实现通过无模型入口夹具，真实Agent语义仍待验证。详见[运行边界](../operations/pipeline_reconstruction_runbook.md)。
 
 ## 生成侧 Rubric V2
 
@@ -116,7 +122,15 @@ Miner 额外保存隔离的`design_intent.json`。编译快照增加`basis_draft
 
 `quality-development-v1`新增版本化`edit`角色与`r10.atomic_rubric.1`，旧scope仍使用原角色图和Rubric V2。编辑快照只含编辑后的`task.json`及内部`edit_record.json`；后者记录修改声明、业务理由和保留证据，不进入编译、试做、终审或GDPval包。候选实际变化须比较prompt、合同和材料，不能用内部requirements/rationale的变化代替。原子rubric合同每项只有0或`max_points`，满分条件、权重理由、适用条件、容差、替代路径和核验方式均在正式rubric中；结构通过不保证成果真正独立、不重复计分或条款之间无矛盾。监督改用参考分析、已知事实、不确定性、跟进和来源，拒绝`conditional_completion`等命名字段，但自由文本是否暗加规则仍需专业复核。正式GDPval形状导出的`rubric`字段由原子合同确定性生成，不以额外教师文件补全评分规则；候选公开背景随reference_files导出。历史占位rubric导出不追改，不能据存在rubric_json就声称正式字段已自足。
 
+后续显式启用`quality_diagnostics_version=1`的scope使用`r10.quality_diagnostics.1`，历史scope不受影响。`factory-tools diagnose`接收含`subject`的JSON对象，提供三个只读对象：`edit`从实际候选题干、交付合同和内部task差异生成确定性清单；`rubric`按当前正式条目、候选义务和计算锚点生成逐项对照；`record-relations`验证已声明的记录时点并呈现来源关系。编辑记录必须覆盖真实候选及内部变化，材料文件不可由编辑者修改。`rubric_diagnostic.json`同时绑定rubric、依据、计算包、候选文件和逐项条款；编译诊断未关闭时不能ready/submit，终审非pass则正常收尾。查询或摘录的`derived_from`关系只产生`agent_review_required`，程序不自动判定内容一致。诊断pass不等于职业语义或专家有效性通过。
+
 现有`stop`和批次根`STOP`表示尽快停止，会传播到当前子控制器，不表示“当前题完整结束后暂停”。历史`remaining_v2`因此在世界修订后终止并将父游标推进；不能直接执行该父批来恢复采购二。未来如实现题后暂停，须增加不同的显式状态与测试，不能改变历史停止记录。
+
+## Legacy rw-task 诊断适配（候选侧兼容）
+
+`prepare_r10_rw_task_latest_two.py`只写入 ignored 输入副本：保留候选`dataset_row.json`、`reference_files/`和空`deliverable_files/`，删除内部运行元数据及全部教师侧文件。每个原子条目的`criterion_id`成为旧`rubric_item_id`，`max_points`映射为旧`score`，`criterion`文本完整承载满分条件、适用范围、替代路径、容差和核验说明；该映射不改变正式 rubric 的二元语义。
+
+`run_r10_rw_task_latest_two_eval.py`在 scope 外层核验输入哈希、候选交付路径和可读取性，再调用未改动的 legacy Solver/strict grader。旧 grader 可以给整数部分分并执行向下审计，输出只能标记为 legacy rw-task diagnostic；它不是正式评分合同，也不得反馈修改候选任务或教师依据。
 
 ## 历史兼容
 

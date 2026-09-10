@@ -39,6 +39,8 @@ def issue_for(error):
         if message.startswith(prefix)), None)
     repair = (f'run factory-tools schema with artifact {artifact}, revise the located field, then rerun check'
               if artifact else 'query factory-tools schema for the affected artifact, revise the current draft, then rerun check')
+    if any(token in message for token in ('submission_prerequisites_missing', 'next_production_launch_budget_unavailable')):
+        repair = 'Current role cannot supply these prerequisites. Read status and report the blocker; do not repeat draft edits or fabricate evidence.'
     subject = re.search(r'\.(criteria|executions|calculations)\[([^]]+)\]', message)
     context = {}
     if subject:
@@ -110,6 +112,9 @@ class Broker:
                 'request_id': consultation['request_id'], 'snapshot': identity}
 
     def handle(self, request):
+        from task_generator.production.quality_diagnostics import micro_enabled
+        if micro_enabled(self.config) and request.get('action') in ('consult', 'replay', 'submit', 'request-development-trial', 'handoff'):
+            raise ValueError('diagnostic_mode_requires_finish')
         action = request['action']
         role = self.config['role']
         if self.config.get('purpose') == 'tool_microtest' and (
@@ -145,9 +150,47 @@ class Broker:
                             latest_matching_snapshot=current_snapshot,
                             current_check_modes=sorted({row.get('mode', 'ready') for row in checks}),
                             unresolved_findings=unresolved)
+            if self.config.get('quality_diagnostics_version') is not None:
+                required = {
+                    'world': 'hidden/material_relations.json', 'compile': 'rubric_diagnostic.json',
+                    'review': 'rubric_diagnostic.json and record_relations.json',
+                }.get(role)
+                present = [] if required is None else [name for name in required.split(' and ')
+                                                       if (self.draft / name).is_file()]
+                diagnostics = {
+                    'version': self.config['quality_diagnostics_version'],
+                    'required': required, 'present': present,
+                    'current_draft_hashes': hashes,
+                    'note': 'Presence and file identity are structural only; semantic status comes from the versioned diagnostic artifact.',
+                }
+                try:
+                    from task_generator.production.quality_diagnostics import validate_record_relations, validate_rubric_diagnostic
+                    inputs = self.root / 'workspace/inputs'
+                    if role == 'world' and (self.draft / 'hidden/material_relations.json').is_file():
+                        assessment = validate_record_relations(
+                            f.read(self.draft / 'hidden/material_relations.json'), self.draft / 'candidate', candidate_only=False)
+                        diagnostics['record_relations'] = assessment
+                    elif role == 'compile' and (self.draft / 'rubric_diagnostic.json').is_file():
+                        assessment = validate_rubric_diagnostic(
+                            f.read(self.draft / 'rubric_diagnostic.json'), f.read(self.draft / 'new_rubric.json'),
+                            f.read(self.draft / 'basis_draft.json'), f.read(self.draft / 'calculation_evidence.json'), inputs)
+                        diagnostics['rubric_decision'] = assessment['decision']
+                    elif role == 'review' and all((self.draft / name).is_file() for name in ('rubric_diagnostic.json', 'record_relations.json')):
+                        assessment = validate_rubric_diagnostic(
+                            f.read(self.draft / 'rubric_diagnostic.json'), f.read(inputs / 'new_rubric.json'),
+                            f.read(inputs / 'basis_draft.json'), f.read(inputs / 'calculation_evidence.json'), inputs)
+                        diagnostics['rubric_decision'] = assessment['decision']
+                        diagnostics['record_relations'] = validate_record_relations(
+                            f.read(self.draft / 'record_relations.json'), inputs)
+                except (ValueError, FileNotFoundError, KeyError, TypeError, json.JSONDecodeError) as error:
+                    diagnostics['validation_error'] = str(error)
+                workflow['quality_diagnostics'] = diagnostics
             workflow['pending_action'] = self.pending.get('action') if self.pending else None
             workflow['passing_replay_current'] = current_snapshot in self.config.get('passed_replay_snapshots', [])
             if not workflow['passing_replay_current']:
+                workflow['legal_next_actions'] = [x for x in workflow.get('legal_next_actions', []) if x != 'submit']
+            if (role == 'compile' and self.config.get('quality_diagnostics_version') is not None
+                    and workflow.get('quality_diagnostics', {}).get('rubric_decision') != 'pass'):
                 workflow['legal_next_actions'] = [x for x in workflow.get('legal_next_actions', []) if x != 'submit']
             if self.config.get('purpose') == 'tool_microtest':
                 workflow['legal_next_actions'] = [x for x in workflow.get('legal_next_actions', [])
@@ -164,18 +207,36 @@ class Broker:
                 workflow.setdefault('budget', {})['launch_seconds_remaining'] = max(
                     0, int(self.config['launch_deadline_epoch'] - time.time()))
             result = workflow
+            if self.config.get('diagnostic_micro_version') is not None and role == 'compile':
+                from task_generator.production.quality_diagnostics import micro_enabled
+                micro_enabled(self.config)
+                result['legal_next_actions'] = ['status'] if self.pending else ['schema', 'inspect', 'diagnose', 'check', 'finish']
+                result['missing_prerequisites'] = []
+                result['submission_base_missing'] = ['production_submit_not_available_in_diagnostic_mode']
+                try:
+                    from task_generator.production.quality_diagnostics import micro_result
+                    result['diagnostic_result'] = micro_result(self.draft, self.root / 'workspace/inputs', self.config)
+                except (ValueError, OSError, KeyError, TypeError) as error:
+                    result['missing_prerequisites'] = [str(error)]
         elif action == 'log-call':
             result = {'recorded': request['record']}
         elif action == 'log-check':
             result = {'recorded': request['result']}
-        elif action == 'finish' and role in ('devsolve', 'consult', 'review', 'solve'):
+        elif action == 'finish' and (role in ('devsolve', 'consult', 'review', 'solve') or
+                (role == 'compile' and self.config.get('diagnostic_micro_version') == 1)):
             if self.pending:
                 raise ValueError('request_pending_end_turn')
             hashes = self.factory.files(self.draft)
             if not any(e['action'] == 'log-check' and e['result']['recorded'].get('tool') == 'check'
                        and e['result']['recorded'].get('hashes') == hashes for e in self.events):
                 raise ValueError('current_version_check_required: run factory-tools check')
-            self.pending = {'action': 'finish', 'hashes': hashes}
+            if role == 'compile':
+                from task_generator.production.quality_diagnostics import micro_result
+                outcome = micro_result(self.draft, self.root / 'workspace/inputs', self.config)
+                entry, _ = self.current_snapshot('Frozen synthetic diagnostic result')
+                self.pending = {'action': 'finish', 'hashes': hashes, 'snapshot_entry': entry, 'diagnostic_outcome': outcome}
+            else:
+                self.pending = {'action': 'finish', 'hashes': hashes}
             result = {'status': 'checked_end_turn_now'}
         elif role not in self.factory.AUTHOR_ROLES:
             raise ValueError('read_only_role')
@@ -351,11 +412,14 @@ def teacher_citation_paths(inputs, protocol):
 
 
 def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=None,
-          obligation_trace_version=None, initial_basis_snapshot=None, atomic_rubric_version=None):
+          obligation_trace_version=None, initial_basis_snapshot=None, atomic_rubric_version=None,
+          quality_diagnostics_version=None):
     from task_generator.production import task_method_pilot as m
     from r10_process_first_tools import validate
     if mode not in ('draft', 'ready'):
         raise ValueError('check_mode_must_be_draft_or_ready')
+    if quality_diagnostics_version is not None and str(quality_diagnostics_version) != '1':
+        raise ValueError('unsupported_quality_diagnostics_version')
     if protocol == 'task_factory_harness_v1':
         f.files(draft)
         from docx import Document
@@ -401,6 +465,12 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                         or any(not str(row.get(key, '')).strip() for key in (
                             'locator', 'assertion', 'method', 'result', 'limitation'))):
                     raise ValueError(f'hidden/material_checks.json.checks[{index}]: exact candidate path and complete check evidence required')
+        if quality_diagnostics_version is not None:
+            from task_generator.production.quality_diagnostics import validate_record_relations
+            relations = f.read(draft / 'hidden/material_relations.json')
+            relation_result = validate_record_relations(relations, draft / 'candidate', candidate_only=False)
+            if any(row['status'] == 'issue' for row in relation_result['relations']):
+                raise ValueError('hidden/material_relations.json: declared record relation contradiction requires revision or an upstream issue')
         return {'status': 'completed', 'files': actual}
     if role == 'mine':
         outcome = m.task_result(draft, inputs)
@@ -416,7 +486,7 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
     if role == 'edit':
         if not atomic_rubric_version:
             raise ValueError('candidate_editor_requires_versioned_quality_scope')
-        return m.editor_result(draft, inputs)
+        return m.editor_result(draft, inputs, quality_diagnostics_version=quality_diagnostics_version)
     if role == 'compile':
         if protocol != 'task_factory_harness_v1':
             return m.compilation_result(draft, inputs)
@@ -439,6 +509,13 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                     draft, inputs,
                     require_comparison=(inputs / 'development_trial').is_dir(),
                     initial_basis_snapshot=initial_basis_snapshot, version=obligation_trace_version)
+            if quality_diagnostics_version is not None:
+                from task_generator.production.quality_diagnostics import validate_rubric_diagnostic
+                diagnostic_outcome = validate_rubric_diagnostic(
+                    f.read(draft / 'rubric_diagnostic.json'), f.read(draft / 'new_rubric.json'),
+                    f.read(draft / 'basis_draft.json'), f.read(draft / 'calculation_evidence.json'), inputs)
+                if diagnostic_outcome['decision'] != 'pass':
+                    raise ValueError('rubric_diagnostic.json: unresolved diagnostics block ready and submit')
         except (ValueError, KeyError, TypeError, FileNotFoundError, json.JSONDecodeError) as error:
             errors.extend(getattr(error, 'messages', [str(error)]))
         try:
@@ -466,7 +543,20 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                     m.reference(inputs, finding.get('path'), extra_allowed=extra_allowed)
                 except ValueError as error:
                     raise ValueError(f'review.json checks[{i}].findings[{j}].path: use one exact file from schema citation_inputs; separate multiple sources into separate findings') from error
-        return m.review_result(draft, inputs, extra_allowed=extra_allowed)
+        outcome = m.review_result(draft, inputs, extra_allowed=extra_allowed)
+        if quality_diagnostics_version is not None:
+            from task_generator.production.quality_diagnostics import validate_record_relations, validate_rubric_diagnostic
+            relations = f.read(draft / 'record_relations.json')
+            relation_result = validate_record_relations(relations, inputs)
+            diagnostic = f.read(draft / 'rubric_diagnostic.json')
+            diagnostic_outcome = validate_rubric_diagnostic(
+                diagnostic, f.read(inputs / 'new_rubric.json'), f.read(inputs / 'basis_draft.json'),
+                f.read(inputs / 'calculation_evidence.json'), inputs)
+            if outcome['quality'] == 'pass' and any(row['status'] != 'pass' for row in relation_result['relations']):
+                raise ValueError('record_relations.json: independent review must not pass with a declared record-relation issue or uncertainty')
+            if outcome['quality'] == 'pass' and diagnostic_outcome['decision'] != 'pass':
+                raise ValueError('rubric_diagnostic.json: independent review must not pass with unresolved rubric diagnostics')
+        return outcome
     if role == 'consult':
         result = f.read(draft / 'consultation.json')
         if not isinstance(result.get('summary'), str) or not isinstance(result.get('findings'), list) or not isinstance(result.get('questions'), list):
@@ -663,6 +753,52 @@ def render(args):
     return {'output': str(path), 'pages': [str(p) for p in sorted(target.glob('page-*.png'))], 'original_unchanged': True}
 
 
+def diagnose(args, cfg):
+    """Expose structural evidence; Agents retain semantic professional judgment."""
+    subject = args.get('subject')
+    if subject == 'edit':
+        from task_generator.production import task_method_pilot as method
+        from task_generator.production.quality_diagnostics import edit_difference
+        if cfg.get('diagnostic_micro_version') == 1:
+            if cfg['role'] != 'compile':
+                raise ValueError('edit_history_not_visible_to_review')
+            versions = f.read('/workspace/inputs/diagnostic_context/edit_versions.json')
+            return edit_difference(versions['before'], versions['after'], versions['before_result'], versions['after_result'])
+        source = f.read('/workspace/inputs/task.json')
+        edited = f.read('/draft/task.json')
+        return edit_difference(source, edited,
+                               method.task_result(Path('/workspace/inputs'), Path('/workspace/inputs')),
+                               method.task_result(Path('/draft'), Path('/workspace/inputs')))
+    if subject == 'rubric':
+        from task_generator.production.quality_diagnostics import rubric_view
+        root = Path('/draft') if (Path('/draft') / 'new_rubric.json').is_file() else Path('/workspace/inputs')
+        required = ('new_rubric.json', 'basis_draft.json', 'calculation_evidence.json')
+        if not all((root / name).is_file() for name in required):
+            raise ValueError('rubric_diagnose_requires_rubric_basis_and_calculation_evidence')
+        candidate_root = Path('/workspace/inputs')
+        return rubric_view(*(f.read(root / name) for name in required), candidate_root=candidate_root)
+    if subject == 'record-relations':
+        from task_generator.production.quality_diagnostics import (
+            CONSTRAINTS, KINDS, PRECISIONS, VERSION, validate_record_relations,
+        )
+        root = Path('/draft/candidate') if cfg['role'] == 'world' else Path('/workspace/inputs')
+        result = {'version': VERSION,
+                  'contract': {'observations': [{'observation_id': 'unique ID', 'path': 'candidate file path',
+                      'locator': 'exact row/cell/paragraph', 'quote': 'verbatim visible text or value',
+                      'sha256': 'current file hash', 'timestamp': 'ISO-8601 date/time',
+                      'precision': sorted(PRECISIONS), 'kind': sorted(KINDS)}],
+                      'relations': [{'relation_id': 'unique ID', 'subject_id': 'observation ID',
+                          'related_id': 'observation ID', 'constraint': sorted(CONSTRAINTS),
+                          'statement': 'what this order tests'}],
+                      'not_applicable_reason': 'required only when no relation is submitted'},
+                  'candidate_files': f.files(root)}
+        if 'record' in args:
+            result['assessment'] = validate_record_relations(
+                args['record'], root, candidate_only=cfg['role'] != 'world')
+        return result
+    raise ValueError('unknown_diagnose_subject:' + str(subject))
+
+
 _CALL_STACK = []
 
 
@@ -701,7 +837,8 @@ def _client(action, args):
                 'inspect': 'area draft|inputs; path or paths (max 20); mode inventory for a directory; optional sheet/range/page/cached/max_chars',
                 'render': 'area, path, optional recalculate:true; writes scratch only',
                 'check': 'optional mode draft|ready (default ready)',
-                'schema': 'optional artifact calculation_evidence|task|supervision|rubric|basis|comparison|consultation|review|development_diagnostic',
+                'schema': 'optional artifact calculation_evidence|task|supervision|rubric|basis|comparison|consultation|review|development_diagnostic|quality_diagnostic|record_relations',
+                'diagnose': 'JSON object with subject rubric|edit|record-relations; returns current structural evidence or validates a supplied record-relations object',
                 'save-process': 'world only; first save before any candidate files',
                 'snapshot': 'reason', 'diff': 'snapshot', 'consult': 'optional snapshot, reason (visible evidence question)',
                 'record-disposition': 'request_id, finding_id, snapshot, decision accept|partial|reject, reason, evidence:[{area:draft|inputs,path,locator}]',
@@ -720,6 +857,15 @@ def _client(action, args):
             result['commands']['handoff'] = 'target stop only'
         return result
     if action == 'schema':
+        if cfg.get('diagnostic_micro_version') is not None and args.get('artifact') == 'diagnostic_result':
+            from task_generator.production.quality_diagnostics import micro_enabled, candidate_input_hashes
+            micro_enabled(cfg)
+            return {'artifact': 'diagnostic_result', 'version': 1, 'status': ['completed', 'upstream_issue'],
+                    'reason': 'Evidence-based explanation; unresolved findings require upstream_issue',
+                    'candidate_input_hashes': candidate_input_hashes('/workspace/inputs'),
+                    'required_subjects': cfg['diagnostic_subjects'], 'end_action': 'finish',
+                    'edit_context': 'diagnostic_context/edit_versions.json (compile only)',
+                    'required_outputs': ['diagnostic_result.json', 'rubric_diagnostic.json', 'edit_record.json']}
         from task_generator.production import task_method_pilot as m
         from task_generator.planning.rubric_compiler_v2 import TaskSpecificAtomicRubricV1, TaskSpecificRubricV2
         rubric_model = TaskSpecificAtomicRubricV1 if cfg.get('atomic_rubric_version') else TaskSpecificRubricV2
@@ -764,6 +910,7 @@ def _client(action, args):
                         'edited_task_sha256': 'canonical JSON SHA-256 of draft task.json',
                         'changes': [{'change_id': 'unique', 'area': 'prompt|requirements|deliverables',
                             'original_locator': 'located source', 'edit_summary': 'what changed',
+                            'actual_change_paths': 'exact paths from diagnose {subject:"edit"}',
                             'business_reason': 'why this returns judgment to candidate',
                             'preserved_evidence': [{'path': 'candidate-visible path', 'locator': 'location',
                                 'explanation': 'what remains supported'}],
@@ -781,6 +928,25 @@ def _client(action, args):
                     'rubric_ids, candidate_obligation_refs}]. New scoring work requires candidate-visible support or upstream revision.')},
                 'review': {'contract': result['review'], 'citation_inputs': result['citation_inputs']},
                 'development_diagnostic': {'contract': 'diagnostic.json: evidence_used, calculations, ambiguities, barriers'},
+                'quality_diagnostic': {'contract': {
+                    'file': 'rubric_diagnostic.json', 'version': 'r10.quality_diagnostics.1',
+                    'rubric_sha256': 'current new_rubric.json canonical SHA-256',
+                    'basis_sha256': 'current basis_draft.json canonical SHA-256',
+                    'calculation_evidence_sha256': 'current calculation_evidence.json canonical SHA-256',
+                    'candidate_input_hashes': 'exact candidate-visible input hash map from diagnose',
+                    'criteria': [{'criterion_id': 'every current rubric ID',
+                                  'criterion_sha256': 'current criterion identity from diagnose',
+                                  'candidate_requirement_ids': 'current basis mapping',
+                                  'atomicity': 'pass|issue|uncertain', 'atomicity_rationale': 'nonempty',
+                                  'alternative_consistency': 'pass|issue|uncertain', 'alternative_consistency_rationale': 'nonempty',
+                                  'overlap': 'pass|issue|uncertain', 'overlap_rationale': 'nonempty',
+                                  'clause_refs': {'atomicity': ['current rubric JSON pointer'],
+                                      'alternative_consistency': ['current rubric JSON pointer'],
+                                      'overlap': ['current rubric JSON pointer']},
+                                  'overlap_criterion_ids': 'current peer criterion IDs, empty when none'}],
+                    'decision': 'pass only when every criterion check is pass; otherwise revision_required or upstream_issue',
+                    'authority': 'diagnostic explains or blocks a draft; only new_rubric.json defines scoring'}},
+                'record_relations': {'contract': 'Use diagnose {subject:"record-relations"}. World writes hidden/material_relations.json; final reviewer writes record_relations.json from candidate-visible files only.'},
             }
             if cfg.get('atomic_rubric_version'):
                 allowed['supervision'] = {'contract': {
@@ -835,13 +1001,27 @@ def _client(action, args):
                 raise ValueError('unknown_schema_artifact:' + str(artifact))
             return {'artifact': artifact, **allowed[artifact]}
         return result
+    if action == 'diagnose':
+        result = diagnose(args, cfg)
+        broker_call('log-check', {'result': {'tool': action, 'arguments': args, 'ok': True,
+                                             'hashes': f.files('/draft'), 'role': cfg['role']}})
+        return result
     if action == 'status':
         return broker_call('status', {})
+    if cfg.get('diagnostic_micro_version') is not None and action in ('consult', 'handoff', 'submit', 'replay', 'request-development-trial'):
+        raise ValueError('diagnostic_mode_requires_finish: save diagnosis and use finish; production actions are unavailable')
     if action in ('check', 'inspect', 'render'):
         mode = args.get('mode', 'ready') if action == 'check' else None
+        if action == 'check' and cfg['role'] == 'compile' and cfg.get('diagnostic_micro_version') is not None:
+            from task_generator.production.quality_diagnostics import micro_result
+            result = micro_result('/draft', '/workspace/inputs', cfg)
+            broker_call('log-check', {'result': {'tool': 'check', 'hashes': f.files('/draft'),
+                                               'role': cfg['role'], 'ok': True, 'mode': mode}})
+            return result
         result = check(cfg['role'], Path('/draft'), Path('/workspace/inputs'), protocol, mode,
                        cfg.get('calculation_contract_version'), cfg.get('obligation_trace_version'),
-                       cfg.get('initial_basis_snapshot'), cfg.get('atomic_rubric_version')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
+                       cfg.get('initial_basis_snapshot'), cfg.get('atomic_rubric_version'),
+                       cfg.get('quality_diagnostics_version')) if action == 'check' else (inspect(args) if action == 'inspect' else render(args))
         broker_call('log-check', {'result': {'tool': action, 'arguments': args, 'ok': True,
                                            'hashes': f.files('/draft'), 'role': cfg['role'],
                                            **({'mode': mode} if action == 'check' else {})}})
@@ -851,7 +1031,8 @@ def _client(action, args):
         if outcome.get('status') != 'completed' and not (action == 'handoff' and args.get('target') in ('world', 'mine')):
             raise ValueError('output_not_ready: request upstream revision or handoff to stop; ' + outcome['status'])
     if action == 'finish':
-        if cfg['role'] not in ('devsolve', 'consult', 'review', 'solve'):
+        if cfg['role'] not in ('devsolve', 'consult', 'review', 'solve') and not (
+                cfg['role'] == 'compile' and cfg.get('diagnostic_micro_version') == 1):
             raise ValueError('readonly_roles_finish_only')
         outcome = client('check', {})
         if outcome.get('delivery_status') == 'invalid':
