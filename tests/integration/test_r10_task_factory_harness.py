@@ -478,6 +478,192 @@ def test_two_case_manifest_is_development_not_validation():
     assert batch_runner.PROTOCOL == 'task_factory_harness_v1'
 
 
+def test_migration_audit_profile_selects_single_fresh_case_with_quality_semantics(tmp_path, monkeypatch):
+    root = tmp_path / 'migration_batch'
+    source = tmp_path / 'source'
+    source.mkdir()
+    (source / 'public.txt').write_text('source', encoding='utf-8')
+    readiness = tmp_path / 'readiness.json'
+    legacy.write(readiness, {'tests_passed': True, 'commands': ['targeted', 'full']})
+    captured = {}
+
+    def fake_prepare(child, dependency_lock, dependency_remote, *, spec, source_bundle,
+                     batch_id, protocol, harness_options):
+        captured['spec'], captured['harness_options'] = spec, harness_options
+        child.mkdir(parents=True)
+        scope = {'batch_id': batch_id, 'protocol': protocol, 'code_hashes': {}}
+        legacy.write(child / 'scope.json', scope)
+        legacy.write(child / 'receipt.json', state() | {
+            'status': 'prepared', 'task_manual_edits': 0, 'recoveries': 0})
+        return scope
+
+    monkeypatch.setattr(batch_runner.runner, 'prepare', fake_prepare)
+    result = batch_runner.prepare(
+        root, source, tmp_path / 'lock.json', '/remote/deps', readiness,
+        profile='migration-audit-v1')
+    manifest = legacy.read(root / 'batch.json')
+    assert manifest['profile'] == 'migration-audit-v1'
+    assert [row['id'] for row in manifest['cases']] == ['development_audit_reliability_03']
+    assert manifest['max_launches'] == 16 and manifest['seconds'] == 14400
+    assert manifest['per_case_launches'] == 16 and manifest['per_case_seconds'] == 14400
+    options = captured['harness_options']
+    assert options['method_profile'] == 'quality-development-v1'
+    assert options['candidate_edit_version'] == 1
+    assert options['atomic_rubric_version'] == 'r10.atomic_rubric.1'
+    assert options['obligation_trace_version'] == 2
+    assert options['inherited_world_lineage'] is None
+    assert 'quality_diagnostics_version' not in options
+    spec = captured['spec']
+    assert spec['seed'] == 'seed_audit_company_information_reliability'
+    assert spec['skill'] == 'audit-evidence-reliability'
+    assert spec['domain'] == 'audit_compliance'
+    case_receipt = legacy.read(root / manifest['cases'][0]['path'] / 'receipt.json')
+    assert not case_receipt.get('current')
+    assert not case_receipt.get('controller_interventions')
+    assert 'migration check' in manifest['authorization']
+    assert 'no grading' in manifest['authorization']
+    assert result['launches_used'] == 0
+
+
+def test_migration_audit_profile_starts_from_world_without_quality_world_binding(tmp_path):
+    root = tmp_path / 'migration_batch'
+    source = tmp_path / 'source'
+    source.mkdir()
+    (source / 'public.txt').write_text('source', encoding='utf-8')
+    readiness = tmp_path / 'readiness.json'
+    legacy.write(readiness, {'tests_passed': True, 'commands': ['targeted']})
+    with pytest.raises(ValueError, match='quality_world_source_requires_quality_profile'):
+        batch_runner.prepare(root, source, tmp_path / 'lock.json', '/remote/deps', readiness,
+                             profile='migration-audit-v1', quality_world_from=tmp_path / 'old')
+    assert not root.exists()
+
+
+def test_check_draft_gate_accepts_nonempty_sql_text(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir()
+    (draft / 'saved_query.sql').write_text('SELECT 1;\n', encoding='utf-8')
+    outcome = tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1', mode='draft')
+    assert outcome['status'] == 'completed'
+
+
+def test_check_draft_gate_reports_unsupported_type_with_path(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir()
+    (draft / 'sub').mkdir()
+    (draft / 'sub' / 'saved_query.sqlx').write_text('SELECT 1;\n', encoding='utf-8')
+    with pytest.raises(ValueError, match=r'unsupported_output_type:sub/saved_query\.sqlx'):
+        tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1', mode='draft')
+
+
+def test_check_draft_gate_reports_empty_file_with_path(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir()
+    (draft / 'empty.md').write_text('', encoding='utf-8')
+    with pytest.raises(ValueError, match=r'empty_output:empty\.md'):
+        tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1', mode='draft')
+
+
+def test_check_draft_gate_reports_sql_invalid_encoding_with_path(tmp_path):
+    draft = tmp_path / 'draft'
+    draft.mkdir()
+    (draft / 'broken.sql').write_bytes(b'SELECT \xff\xfe\x00;')
+    with pytest.raises(ValueError, match=r'invalid_text_encoding:broken\.sql'):
+        tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1', mode='draft')
+
+
+def test_material_check_path_accepts_both_notations_and_preserves_subdirectories():
+    candidate = {'exports/sales.csv', 'summary.md'}
+    assert tools.resolve_material_check_path('exports/sales.csv', candidate, 0) == 'exports/sales.csv'
+    assert tools.resolve_material_check_path(
+        'candidate/exports/sales.csv', candidate, 0) == 'exports/sales.csv'
+
+
+def test_material_check_path_rejects_ambiguity_escapes_and_missing():
+    candidate = {'x.csv', 'candidate/x.csv'}
+    with pytest.raises(ValueError, match=r'checks\[3\].*ambiguous'):
+        tools.resolve_material_check_path('x.csv', candidate, 3)
+    for raw in ('../x.csv', '/etc/x.csv', 'missing.csv', '   ', None):
+        with pytest.raises(ValueError, match=r'checks\[7\]'):
+            tools.resolve_material_check_path(raw, {'x.csv'}, 7)
+
+
+def world_ready_draft(tmp_path, check_path):
+    draft = tmp_path / 'draft'
+    (draft / 'candidate/exports').mkdir(parents=True, exist_ok=True)
+    (draft / 'hidden').mkdir(exist_ok=True)
+    (draft / 'candidate/exports/sales.csv').write_text('invoice_id\nINV-1\n', encoding='utf-8')
+    legacy.write(draft / 'hidden/manifest.json', {'records': [{
+        'path': 'exports/sales.csv', 'producer': 'billing system nightly job',
+        'business_purpose': 'claimed delivery revenue basis',
+        'source_dependencies': ['parcelspan portal']}]})
+    (draft / 'hidden/world.md').write_text('world process notes', encoding='utf-8')
+    legacy.write(draft / 'hidden/material_checks.json', {'checks': [{
+        'path': check_path, 'locator': 'rows 2', 'assertion': 'a', 'method': 'm',
+        'result': 'r', 'limitation': 'l'}]})
+    return draft
+
+
+def test_world_ready_check_accepts_prefixed_material_check_path(tmp_path):
+    draft = world_ready_draft(tmp_path, 'candidate/exports/sales.csv')
+    outcome = tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1',
+                          mode='ready', obligation_trace_version=2,
+                          atomic_rubric_version='r10.atomic_rubric.1')
+    assert outcome['status'] == 'completed'
+
+
+def test_world_ready_check_still_requires_complete_evidence_fields(tmp_path):
+    draft = world_ready_draft(tmp_path, 'exports/sales.csv')
+    legacy.write(draft / 'hidden/material_checks.json', {'checks': [{
+        'path': 'exports/sales.csv', 'locator': 'rows 2', 'assertion': 'a',
+        'method': 'm', 'result': 'r', 'limitation': ' '}]})
+
+
+    with pytest.raises(ValueError, match='checks\\[0\\]: complete check evidence required'):
+        tools.check('world', draft, tmp_path, protocol='task_factory_harness_v1',
+                    mode='ready', atomic_rubric_version='r10.atomic_rubric.1')
+
+
+def test_world_handoff_request_forms_through_real_gates_after_path_compat(tmp_path):
+    draft = tmp_path / 'draft'
+    (draft / 'hidden').mkdir(parents=True)
+    (draft / 'hidden/process.md').write_text('world process notes', encoding='utf-8')
+    inputs = tmp_path / 'inputs'
+    inputs.mkdir()
+    broker = tools.Broker({'root': str(tmp_path), 'role': 'world', 'parents': {},
+                           'process': None, 'protocol': 'task_factory_harness_v1',
+                           'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1',
+                           'obligation_trace_version': 2, 'quality_diagnostics_version': None,
+                           'consultations': [], 'dispositions': [],
+                           'development_trial_current': False, 'passed_replay_snapshots': [],
+                           'workflow_status': {
+                               'role': 'world', 'current_versions': {}, 'compile_stage': 'basis',
+                               'development_trial_current': False, 'passing_replay_current': False,
+                               'submitted': False, 'review_completed': False,
+                               'final_solve_completed': False, 'missing_prerequisites': [],
+                               'submission_base_missing': [],
+                               'legal_next_actions': ['status', 'inspect', 'render', 'check', 'snapshot',
+                                                      'diff', 'handoff:stop', 'consult', 'handoff:mine'],
+                               'budget': {'launches_used': 1, 'launches_remaining': 15,
+                                          'production_launches_used': 1,
+                                          'production_launches_remaining': 13,
+                                          'review_attempted': False, 'solve_attempted': False,
+                                          'case_seconds_remaining': 14395, 'requested_role': 'world',
+                                          'production_remaining_after_current': 13,
+                                          'launches_remaining_after_current': 15}}})
+    broker.handle({'action': 'save-process'})
+    draft = world_ready_draft(tmp_path, 'candidate/exports/sales.csv')
+    snap = broker.handle({'action': 'snapshot', 'reason': 'world freeze'})
+    tools.check('world', draft, inputs, protocol='task_factory_harness_v1', mode='ready',
+                obligation_trace_version=2, atomic_rubric_version='r10.atomic_rubric.1')
+    broker.handle({'action': 'log-check', 'result': {
+        'tool': 'check', 'hashes': legacy.files(draft), 'role': 'world', 'ok': True, 'mode': 'ready'}})
+    result = broker.handle({'action': 'handoff', 'snapshot': snap['id'], 'target': 'mine',
+                            'reason': 'offline replay after path compatibility fix'})
+    assert result['status'] == 'queued_end_turn_now'
+    assert broker.pending['target'] == 'mine'
+    assert broker.pending['snapshot_entry']['id'] == snap['id']
+
+
 def test_single_procurement_prepare_binds_scope_and_budget(tmp_path, monkeypatch):
     root = tmp_path / 'new_batch'
     source = tmp_path / 'source'

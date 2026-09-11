@@ -7,7 +7,7 @@ import io
 import itertools
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import socket
 import socketserver
@@ -411,6 +411,31 @@ def teacher_citation_paths(inputs, protocol):
         or path.startswith('calculation_scripts/'))
 
 
+def resolve_material_check_path(raw, candidate_paths, index):
+    """Resolve one material_checks path to exactly one candidate-relative file.
+
+    Accepts a candidate-relative path ('exports/sales.csv') or the same file
+    referenced with an explicit 'candidate/' prefix ('candidate/exports/sales.csv')
+    when exactly one interpretation exists in candidate_paths; ambiguity, escapes
+    and missing files are rejected with the entry index and the received path.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError(f'hidden/material_checks.json.checks[{index}]: candidate path required')
+    pure = PurePosixPath(raw)
+    if pure.is_absolute() or '..' in pure.parts:
+        raise ValueError(f'hidden/material_checks.json.checks[{index}]: path {raw!r} escapes candidate/')
+    candidate_form = raw[len('candidate/'):] if raw.startswith('candidate/') else raw
+    matches = sorted({form for form in (candidate_form, 'candidate/' + candidate_form)
+                      if form in candidate_paths})
+    if len(matches) > 1:
+        raise ValueError(f'hidden/material_checks.json.checks[{index}]: path {raw!r} is ambiguous '
+                         'between candidate-relative and candidate/-prefixed references')
+    if not matches:
+        raise ValueError(f'hidden/material_checks.json.checks[{index}]: path {raw!r} does not resolve '
+                         'to a candidate file; use the path relative to candidate/ or prefixed with candidate/')
+    return matches[0]
+
+
 def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=None,
           obligation_trace_version=None, initial_basis_snapshot=None, atomic_rubric_version=None,
           quality_diagnostics_version=None):
@@ -425,12 +450,15 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
         from docx import Document
         from openpyxl import load_workbook
         from pypdf import PdfReader
-        allowed = {'.docx', '.xlsx', '.pdf', '.csv', '.txt', '.md', '.json', '.sha256', '.py'}
+        allowed = {'.docx', '.xlsx', '.pdf', '.csv', '.txt', '.md', '.json', '.sha256', '.py', '.sql'}
         for path in Path(draft).rglob('*'):
             if not path.is_file():
                 continue
-            if path.suffix.lower() not in allowed or not path.stat().st_size:
-                raise ValueError('unexpected_or_empty_output')
+            relative = path.relative_to(Path(draft)).as_posix()
+            if path.suffix.lower() not in allowed:
+                raise ValueError(f'unsupported_output_type:{relative}')
+            if not path.stat().st_size:
+                raise ValueError(f'empty_output:{relative}')
             if path.suffix.lower() == '.docx':
                 Document(path)
             elif path.suffix.lower() == '.xlsx':
@@ -438,6 +466,11 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
             elif path.suffix.lower() == '.pdf':
                 if not PdfReader(path).pages:
                     raise ValueError('empty_pdf')
+            elif path.suffix.lower() == '.sql':
+                try:
+                    path.read_bytes().decode('utf-8-sig')  # text record: encoding-valid, never executed
+                except UnicodeDecodeError as error:
+                    raise ValueError(f'invalid_text_encoding:{relative}') from error
             else:
                 path.read_text(encoding='utf-8')
     else:
@@ -461,10 +494,12 @@ def check(role, draft, inputs, protocol=None, mode='ready', calculation_version=
                 raise ValueError('hidden/material_checks.json.checks: targeted material checks required')
             candidate = f.files(draft / 'candidate')
             for index, row in enumerate(checks):
-                if (not isinstance(row, dict) or row.get('path') not in candidate
-                        or any(not str(row.get(key, '')).strip() for key in (
-                            'locator', 'assertion', 'method', 'result', 'limitation'))):
-                    raise ValueError(f'hidden/material_checks.json.checks[{index}]: exact candidate path and complete check evidence required')
+                if not isinstance(row, dict):
+                    raise ValueError(f'hidden/material_checks.json.checks[{index}]: dict entry required')
+                resolve_material_check_path(row.get('path'), candidate, index)
+                if any(not str(row.get(key, '')).strip() for key in (
+                        'locator', 'assertion', 'method', 'result', 'limitation')):
+                    raise ValueError(f'hidden/material_checks.json.checks[{index}]: complete check evidence required')
         if quality_diagnostics_version is not None:
             from task_generator.production.quality_diagnostics import validate_record_relations
             relations = f.read(draft / 'hidden/material_relations.json')
