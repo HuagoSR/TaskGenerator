@@ -9,7 +9,7 @@
 
 ## Public read-only CLI contract
 
-`taskgen`只接受本地 UTF-8 JSON、GDPval-shaped 包、R10 scope 或 legacy diagnostic report。`local.json`仅允许artifact根与派生报告根；preview spec仅允许版本、协议、输入、模型、预算、顺序与输出路径，拒绝未知字段、凭据字段、父目录穿越、UNC和符号链接越界。`generate/evaluate --dry-run`只返回输入身份和未验证的远端条件，不能创建scope、receipt或预算。`report --output`只接受尚不存在的新文件。CLI的legacy分数投影必须把`formal_atomic_score`标为`not_produced`。
+`taskgen`只接受本地 UTF-8 JSON、GDPval-shaped 包、R10 scope 或 legacy diagnostic report。`local.json`仅允许artifact根与派生报告根；`runs`省略`--root`时才使用前者，显式根优先。配置了派生报告根时，`report --output`必须位于其下且目标尚不存在。legacy读取固定识别`label`、`formal_atomic_rubric_score`和`cells`，按cell保留模型、任务、交付、legacy分数和审计摘要，不跨cell拼接逐项或总分；相邻receipt只补充身份、批次状态和恢复记录。preview spec仅允许版本、协议、输入、模型、预算、顺序与输出路径，拒绝未知字段、凭据字段、父目录穿越、UNC和符号链接越界。`generate --dry-run`只接受`r10-task-factory`，`evaluate --dry-run`只接受`rw-legacy-diagnostic`；输入缺失、哈希失配或计划输出已存在均为本地前置失败，远端条件仍只报告未验证。两者不能创建scope、receipt或预算。CLI的legacy分数投影必须把`formal_atomic_score`标为`not_produced`。
 
 ## 生成侧 Rubric V2
 

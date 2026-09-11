@@ -26,6 +26,10 @@ Supported objects are a GDPval-shaped candidate package, an R10 directory with `
 
 `report --output` refuses an existing target. All other read commands keep their source tree unchanged. The CLI does not execute document macros, scripts, archives, models, or remote tools.
 
+`runs --root` takes precedence. If it is omitted, `taskgen` reads every `artifact_roots` entry from an explicit local configuration. When `report_output_root` is configured, `report --output` must remain under that existing root. The configuration never accepts provider, credential, SSH, or remote settings.
+
+For a legacy rw-task diagnostic, the reader treats every recorded model/task cell as a separate result. It reports legacy score and audit evidence per cell, keeps controller recovery separate, and shows `formal_atomic_score: not_produced`. A legacy total is never a formal atomic-rubric score; missing item-level evidence is displayed as not completed rather than inferred.
+
 ## Preview a future scope
 
 ```powershell
@@ -35,7 +39,7 @@ taskgen evaluate --spec data/cli/evaluate.legacy.example.json --dry-run --json
 
 Examples are neutral, local-only shapes. They refer only to the adjacent synthetic `example_input.json`. Copy `data/cli/local.example.json` to ignored `data/cli/local.json` only for local artifact and report paths. Local configuration and specs reject unknown fields, absolute/UNC paths, parent traversal, and any provider or credential setting.
 
-Preview validates local files and optional hashes, then reports that provider authentication and remote readiness remain unknown. It does not create output directories, receipts, scopes, or budget records. A later `--execute` interface requires a separately authorized, input/model/environment/budget-bound scope and is not implemented here.
+`generate --dry-run` accepts only `r10-task-factory`; `evaluate --dry-run` accepts only `rw-legacy-diagnostic`. Preview rejects a missing input, a hash mismatch, or an existing planned output as a local prerequisite failure, then reports provider authentication and remote readiness as unknown. It does not create output directories, receipts, scopes, or budget records. A later `--execute` interface requires a separately authorized, input/model/environment/budget-bound scope and is not implemented here.
 
 ## Interpretation limits
 

@@ -25,7 +25,7 @@
 
 ## 公开只读 CLI
 
-`src/task_generator/cli/main.py`提供 `taskgen`：只读取 GDPval-shaped 候选包、R10 scope 和 legacy rw-task diagnostic 的有限投影，并离线预览未来生产或诊断 spec。它不依赖`Test/`入口、不读取凭据、不启动网络、SSH、E2B、Provider 或历史 runner；report 仅在显式新路径写入派生文本。该入口展示原生执行、收集接纳、交付、legacy评分、正式原子评分、原审查和研究者准入的不同状态，不能将其中任一状态推断为职业质量结论。
+`src/task_generator/cli/main.py`提供 `taskgen`：只读取 GDPval-shaped 候选包、R10 scope 和 legacy rw-task diagnostic 的有限投影，并离线预览未来生产或诊断 spec。legacy报告按控制器实际的`cells`协议读取，目录和`report.json`入口得到同一核心投影；每个cell独立保留模型、任务、执行、交付、legacy评分及审计，receipt只补充身份、批次状态和恢复信息。它不依赖`Test/`入口、不读取凭据、不启动网络、SSH、E2B、Provider 或历史 runner；report 仅在显式新路径写入派生文本。该入口展示原生执行、收集接纳、交付、legacy评分、正式原子评分、原审查和研究者准入的不同状态，不能将其中任一状态推断为职业质量结论。
 
 ## Legacy rw-task 兼容诊断
 

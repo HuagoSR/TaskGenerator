@@ -7,7 +7,7 @@
 
 `taskgen`是公开的离线读取与预览入口，具体见[CLI Quickstart](cli_quickstart.md)。`doctor`、`runs`、`inspect`、`report`与`generate/evaluate --dry-run`不读取密钥、不连接远端、不导入历史runner、不创建scope/receipt，也不消耗模型预算。预览只能报告本地输入身份和远端条件未知，绝不是prepare或execute。
 
-CLI只接受版本化本地JSON和三类有限读取投影。report可以在显式的新目标写出派生文件，但绝不改写源artifact。仓库公开不构成外部执行授权；未来执行适配器仍须获得新的输入/模型/环境/预算绑定scope。
+CLI只接受版本化本地JSON和三类有限读取投影。legacy diagnostic按每个模型/任务cell显示交付、legacy分数和审计；正式原子评分与缺失的逐项核验不得猜测或合并。report可以在显式的新目标写出派生文件，配置了`report_output_root`时目标必须位于该根下，且绝不改写源artifact。仓库公开不构成外部执行授权；未来执行适配器仍须获得新的输入/模型/环境/预算绑定scope。
 
 ## 禁止启动与只读入口
 

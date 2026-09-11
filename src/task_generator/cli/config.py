@@ -18,9 +18,13 @@ class CliInputError(ValueError):
     """A user-controlled CLI file is malformed or outside its allowed shape."""
 
 
+class CliPrerequisiteError(ValueError):
+    """A local prerequisite prevents a preview or report action."""
+
+
 LOCAL_CONFIG_KEYS = {"version", "artifact_roots", "report_output_root"}
 PREVIEW_SPEC_KEYS = {"version", "protocol", "input", "models", "budget", "order", "output"}
-SUPPORTED_PREVIEW_PROTOCOLS = {"r10-task-factory", "rw-legacy-diagnostic"}
+COMMAND_PROTOCOL = {"generate": "r10-task-factory", "evaluate": "rw-legacy-diagnostic"}
 
 
 @dataclass(frozen=True)
@@ -60,8 +64,9 @@ def load_preview_spec(path: Path, expected_kind: str) -> dict[str, Any]:
         raise CliInputError(f"{expected_kind} preview spec: missing {', '.join(missing)}")
     if payload["version"] != 1:
         raise CliInputError(f"{expected_kind} preview spec: version must be 1")
-    if payload["protocol"] not in SUPPORTED_PREVIEW_PROTOCOLS:
-        raise CliInputError(f"{expected_kind} preview spec: unsupported protocol {payload['protocol']!r}")
+    expected_protocol = COMMAND_PROTOCOL[expected_kind]
+    if payload["protocol"] != expected_protocol:
+        raise CliInputError(f"{expected_kind} preview spec: protocol must be {expected_protocol!r}")
     if not isinstance(payload["input"], dict):
         raise CliInputError(f"{expected_kind} preview spec: input must be an object")
     if set(payload["input"]) - {"path", "sha256"} or not isinstance(payload["input"].get("path"), str):
@@ -80,14 +85,15 @@ def load_preview_spec(path: Path, expected_kind: str) -> dict[str, Any]:
     base = path.parent.resolve()
     input_path = _resolve_from(base, payload["input"]["path"], "input.path")
     output_path = _resolve_from(base, payload["output"]["path"], "output.path")
-    input_state = {"path": str(input_path), "exists": input_path.is_file()}
-    if input_path.is_file():
-        actual_hash = sha256_file(input_path)
-        input_state["sha256"] = actual_hash
-        expected_hash = payload["input"].get("sha256")
-        input_state["hash_matches"] = expected_hash is None or expected_hash == actual_hash
-    else:
-        input_state["hash_matches"] = False
+    if not input_path.is_file() or input_path.is_symlink():
+        raise CliPrerequisiteError(f"{expected_kind} preview spec: input.path does not name a readable regular file")
+    actual_hash = sha256_file(input_path)
+    expected_hash = payload["input"].get("sha256")
+    if expected_hash is not None and expected_hash != actual_hash:
+        raise CliPrerequisiteError(f"{expected_kind} preview spec: input.sha256 does not match the local file")
+    if output_path.exists() or output_path.is_symlink():
+        raise CliPrerequisiteError(f"{expected_kind} preview spec: output.path already exists")
+    input_state = {"path": str(input_path), "exists": True, "sha256": actual_hash, "hash_matches": True}
     return {
         "kind": expected_kind,
         "spec_path": str(path.resolve()),

@@ -1,4 +1,4 @@
-"""Safe, read-only projections of a deliberately small set of R10 artifacts."""
+"""Safe, read-only projections of documented public artifact shapes."""
 
 from __future__ import annotations
 
@@ -11,16 +11,20 @@ class UnsupportedArtifactError(ValueError):
     """The path is not one of the documented read-only input shapes."""
 
 
+LEGACY_LABEL = "legacy rw-task diagnostic"
+
+
 def inspect_path(path: Path) -> dict[str, Any]:
     path = _regular_path(path)
     if path.is_dir() and (path / "dataset_row.json").is_file():
         return _candidate_pack(path)
+    # Legacy scopes also have receipts: prefer their explicit report format.
+    if path.is_dir() and (path / "report.json").is_file() and _is_legacy_file(path / "report.json"):
+        return _legacy_report(path / "report.json", path)
+    if path.is_file() and path.name == "report.json":
+        return _legacy_report(path, path.parent)
     if path.is_dir() and ((path / "receipt.json").is_file() or (path / "scope.json").is_file()):
         return _r10_scope(path)
-    if path.is_file() and path.name == "report.json":
-        return _legacy_report(path)
-    if path.is_dir() and (path / "report.json").is_file():
-        return _legacy_report(path / "report.json")
     raise UnsupportedArtifactError("supported inputs are a GDPval-shaped package, R10 scope, or legacy report.json")
 
 
@@ -33,22 +37,23 @@ def discover(root: Path) -> list[dict[str, Any]]:
     for current, directories, files in _walk_without_links(root):
         names = set(files)
         if "dataset_row.json" in names or "receipt.json" in names or "scope.json" in names or "report.json" in names:
-            candidate = current
-            if candidate not in seen:
+            if current not in seen:
                 try:
-                    found.append(_compact(inspect_path(candidate)))
-                    seen.add(candidate)
+                    found.append(_compact(inspect_path(current)))
+                    seen.add(current)
                 except UnsupportedArtifactError:
                     pass
     return sorted(found, key=lambda item: item["path"])
 
 
 def markdown_report(projection: dict[str, Any]) -> str:
-    lines = [f"# TaskGenerator read-only report", "", f"- 类型：`{projection['kind']}`", f"- 路径：`{projection['path']}`"]
+    lines = ["# TaskGenerator read-only report", "", f"- 类型：`{projection['kind']}`", f"- 路径：`{projection['path']}`"]
     identity = projection.get("identity", {})
     for key in ("task_id", "scope_id", "protocol"):
         if identity.get(key) is not None:
             lines.append(f"- {key}：`{identity[key]}`")
+    if projection["kind"] == "legacy_rw_task_diagnostic":
+        return _legacy_markdown(lines, projection)
     lines.extend(["", "## 状态"])
     for key, value in projection.get("status", {}).items():
         lines.append(f"- {key}：{_inline(value)}")
@@ -62,117 +67,68 @@ def markdown_report(projection: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _legacy_markdown(lines: list[str], projection: dict[str, Any]) -> str:
+    status = projection["status"]
+    lines.extend(["", "## 概览"])
+    for key in ("batch_schedule", "formal_atomic_score", "researcher_admission", "controller_intervention"):
+        lines.append(f"- {key}：{_inline(status.get(key))}")
+    lines.extend(["", "## 模型 × 任务", "", "| 模型 | 任务 | cell | 执行 | 交付 | legacy 分数 | 审计 |", "| --- | --- | --- | --- | --- | --- |"])
+    for cell in projection.get("cells", []):
+        score = "未产出" if cell["legacy_score"] is None else f"{cell['legacy_score']}/{cell['legacy_max'] if cell['legacy_max'] is not None else '?'}"
+        audit = cell["audit_summary"].get("audit_applied")
+        lines.append(f"| {cell['model'] or 'unknown'} | {cell['task_id'] or 'unknown'} | {cell['cell_id'] or 'unknown'} | {cell['native_execution']} | {cell['delivery_validity']} | {score} | {audit if audit is not None else '未核验'} |")
+    lines.extend(["", "## 核验边界", "", f"- 逐项评分：{status['itemized_verification']}", f"- legacy 评分：{status['legacy_scoring']}；正式原子评分：{status['formal_atomic_score']}。"])
+    recovery = projection.get("recovery", [])
+    if recovery:
+        lines.extend(["", "## 控制器恢复记录", ""])
+        for index, item in enumerate(recovery, 1):
+            lines.append(f"- {index}. {_inline(item)}")
+    return "\n".join(lines) + "\n"
+
+
 def _candidate_pack(root: Path) -> dict[str, Any]:
     row = _json_object(root / "dataset_row.json")
     references = _regular_files(root / "reference_files")
     deliverables = _regular_files(root / "deliverable_files")
     rubric = row.get("rubric")
-    return {
-        "kind": "candidate_pack",
-        "path": str(root),
-        "identity": {"task_id": row.get("task_id"), "sector": row.get("sector"), "occupation": row.get("occupation")},
-        "status": {
-            "native_execution": "not_applicable",
-            "collection_acceptance": "not_applicable",
-            "delivery_validity": "not_produced",
-            "legacy_scoring": "not_produced",
-            "formal_atomic_score": "not_produced",
-            "original_review": "unavailable",
-            "researcher_admission": "unavailable",
-            "controller_intervention": "unavailable",
-        },
-        "metrics": {"reference_file_count": len(references), "deliverable_file_count": len(deliverables), "rubric_item_count": len(rubric) if isinstance(rubric, list) else "unavailable"},
-        "files": {"reference_files": references, "deliverable_files": deliverables},
-    }
+    return {"kind": "candidate_pack", "path": str(root), "identity": {"task_id": row.get("task_id"), "sector": row.get("sector"), "occupation": row.get("occupation")}, "status": {"native_execution": "not_applicable", "collection_acceptance": "not_applicable", "delivery_validity": "not_produced", "legacy_scoring": "not_produced", "formal_atomic_score": "not_produced", "original_review": "unavailable", "researcher_admission": "unavailable", "controller_intervention": "unavailable"}, "metrics": {"reference_file_count": len(references), "deliverable_file_count": len(deliverables), "rubric_item_count": len(rubric) if isinstance(rubric, list) else "unavailable"}, "files": {"reference_files": references, "deliverable_files": deliverables}}
 
 
 def _r10_scope(root: Path) -> dict[str, Any]:
-    scope = _optional_json(root / "scope.json")
-    receipt = _optional_json(root / "receipt.json")
+    scope, receipt = _optional_json(root / "scope.json"), _optional_json(root / "receipt.json")
     if not scope and not receipt:
         raise UnsupportedArtifactError("R10 scope requires scope.json or receipt.json")
-    return {
-        "kind": "r10_scope",
-        "path": str(root),
-        "identity": {"scope_id": _first(scope, receipt, "scope_id", "run_id", "batch_id"), "protocol": _first(scope, receipt, "protocol", "purpose")},
-        "status": {
-            "native_execution": _first(receipt, scope, "native_execution", "status", "state") or "unavailable",
-            "collection_acceptance": _first(receipt, scope, "acceptance_status", "collection_status") or "unavailable",
-            "delivery_validity": _first(receipt, scope, "delivery_validity") or "unavailable",
-            "legacy_scoring": "not_produced",
-            "formal_atomic_score": _first(receipt, scope, "formal_atomic_score") or "not_produced",
-            "original_review": _first(receipt, scope, "review_quality", "review_status") or "unavailable",
-            "researcher_admission": _first(receipt, scope, "researcher_admission", "admission_status") or "unavailable",
-            "controller_intervention": _first(receipt, scope, "controller_intervention", "intervention") or "unavailable",
-        },
-        "metrics": {"attempts_recorded": _first(receipt, scope, "attempts", "launches"), "wall_clock_seconds": _first(receipt, scope, "wall_clock_seconds", "elapsed_seconds")},
-        "evidence": {"scope_json": (root / "scope.json").is_file(), "receipt_json": (root / "receipt.json").is_file()},
-    }
+    return {"kind": "r10_scope", "path": str(root), "identity": {"scope_id": _first(scope, receipt, "scope_id", "run_id", "batch_id"), "protocol": _first(scope, receipt, "protocol", "purpose")}, "status": {"native_execution": _first(receipt, scope, "native_execution") or "unavailable", "batch_schedule": _first(receipt, scope, "status", "state") or "unavailable", "collection_acceptance": _first(receipt, scope, "acceptance_status", "collection_status") or "unavailable", "delivery_validity": _first(receipt, scope, "delivery_validity") or "unavailable", "legacy_scoring": "not_produced", "formal_atomic_score": _first(receipt, scope, "formal_atomic_score") or "not_produced", "original_review": _first(receipt, scope, "review_quality", "review_status") or "unavailable", "researcher_admission": _first(receipt, scope, "researcher_admission", "admission_status") or "unavailable", "controller_intervention": _first(receipt, scope, "controller_intervention", "intervention") or "unavailable"}, "metrics": {"attempts_recorded": _first(receipt, scope, "attempts", "launches"), "wall_clock_seconds": _first(receipt, scope, "wall_clock_seconds", "elapsed_seconds")}, "evidence": {"scope_json": (root / "scope.json").is_file(), "receipt_json": (root / "receipt.json").is_file()}}
 
 
-def _legacy_report(path: Path) -> dict[str, Any]:
+def _legacy_report(path: Path, scope_root: Path) -> dict[str, Any]:
     report = _json_object(path)
     if not _looks_like_legacy(report):
         raise UnsupportedArtifactError("report.json is not a supported legacy rw-task diagnostic report")
-    scores = _collect_scores(report)
-    item_scores = [item for item in scores if item.get("item_id") is not None]
-    declared_total = _find(report, "total_score")
-    item_total = sum(item["score"] for item in item_scores) if item_scores else None
-    score_consistency = (
-        "conflict" if isinstance(declared_total, (int, float)) and isinstance(item_total, (int, float)) and declared_total != item_total
-        else "consistent" if isinstance(declared_total, (int, float)) and isinstance(item_total, (int, float))
-        else "unavailable"
-    )
-    return {
-        "kind": "legacy_rw_task_diagnostic",
-        "path": str(path),
-        "identity": {"scope_id": _find(report, "scope_id"), "protocol": "legacy rw-task diagnostic"},
-        "status": {
-            "native_execution": _find(report, "native_execution") or _find(report, "status") or "unavailable",
-            "collection_acceptance": _find(report, "acceptance_status") or "unavailable",
-            "delivery_validity": _find(report, "delivery_validity") or "unavailable",
-            "legacy_scoring": "produced" if scores else "unavailable",
-            "formal_atomic_score": "not_produced",
-            "original_review": "not_applicable",
-            "researcher_admission": _find(report, "researcher_admission") or "unavailable",
-            "controller_intervention": _find(report, "controller_intervention") or "unavailable",
-        },
-        "metrics": {"legacy_scores": scores, "score_count": len(scores), "declared_total": declared_total, "item_total": item_total, "legacy_score_consistency": score_consistency},
-    }
+    receipt = _optional_json(scope_root / "receipt.json")
+    cells = [_legacy_cell(cell) for cell in report["cells"] if isinstance(cell, dict)]
+    report_state, receipt_state = report.get("state"), receipt.get("state")
+    conflicts = [] if not report_state or not receipt_state or report_state == receipt_state else [{"field": "batch_schedule", "report": report_state, "receipt": receipt_state}]
+    recovery = report.get("controller_recovery") if isinstance(report.get("controller_recovery"), list) else []
+    if not recovery and isinstance(receipt.get("recovery"), list):
+        recovery = receipt["recovery"]
+    return {"kind": "legacy_rw_task_diagnostic", "path": str(path), "identity": {"scope_id": receipt.get("scope_id") or receipt.get("run_id") or report.get("scope_id"), "protocol": LEGACY_LABEL}, "status": {"batch_schedule": report_state or receipt_state or "unavailable", "native_execution": "per_cell", "collection_acceptance": "per_cell", "delivery_validity": "per_cell", "legacy_scoring": "produced" if any(cell["legacy_score"] is not None for cell in cells) else "not_produced", "formal_atomic_score": report.get("formal_atomic_rubric_score", "not_produced"), "itemized_verification": "not_completed", "original_review": "not_applicable", "researcher_admission": report.get("researcher_admission", "unavailable"), "controller_intervention": "recorded" if recovery else "not_recorded"}, "metrics": {"cell_count": len(cells), "legacy_score_count": sum(cell["legacy_score"] is not None for cell in cells)}, "cells": cells, "recovery": recovery, "evidence": {"report_json": True, "receipt_json": bool(receipt), "itemized_scores": False, "prepared_input_hashes": report.get("prepared_input_hashes", "unavailable")}, "conflicts": conflicts}
+
+
+def _legacy_cell(cell: dict[str, Any]) -> dict[str, Any]:
+    summary = cell.get("legacy_grade_summary") if isinstance(cell.get("legacy_grade_summary"), dict) else {}
+    return {"cell_id": cell.get("cell_id"), "model": cell.get("model"), "task_id": cell.get("task_id"), "cell_state": cell.get("state", "unavailable"), "native_execution": cell.get("state", "unavailable"), "collection_acceptance": cell.get("collection_acceptance", "unavailable"), "delivery_validity": cell.get("delivery_validity", "unavailable"), "legacy_score": cell.get("legacy_score"), "legacy_max": cell.get("legacy_max"), "audit_summary": {key: summary.get(key, cell.get(key) if key == "audit_applied" else None) for key in ("audit_applied", "audit_reduced_points", "audit_reduced_rows", "audit_skipped_reason", "expected_max_from_rubric_mismatch")}, "grading_summary": {key: summary.get(key) for key in ("total_score", "max_possible_score")}, "evidence": {"grading_report_sha256": cell.get("grading_report_sha256"), "grading_summary_available": bool(summary)}}
+
+
+def _is_legacy_file(path: Path) -> bool:
+    try:
+        return _looks_like_legacy(_json_object(path))
+    except UnsupportedArtifactError:
+        return False
 
 
 def _looks_like_legacy(payload: dict[str, Any]) -> bool:
-    text = json.dumps(payload, ensure_ascii=False).lower()
-    return "legacy" in text or "rw_task" in text or "rw-task" in text
-
-
-def _collect_scores(payload: Any) -> list[dict[str, Any]]:
-    results: list[dict[str, Any]] = []
-    if isinstance(payload, dict):
-        if isinstance(payload.get("score"), (int, float)):
-            results.append({"score": payload["score"], "max_score": payload.get("max_score"), "item_id": payload.get("rubric_item_id")})
-        for value in payload.values():
-            results.extend(_collect_scores(value))
-    elif isinstance(payload, list):
-        for value in payload:
-            results.extend(_collect_scores(value))
-    return results
-
-
-def _find(payload: Any, key: str) -> Any:
-    if isinstance(payload, dict):
-        if key in payload:
-            return payload[key]
-        for value in payload.values():
-            found = _find(value, key)
-            if found is not None:
-                return found
-    elif isinstance(payload, list):
-        for value in payload:
-            found = _find(value, key)
-            if found is not None:
-                return found
-    return None
+    return payload.get("label") == LEGACY_LABEL and payload.get("formal_atomic_rubric_score") == "not_produced" and isinstance(payload.get("cells"), list)
 
 
 def _first(primary: dict[str, Any], secondary: dict[str, Any], *keys: str) -> Any:
