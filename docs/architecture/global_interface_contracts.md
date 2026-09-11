@@ -5,9 +5,11 @@
 
 ## 合成诊断入口的接口边界
 
-[质量微测入口](../../Test/run_r10_quality_diagnostic_micro.py)尚未形成可完成的诊断交接合同：`check ready`只证明当前草稿结构有效，`replay next_action=submit`仍检查完整生产依赖；预置编译不自动获得世界检查、咨询或开发试做证据。不能把ready解释为可提交，也不能把无pending动作直接解释为Agent未尝试交接。
+当前工作区为限定合成诊断实现独立结束/复核接纳语义及失败启动计量；它不声明生产提交类型，也不放宽历史接口。父级report按子attempt核对启动数，模型完成、动作排队、控制器接纳和复核结论分别解释。实现通过无模型入口夹具，真实Agent语义仍待验证；封存微测也不具备完整生产提交前提。详见[运行边界](../operations/pipeline_reconstruction_runbook.md)。
 
-当前工作区已实现限定合成诊断的结束/复核接纳语义及失败启动计量；它不声明生产提交类型，也不放宽历史接口。父级report按子attempt核对启动数，模型完成、动作排队、控制器接纳和复核结论分别解释。实现通过无模型入口夹具，真实Agent语义仍待验证。详见[运行边界](../operations/pipeline_reconstruction_runbook.md)。
+## Public read-only CLI contract
+
+`taskgen`只接受本地 UTF-8 JSON、GDPval-shaped 包、R10 scope 或 legacy diagnostic report。`local.json`仅允许artifact根与派生报告根；preview spec仅允许版本、协议、输入、模型、预算、顺序与输出路径，拒绝未知字段、凭据字段、父目录穿越、UNC和符号链接越界。`generate/evaluate --dry-run`只返回输入身份和未验证的远端条件，不能创建scope、receipt或预算。`report --output`只接受尚不存在的新文件。CLI的legacy分数投影必须把`formal_atomic_score`标为`not_produced`。
 
 ## 生成侧 Rubric V2
 

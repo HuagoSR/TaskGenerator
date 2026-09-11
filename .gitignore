@@ -13,6 +13,7 @@ Skill/*.log
 Skill/agent_logs/
 Skill/debate_logs/
 artifacts/
+data/cli/local.json
 Test/*
 !Test/run_r10_process_first_pilot.py
 !Test/r10_process_first_tools.py

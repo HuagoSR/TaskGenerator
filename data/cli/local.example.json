@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "artifact_roots": [
+    "local-artifacts"
+  ],
+  "report_output_root": "local-reports"
+}

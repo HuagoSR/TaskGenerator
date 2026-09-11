@@ -19,3 +19,9 @@ TaskGenerator 研究如何以可复现的方法构造真实、多文件、具有
 ## 开发与运行
 
 代码变更应运行定向测试及 `pytest tests`，并检查差异、秘密和文档链接。所有模型调用、Solver 或评分运行都需要新的、明确绑定输入、模型、环境与预算的授权 scope；已关闭 scope 的剩余额度不能复用。
+
+## 公开只读入口
+
+`taskgen` 是公开仓库的统一离线入口，用于查看受支持的候选包、R10 运行记录和 legacy rw-task diagnostic，或预览未来运行配置。它不读取凭据、不连接服务器，也不执行模型、Solver、评分或历史 runner。
+
+在已具备项目依赖的 Python 环境中，源码检出后使用 `python -m pip install --no-build-isolation --no-deps -e .` 安装，再运行 `taskgen doctor` 或 `taskgen --help`。具体命令、配置边界和已知限制见[CLI Quickstart](docs/operations/cli_quickstart.md)。

@@ -15,6 +15,7 @@
 8. [`operations/pipeline_reconstruction_runbook.md`](operations/pipeline_reconstruction_runbook.md)：评分暂停边界、只读查看与后续实验授权要求。
 9. [`research/agent_task_production_harness_20260907.md`](research/agent_task_production_harness_20260907.md)：造题 harness 调研、来源限制与设计依据；实现及最新单题闭环结果见概要。
 10. [`archive/README.md`](archive/README.md)：历史阶段材料索引。
+11. [`operations/cli_quickstart.md`](operations/cli_quickstart.md)：公开、无凭据只读 CLI 的安装、使用与限制。
 
 ## 生命周期
 
@@ -36,4 +37,4 @@
 - `docs/archive/` 保留历史计划、报告与 handoff；Git 历史承担旧活跃文档的精确追溯。
 - 任务包、provider 输出、执行日志、截图和临时诊断只写入 `artifacts/`。
 
-只想了解项目进展时，先读项目概要；开发时再查架构与代码合同；执行前查 runbook。忽略目录中的私有产物链接只在本机可用，不视为共享仓库缺失文件。旧活跃文档通过 Git 历史追溯，不另复制归档快照。
+只想了解项目进展时，先读项目概要；开发时再查架构与代码合同；执行前查 runbook。公开仓库的 `taskgen` 只读 CLI 不要求凭据、SSH、rw-task 或 ignored artifacts；它不构成执行授权。忽略目录中的私有产物链接只在本机可用，不视为共享仓库缺失文件。历史档案中的主机别名和绝对路径仅记录当时证据位置，不是当前配置示例。

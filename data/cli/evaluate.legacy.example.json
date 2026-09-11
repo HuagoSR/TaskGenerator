@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "protocol": "rw-legacy-diagnostic",
+  "input": {
+    "path": "example_input.json"
+  },
+  "models": ["example-solver", "example-legacy-grader"],
+  "budget": {
+    "max_launches": 0,
+    "wall_clock_seconds": 0
+  },
+  "order": ["prepare", "solve", "structural-check", "legacy-grade"],
+  "output": {
+    "path": "evaluation-preview-output"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "kind": "public-cli-example",
+  "note": "Synthetic local input used only by taskgen --dry-run examples."
+}

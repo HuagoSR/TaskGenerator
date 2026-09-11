@@ -3,6 +3,12 @@
 > 状态：active / 评分执行暂停，后续实验须另定范围；更新：2026-09-11。
 > 宏观结果仅见[项目概要](../../项目概要.md)，接口定义见[合同索引](../architecture/global_interface_contracts.md)。
 
+## Public read-only CLI（不构成执行授权）
+
+`taskgen`是公开的离线读取与预览入口，具体见[CLI Quickstart](cli_quickstart.md)。`doctor`、`runs`、`inspect`、`report`与`generate/evaluate --dry-run`不读取密钥、不连接远端、不导入历史runner、不创建scope/receipt，也不消耗模型预算。预览只能报告本地输入身份和远端条件未知，绝不是prepare或execute。
+
+CLI只接受版本化本地JSON和三类有限读取投影。report可以在显式的新目标写出派生文件，但绝不改写源artifact。仓库公开不构成外部执行授权；未来执行适配器仍须获得新的输入/模型/环境/预算绑定scope。
+
 ## 禁止启动与只读入口
 
 不得恢复历史评分队列、续跑 G1/G2、执行 G2-B 或新建 G2-C。2026-09-05 已取消 G2-B 的执行安排；其原 scope 和 dry-run 不改写，不把未执行记为评分失败或完成。

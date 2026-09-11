@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "protocol": "r10-task-factory",
+  "input": {
+    "path": "example_input.json"
+  },
+  "models": ["example-world-author", "example-task-miner"],
+  "budget": {
+    "max_launches": 0,
+    "wall_clock_seconds": 0
+  },
+  "order": ["prepare", "world", "mine", "compile", "review"],
+  "output": {
+    "path": "preview-output"
+  }
+}
