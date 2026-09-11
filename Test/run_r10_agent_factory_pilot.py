@@ -170,6 +170,13 @@ def safe_root(run_id):
     return ROOT / 'artifacts/r10' / run_id
 
 
+def git_index_path(root):
+    """Resolve the repository index path, following worktree .git pointers."""
+    raw = base._run(['git', '-C', str(root), 'rev-parse', '--git-path', 'index']).stdout.strip()
+    path = Path(raw)
+    return path if path.is_absolute() else Path(root) / path
+
+
 def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, *, spec=None, source_bundle=None,
             batch_id=None, protocol=None, harness_options=None, synthetic_public=None):
     if root.exists():
@@ -242,8 +249,9 @@ def prepare(root, dependency_lock=DEFAULT_LOCK, dependency_remote=DEFAULT_DEPS, 
             scope.update(batch_id=batch_id, case_id=spec['id'], seconds=10800,
                          authorization='One fixed position within the user-approved 60-launch/15-hour Agent factory batch. No independent execution.')
     f.write(root / 'scope.json', scope)
-    f.write(root / 'initial_git.json', {'index_sha256': f.digest(ROOT / '.git/index'),
-            'status': base._run(['git', 'status', '--porcelain']).stdout})
+    git_index = git_index_path(ROOT)
+    f.write(root / 'initial_git.json', {'index_sha256': f.digest(git_index),
+            'status': base._run(['git', '-C', str(ROOT), 'status', '--porcelain']).stdout})
     f.write(root / 'receipt.json', {'status': 'prepared', 'scope_sha': f.digest(root / 'scope.json'),
             'attempts': [], 'current': {}, 'sessions': {}, 'checks': [], 'consultations': [], 'dispositions': [],
             'next': {'role': 'world'}, 'submitted': False, 'recoveries': 0,

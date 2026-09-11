@@ -525,6 +525,28 @@ def test_migration_audit_profile_selects_single_fresh_case_with_quality_semantic
     assert result['launches_used'] == 0
 
 
+def test_git_index_path_resolves_worktree_checkout(tmp_path):
+    repo = tmp_path / 'repo'
+    repo.mkdir()
+
+    def git(*args, cwd=None):
+        return subprocess.run(['git', *args], cwd=cwd or repo, capture_output=True,
+                              text=True, check=True).stdout.strip()
+
+    git('init', '-q')
+    git('config', 'user.email', 't@example.com')
+    git('config', 'user.name', 't')
+    (repo / 'a.txt').write_text('a', encoding='utf-8')
+    git('add', 'a.txt')
+    git('commit', '-q', '-m', 'init')
+    wt = tmp_path / 'wt'
+    git('worktree', 'add', str(wt), '-b', 'wt-branch')
+    main_index = runner.git_index_path(repo)
+    wt_index = runner.git_index_path(wt)
+    assert main_index.is_file() and wt_index.is_file()
+    assert wt_index != main_index
+
+
 def test_migration_audit_profile_starts_from_world_without_quality_world_binding(tmp_path):
     root = tmp_path / 'migration_batch'
     source = tmp_path / 'source'
