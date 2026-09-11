@@ -72,11 +72,16 @@ def _legacy_markdown(lines: list[str], projection: dict[str, Any]) -> str:
     lines.extend(["", "## 概览"])
     for key in ("batch_schedule", "formal_atomic_score", "researcher_admission", "controller_intervention"):
         lines.append(f"- {key}：{_inline(status.get(key))}")
-    lines.extend(["", "## 模型 × 任务", "", "| 模型 | 任务 | cell | 执行 | 交付 | legacy 分数 | 审计 |", "| --- | --- | --- | --- | --- | --- |"])
+    conflicts = projection.get("conflicts", [])
+    if conflicts:
+        lines.extend(["", "## 已记录证据冲突", ""])
+        for conflict in conflicts:
+            lines.append(f"- {conflict.get('field', 'unknown')}：报告为 `{_inline(conflict.get('report'))}`；receipt为 `{_inline(conflict.get('receipt'))}`。")
+    lines.extend(["", "## 模型 × 任务", "", "| 模型 | 任务 | cell | 位置状态 | 交付 | legacy 分数 | 审计 |", "| --- | --- | --- | --- | --- | --- |"])
     for cell in projection.get("cells", []):
         score = "未产出" if cell["legacy_score"] is None else f"{cell['legacy_score']}/{cell['legacy_max'] if cell['legacy_max'] is not None else '?'}"
         audit = cell["audit_summary"].get("audit_applied")
-        lines.append(f"| {cell['model'] or 'unknown'} | {cell['task_id'] or 'unknown'} | {cell['cell_id'] or 'unknown'} | {cell['native_execution']} | {cell['delivery_validity']} | {score} | {audit if audit is not None else '未核验'} |")
+        lines.append(f"| {cell['model'] or 'unknown'} | {cell['task_id'] or 'unknown'} | {cell['cell_id'] or 'unknown'} | {cell['cell_state']} | {_delivery_label(cell['delivery_validity'])} | {score} | {audit if audit is not None else '未核验'} |")
     lines.extend(["", "## 核验边界", "", f"- 逐项评分：{status['itemized_verification']}", f"- legacy 评分：{status['legacy_scoring']}；正式原子评分：{status['formal_atomic_score']}。"])
     recovery = projection.get("recovery", [])
     if recovery:
@@ -117,7 +122,22 @@ def _legacy_report(path: Path, scope_root: Path) -> dict[str, Any]:
 
 def _legacy_cell(cell: dict[str, Any]) -> dict[str, Any]:
     summary = cell.get("legacy_grade_summary") if isinstance(cell.get("legacy_grade_summary"), dict) else {}
-    return {"cell_id": cell.get("cell_id"), "model": cell.get("model"), "task_id": cell.get("task_id"), "cell_state": cell.get("state", "unavailable"), "native_execution": cell.get("state", "unavailable"), "collection_acceptance": cell.get("collection_acceptance", "unavailable"), "delivery_validity": cell.get("delivery_validity", "unavailable"), "legacy_score": cell.get("legacy_score"), "legacy_max": cell.get("legacy_max"), "audit_summary": {key: summary.get(key, cell.get(key) if key == "audit_applied" else None) for key in ("audit_applied", "audit_reduced_points", "audit_reduced_rows", "audit_skipped_reason", "expected_max_from_rubric_mismatch")}, "grading_summary": {key: summary.get(key) for key in ("total_score", "max_possible_score")}, "evidence": {"grading_report_sha256": cell.get("grading_report_sha256"), "grading_summary_available": bool(summary)}}
+    raw_delivery = cell.get("delivery_validity", "unavailable")
+    return {"cell_id": cell.get("cell_id"), "model": cell.get("model"), "task_id": cell.get("task_id"), "cell_state": cell.get("state", "unavailable"), "native_execution": cell.get("native_execution", "unavailable"), "collection_acceptance": cell.get("collection_acceptance", "unavailable"), "delivery_validity": _delivery_status(raw_delivery), "delivery_validity_detail": raw_delivery, "legacy_score": cell.get("legacy_score"), "legacy_max": cell.get("legacy_max"), "audit_summary": {key: summary.get(key, cell.get(key) if key == "audit_applied" else None) for key in ("audit_applied", "audit_reduced_points", "audit_reduced_rows", "audit_skipped_reason", "expected_max_from_rubric_mismatch")}, "grading_summary": {key: summary.get(key) for key in ("total_score", "max_possible_score")}, "evidence": {"grading_report_sha256": cell.get("grading_report_sha256"), "grading_summary_available": bool(summary)}}
+
+
+def _delivery_status(value: Any) -> str:
+    if isinstance(value, dict):
+        value = value.get("valid")
+    if value is True or value == "valid":
+        return "historical_check_passed"
+    if value is False or value in {"invalid", "failed"}:
+        return "historical_check_failed"
+    return "historical_check_unknown"
+
+
+def _delivery_label(status: str) -> str:
+    return {"historical_check_passed": "历史检查通过", "historical_check_failed": "历史检查失败", "historical_check_unknown": "历史检查未知"}[status]
 
 
 def _is_legacy_file(path: Path) -> bool:

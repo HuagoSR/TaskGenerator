@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from task_generator.cli.main import main
-from task_generator.cli.main import _write_text
+from task_generator.cli.main import _json_text, _write_text
 
 
 def invoke(args: list[str], capsys):
@@ -106,6 +106,28 @@ def test_legacy_markdown_is_a_human_table(tmp_path, capsys):
     assert "| terra | procurement |" in captured.out
 
 
+def test_legacy_cell_preserves_flow_state_and_delivery_detail(tmp_path, capsys):
+    report = legacy_report(tmp_path, state="completed")
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    payload["cells"][0].update(state="grading_failed", delivery_validity={"valid": False, "missing": ["analysis.docx"]})
+    report.write_text(json.dumps(payload), encoding="utf-8")
+    (tmp_path / "receipt.json").write_text(json.dumps({"scope_id": "synthetic", "state": "stopped"}), encoding="utf-8")
+    code, captured = invoke(["inspect", str(report), "--json"], capsys)
+    assert code == 0
+    projection = json.loads(captured.out)
+    cell = projection["cells"][0]
+    assert cell["cell_state"] == "grading_failed"
+    assert cell["native_execution"] == "unavailable"
+    assert cell["delivery_validity"] == "historical_check_failed"
+    assert cell["delivery_validity_detail"] == {"valid": False, "missing": ["analysis.docx"]}
+    assert projection["conflicts"] == [{"field": "batch_schedule", "report": "completed", "receipt": "stopped"}]
+    code, captured = invoke(["report", str(report), "--format", "markdown"], capsys)
+    assert code == 0
+    assert "## 已记录证据冲突" in captured.out
+    assert "位置状态" in captured.out
+    assert "历史检查失败" in captured.out
+
+
 def test_preview_does_not_create_scope_or_output(tmp_path, capsys):
     source = tmp_path / "source.json"
     source.write_text("{}", encoding="utf-8")
@@ -180,7 +202,7 @@ def test_runs_requires_root_when_no_config_exists(capsys):
     assert code == 2 and "requires --root" in captured.err
 
 
-def test_output_falls_back_to_json_safe_escapes_for_gbk_stream():
+def test_json_output_round_trips_in_utf8_and_gbk_streams():
     class GbkStream(io.StringIO):
         encoding = "gbk"
 
@@ -188,10 +210,12 @@ def test_output_falls_back_to_json_safe_escapes_for_gbk_stream():
             text.encode("gbk")
             return super().write(text)
 
-    stream = GbkStream()
-    _write_text(stream, '{"message":"Unicode − 字符"}')
-    payload = json.loads(stream.getvalue())
-    assert payload["message"] == "Unicode − 字符"
+    for value in ("中文", "café", "金额 ¥100", "审计📄"):
+        serialized = _json_text({"message": value})
+        assert json.loads(serialized)["message"] == value
+        stream = GbkStream()
+        _write_text(stream, serialized)
+        assert json.loads(stream.getvalue())["message"] == value
 
 
 def test_tracked_public_examples_are_parseable(capsys):

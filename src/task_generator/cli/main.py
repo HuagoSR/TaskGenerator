@@ -73,7 +73,7 @@ def _dispatch(args: argparse.Namespace, config: Any) -> dict[str, Any]:
         return inspect_path(args.path)
     if args.command == "report":
         projection = inspect_path(args.path)
-        rendered = markdown_report(projection) if args.format in {"terminal", "markdown"} else json.dumps(projection, ensure_ascii=False, indent=2) + "\n"
+        rendered = markdown_report(projection) if args.format in {"terminal", "markdown"} else _json_text(projection, indent=2)
         if args.output:
             _write_new_output(args.output, config.report_output_root if config else None, rendered)
         return {"kind": "report", "projection": projection, "rendered": rendered, "output": str(args.output.resolve()) if args.output else None}
@@ -105,12 +105,12 @@ def _emit(result: dict[str, Any], args: argparse.Namespace, parser: argparse.Arg
     elif args.command == "report" and args.format == "markdown" and not args.json:
         _write_text(sys.stdout, result["rendered"])
     else:
-        _write_text(sys.stdout, json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+        _write_text(sys.stdout, _json_text(result, indent=2))
 
 
 def _emit_error(message: str, code: int, json_mode: bool) -> None:
     if json_mode:
-        _write_text(sys.stdout, json.dumps({"error": message, "exit_code": code}, ensure_ascii=False) + "\n")
+        _write_text(sys.stdout, _json_text({"error": message, "exit_code": code}))
     else:
         _write_text(sys.stderr, f"taskgen: {message}\n")
     raise SystemExit(code)
@@ -118,13 +118,15 @@ def _emit_error(message: str, code: int, json_mode: bool) -> None:
 
 def _write_text(stream: Any, text: str) -> None:
     """Keep CLI output available on legacy Windows terminals without corrupting JSON."""
-    encoding = (getattr(stream, "encoding", None) or "utf-8").lower().replace("_", "-")
-    if encoding not in {"utf-8", "utf8"}:
-        text = text.encode("ascii", errors="backslashreplace").decode("ascii")
     try:
         stream.write(text)
     except UnicodeEncodeError:
         stream.write(text.encode("ascii", errors="backslashreplace").decode("ascii"))
+
+
+def _json_text(payload: Any, *, indent: int | None = None) -> str:
+    """Serialize JSON safely before any terminal-specific text fallback."""
+    return json.dumps(payload, ensure_ascii=True, indent=indent) + "\n"
 
 
 if __name__ == "__main__":

@@ -28,7 +28,9 @@ Supported objects are a GDPval-shaped candidate package, an R10 directory with `
 
 `runs --root` takes precedence. If it is omitted, `taskgen` reads every `artifact_roots` entry from an explicit local configuration. When `report_output_root` is configured, `report --output` must remain under that existing root. The configuration never accepts provider, credential, SSH, or remote settings.
 
-For a legacy rw-task diagnostic, the reader treats every recorded model/task cell as a separate result. It reports legacy score and audit evidence per cell, keeps controller recovery separate, and shows `formal_atomic_score: not_produced`. A legacy total is never a formal atomic-rubric score; missing item-level evidence is displayed as not completed rather than inferred.
+For a legacy rw-task diagnostic, the reader treats every recorded model/task cell as a separate result. It reports the original flow state, a historical delivery-check summary, legacy score, and audit evidence per cell; it does not infer a Solver-native execution state from a later grading or delivery failure. The JSON projection retains the original delivery-check detail, while terminal reports show a short historical-check label. Controller recovery and any report/receipt conflict remain separate, and `formal_atomic_score` stays `not_produced`. A legacy total is never a formal atomic-rubric score; missing item-level evidence is displayed as not completed rather than inferred.
+
+JSON output is serialized with JSON-safe ASCII escapes before it reaches a non-UTF-8 terminal. This keeps `--json` parseable for Chinese text, accented characters, currency symbols, and emoji; ordinary terminal text may use a readable encoding fallback.
 
 ## Preview a future scope
 
