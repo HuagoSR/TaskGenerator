@@ -33,6 +33,9 @@ QUALITY_DEVELOPMENT_V1_CASES = (
     dict(method.CASES[1], id='quality_procurement_price_02'),
     dict(method.CASES[4], id='quality_audit_reliability_02'),
 )
+MIGRATION_AUDIT_V1_CASES = (
+    dict(method.CASES[4], id='development_audit_reliability_03'),
+)
 
 
 def now():
@@ -211,7 +214,7 @@ def _inherit_quality_world(source_child, source_state, source_entry, child, stat
 def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_record,
             parent=None, case_ids=None, profile=None, continue_unstarted_from=None,
             continuation_budget=None, quality_world_from=None):
-    if profile not in (None, 'frozen-validation-v1', 'quality-development-v1'):
+    if profile not in (None, 'frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1'):
         raise ValueError('unknown_profile')
     if profile is not None and (parent is not None or case_ids is not None or continue_unstarted_from is not None):
         raise ValueError('profile_is_mutually_exclusive_with_case_and_parent')
@@ -249,7 +252,8 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
         profile = 'frozen-validation-v1-continuation'
     if quality_source is not None:
         source_bundle = quality_world_from / 'source_bundle'
-    available = (QUALITY_DEVELOPMENT_V1_CASES if profile == 'quality-development-v1' else FROZEN_VALIDATION_V1_CASES
+    available = (QUALITY_DEVELOPMENT_V1_CASES if profile == 'quality-development-v1' else MIGRATION_AUDIT_V1_CASES
+                 if profile == 'migration-audit-v1' else FROZEN_VALIDATION_V1_CASES
                  if profile in ('frozen-validation-v1', 'frozen-validation-v1-continuation') else CASES)
     selected = tuple((row for row in available if row['id'] not in started_ids)
                      if continue_unstarted_from is not None else
@@ -293,6 +297,11 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
                 'obligation_trace_version': 2, 'method_profile': 'quality-development-v1',
                 'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1',
                 'inherited_world_lineage': lineage}
+        elif profile == 'migration-audit-v1':
+            prepare_kwargs['harness_options'] = {
+                'obligation_trace_version': 2, 'method_profile': 'quality-development-v1',
+                'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1',
+                'inherited_world_lineage': None}
         scope = runner.prepare(child, dependency_lock, dependency_remote, **prepare_kwargs)
         if quality_source is not None and spec['id'] == 'quality_procurement_price_02':
             _, _, source_child, source_state, source_entry = quality_source
@@ -348,9 +357,18 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
                     'User-approved quality-development-v1 with the accepted procurement-2 world inherited '
                     'from a frozen historical receipt and one new audit world; candidate editing and atomic '
                     'binary rubrics enabled; 32 new launches / 8 hours; no grading.'
-                ) if profile == 'quality-development-v1' else (
+                ) if profile == 'quality-development-v1' else ((
+                    'User-approved single-position generation-side migration check reusing the '
+                    'admitted audit reliability seed with a fresh world; the profile selects the '
+                    'position only and the enabled method is the existing quality-development '
+                    'semantics (candidate editing, atomic binary rubrics, obligation trace 2, no '
+                    'quality diagnostics); 16 launches / 4 hours; in-method consultations, editing '
+                    'and bounded revisions are part of the method; first drafts, revisions and '
+                    'failures preserved; researcher post-generation checks are not part of any '
+                    'generation prompt; no grading.'
+                ) if profile == 'migration-audit-v1' else (
                     f'{len(cases)} new development world(s): ' + ', '.join(row['id'] for row in cases)
-                    + '; isolated development trial, one upstream revision, final review and admitted final solve; no grading.')))))}
+                    + '; isolated development trial, one upstream revision, final review and admitted final solve; no grading.'))))))}
     if quality_source is not None:
         source_manifest, _, _, source_state, _ = quality_source
         manifest.update(
@@ -538,7 +556,7 @@ if __name__ == '__main__':
     parser.add_argument('--quality-world-from')
     parser.add_argument('--continuation-budget', choices=('new-8h',))
     parser.add_argument('--case', choices=('all', 'procurement'))
-    parser.add_argument('--profile', choices=('frozen-validation-v1', 'quality-development-v1'))
+    parser.add_argument('--profile', choices=('frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1'))
     args = parser.parse_args()
     selectors = [bool(args.profile), bool(args.case), bool(args.parent_batch), bool(args.continue_unstarted_from)]
     if sum(selectors) > 1:
