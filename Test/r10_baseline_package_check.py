@@ -86,23 +86,33 @@ def check_package(package_dir: str) -> dict:
         if rel in FORBIDDEN_FILES:
             fail('teacher_artifact_present:' + rel, rel)
 
-    # 4) dataset_row: required keys; rubric mirrors allowed only if identical to the rubric file
+    # 4) dataset_row: required keys; rubric mirrors checked against the field contract
+    #    (established by export and consumer code): rubric_json is the criteria LIST,
+    #    rubric carries criteria (and version/scoring) — not a full-object equality demand.
     row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
     required_keys = {'task_id', 'title', 'prompt', 'reference_files', 'deliverable_files'}
     missing_keys = required_keys - set(row)
     if missing_keys:
         fail('dataset_row_missing_keys', sorted(missing_keys))
     rubric_content = json.loads((pkg / rubric_name).read_text(encoding='utf-8'))
+    criteria = rubric_content.get('criteria')
     if 'rubric_json' in row:
         try:
             mirrored = json.loads(row['rubric_json']) if isinstance(row['rubric_json'], str) \
                 else row['rubric_json']
         except json.JSONDecodeError as error:
             fail('dataset_row_rubric_json_unparseable', str(error))
-        if mirrored != rubric_content:
+        if not isinstance(mirrored, list) or mirrored != criteria:
             fail('dataset_row_rubric_json_mismatch', rubric_name)
-    if 'rubric' in row and row['rubric'] != rubric_content:
-        fail('dataset_row_rubric_mismatch', rubric_name)
+    if 'rubric' in row:
+        mirrored_full = row['rubric']
+        if isinstance(mirrored_full, str):
+            try:
+                mirrored_full = json.loads(mirrored_full)
+            except json.JSONDecodeError as error:
+                fail('dataset_row_rubric_unparseable', str(error))
+        if not isinstance(mirrored_full, dict) or mirrored_full.get('criteria') != criteria:
+            fail('dataset_row_rubric_mismatch', rubric_name)
     for rel in row['reference_files']:
         if not PurePosixPath(rel).parts or PurePosixPath(rel).parts[0] != 'reference_files':
             fail('dataset_row_reference_not_in_reference_files:' + rel, rel)

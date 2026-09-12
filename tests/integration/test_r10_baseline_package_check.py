@@ -56,8 +56,13 @@ def build_package(target: Path, shape: str, *, total_declared: int = 900) -> Non
         {'file_name': 'recalc.xlsx', 'relative_path': 'deliverable_files/recalc.xlsx',
          'format': 'xlsx'}]}
     if shape == 'P':
-        row['rubric'] = rubric
-        row['rubric_json'] = json.dumps(rubric, ensure_ascii=False)
+        # match the real export semantics (run_r10_agent_factory_pilot.py:985-996):
+        # rubric is a JSON string carrying version/scoring/criteria (no task_id);
+        # rubric_json is a JSON string of the criteria LIST.
+        row['rubric'] = json.dumps({'rubric_version': rubric['rubric_version'],
+                                    'scoring': 'binary_weighted',
+                                    'criteria': rubric['criteria']}, ensure_ascii=False)
+        row['rubric_json'] = json.dumps(rubric['criteria'], ensure_ascii=False)
     (target / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
     (target / 'deliverable_contract.json').write_text(json.dumps(contract, indent=1), encoding='utf-8')
     rubric_name = 'atomic_rubric_v1.json' if shape == 'P' else 'new_rubric.json'
@@ -90,7 +95,76 @@ def test_rubric_mirror_mismatch_rejected(tmp_path):
     pkg = tmp_path / 'pkg_P'
     build_package(pkg, 'P')
     row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
-    row['rubric_json'] = json.dumps({**row['rubric'], 'criteria': []})
+    tampered = json.loads(row['rubric_json'])
+    tampered[0]['verification'] = 'tampered verification text'
+    row['rubric_json'] = json.dumps(tampered)
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        checker.check_package(str(pkg))
+
+
+def test_rubric_mirror_criteria_list_semantics(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    full = json.loads(row['rubric'])
+    # established field contract: rubric_json is the criteria LIST; rubric carries
+    # version/scoring/criteria and may omit keys the file has (e.g. task_id).
+    row['rubric_json'] = json.dumps(full['criteria'])
+    row['rubric'] = json.dumps({k: v for k, v in full.items() if k != 'task_id'})
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    outcome = checker.check_package(str(pkg))
+    assert outcome['status'] == 'passed'
+
+
+def test_rubric_mirror_tampered_entry_rejected(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    tampered = json.loads(row['rubric_json'])
+    tampered[0]['max_points'] = 99
+    row['rubric_json'] = json.dumps(tampered)
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        checker.check_package(str(pkg))
+
+
+def test_rubric_mirror_missing_entry_rejected(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    row['rubric_json'] = json.dumps(json.loads(row['rubric_json'])[:-1])
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        checker.check_package(str(pkg))
+
+
+def test_rubric_mirror_added_entry_rejected(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    extra = dict(json.loads(row['rubric_json'])[0], criterion_id='extra_criterion')
+    row['rubric_json'] = json.dumps(json.loads(row['rubric_json']) + [extra])
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        checker.check_package(str(pkg))
+
+
+def test_rubric_mirror_unparseable_json_rejected(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    row['rubric_json'] = '{not-json'
+    (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        checker.check_package(str(pkg))
+
+
+def test_rubric_mirror_wrong_top_level_type_rejected(tmp_path):
+    pkg = tmp_path / 'pkg_P'
+    build_package(pkg, 'P')
+    row = json.loads((pkg / 'dataset_row.json').read_text(encoding='utf-8'))
+    row['rubric_json'] = json.dumps({'criteria': json.loads(row['rubric_json'])})
     (pkg / 'dataset_row.json').write_text(json.dumps(row, indent=1), encoding='utf-8')
     with pytest.raises(SystemExit):
         checker.check_package(str(pkg))
