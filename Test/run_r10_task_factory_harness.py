@@ -36,6 +36,10 @@ QUALITY_DEVELOPMENT_V1_CASES = (
 MIGRATION_AUDIT_V1_CASES = (
     dict(method.CASES[4], id='development_audit_reliability_03'),
 )
+S1_CROSS_SEED_V1_CASES = (
+    dict(method.CASES[1], id='cross_seed_g1_procurement_price'),
+    dict(method.CASES[2], id='cross_seed_g2_acceptance'),
+)
 
 
 def now():
@@ -214,7 +218,8 @@ def _inherit_quality_world(source_child, source_state, source_entry, child, stat
 def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_record,
             parent=None, case_ids=None, profile=None, continue_unstarted_from=None,
             continuation_budget=None, quality_world_from=None):
-    if profile not in (None, 'frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1'):
+    if profile not in (None, 'frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1',
+                       's1-cross-seed-v1'):
         raise ValueError('unknown_profile')
     if profile is not None and (parent is not None or case_ids is not None or continue_unstarted_from is not None):
         raise ValueError('profile_is_mutually_exclusive_with_case_and_parent')
@@ -252,7 +257,8 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
         profile = 'frozen-validation-v1-continuation'
     if quality_source is not None:
         source_bundle = quality_world_from / 'source_bundle'
-    available = (QUALITY_DEVELOPMENT_V1_CASES if profile == 'quality-development-v1' else MIGRATION_AUDIT_V1_CASES
+    available = (QUALITY_DEVELOPMENT_V1_CASES if profile == 'quality-development-v1' else S1_CROSS_SEED_V1_CASES
+                 if profile == 's1-cross-seed-v1' else MIGRATION_AUDIT_V1_CASES
                  if profile == 'migration-audit-v1' else FROZEN_VALIDATION_V1_CASES
                  if profile in ('frozen-validation-v1', 'frozen-validation-v1-continuation') else CASES)
     selected = tuple((row for row in available if row['id'] not in started_ids)
@@ -302,6 +308,11 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
                 'obligation_trace_version': 2, 'method_profile': 'quality-development-v1',
                 'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1',
                 'inherited_world_lineage': None}
+        elif profile == 's1-cross-seed-v1':
+            prepare_kwargs['harness_options'] = {
+                'obligation_trace_version': 2, 'method_profile': 'quality-development-v1',
+                'candidate_edit_version': 1, 'atomic_rubric_version': 'r10.atomic_rubric.1',
+                'inherited_world_lineage': None}
         scope = runner.prepare(child, dependency_lock, dependency_remote, **prepare_kwargs)
         if quality_source is not None and spec['id'] == 'quality_procurement_price_02':
             _, _, source_child, source_state, source_entry = quality_source
@@ -341,34 +352,69 @@ def prepare(root, source_bundle, dependency_lock, dependency_remote, readiness_r
                 'max_launches': 16 * len(cases), 'seconds': 14400 * len(cases), 'per_case_launches': 16,
                 'per_case_seconds': 14400, 'order_fixed': True,
                 'source_bundle_hashes': io.files(root / 'source_bundle'),
-                'authorization': ((
-                    'User-approved frozen-validation-v1 with four fixed new worlds; method, tools, prompts, '
-                    'occupational inputs, environment and budget freeze before first model launch; independent '
-                    'case failures continue, controller/global failures stop the batch; no grading.'
-                ) if profile == 'frozen-validation-v1' else ((
-                    'User-approved collection-fix continuation of the three unstarted frozen-validation-v1 '
-                    'positions, preserving the original batch deadline and per-case budgets; the first position '
-                    'is not rerun; controller/global failures stop the continuation; no grading.'
-                ) if profile == 'frozen-validation-v1-continuation' and continuation_budget is None else ((
-                    'User-approved bound continuation of the two unstarted frozen-validation-v1 positions with '
-                    'a new 32-launch / 8-hour aggregate budget; prior 22 launches remain historical and are not '
-                    'available to the new positions; controller/global failures stop the continuation; no grading.'
-                ) if profile == 'frozen-validation-v1-continuation' else ((
-                    'User-approved quality-development-v1 with the accepted procurement-2 world inherited '
-                    'from a frozen historical receipt and one new audit world; candidate editing and atomic '
-                    'binary rubrics enabled; 32 new launches / 8 hours; no grading.'
-                ) if profile == 'quality-development-v1' else ((
-                    'User-approved single-position generation-side migration check reusing the '
-                    'admitted audit reliability seed with a fresh world; the profile selects the '
-                    'position only and the enabled method is the existing quality-development '
-                    'semantics (candidate editing, atomic binary rubrics, obligation trace 2, no '
-                    'quality diagnostics); 16 launches / 4 hours; in-method consultations, editing '
-                    'and bounded revisions are part of the method; first drafts, revisions and '
-                    'failures preserved; researcher post-generation checks are not part of any '
-                    'generation prompt; no grading.'
-                ) if profile == 'migration-audit-v1' else (
-                    f'{len(cases)} new development world(s): ' + ', '.join(row['id'] for row in cases)
-                    + '; isolated development trial, one upstream revision, final review and admitted final solve; no grading.'))))))}
+                'authorization': (
+                    (
+                        'User-approved frozen-validation-v1 with four fixed new worlds; method, tools, prompts, '
+                        'occupational inputs, environment and budget freeze before first model launch; independent '
+                        'case failures continue, controller/global failures stop the batch; no grading.'
+                    )
+                    if profile == 'frozen-validation-v1'
+                    else (
+                        (
+                            'User-approved collection-fix continuation of the three unstarted frozen-validation-v1 '
+                            'positions, preserving the original batch deadline and per-case budgets; the first position '
+                            'is not rerun; controller/global failures stop the continuation; no grading.'
+                        )
+                        if profile == 'frozen-validation-v1-continuation' and continuation_budget is None
+                        else (
+                            (
+                                'User-approved bound continuation of the two unstarted frozen-validation-v1 positions with '
+                                'a new 32-launch / 8-hour aggregate budget; prior 22 launches remain historical and are not '
+                                'available to the new positions; controller/global failures stop the continuation; no grading.'
+                            )
+                            if profile == 'frozen-validation-v1-continuation'
+                            else (
+                                (
+                                    'User-approved quality-development-v1 with the accepted procurement-2 world inherited '
+                                    'from a frozen historical receipt and one new audit world; candidate editing and atomic '
+                                    'binary rubrics enabled; 32 new launches / 8 hours; no grading.'
+                                )
+                                if profile == 'quality-development-v1'
+                                else (
+                                    (
+                                        'User-approved single-position generation-side migration check reusing the '
+                                        'admitted audit reliability seed with a fresh world; the profile selects the '
+                                        'position only and the enabled method is the existing quality-development '
+                                        'semantics (candidate editing, atomic binary rubrics, obligation trace 2, no '
+                                        'quality diagnostics); 16 launches / 4 hours; in-method consultations, editing '
+                                        'and bounded revisions are part of the method; first drafts, revisions and '
+                                        'failures preserved; researcher post-generation checks are not part of any '
+                                        'generation prompt; no grading.'
+                                    )
+                                    if profile == 'migration-audit-v1'
+                                    else (
+                                        (
+                                            'User-approved S1 cross-seed exploration: two procurement positions '
+                                            '(price reasonableness, acceptance disposition) each generating a fresh world '
+                                            'through a single-author session with the complete author contract pack and '
+                                            'self-check tooling; inputs packaged with quality-development semantics for '
+                                            'schema compatibility but no pipeline execution is authorized from this batch; '
+                                            'each position capped at 60 minutes; no grading.'
+                                        )
+                                        if profile == 's1-cross-seed-v1'
+                                        else (
+                                            f'{len(cases)} new development world(s): '
+                                            + ', '.join(row['id'] for row in cases)
+                                            + '; isolated development trial, one upstream revision, final review and '
+                                            'admitted final solve; no grading.'
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+        }
     if quality_source is not None:
         source_manifest, _, _, source_state, _ = quality_source
         manifest.update(
@@ -556,7 +602,7 @@ if __name__ == '__main__':
     parser.add_argument('--quality-world-from')
     parser.add_argument('--continuation-budget', choices=('new-8h',))
     parser.add_argument('--case', choices=('all', 'procurement'))
-    parser.add_argument('--profile', choices=('frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1'))
+    parser.add_argument('--profile', choices=('frozen-validation-v1', 'quality-development-v1', 'migration-audit-v1', 's1-cross-seed-v1'))
     args = parser.parse_args()
     selectors = [bool(args.profile), bool(args.case), bool(args.parent_batch), bool(args.continue_unstarted_from)]
     if sum(selectors) > 1:
