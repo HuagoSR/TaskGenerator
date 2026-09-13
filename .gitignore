@@ -16,6 +16,7 @@ artifacts/
 data/cli/local.json
 Test/*
 !Test/run_r10_process_first_pilot.py
+!Test/r10_expected_task_gate.py
 !Test/r10_blind_usage_input.py
 !Test/r10_baseline_package_check.py
 !Test/r10_process_first_tools.py
