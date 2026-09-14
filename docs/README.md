@@ -1,6 +1,6 @@
 # TaskGenerator 文档索引
 
-> 状态：`active`；核对日期：2026-09-11。
+> 状态：`active`；核对日期：2026-09-15。
 > 职责：定义文档入口、职责和生命周期；不记录运行状态。
 
 ## 阅读顺序
@@ -11,15 +11,16 @@
 4. [`architecture/global_interface_contracts.md`](architecture/global_interface_contracts.md)：当前接口索引、代码入口与历史兼容。
 5. [`architecture/production_mvp_definition.md`](architecture/production_mvp_definition.md)：生产边界与证据语义。
 6. [`architecture/pipeline_reconstruction_problem_statement.md`](architecture/pipeline_reconstruction_problem_statement.md)：真实性问题定义。
-7. [`architecture/pipeline_reconstruction_optimization_plan.md`](architecture/pipeline_reconstruction_optimization_plan.md)：造题研究主线与有限评分支持；后续实验须另定范围。
-8. [`operations/pipeline_reconstruction_runbook.md`](operations/pipeline_reconstruction_runbook.md)：评分暂停边界、只读查看与后续实验授权要求。
+7. [`architecture/pipeline_reconstruction_optimization_plan.md`](architecture/pipeline_reconstruction_optimization_plan.md)：S1 通用造题、准入、行为测量与有限评测方向。
+8. [`operations/pipeline_reconstruction_runbook.md`](operations/pipeline_reconstruction_runbook.md)：prepare、identity gate、执行、停止、恢复与收尾边界。
 9. [`research/agent_task_production_harness_20260907.md`](research/agent_task_production_harness_20260907.md)：造题 harness 调研、来源限制与设计依据；实现及最新单题闭环结果见概要。
-10. [`archive/README.md`](archive/README.md)：历史阶段材料索引。
-11. [`operations/cli_quickstart.md`](operations/cli_quickstart.md)：公开、无凭据只读 CLI 的安装、使用与限制。
+10. [`archive/r10_research_and_execution_lessons_20260914.md`](archive/r10_research_and_execution_lessons_20260914.md)：关键研究结论、失败与修复经验摘要。
+11. [`archive/README.md`](archive/README.md)：历史阶段材料索引。
+12. [`operations/cli_quickstart.md`](operations/cli_quickstart.md)：公开、无凭据只读 CLI 的安装、使用与限制。
 
 ## 生命周期
 
-诊断微测、质量开发与 legacy rw-task diagnostic 的最新结果及计数校正只在概要维护；合同索引说明接口边界，优化计划列出待验证方向，Runbook限定封存与后续授权。历史测试数和当时执行步骤按原时间解释，不覆盖最新结论。忽略目录证据链接仅用于本机核对，不表示共享仓库包含原始轨迹。
+最新生产、行为与 legacy rw-task diagnostic 结果只在概要维护；合同索引说明接口边界，优化计划列出待验证方向，Runbook 规定通用执行边界。跨阶段结论进入归档摘要，逐字旧版本由 Git 历史保留。忽略目录证据只用于本机核对，不表示共享仓库包含原始轨迹。
 
 | 状态 | 用途 | 维护规则 |
 | --- | --- | --- |

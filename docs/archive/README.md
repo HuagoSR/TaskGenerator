@@ -6,6 +6,7 @@
 
 ## 目录
 
+- `r10_research_and_execution_lessons_20260914.md`：R10 截至 2026-09-14 的生成方法、难度测量、材料因果、评测与恢复经验摘要；瘦身前活跃文档逐字版本见 Git `66ce931`。
 - `foundations/`：旧 V2/V3 roadmap、Pipeline B completion plan、旧 global plan、schema 历史和 Pipeline A handoff。
 - `phases/phase11/`：candidate-ready quality closure。
 - `phases/phase12/`：hardening、negative controls 和 executed mini-campaign。

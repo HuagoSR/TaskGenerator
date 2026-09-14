@@ -2,75 +2,54 @@
 
 ## Read First
 
-1. [项目概要.md](项目概要.md): sole source of macro status, evidence, limitations and next direction.
-2. [docs/README.md](docs/README.md): document index and lifecycle.
-3. [System architecture](docs/architecture/system_architecture.md): structure and responsibilities.
-4. [Contracts](docs/architecture/global_interface_contracts.md): interface index; code owns field definitions.
-5. [Production MVP](docs/architecture/production_mvp_definition.md): production and evidence semantics.
-6. [Research problem](docs/architecture/pipeline_reconstruction_problem_statement.md): hypotheses.
-7. [Next direction](docs/architecture/pipeline_reconstruction_optimization_plan.md): proposed work.
-8. [Runbook](docs/operations/pipeline_reconstruction_runbook.md): executable boundaries.
+1. [项目概要.md](项目概要.md)：唯一宏观状态源，包含当前证据、限制与下一方向。
+2. [docs/README.md](docs/README.md)：文档职责与生命周期。
+3. [System architecture](docs/architecture/system_architecture.md)：当前结构与组件边界。
+4. [Contracts](docs/architecture/global_interface_contracts.md)：接口索引；字段定义以代码为准。
+5. [Production MVP](docs/architecture/production_mvp_definition.md)：生产与证据语义。
+6. [Research problem](docs/architecture/pipeline_reconstruction_problem_statement.md)：研究问题与非目标。
+7. [Next direction](docs/architecture/pipeline_reconstruction_optimization_plan.md)：当前方法方向。
+8. [Runbook](docs/operations/pipeline_reconstruction_runbook.md)：执行、停止与恢复边界。
 
-Historical docs never override the overview. Do not duplicate campaign status across these files.
+历史文档和 ignored artifacts 不覆盖《项目概要》的当前结论。不要在多个活跃文档重复 campaign 状态。
 
-## Goal and Current Boundary
+## Goal and Current Method
 
-Automatically construct realistic, solvable, multi-file occupational tasks with candidate evidence, teacher supervision and fair rubrics. Evaluation supports task generation; building a leaderboard is not the project goal.
+项目制造真实、有自然复杂度、可解且可公平评分的多文件职业任务。评测服务于任务生成研究，不以建设排行榜为目标。
 
-All released task packages must remain compatible with the GDPval task shape: `dataset_row.json`, `reference_files/`, `deliverable_files/`, and the original task rubric semantics. GDPval itself remains calibration-only.
+- 所有候选包保持 GDPval 形状：`dataset_row.json`、`reference_files/`、`deliverable_files/`；GDPval 内容仅用于 evaluator calibration，不进入生成或调参输入。
+- S1 是优先开发路径：一个强作者读取完整生成合同与适用 Professional Skill，可使用工具和 self-check，再进入共同有限准入。历史多阶段 P 只作研究参照。
+- World-First 先产生业务材料，再挖掘任务。公开 Work Seed/规则只描述职业触发与方法，不提供组织事实或答案。
+- 通用性是硬约束：个体任务用于提炼可复用规则，不围绕单题反复修补以制造理想结果。
+- 不建设通用业务本体、evidence-graph runtime、额外角色链或自动“分数→生成器”优化器；RL、训练和公开发布不在当前范围。
 
-The current quality target is a reproducible method that repeatedly produces realistic, evidence-grounded, solvable occupational tasks with fair rubrics. Strong/weak separation is auxiliary behavioral evidence, not the production objective. Controlled Solver calibration uses one frozen Stirrup/E2B harness across models. The retained grading calibration uses constrained native Codex/OpenCode Agents: one anonymous submission at a time, every rubric item exactly once, structured evidence references, integer item awards and controller-computed totals. Pairwise preference, holistic evaluation and high-score-triggered downward audit are diagnostic-only and cannot change the primary score.
+## Evidence, Rubric and Quality Rules
 
-S1 is the preferred development path: one strong task author receives the complete generation contract and the applicable Professional Skill, may use tools and self-check, and then submits to the shared limited admission checks. The historical multi-stage pipeline P remains a research reference. This priority is an engineering direction, not a claim that S1 is universally superior or production-ready.
+- 候选文件、教师监督/rubric、计算依据和运行证据必须隔离。作者意图、编辑声明、Solver 答案和 grader 评价都不是候选义务来源。
+- 新任务使用版本化原子 rubric：每项只检查一个独立可观察成果，评分条件、适用边界、容差和合理替代表达必须自洽；正式 rubric 是唯一评分权威。
+- 关键职业结果只是教师侧的 rubric 诊断映射，不是第二套分数、隐含义务或固定模板。
+- 行为核对先看 evidence state、unresolved matter、匹配 follow-up 和后续职业行为，再判断 disposition 表达是否合理；不因未复述内部推理或特定标签直接判失败。
+- 全格式检查必须覆盖 PDF、CSV、XLSX、DOCX、Markdown 等所有 candidate-visible 内容，包括行宽、公式/重算、打开性、视觉可读性和答案泄漏。
+- 记录来源必须具有可信的 producer、record time、query scope、版本和 custody。受控实验的结构对称不能凌驾于业务因果真实性。
+- 结构通过、专业正确、可解性、文件交付、正式评分和模型行为必须分开报告。失败位置、成本和人工介入均计入结果。
 
-Generalization is a first-class constraint. Use individual tasks to discover reusable construction and measurement rules; do not keep repairing one case to manufacture a desired result. Key occupational observations are teacher-side diagnostic mappings into the formal rubric, not a second score or hidden obligation. Measure candidate-visible evidence state and consequential work-product behavior, allow professionally equivalent disposition language, audit every candidate-visible file format, and require credible producer/time/query/custody causality. Do not introduce a generic evidence-graph runtime, a business ontology, extra role layers, or an automatic score-to-generator loop for this research.
+## Architecture and Repository
 
-RL, training and an automatic score-to-generator feedback optimizer are out of scope. Task-generation research may proceed under a new scope without a fully supported grading baseline; difficulty and separation claims still require adequate behavioral evidence.
+- 实现：`src/task_generator/`；研究/阶段 runner：`Test/`。
+- 架构与操作：`docs/architecture/`、`docs/operations/`；研究记录：`docs/research/`；历史：`docs/archive/`。
+- Professional Skills：`.agents/skills/r10/`；目录：`data/r10/professional_skills/catalog.json`。
+- 生成任务、provider 响应、日志和 receipts 只放 ignored `artifacts/`；不要在仓库根新增实验产物。
+- `SkillRegistry/` 对 R10 只读；`Test/v2_outputs/` 除非明确重开，否则不触碰。
+- 公开 `taskgen` CLI 只读、离线，不得导入 `Test/` runner、接收凭据/远端配置、创建执行 scope 或暗示 preview 会运行模型。
+- 活跃文档保持简短且职责单一；详细历史进归档或 Git 历史，不复制字段 schema、运行日志和 campaign 流水账。
 
-Grader expansion is paused. Do not resume old grading queues or execute the prepared G2-B scope. Its execution arrangement is cancelled, not a failed or completed grading run. The G2 runner blocks execution; no bypass is provided. Preserve existing scopes and results. Any future external experiment requires a new explicit input/model/environment/budget-bound scope. Macro results and known limitations belong in the overview.
+## Execution and Recovery Safety
 
-The coverage/method split is offline-tested only. Labels and valid citations do not prove professional verification. Prioritize reusable generation methods, stage-visible requirements, conditional credit and credible record causality. Separate development from frozen validation, retain every failed position, and report production cost and intervention alongside task quality. Directions and previous batches do not authorize another external batch.
-
-The current direction is candidate-task editing and atomic, reproducible rubric evidence; see the [research record](docs/research/agent_task_production_harness_20260907.md). Macro results belong only in the overview. The authorized `quality-development-v1` development and read-only comparison are closed; neither unused budget nor earlier continuation authority permits new calls. A prior missing-image claim came from an unverified remote destination; the approved fixed runtime and dependency lock were later verified, but a public entry must never assume a remote host or local deployment path. Development and blind solving share candidate inputs; producer intent, edit records and trial answers are never obligation sources. Obligation provenance distinguishes explicit requirements, material instructions, necessary derivations and optional analysis; code checks identity and actual changes, independent review checks professional adequacy. `quality_diagnostics_version=1` is an offline-tested future-scope protocol, never an implicit execution authorization: it requires actual edit-difference evidence, per-criterion diagnostic coverage and explicitly cited time/source relations. Binary scoring does not prove semantic atomicity, and an edit record does not prove candidate-visible changes. Preserve original review decisions and record researcher quality disagreements separately. Historical protocols and results remain unchanged.
-
-## Architecture Rules
-
-The latest synthetic quality-diagnostic microtest and the legacy rw-task diagnostic scope are closed; unused launch budget does not authorize another call. Their preparation, isolation and recovery evidence do not prove real-Agent semantic recognition, formal atomic-rubric scoring or task quality. Do not attribute rejected handoffs solely to Agent omission, fabricate prerequisite evidence, or weaken production gates. The repository is public; no new public release, model, Solver, Judge or production execution follows from that fact. See the overview for results.
-
-- Public Work Seed and Rules describe occupational triggers and methods, not organization-specific facts.
-- Professional Skills are source-grounded factory-side knowledge packages, loaded on demand; reuse generic file-tool skills. Motif is an analysis label, not a task template.
-- World-First creates business materials before Task Mining. The miner does not read the hidden ledger, difficulty identity or expected answer.
-- Historical Scenario Bibles remain frozen; do not build Bible V2 or restore mechanical file/record quotas.
-- Keep candidate files, teacher supervision and run evidence separate. Facts rather than answer labels must reveal conflicts.
-- Historical Rubric V2 remains readable. New quality-development scopes use the versioned atomic rubric: one independently observable result per weighted item, scored only zero or full weight. The formal rubric is the sole scoring authority; supervision cannot add or narrow scoring conditions. Equivalent forms cannot cancel explicit requirements.
-- Code checks identity, safe paths, source linkage, file openability, references, isolation and score consistency. Agents handle professional semantics; avoid new business ontologies or generic validation frameworks.
-- GDPval is eval_calibration_only. Its tasks, files, rubrics, Gold and model answers must never enter generation/training inputs. Held-out cases cannot guide prompt tuning.
-
-## Repository and Documentation
-
-- Implementation: src/task_generator/; stage runners: Test/.
-- Architecture and operations: docs/architecture/ and docs/operations/.
-- Source-backed research notes: docs/research/; proposals do not authorize implementation or model calls.
-- Historical material: docs/archive/; generated evidence and logs: ignored artifacts/.
-- Historical Registry: SkillRegistry/ (read-only for R10).
-- Professional Skills: .agents/skills/r10/; catalog: data/r10/professional_skills/catalog.json.
-- Do not add implementation, experiments or generated outputs at repository root.
-- Test/v2_outputs/ is no-touch unless explicitly reopened.
-- Keep active docs concise and role-specific. Link to code/artifacts rather than duplicating schemas or execution logs. Mark unimplemented proposals explicitly; preserve history instead of creating duplicate snapshots.
-- The public `taskgen` CLI is read-only and offline-only. It must not import a `Test/` runner, accept credentials or remote settings, create scopes/receipts, or imply that preview is execution.
-
-## Safety and Execution
-
-- The synthetic microtest, original frozen batch, bound continuations, and subsequent quality-development scope remain closed. The stopped `remaining_v2` parent must not be executed directly. Preserve all original receipts and packages; read-only closeout reports may qualify package admission without changing original review or acceptance records. New production or a continuation requires new explicit authorization bound to inputs, method, environment, model and budget. No current external production authorization remains.
-
-- Use apply_patch for manual edits. Preserve unrelated dirty changes; never reset them.
-- Never print, commit or package .env, deepseek-key.txt, API keys, tokens or authentication content.
-- Provider responses, task packages and execution logs remain ignored artifacts.
-- External execution needs an input/model/environment-bound scope and receipt within the user's current authorization; old receipts do not authorize new calls.
-- Preserve first failures and immutable inputs. Do not silently rerun started/terminal sessions or redraw low scores and unwanted conclusions.
-- Derive submission instructions, expected paths, staging and grading from one DeliverableContract.
-- Do not grade invalid deliveries. Keep structural validity, professional judgment, delivery success and model behavior separate.
-- Before costly execution perform applicable readiness, fingerprint and environment checks; do not repeat expensive probes when verified environment evidence has not changed.
-- Code changes require targeted/full regression and secret/diff checks. Documentation-only changes require link, state and scope checks; do not claim new code tests were run.
-- No automatic expansion, deployment, training, public release, registry mutation or default-model change. LLM proxies remain provisional, not expert evidence.
-- The 2026-09-07 checkpoint request explicitly authorizes one local commit of reviewed existing implementation, tests and updated documentation after regression and secret/scope checks. It does not authorize a push, new harness implementation or external experiments; prior scope-specific no-commit statements remain historical.
+- 没有当前用户明确授权时，不启动作者、Solver、Judge、Grader、外部模型、SSH 或新实验。每次外部执行必须新建输入/模型/环境/预算绑定 scope 和 receipt；旧 scope、剩余额度或历史方向不构成授权。
+- 调用前执行适用的 readiness、identity、fingerprint 和环境检查。模型目录可见、历史成功或一次 preflight 不证明整个运行窗口持续可用。
+- 保留首次失败、原始输入、响应、日志和 receipt。不得覆盖终态 scope、静默重跑、重抽低分结果、改变冻结输入或把技术恢复写成首次成功。
+- 可恢复的本地控制器问题在新 scope 中绑定父证据；先用真实失败/成功产物离线回归修复，再继续尚未取得有效结果的项。Provider 502/503 等失败即使无 usage 也计入尝试。
+- 不评分无效交付。logger 展示截断本身不证明模型上下文截断；必须沿实际代码与工具命令确认。
+- 使用 `taskgenerator` conda 环境。手工编辑使用 `apply_patch`；保留无关 dirty changes，禁止 destructive reset。
+- 不打印、提交或打包 `.env`、`deepseek-key.txt`、API key、token 或认证内容。提交前检查 diff、秘密、链接、状态和测试证据；只暂存本次文件。
+- 不自动扩题、部署、发布、训练、修改 registry、切换默认模型或 push。提交/push 必须来自当前用户授权；禁止 force-push，远端分歧先 fetch 并非破坏性合并。

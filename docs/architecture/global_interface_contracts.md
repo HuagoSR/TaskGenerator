@@ -1,11 +1,11 @@
 # 接口合同索引
 
-> 状态：reference；核对日期：2026-09-11。
+> 状态：reference；核对日期：2026-09-15。
 > 只说明接口职责和兼容边界。字段以代码为准，运行结果见[项目概要](../../项目概要.md)。
 
-## 合成诊断入口的接口边界
+## 接口职责边界
 
-当前工作区为限定合成诊断实现独立结束/复核接纳语义及失败启动计量；它不声明生产提交类型，也不放宽历史接口。父级report按子attempt核对启动数，模型完成、动作排队、控制器接纳和复核结论分别解释。实现通过无模型入口夹具，真实Agent语义仍待验证；封存微测也不具备完整生产提交前提。详见[运行边界](../operations/pipeline_reconstruction_runbook.md)。
+代码拥有字段定义；本文只索引仍需读取的公共、生产、评分和历史兼容合同。接口存在、离线夹具通过或历史 runner 可调用都不构成外部执行授权，也不证明真实 Agent 语义、任务质量或 production readiness。通用执行边界见[运行手册](../operations/pipeline_reconstruction_runbook.md)。
 
 ## Public read-only CLI contract
 
@@ -61,7 +61,7 @@ XLSX 证据服务保留原值、公式、重算值、格式和循环诊断；只
 
 `AgentRubricGradeDraftV2` 将 `coverage` 与 `verification_methods` 分开，已通过离线测试，未完成真实评分验证。V1 保留冻结结果读取兼容。当前 V2 仍沿用量化满分强制候选/参考范围的机械规则；本次不修复。合法引用、方法和覆盖标签不等于专业核验充分。
 
-评分执行暂停；合同存在不代表可启动实验，宏观结果见概要，操作边界见 Runbook。
+独立评分合同保留为受限研究能力；合同存在不代表可启动实验，宏观结果见概要，操作边界见 Runbook。
 
 ## Stirrup 校准合同
 
@@ -126,7 +126,7 @@ Miner 额外保存隔离的`design_intent.json`。编译快照增加`basis_draft
 
 后续显式启用`quality_diagnostics_version=1`的scope使用`r10.quality_diagnostics.1`，历史scope不受影响。`factory-tools diagnose`接收含`subject`的JSON对象，提供三个只读对象：`edit`从实际候选题干、交付合同和内部task差异生成确定性清单；`rubric`按当前正式条目、候选义务和计算锚点生成逐项对照；`record-relations`验证已声明的记录时点并呈现来源关系。编辑记录必须覆盖真实候选及内部变化，材料文件不可由编辑者修改。`rubric_diagnostic.json`同时绑定rubric、依据、计算包、候选文件和逐项条款；编译诊断未关闭时不能ready/submit，终审非pass则正常收尾。查询或摘录的`derived_from`关系只产生`agent_review_required`，程序不自动判定内容一致。诊断pass不等于职业语义或专家有效性通过。
 
-现有`stop`和批次根`STOP`表示尽快停止，会传播到当前子控制器，不表示“当前题完整结束后暂停”。历史`remaining_v2`因此在世界修订后终止并将父游标推进；不能直接执行该父批来恢复采购二。未来如实现题后暂停，须增加不同的显式状态与测试，不能改变历史停止记录。
+`stop`、批次停止和 continuation 的具体状态机以代码及版本化 receipt 为准；停止不得重置预算、改写已终结会话或暗示续跑授权。历史行为与特殊恢复入口见归档和 Git 历史，不在活跃接口索引重复 campaign 状态。
 
 ## Legacy rw-task 诊断适配（候选侧兼容）
 
